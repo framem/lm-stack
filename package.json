@@ -1,0 +1,30 @@
+{
+  "name": "n8n",
+  "version": "1.0.0",
+  "description": "```bash docker run -it --rm --name n8n -p 5678:5678 -v n8n_data:/home/node/.n8n docker.n8n.io/n8nio/n8n start --tunnel --log-level debug ```",
+  "license": "ISC",
+  "author": "",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "prisma:demo:seed": "npx tsx prisma/sampleData/seed-demo.ts",
+    "prisma:gen": "prisma generate",
+    "prisma:push": "prisma db push",
+    "prisma": "npm run prisma:gen && npm run prisma:push"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.9",
+    "prisma": "^7.3.0",
+    "tsx": "^4.21.0"
+  },
+  "imports": {
+    "#lib/*": "./lib/*"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.3.0",
+    "@prisma/client": "^7.3.0",
+    "@types/pg": "^8.16.0",
+    "dotenv": "^17.2.3",
+    "pg": "^8.18.0"
+  }
+}

@@ -1,0 +1,83 @@
+services:
+  ollama:
+    image: ollama/ollama
+    networks: ['agents']
+    volumes:
+      - ollama_data:/root/.ollama
+      - ./custom_models:/app/custom_models
+    ports:
+      - "11434:11434"
+    command: serve
+    container_name: n8n-ollama
+    environment:
+      - OLLAMA_HOST=ollama:11434
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  n8n:
+    image: docker.n8n.io/n8nio/n8n
+    networks: ['agents']
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./n8n-workflows:/home/node/workflows
+      - ./n8n/data:/home/data
+    ports:
+      - "5678:5678"
+    depends_on:
+      - ollama
+    environment:
+      - OLLAMA_HOST=ollama:11434
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - QDRANT_HOST=qdrant
+#    command: start --tunnel
+    links:
+      - postgres
+
+  qdrant:
+    image: qdrant/qdrant:gpu-nvidia-latest
+    container_name: n8n-qdrant
+    networks: ['agents']
+    restart: unless-stopped
+    volumes:
+      - qdrant_data:/qdrant/storage
+    ports:
+      - "6333:6333"  # REST API
+    environment:
+      - QDRANT__GPU__INDEXING=1  # Enable GPU indexing
+      - QDRANT__LOG_LEVEL=debug  # Optional: Set to debug to verify GPU initialization in logs
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  postgres:
+    networks: ['agents']
+    image: pgvector/pgvector:pg17
+    container_name: n8n_pgvector-pg
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: example_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./postgres/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+
+networks:
+  agents:
+
+volumes:
+  ollama_data:
+  n8n_data:
+  pgdata:
+  qdrant_data:

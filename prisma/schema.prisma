@@ -1,0 +1,24 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Flight {
+  id               String   @id @default(cuid())
+  name             String
+  Seats            Seat[]
+  plannedDeparture DateTime
+}
+
+model Seat {
+  name     String
+  Flight   Flight  @relation(fields: [flightId], references: [id], onDelete: Cascade)
+  flightId String
+  isEmpty  Boolean @default(true)
+
+  @@id([name, flightId])
+}
