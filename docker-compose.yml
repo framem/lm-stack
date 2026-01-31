@@ -4,7 +4,7 @@ services:
     networks: ['agents']
     volumes:
       - ollama_data:/root/.ollama
-      - ./custom_models:/app/custom_models
+      - ./ollama/custom_models:/app/custom_models
     ports:
       - "11434:11434"
     command: serve

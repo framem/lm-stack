@@ -7,15 +7,22 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
     "prisma:demo:seed": "npx tsx prisma/sampleData/seed-demo.ts",
-    "prisma:gen": "prisma generate",
+    "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
     "prisma": "npm run prisma:gen && npm run prisma:push"
   },
   "devDependencies": {
     "@types/node": "^24.10.9",
+    "@types/react": "^19.2.10",
+    "@types/react-dom": "^19.2.3",
     "prisma": "^7.3.0",
-    "tsx": "^4.21.0"
+    "tsx": "^4.21.0",
+    "typescript": "5.9.3"
   },
   "imports": {
     "#lib/*": "./lib/*"
@@ -24,7 +31,12 @@
     "@prisma/adapter-pg": "^7.3.0",
     "@prisma/client": "^7.3.0",
     "@types/pg": "^8.16.0",
+    "ai": "^6.0.64",
+    "ai-sdk-ollama": "^3.3.0",
     "dotenv": "^17.2.3",
-    "pg": "^8.18.0"
+    "next": "^16.1.6",
+    "pg": "^8.18.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
   }
 }
