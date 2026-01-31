@@ -1,1 +1,115 @@
-{"updatedAt":"2026-01-30T20:31:05.435Z","createdAt":"2026-01-30T20:28:02.012Z","id":"AAvrEvKp5E3CzqxwVT-5_","name":"My workflow","description":null,"active":false,"isArchived":false,"nodes":[{"parameters":{"options":{}},"type":"@n8n/n8n-nodes-langchain.chatTrigger","typeVersion":1.4,"position":[0,0],"id":"4e8f37ef-86c5-4fcb-8376-948d02dce809","name":"When chat message received","webhookId":"5234b030-2173-499c-85b4-162bfaec67ff"},{"parameters":{"options":{}},"type":"@n8n/n8n-nodes-langchain.agent","typeVersion":3.1,"position":[208,0],"id":"8571bb77-9f58-41eb-acc1-6b38f5793756","name":"AI Agent"},{"parameters":{"model":"qwen3:8b","options":{}},"type":"@n8n/n8n-nodes-langchain.lmChatOllama","typeVersion":1,"position":[176,208],"id":"a84abeb0-b4db-4a08-8543-7be0d6bc9513","name":"Ollama Chat Model","credentials":{"ollamaApi":{"id":"vJCYTb5mfcsuo36e","name":"Ollama account"}}}],"connections":{"When chat message received":{"main":[[{"node":"AI Agent","type":"main","index":0}]]},"Ollama Chat Model":{"ai_languageModel":[[{"node":"AI Agent","type":"ai_languageModel","index":0}]]}},"settings":{"executionOrder":"v1","availableInMCP":false},"staticData":null,"meta":{"templateCredsSetupCompleted":true},"pinData":{},"versionId":"c306a2c0-72c4-4c5d-820c-3e71eebb9640","activeVersionId":null,"versionCounter":6,"triggerCount":0,"tags":[],"shared":[{"updatedAt":"2026-01-30T20:28:02.014Z","createdAt":"2026-01-30T20:28:02.014Z","role":"workflow:owner","workflowId":"AAvrEvKp5E3CzqxwVT-5_","projectId":"bl8q3GHwyg1vBwgt","project":{"updatedAt":"2026-01-30T20:27:24.776Z","createdAt":"2026-01-30T20:19:24.451Z","id":"bl8q3GHwyg1vBwgt","name":"Franz franz.emmerlich@gmail.com <franz.emmerlich@gmail.com>","type":"personal","icon":null,"description":null,"creatorId":"a1c24a9b-84a7-45f5-b6f4-2ec217069a72"}}]}
+{
+  "updatedAt": "2026-01-30T21:16:07.150Z",
+  "createdAt": "2026-01-30T20:28:02.012Z",
+  "id": "AAvrEvKp5E3CzqxwVT-5_",
+  "name": "My workflow",
+  "description": null,
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        0
+      ],
+      "id": "4e8f37ef-86c5-4fcb-8376-948d02dce809",
+      "name": "When chat message received",
+      "webhookId": "5234b030-2173-499c-85b4-162bfaec67ff"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        208,
+        0
+      ],
+      "id": "8571bb77-9f58-41eb-acc1-6b38f5793756",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "qwen3:8b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        224,
+        224
+      ],
+      "id": "a84abeb0-b4db-4a08-8543-7be0d6bc9513",
+      "name": "Ollama Chat Model",
+      "credentials": {
+        "ollamaApi": {
+          "id": "vJCYTb5mfcsuo36e",
+          "name": "Ollama account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "2b29c537-f70a-4459-8e1d-99c63aff6219",
+  "activeVersionId": null,
+  "versionCounter": 7,
+  "triggerCount": 0,
+  "tags": [],
+  "shared": [
+    {
+      "updatedAt": "2026-01-30T20:28:02.014Z",
+      "createdAt": "2026-01-30T20:28:02.014Z",
+      "role": "workflow:owner",
+      "workflowId": "AAvrEvKp5E3CzqxwVT-5_",
+      "projectId": "bl8q3GHwyg1vBwgt",
+      "project": {
+        "updatedAt": "2026-01-30T20:27:24.776Z",
+        "createdAt": "2026-01-30T20:19:24.451Z",
+        "id": "bl8q3GHwyg1vBwgt",
+        "name": "Franz franz.emmerlich@gmail.com <franz.emmerlich@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "a1c24a9b-84a7-45f5-b6f4-2ec217069a72"
+      }
+    }
+  ]
+}
