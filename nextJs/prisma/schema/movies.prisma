@@ -1,0 +1,19 @@
+model Movie {
+  id           String  @id @default(cuid())
+  posterLink   String?
+  seriesTitle  String
+  releasedYear String?
+  certificate  String?
+  runtime      String?
+  genre        String?
+  imdbRating   Float?
+  overview     String?
+  metaScore    Int?
+  director     String?
+  star1        String?
+  star2        String?
+  star3        String?
+  star4        String?
+  noOfVotes    Int?
+  gross        String?
+}

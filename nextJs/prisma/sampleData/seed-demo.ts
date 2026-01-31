@@ -1,4 +1,4 @@
-import { prisma } from '#lib/prisma.ts'
+import { prisma } from '@/src/lib/prisma.ts'
 
 
 const load = async () => {

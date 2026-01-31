@@ -1,0 +1,52 @@
+### Ollama Chat Completion (deterministic)
+POST http://localhost:11434/api/chat
+Content-Type: application/json
+
+{
+  "model": "qwen3:8b",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a helpful assistant."
+    },
+    {
+      "role": "user",
+      "content": "Explain in one sentence what Docker is."
+    }
+  ],
+  "options": {
+    "seed": 123,
+    "temperature": 0,
+    "num_ctx": 2048
+  },
+  "stream": false
+}
+
+
+
+### Ollama Chat mit logprobs
+POST http://localhost:11434/api/chat
+Content-Type: application/json
+
+{
+  "model": "qwen3:8b",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a helpful assistant. You answer the user directly without explanation. Do not think"
+    },
+    {
+      "role": "user",
+      "content": "Der Himmel ist"
+    }
+  ],
+  "options": {
+    "seed": 123,
+    "temperature": 0,
+    "num_ctx": 2048,
+    "num_predict": 5
+  },
+  "logprobs": true,
+  "top_logprobs": 5,
+  "stream": false
+}

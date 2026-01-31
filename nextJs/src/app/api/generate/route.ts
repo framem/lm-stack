@@ -10,7 +10,7 @@ export async function GET() {
     }),
     temperature: 0,
     seed: 123,
-    prompt: 'Erkläre in einem Satz, was xDocker ist.',
+    prompt: 'Erkläre in einem Satz, was Docker ist.',
   });
 
   console.log(text);
