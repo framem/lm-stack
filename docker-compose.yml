@@ -39,6 +39,8 @@ services:
   n8n:
     image: docker.n8n.io/n8nio/n8n
     networks: ['agents']
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - n8n_data:/home/node/.n8n
       - ./docker/n8n/workflows:/home/node/workflows
