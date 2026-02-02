@@ -1,4 +1,4 @@
-import { prisma } from '@/src/lib/prisma.ts'
+import { prisma } from '@/src/lib/prisma'
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
 
@@ -34,7 +34,7 @@ function parseCsvLine(line: string): string[] {
 }
 
 const load = async () => {
-    const csvPath = resolve(import.meta.dirname!, '../../../docker/n8n/data/imdb_top_1000.csv')
+    const csvPath = resolve(import.meta.dirname!, '../../../docker/db/data/imdb_top_1000.csv')
     const csvContent = readFileSync(csvPath, 'utf-8')
     const lines = csvContent.split('\n').filter(line => line.trim() !== '')
 
