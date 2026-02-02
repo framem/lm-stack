@@ -1,13 +1,9 @@
 import 'dotenv/config'
-import { randomUUID } from 'crypto'
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
-import { createServer } from 'http'
-import { PrismaClient } from './generated/prisma/client.js'
-import { PrismaPg } from '@prisma/adapter-pg'
-
-const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL })
-const prisma = new PrismaClient({ adapter })
+import {randomUUID} from 'crypto'
+import {McpServer} from '@modelcontextprotocol/sdk/server/mcp.js'
+import {StreamableHTTPServerTransport} from '@modelcontextprotocol/sdk/server/streamableHttp.js'
+import {createServer} from 'http'
+import {getMovies} from "@/src/data-access/movies";
 
 const server = new McpServer({
   name: 'movies-mcp',
@@ -17,7 +13,7 @@ const server = new McpServer({
 server.registerTool('getAllMovies', {
   description: 'Returns movies from the database (top 3)',
 }, async () => {
-  const movies = await prisma.movie.findMany({ take: 3 })
+  const movies = getMovies()
   return {
     content: [
       {
