@@ -16,7 +16,8 @@
     "mcp": "npx tsx mcp-server.ts",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
-    "prisma": "npm run prisma:gen && npm run prisma:push"
+    "prisma": "npm run prisma:gen && npm run prisma:push",
+    "n8n:export": "bash ../scripts/export-workflows.sh"
   },
   "devDependencies": {
     "@types/node": "^24.10.9",
