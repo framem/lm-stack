@@ -1,0 +1,64 @@
+### MCP Initialize (returns mcp-session-id header)
+POST http://localhost:3001/mcp
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "initialize",
+  "params": {
+    "protocolVersion": "2025-03-26",
+    "capabilities": {},
+    "clientInfo": {
+      "name": "http-client",
+      "version": "1.0.0"
+    }
+  }
+}
+
+### List available tools
+# @no-redirect
+POST http://localhost:3001/mcp
+Content-Type: application/json
+mcp-session-id: {{session_id}}
+
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "tools/list",
+  "params": {}
+}
+
+### Call getAllMovies
+# @no-redirect
+POST http://localhost:3001/mcp
+Content-Type: application/json
+mcp-session-id: {{session_id}}
+
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "method": "tools/call",
+  "params": {
+    "name": "getAllMovies",
+    "arguments": {}
+  }
+}
+
+### Call getMoviesByCategory
+# @no-redirect
+POST http://localhost:3001/mcp
+Content-Type: application/json
+mcp-session-id: {{session_id}}
+
+{
+  "jsonrpc": "2.0",
+  "id": 4,
+  "method": "tools/call",
+  "params": {
+    "name": "getMoviesByCategory",
+    "arguments": {
+      "category": "Drama"
+    }
+  }
+}

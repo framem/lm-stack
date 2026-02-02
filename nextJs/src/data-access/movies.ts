@@ -5,3 +5,15 @@ export async function getMovies() {
         take: 3,
     })
 }
+
+export async function getMoviesByCategory(category: string) {
+    return prisma.movie.findMany({
+        where: {
+            genre: {
+                contains: category,
+                mode: 'insensitive',
+            },
+        },
+        take: 3
+    })
+}
