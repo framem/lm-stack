@@ -2,7 +2,6 @@
 Sample training data for language models.
 """
 
-# German sentences for training
 TRAINING_DATA_DE = [
     "die katze sitzt auf dem tisch",
     "der hund läuft im garten",
@@ -26,7 +25,6 @@ TRAINING_DATA_DE = [
     "der regen fällt auf das dach",
 ]
 
-# English sentences for training
 TRAINING_DATA_EN = [
     "the cat sits on the table",
     "the dog runs in the garden",
