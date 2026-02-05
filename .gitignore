@@ -4,3 +4,5 @@ node_modules
 
 # Prisma generated client
 **/generated
+
+**/.venv
