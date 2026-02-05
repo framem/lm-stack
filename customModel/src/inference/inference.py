@@ -369,7 +369,7 @@ Beispiele:
         model_dir = args.model
     else:
         script_dir = Path(__file__).parent
-        model_dir = script_dir / "models" / "lstm_model"
+        model_dir = script_dir.parent.parent / "dist" / "lstm_model"
 
     # Prüfen ob Modell existiert
     if not Path(model_dir).exists():

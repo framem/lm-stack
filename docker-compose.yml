@@ -1,4 +1,16 @@
 services:
+  gguf-converter:
+    build:
+      context: ./docker/gguf-converter
+      dockerfile: Dockerfile
+    image: gguf-converter:latest
+    container_name: gguf-converter
+    volumes:
+      - ./customModel/training/models:/models/input:ro
+      - ./customModel/training/models/gguf:/models/output
+    profiles:
+      - tools
+
   ollama-gpu:
     image: ollama/ollama
     networks: ['agents']

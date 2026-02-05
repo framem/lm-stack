@@ -1,6 +1,0 @@
-{
-  "vocab_size": 69,
-  "embedding_dim": 32,
-  "hidden_dim": 64,
-  "model_type": "SimpleLanguageModel"
-}

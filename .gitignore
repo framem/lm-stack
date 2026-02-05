@@ -6,3 +6,6 @@ node_modules
 **/generated
 
 **/.venv
+
+# Model output files
+**/dist/

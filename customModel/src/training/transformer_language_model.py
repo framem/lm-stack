@@ -21,7 +21,7 @@ import json
 import matplotlib.pyplot as plt
 from pathlib import Path
 
-from model_report import generate_model_report
+from .model_report import generate_model_report
 
 torch.manual_seed(42)
 
@@ -683,7 +683,7 @@ def main():
     print("=" * 70)
 
     script_dir = Path(__file__).parent
-    model_dir = script_dir / "models" / "transformer_model"
+    model_dir = script_dir.parent.parent / "dist" / "transformer_model"
     save_transformer_model(model, tokenizer, str(model_dir))
 
     print("\n" + "=" * 70)

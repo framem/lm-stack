@@ -7,7 +7,7 @@ Dieses Script bietet ein einfaches Menü für:
 - Inferenz mit trainierten Modellen
 
 Verwendung:
-    python run_training.py
+    python src/main.py
 """
 
 import sys
@@ -16,10 +16,10 @@ from pathlib import Path
 
 def check_models_exist():
     """Prüft welche Modelle bereits trainiert wurden."""
-    script_dir = Path(__file__).parent
-    lstm_exists = (script_dir / "models" / "lstm_model" / "model.pt").exists()
-    transformer_exists = (script_dir / "models" / "transformer_model" / "model.pt").exists()
-    hf_gpt2_exists = (script_dir / "models" / "hf_gpt2_model" / "model.safetensors").exists()
+    models_dir = Path(__file__).parent.parent / "dist"
+    lstm_exists = (models_dir / "lstm_model" / "model.pt").exists()
+    transformer_exists = (models_dir / "transformer_model" / "model.pt").exists()
+    hf_gpt2_exists = (models_dir / "hf_gpt2_model" / "model.safetensors").exists()
     return lstm_exists, transformer_exists, hf_gpt2_exists
 
 
@@ -69,21 +69,21 @@ def main():
         print("\n" + "=" * 60)
         print("🏋️ Starte LSTM-Training...")
         print("=" * 60 + "\n")
-        from simple_language_model import main as train_lstm
+        from training.simple_language_model import main as train_lstm
         train_lstm()
 
     elif choice == "2":
         print("\n" + "=" * 60)
         print("🏋️ Starte Transformer-Training...")
         print("=" * 60 + "\n")
-        from transformer_language_model import main as train_transformer
+        from training.transformer_language_model import main as train_transformer
         train_transformer()
 
     elif choice == "3":
         print("\n" + "=" * 60)
         print("🏋️ Starte HF-GPT2-Training (LM Studio kompatibel)...")
         print("=" * 60 + "\n")
-        from gpt_transformer_language_model import main as train_hf_gpt2
+        from training.gpt_transformer_language_model import main as train_hf_gpt2
         train_hf_gpt2()
 
     elif choice == "4":
@@ -93,7 +93,7 @@ def main():
         print("\n" + "=" * 60)
         print("🔮 Starte LSTM-Inferenz...")
         print("=" * 60 + "\n")
-        from inference import main as run_inference
+        from inference.inference import main as run_inference
         run_inference()
 
     elif choice == "5":
@@ -103,7 +103,7 @@ def main():
         print("\n" + "=" * 60)
         print("🔮 Starte Transformer-Inferenz...")
         print("=" * 60 + "\n")
-        from inference_transformer import main as run_transformer_inference
+        from inference.inference_transformer import main as run_transformer_inference
         run_transformer_inference()
 
     elif choice == "6":
@@ -113,7 +113,7 @@ def main():
         print("\n" + "=" * 60)
         print("🔮 Starte HF-GPT2-Inferenz...")
         print("=" * 60 + "\n")
-        from inference_hf_gpt2 import main as run_hf_gpt2_inference
+        from inference.inference_hf_gpt2 import main as run_hf_gpt2_inference
         run_hf_gpt2_inference()
 
     elif choice == "0":

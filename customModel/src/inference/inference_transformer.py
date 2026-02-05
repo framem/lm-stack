@@ -190,7 +190,7 @@ def main():
         model_dir = args.model
     else:
         script_dir = Path(__file__).parent
-        model_dir = script_dir / "models" / "transformer_model"
+        model_dir = script_dir.parent.parent / "dist" / "transformer_model"
 
     if not Path(model_dir).exists():
         print(f"❌ Modell nicht gefunden: {model_dir}")

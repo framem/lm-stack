@@ -23,7 +23,7 @@ import json
 import os
 from pathlib import Path
 
-from model_report import generate_model_report
+from .model_report import generate_model_report
 
 # Für reproduzierbare Ergebnisse
 torch.manual_seed(42)
@@ -689,9 +689,9 @@ def main():
     print("SCHRITT 8: MODELL SPEICHERN")
     print("=" * 60)
 
-    # Speicherort im gleichen Verzeichnis wie das Script
+    # Speicherort im models Verzeichnis
     script_dir = Path(__file__).parent
-    model_dir = script_dir / "models" / "lstm_model"
+    model_dir = script_dir.parent.parent / "dist" / "lstm_model"
     save_model(model, tokenizer, str(model_dir))
 
     print("\n" + "=" * 60)

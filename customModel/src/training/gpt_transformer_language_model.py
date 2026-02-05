@@ -543,7 +543,7 @@ def main():
     print("=" * 70)
 
     script_dir = Path(__file__).parent
-    model_dir = script_dir / "models" / "hf_gpt2_model"
+    model_dir = script_dir.parent.parent / "dist" / "hf_gpt2_model"
 
     # Modell auf CPU verschieben vor dem Speichern
     model.to("cpu")

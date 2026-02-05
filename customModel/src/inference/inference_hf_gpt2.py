@@ -17,7 +17,7 @@ from transformers import GPT2LMHeadModel, PreTrainedTokenizerFast
 def load_model():
     """Lädt das trainierte HF-GPT2 Modell."""
     script_dir = Path(__file__).parent
-    model_path = script_dir / "models" / "hf_gpt2_model"
+    model_path = script_dir.parent.parent / "dist" / "hf_gpt2_model"
 
     if not model_path.exists():
         print(f"❌ Modell nicht gefunden: {model_path}")
