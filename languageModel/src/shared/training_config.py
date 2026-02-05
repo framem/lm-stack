@@ -5,8 +5,8 @@ This ensures consistent hyperparameters across LSTM and Transformer training.
 """
 
 # Training parameters
-EPOCHS = 100
-LOG_INTERVAL = 10  # Log every N epochs
+EPOCHS = 500
+LOG_INTERVAL = 50  # Log every N epochs
 
 # Learning rates
 LEARNING_RATE_LSTM = 0.01

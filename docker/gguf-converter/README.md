@@ -1,18 +1,17 @@
 # GGUF Converter
 
-Docker-Container zur Konvertierung von HuggingFace-Modellen zu GGUF (für LM Studio, llama.cpp, Ollama).
+Docker-Container zur Konvertierung von HuggingFace-Modellen zu GGUF (fuer LM Studio, llama.cpp, Ollama).
 
-## Unterstützte Architekturen
+## Unterstuetzte Architekturen
 
 | Architektur | HuggingFace Klasse | Status |
 |-------------|-------------------|--------|
-| GPT-2 | `GPT2LMHeadModel` | ✅ |
-| LLaMA | `LlamaForCausalLM` | ✅ |
-| Mistral | `MistralForCausalLM` | ✅ |
-| Falcon | `FalconForCausalLM` | ✅ |
-| Phi | `PhiForCausalLM` | ✅ |
-| Qwen2 | `Qwen2ForCausalLM` | ✅ |
-| Gemma | `GemmaForCausalLM` | ✅ |
+| LLaMA | `LlamaForCausalLM` | Empfohlen |
+| Mistral | `MistralForCausalLM` | OK |
+| Falcon | `FalconForCausalLM` | OK |
+| Phi | `PhiForCausalLM` | OK |
+| Qwen2 | `Qwen2ForCausalLM` | OK |
+| Gemma | `GemmaForCausalLM` | OK |
 
 ## Verwendung
 
@@ -22,13 +21,14 @@ Docker-Container zur Konvertierung von HuggingFace-Modellen zu GGUF (für LM Stu
 docker compose build gguf-converter
 ```
 
-### Modell konvertieren
+### Mini-LLaMA Modell konvertieren
 
 ```bash
-docker compose run --rm gguf-converter /app/convert.sh --input /models/input/gpt2_lm_studio --output /models/output/gpt2-mini.gguf
+# Basis-Konvertierung (F16)
+docker compose run --rm gguf-converter /app/convert.sh --input /models/input/llama_mini --output /models/output/llama-mini.gguf
 
-# Mit Quantisierung
-docker compose run --rm gguf-converter /app/convert.sh --input /models/input/gpt2_lm_studio --output /models/output/gpt2-mini.gguf --quantize q4_0
+# Mit Quantisierung (kleiner, schneller)
+docker compose run --rm gguf-converter /app/convert.sh --input /models/input/llama_mini --output /models/output/llama-mini.gguf --quantize q4_0
 ```
 
 ### Hilfe anzeigen
@@ -37,7 +37,7 @@ docker compose run --rm gguf-converter /app/convert.sh --input /models/input/gpt
 docker compose run --rm gguf-converter /app/convert.sh --help
 ```
 
-### Unterstützte Architekturen auflisten
+### Unterstuetzte Architekturen auflisten
 
 ```bash
 docker compose run --rm gguf-converter /app/convert.sh --list
@@ -45,26 +45,28 @@ docker compose run --rm gguf-converter /app/convert.sh --list
 
 ## Quantisierungsoptionen
 
-| Typ | Bits | Größe | Qualität |
-|-----|------|-------|----------|
+| Typ | Bits | Groesse | Qualitaet |
+|-----|------|---------|-----------|
 | `q8_0` | 8-bit | ~50% | Beste |
 | `q5_1` | 5-bit | ~35% | Sehr gut |
 | `q5_0` | 5-bit | ~35% | Gut |
 | `q4_1` | 4-bit | ~25% | Akzeptabel |
-| `q4_0` | 4-bit | ~25% | Niedrigste |
+| `q4_0` | 4-bit | ~25% | Kleinste |
 
 ## Output
 
 Die konvertierten GGUF-Dateien landen in:
 ```
 languageModel/dist/gguf_converted/
-├── gpt2-mini.gguf
-└── gpt2-mini-q4_0.gguf
+├── llama-mini.gguf
+└── llama-mini-q4_0.gguf
 ```
 
 ## In LM Studio importieren
 
 ```bash
-lms import -c ../../languageModel/dist/gguf_converted/gpt2-mini.gguf
-lms import -c ../../languageModel/dist/gguf_converted/gpt2-mini-q4_0.gguf
+# Via CLI
+lms import -c ../../languageModel/dist/gguf_converted/llama-mini.gguf
+
+# Oder: Datei manuell in LM Studio oeffnen
 ```

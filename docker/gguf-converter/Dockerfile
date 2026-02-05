@@ -18,9 +18,9 @@ RUN git clone --depth 1 https://github.com/ggerganov/llama.cpp.git
 WORKDIR /app/llama.cpp
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Build quantize tool
+# Build llama tools (quantize + cli)
 RUN cmake -B build && \
-    cmake --build build --config Release -t llama-quantize
+    cmake --build build --config Release -t llama-quantize -t llama-cli
 
 # Create directories for models
 RUN mkdir -p /models/input /models/output

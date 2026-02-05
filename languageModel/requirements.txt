@@ -6,3 +6,5 @@ jupyter>=1.0.0
 transformers>=4.36.0
 tokenizers>=0.15.0
 scikit-learn>=1.0.0
+#training
+accelerate>=1.12.0

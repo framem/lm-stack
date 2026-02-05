@@ -3,7 +3,7 @@ Starter-Script für Sprachmodell-Training und Inferenz
 ======================================================
 
 Dieses Script bietet ein einfaches Menü für:
-- Training der Modelle (LSTM oder Transformer)
+- Training der Modelle (LSTM, Transformer, Mini-LLaMA)
 - Inferenz mit trainierten Modellen
 
 Verwendung:
@@ -19,128 +19,108 @@ def check_models_exist():
     models_dir = Path(__file__).parent.parent / "dist"
     lstm_exists = (models_dir / "lstm_model" / "model.pt").exists()
     transformer_exists = (models_dir / "transformer_model" / "model.pt").exists()
-    gpt2_lm_studio_exists = (models_dir / "gpt2_lm_studio" / "model.safetensors").exists()
-    gguf_exists = any((models_dir / "gguf_converted").glob("*.gguf"))
-    return lstm_exists, transformer_exists, gpt2_lm_studio_exists, gguf_exists
+    llama_mini_exists = (models_dir / "llama_mini" / "model.safetensors").exists()
+    return lstm_exists, transformer_exists, llama_mini_exists
 
 
 def main():
     print("=" * 60)
-    print("🎓 SPRACHMODELL-LERNPROJEKT")
+    print("SPRACHMODELL-LERNPROJEKT")
     print("=" * 60)
 
-    lstm_exists, transformer_exists, gpt2_lm_studio_exists, gguf_exists = check_models_exist()
+    lstm_exists, transformer_exists, llama_mini_exists = check_models_exist()
 
     print(f"""
-    Verfügbare Optionen:
+    Verfuegbare Optionen:
 
     === TRAINING ===
     1. LSTM-Modell trainieren (Grundlagen)
        - Einfache rekurrente Architektur
        - Gut zum Lernen der Basics
-       {'   ✅ Bereits trainiert' if lstm_exists else '   ⚪ Noch nicht trainiert'}
+       {'   [OK] Bereits trainiert' if lstm_exists else '   [ ] Noch nicht trainiert'}
 
     2. Transformer-Modell trainieren (Fortgeschritten)
        - Custom GPT-artige Architektur (PyTorch)
        - Self-Attention Mechanismus
-       {'   ✅ Bereits trainiert' if transformer_exists else '   ⚪ Noch nicht trainiert'}
+       {'   [OK] Bereits trainiert' if transformer_exists else '   [ ] Noch nicht trainiert'}
 
-    3. GPT-2 LM Studio trainieren (GGUF-kompatibel) ⭐
-       - Hugging Face GPT-2 mit Standard-Tokenizer
-       - Kann zu GGUF konvertiert werden
-       {'   ✅ Bereits trainiert' if gpt2_lm_studio_exists else '   ⚪ Noch nicht trainiert'}
+    3. Mini-LLaMA trainieren (GGUF-kompatibel)
+       - Echte LLaMA-Architektur (RoPE, RMSNorm, SwiGLU)
+       - Optimiert fuer LM Studio / GGUF
+       {'   [OK] Bereits trainiert' if llama_mini_exists else '   [ ] Noch nicht trainiert'}
 
     === INFERENZ ===
     4. LSTM-Modell verwenden (Inferenz)
-       {'   ✅ Verfügbar' if lstm_exists else '   ❌ Erst trainieren!'}
+       {'   [OK] Verfuegbar' if lstm_exists else '   [X] Erst trainieren!'}
 
     5. Transformer-Modell verwenden (Inferenz)
-       {'   ✅ Verfügbar' if transformer_exists else '   ❌ Erst trainieren!'}
+       {'   [OK] Verfuegbar' if transformer_exists else '   [X] Erst trainieren!'}
 
-    6. GPT-2 Safetensor verwenden (Inferenz)
-       {'   ✅ Verfügbar' if gpt2_lm_studio_exists else '   ❌ Erst trainieren!'}
-
-    7. GPT-2 GGUF verwenden (llama.cpp)
-       {'   ✅ Verfügbar' if gguf_exists else '   ❌ Erst konvertieren!'}
+    6. Mini-LLaMA verwenden (Inferenz)
+       {'   [OK] Verfuegbar' if llama_mini_exists else '   [X] Erst trainieren!'}
 
     0. Beenden
     """)
 
-    choice = input("    Auswahl (0-7): ").strip()
+    choice = input("    Auswahl (0-6): ").strip()
 
     if choice == "1":
         print("\n" + "=" * 60)
-        print("🏋️ Starte LSTM-Training...")
+        print("Starte LSTM-Training...")
         print("=" * 60 + "\n")
         from training.training_lstm import main as train_lstm
         train_lstm()
 
     elif choice == "2":
         print("\n" + "=" * 60)
-        print("🏋️ Starte Transformer-Training...")
+        print("Starte Transformer-Training...")
         print("=" * 60 + "\n")
         from training.training_transformer import main as train_transformer
         train_transformer()
 
     elif choice == "3":
         print("\n" + "=" * 60)
-        print("🏋️ Starte GPT-2 LM Studio Training (GGUF-kompatibel)...")
+        print("Starte Mini-LLaMA Training (GGUF-optimiert)...")
         print("=" * 60 + "\n")
-        from training.training_gpt2_lm_studio import main as train_gpt2_lm_studio
-        train_gpt2_lm_studio()
+        from training.training_llama_mini import main as train_llama_mini
+        train_llama_mini()
 
     elif choice == "4":
         if not lstm_exists:
-            print("\n❌ LSTM-Modell nicht gefunden! Bitte erst trainieren (Option 1).")
+            print("\n[X] LSTM-Modell nicht gefunden! Bitte erst trainieren (Option 1).")
             return
         print("\n" + "=" * 60)
-        print("🔮 Starte LSTM-Inferenz...")
+        print("Starte LSTM-Inferenz...")
         print("=" * 60 + "\n")
         from inference.inference_lstm import main as run_inference
         run_inference()
 
     elif choice == "5":
         if not transformer_exists:
-            print("\n❌ Transformer-Modell nicht gefunden! Bitte erst trainieren (Option 2).")
+            print("\n[X] Transformer-Modell nicht gefunden! Bitte erst trainieren (Option 2).")
             return
         print("\n" + "=" * 60)
-        print("🔮 Starte Transformer-Inferenz...")
+        print("Starte Transformer-Inferenz...")
         print("=" * 60 + "\n")
         from inference.inference_transformer import main as run_transformer_inference
         run_transformer_inference()
 
     elif choice == "6":
-        if not gpt2_lm_studio_exists:
-            print("\n❌ GPT-2 Safetensor Modell nicht gefunden! Bitte erst trainieren (Option 3).")
+        if not llama_mini_exists:
+            print("\n[X] Mini-LLaMA Modell nicht gefunden! Bitte erst trainieren (Option 3).")
             return
         print("\n" + "=" * 60)
-        print("🔮 Starte GPT-2 Safetensor Inferenz...")
+        print("Starte Mini-LLaMA Inferenz...")
         print("=" * 60 + "\n")
-        from inference.inference_gpt2_lm_studio import main as run_gpt2_lm_studio_inference
-        run_gpt2_lm_studio_inference()
-
-    elif choice == "7":
-        if not gguf_exists:
-            print("\n❌ Keine GGUF-Modelle gefunden! Siehe docker/gguf-converter/README.md")
-            return
-        print("\n" + "=" * 60)
-        print("🔮 GPT-2 GGUF Inferenz (Docker)")
-        print("=" * 60)
-        print("\nGGUF-Inferenz läuft via Docker. Befehle:")
-        print("\n  # Image bauen")
-        print("  docker compose build gguf-inference")
-        print("\n  # Text generieren")
-        print("  docker compose run --rm gguf-inference -m gpt2-mini.gguf -p \"die katze\"")
-        print("\n  # Interaktiver Modus")
-        print("  docker compose run --rm gguf-inference -m gpt2-mini.gguf -i")
-        print("\nSiehe docker/gguf-inference/README.md für alle Optionen.\n")
+        from inference.inference_llama_mini import main as run_llama_mini_inference
+        run_llama_mini_inference()
 
     elif choice == "0":
-        print("\n👋 Auf Wiedersehen!")
+        print("\nAuf Wiedersehen!")
         sys.exit(0)
 
     else:
-        print("\n❌ Ungültige Eingabe. Bitte 0-7 eingeben.")
+        print("\n[X] Ungueltige Eingabe. Bitte 0-6 eingeben.")
         sys.exit(1)
 
 

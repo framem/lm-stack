@@ -11,18 +11,6 @@ services:
     profiles:
       - tools
 
-  gguf-inference:
-    build:
-      context: ./docker/gguf-inference
-      dockerfile: Dockerfile
-    image: gguf-inference:latest
-    volumes:
-      - ./languageModel/dist/gguf_converted:/models:ro
-    profiles:
-      - tools
-    stdin_open: true
-    tty: true
-
   ollama-gpu:
     image: ollama/ollama
     networks: ['agents']
