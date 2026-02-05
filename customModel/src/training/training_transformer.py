@@ -22,8 +22,9 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 
 from .model_report import generate_model_report
+from shared import EPOCHS, LOG_INTERVAL, LEARNING_RATE_TRANSFORMER, BATCH_SIZE_TRANSFORMER, SEQ_LENGTH, RANDOM_SEED
 
-torch.manual_seed(42)
+torch.manual_seed(RANDOM_SEED)
 
 
 # =============================================================================
@@ -608,8 +609,8 @@ def main():
     print(f"\n📚 Vokabular: {tokenizer.vocab_size} Wörter")
 
     # Dataset
-    dataset = TextDataset(training_texts, tokenizer, seq_len=4)
-    dataloader = DataLoader(dataset, batch_size=8, shuffle=True)
+    dataset = TextDataset(training_texts, tokenizer, seq_len=SEQ_LENGTH)
+    dataloader = DataLoader(dataset, batch_size=BATCH_SIZE_TRANSFORMER, shuffle=True)
     print(f"📊 Dataset: {len(dataset)} Trainingsbeispiele")
 
     # Modell
@@ -625,10 +626,10 @@ def main():
     print("🏋️ TRAINING")
     print("=" * 70)
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.005)
+    optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE_TRANSFORMER)
     criterion = nn.CrossEntropyLoss()
 
-    for epoch in range(100):
+    for epoch in range(EPOCHS):
         model.train()
         total_loss = 0
 
@@ -641,8 +642,8 @@ def main():
             optimizer.step()
             total_loss += loss.item()
 
-        if (epoch + 1) % 20 == 0:
-            print(f"   Epoche {epoch+1:3d}/100 | Loss: {total_loss/len(dataloader):.4f}")
+        if (epoch + 1) % LOG_INTERVAL == 0:
+            print(f"   Epoche {epoch+1:3d}/{EPOCHS} | Loss: {total_loss/len(dataloader):.4f}")
 
     print("✅ Training abgeschlossen!")
 

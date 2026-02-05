@@ -24,10 +24,11 @@ import os
 from pathlib import Path
 
 from .model_report import generate_model_report
+from shared import EPOCHS, LOG_INTERVAL, LEARNING_RATE_LSTM, BATCH_SIZE_LSTM, SEQ_LENGTH, RANDOM_SEED
 
 # Für reproduzierbare Ergebnisse
-torch.manual_seed(42)
-np.random.seed(42)
+torch.manual_seed(RANDOM_SEED)
+np.random.seed(RANDOM_SEED)
 
 
 # =============================================================================
@@ -275,7 +276,7 @@ class SimpleLanguageModel(nn.Module):
 # TEIL 4: TRAINING
 # =============================================================================
 
-def train_model(model, dataloader, epochs: int = 50, lr: float = 0.01):
+def train_model(model, dataloader, epochs: int = EPOCHS, lr: float = LEARNING_RATE_LSTM):
     """
     Trainiert das Modell.
 
@@ -317,7 +318,7 @@ def train_model(model, dataloader, epochs: int = 50, lr: float = 0.01):
         avg_loss = epoch_loss / len(dataloader)
         losses.append(avg_loss)
 
-        if (epoch + 1) % 10 == 0:
+        if (epoch + 1) % LOG_INTERVAL == 0:
             print(f"   Epoche {epoch+1:3d}/{epochs} | Loss: {avg_loss:.4f}")
 
     print("=" * 50)
@@ -602,8 +603,8 @@ def main():
     print("SCHRITT 2: DATASET ERSTELLEN")
     print("=" * 60)
 
-    dataset = TextDataset(training_texts, tokenizer, seq_length=4)
-    dataloader = DataLoader(dataset, batch_size=4, shuffle=True)
+    dataset = TextDataset(training_texts, tokenizer, seq_length=SEQ_LENGTH)
+    dataloader = DataLoader(dataset, batch_size=BATCH_SIZE_LSTM, shuffle=True)
 
     # Beispiel zeigen
     sample_input, sample_target = dataset[0]
@@ -632,7 +633,7 @@ def main():
     print("SCHRITT 4: TRAINING")
     print("=" * 60)
 
-    losses = train_model(model, dataloader, epochs=100, lr=0.01)
+    losses = train_model(model, dataloader, epochs=EPOCHS, lr=LEARNING_RATE_LSTM)
 
     # 5. Inferenz mit Logits-Visualisierung
     print("\n" + "=" * 60)
