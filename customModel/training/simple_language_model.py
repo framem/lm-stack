@@ -148,15 +148,24 @@ class TextDataset(Dataset):
     - Ziel:    "Katze sitzt auf"
 
     Das Modell lernt, das nächste Wort vorherzusagen.
+    Mit EOS-Token lernt es auch, wann ein Satz zu Ende ist.
     """
 
-    def __init__(self, texts: list[str], tokenizer: Tokenizer, seq_length: int = 5):
+    def __init__(self, texts: list[str], tokenizer: Tokenizer, seq_length: int = 5, use_eos: bool = True):
         self.tokenizer = tokenizer
         self.seq_length = seq_length
         self.data = []
 
+        # EOS-Token ID holen
+        eos_id = tokenizer.word_to_idx.get(tokenizer.eos_token, None)
+
         for text in texts:
             tokens = tokenizer.encode(text)
+
+            # EOS-Token am Ende des Satzes hinzufügen
+            if use_eos and eos_id is not None:
+                tokens.append(eos_id)
+
             # Sliding Window über den Text
             for i in range(len(tokens) - seq_length):
                 input_seq = tokens[i:i + seq_length]
@@ -164,6 +173,8 @@ class TextDataset(Dataset):
                 self.data.append((input_seq, target_seq))
 
         print(f"📊 Dataset erstellt: {len(self.data)} Trainingsbeispiele")
+        if use_eos:
+            print(f"   (mit EOS-Token am Satzende)")
 
     def __len__(self):
         return len(self.data)
@@ -397,34 +408,60 @@ def load_model(load_dir: str = "models"):
 # =============================================================================
 
 def visualize_logits(logits: torch.Tensor, probs: torch.Tensor,
-                     tokenizer: Tokenizer, input_text: str, top_k: int = 10):
+                     tokenizer: Tokenizer, input_text: str, top_k_display: int = 10,
+                     top_k_sampling: int = 5, top_p_sampling: float = 0.9):
     """
     Visualisiert die Logits und Wahrscheinlichkeiten für die nächste Wort-Vorhersage.
 
     Dies zeigt den "Entscheidungsbaum" des Modells:
     - Welche Wörter sind wahrscheinlich?
     - Wie sicher ist das Modell?
+    - Welche Wörter würden bei Top-K/Top-P Sampling gewählt werden?
+
+    Args:
+        logits: Rohe Logits vom Modell
+        probs: Wahrscheinlichkeiten (nach Softmax)
+        tokenizer: Tokenizer für Wort-Dekodierung
+        input_text: Eingabetext (für Anzeige)
+        top_k_display: Wie viele Wörter anzeigen
+        top_k_sampling: Top-K Sampling Parameter (z.B. 5 = nur Top 5 wählbar)
+        top_p_sampling: Top-P/Nucleus Sampling Parameter (z.B. 0.9 = 90% kumulative Wahrsch.)
     """
 
     print(f"\n🔍 LOGITS-ANALYSE für: '{input_text}'")
-    print("=" * 60)
+    print("=" * 90)
 
     # Top-K Wörter nach Wahrscheinlichkeit
-    top_probs, top_indices = torch.topk(probs, top_k)
+    top_probs, top_indices = torch.topk(probs, top_k_display)
 
-    print(f"\n📊 Top {top_k} Vorhersagen für das nächste Wort:")
-    print("-" * 60)
-    print(f"{'Rang':<6} {'Wort':<15} {'Logit':<12} {'Wahrsch.':<12} {'Balken'}")
-    print("-" * 60)
+    # Kumulative Wahrscheinlichkeit berechnen
+    cumulative_probs = torch.cumsum(top_probs, dim=0)
 
-    for i, (idx, prob) in enumerate(zip(top_indices, top_probs)):
+    print(f"\n📊 Top {top_k_display} Vorhersagen (Top-K={top_k_sampling}, Top-P={top_p_sampling}):")
+    print("-" * 90)
+    print(f"{'Rang':<5} {'Wort':<12} {'Logit':>8} {'Wahrsch.':>10} {'Kumulativ':>10} {'Top-K':>6} {'Top-P':>6}  {'':}")
+    print("-" * 90)
+
+    for i, (idx, prob, cum_prob) in enumerate(zip(top_indices, top_probs, cumulative_probs)):
         word = tokenizer.idx_to_word[idx.item()]
         logit_value = logits[idx].item()
         prob_percent = prob.item() * 100
-        bar = "█" * int(prob_percent / 2)
-        print(f"{i+1:<6} {word:<15} {logit_value:>8.2f}    {prob_percent:>6.2f}%    {bar}")
+        cum_percent = cum_prob.item() * 100
 
-    print("-" * 60)
+        # Top-K Check: Ist dieses Wort in den Top-K?
+        in_top_k = "✓" if (i + 1) <= top_k_sampling else "✗"
+
+        # Top-P Check: Ist kumulative Wahrscheinlichkeit noch unter Schwelle?
+        # (Wort ist dabei, wenn vorherige kumulative Prob < top_p ODER es das erste ist)
+        prev_cum = cumulative_probs[i-1].item() if i > 0 else 0.0
+        in_top_p = "✓" if prev_cum < top_p_sampling else "✗"
+
+        # Balken (proportional zur Wahrscheinlichkeit)
+        bar = "█" * int(prob_percent / 2)
+
+        print(f"{i+1:<5} {word:<12} {logit_value:>8.2f} {prob_percent:>9.2f}% {cum_percent:>9.2f}% {in_top_k:>6} {in_top_p:>6}  {bar}")
+
+    print("-" * 90)
 
     # Statistiken
     print(f"\n📈 Statistiken:")
@@ -433,6 +470,14 @@ def visualize_logits(logits: torch.Tensor, probs: torch.Tensor,
     print(f"   - Niedrigster Logit: {logits.min().item():.2f}")
     print(f"   - Entropie: {-(probs * torch.log(probs + 1e-10)).sum().item():.2f}")
     print(f"     (Niedrige Entropie = Modell ist sich sicher)")
+
+    # Sampling-Erklärung
+    top_k_count = min(top_k_sampling, top_k_display)
+    top_p_count = sum(1 for i, cp in enumerate(cumulative_probs) if (cumulative_probs[i-1].item() if i > 0 else 0) < top_p_sampling)
+
+    print(f"\n🎲 Sampling-Info:")
+    print(f"   - Top-K={top_k_sampling}: {top_k_count} Wörter wählbar")
+    print(f"   - Top-P={top_p_sampling}: {top_p_count} Wörter wählbar (bis {top_p_sampling*100:.0f}% kumulativ)")
 
     return top_indices, top_probs
 
