@@ -1,8 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(del \"C:\\\\SDK\\\\lm-stack\\\\languageModel\\\\src\\\\inference\\\\inference_llama_mini.py\")",
-      "Bash(del \"C:\\\\SDK\\\\lm-stack\\\\languageModel\\\\src\\\\training\\\\training_llama_mini.py\")"
-    ]
-  }
-}

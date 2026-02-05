@@ -11,18 +11,18 @@ Dieses Script zeigt die Architektur moderner Sprachmodelle wie GPT:
 Autor: Lernprojekt
 """
 
+import json
+import math
+from pathlib import Path
+
+import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from shared import EPOCHS, LOG_INTERVAL, LEARNING_RATE_TRANSFORMER, BATCH_SIZE_TRANSFORMER, SEQ_LENGTH, RANDOM_SEED
 from torch.utils.data import Dataset, DataLoader
-import numpy as np
-import math
-import json
-import matplotlib.pyplot as plt
-from pathlib import Path
 
 from .model_report import generate_model_report
-from shared import EPOCHS, LOG_INTERVAL, LEARNING_RATE_TRANSFORMER, BATCH_SIZE_TRANSFORMER, SEQ_LENGTH, RANDOM_SEED
 
 torch.manual_seed(RANDOM_SEED)
 
