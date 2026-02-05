@@ -11,7 +11,7 @@ Content-Type: application/json
     },
     {
       "role": "user",
-      "content": "Explain in one sentence what Docker is."
+      "content": "Why the sky is blue?"
     }
   ],
   "options": {
@@ -19,7 +19,7 @@ Content-Type: application/json
     "temperature": 0,
     "num_ctx": 2048
   },
-  "stream": false
+  "stream": true
 }
 
 
