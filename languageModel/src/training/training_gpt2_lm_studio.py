@@ -23,8 +23,10 @@ from transformers import (
     GPT2Tokenizer,
 )
 
+from shared import EPOCHS, LOG_INTERVAL, LEARNING_RATE_GPT2, BATCH_SIZE_GPT2, RANDOM_SEED
+
 # Für reproduzierbare Ergebnisse
-torch.manual_seed(42)
+torch.manual_seed(RANDOM_SEED)
 
 
 # =============================================================================
@@ -100,7 +102,8 @@ class GPT2Dataset(Dataset):
 # TEIL 3: TRAINING
 # =============================================================================
 
-def train_model(model, dataloader, epochs: int = 100, lr: float = 5e-4, device: str = "cpu"):
+def train_model(model, dataloader, epochs: int = EPOCHS, lr: float = LEARNING_RATE_GPT2,
+                log_interval: int = LOG_INTERVAL, device: str = "cpu"):
     """
     Trainiert das GPT-2 Modell.
     """
@@ -139,7 +142,7 @@ def train_model(model, dataloader, epochs: int = 100, lr: float = 5e-4, device: 
         avg_loss = epoch_loss / len(dataloader)
         losses.append(avg_loss)
 
-        if (epoch + 1) % 10 == 0:
+        if (epoch + 1) % log_interval == 0:
             print(f"   Epoche {epoch+1:3d}/{epochs} | Loss: {avg_loss:.4f}")
 
     print("=" * 50)
@@ -288,7 +291,7 @@ def main():
     print("=" * 70)
 
     dataset = GPT2Dataset(training_texts, tokenizer, max_length=64)
-    dataloader = DataLoader(dataset, batch_size=4, shuffle=True)
+    dataloader = DataLoader(dataset, batch_size=BATCH_SIZE_GPT2, shuffle=True)
 
     # 3. GPT-2 Modell
     print("\n" + "=" * 70)
@@ -329,7 +332,7 @@ def main():
     print("SCHRITT 4: TRAINING")
     print("=" * 70)
 
-    losses = train_model(model, dataloader, epochs=100, lr=5e-4, device=device)
+    losses = train_model(model, dataloader, epochs=EPOCHS, lr=LEARNING_RATE_GPT2, device=device)
 
     # 5. Text generieren
     print("\n" + "=" * 70)

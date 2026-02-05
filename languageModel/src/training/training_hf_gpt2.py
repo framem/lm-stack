@@ -28,8 +28,10 @@ from transformers import (
 )
 from tokenizers import Tokenizer, models, trainers, pre_tokenizers, processors
 
+from shared import EPOCHS, LOG_INTERVAL, LEARNING_RATE_GPT2, BATCH_SIZE_GPT2, RANDOM_SEED
+
 # Für reproduzierbare Ergebnisse
-torch.manual_seed(42)
+torch.manual_seed(RANDOM_SEED)
 
 
 # =============================================================================
@@ -132,7 +134,8 @@ class GPT2Dataset(Dataset):
 # TEIL 3: TRAINING
 # =============================================================================
 
-def train_gpt2_model(model, dataloader, epochs: int = 100, lr: float = 5e-4, device: str = "cpu"):
+def train_gpt2_model(model, dataloader, epochs: int = EPOCHS, lr: float = LEARNING_RATE_GPT2,
+                     log_interval: int = LOG_INTERVAL, device: str = "cpu"):
     """
     Trainiert das GPT-2 Modell.
 
@@ -176,7 +179,7 @@ def train_gpt2_model(model, dataloader, epochs: int = 100, lr: float = 5e-4, dev
         avg_loss = epoch_loss / len(dataloader)
         losses.append(avg_loss)
 
-        if (epoch + 1) % 10 == 0:
+        if (epoch + 1) % log_interval == 0:
             print(f"   Epoche {epoch+1:3d}/{epochs} | Loss: {avg_loss:.4f}")
 
     print("=" * 50)
@@ -212,7 +215,7 @@ def save_hf_model(model, tokenizer, save_dir: str, training_texts: list[str] = N
         "base_model": "custom-gpt2",
         "training_samples": len(training_texts) if training_texts else 0,
         "gguf_compatible": True,
-        "conversion_command": f"python llama.cpp/convert_hf_to_gguf.py {save_path} --outfile model.gguf"
+        "conversion_command": "docker compose run --rm gguf-converter /app/convert.sh --input /models/input/hf_gpt2_model --output /models/output/hf-gpt2.gguf"
     }
 
     with open(save_path / "training_info.json", "w", encoding="utf-8") as f:
@@ -310,28 +313,26 @@ Output:              {config.n_embd}D → {config.vocab_size} Logits
 
 ✅ **Dieses Modell ist GGUF-konvertierbar!**
 
-### Konvertierung zu GGUF
+### Konvertierung zu GGUF (Docker)
 
-1. llama.cpp klonen (falls nicht vorhanden):
+1. Konvertieren:
    ```bash
-   git clone https://github.com/ggerganov/llama.cpp
-   cd llama.cpp
-   pip install -r requirements.txt
+   docker compose run --rm gguf-converter /app/convert.sh \\
+       --input /models/input/hf_gpt2_model \\
+       --output /models/output/hf-gpt2.gguf
    ```
 
-2. Konvertieren:
+2. Optional mit Quantisierung:
    ```bash
-   python convert_hf_to_gguf.py {save_path} --outfile mini-gpt2.gguf
+   docker compose run --rm gguf-converter /app/convert.sh \\
+       --input /models/input/hf_gpt2_model \\
+       --output /models/output/hf-gpt2-q4.gguf \\
+       --quantize q4_0
    ```
 
-3. Optional quantisieren:
-   ```bash
-   ./quantize mini-gpt2.gguf mini-gpt2-q4.gguf q4_0
-   ```
-
-4. In LM Studio laden:
+3. In LM Studio laden:
    - LM Studio öffnen
-   - "My Models" → mini-gpt2.gguf hinzufügen
+   - GGUF-Datei aus dist/output/ importieren
    - Chat starten
 
 ## Vergleich mit echten Modellen
@@ -482,7 +483,7 @@ def main():
     print("=" * 70)
 
     dataset = GPT2Dataset(training_texts, tokenizer, max_length=32)
-    dataloader = DataLoader(dataset, batch_size=4, shuffle=True)
+    dataloader = DataLoader(dataset, batch_size=BATCH_SIZE_GPT2, shuffle=True)
 
     # 3. GPT-2 Modell erstellen
     print("\n" + "=" * 70)
@@ -522,7 +523,7 @@ def main():
     print("SCHRITT 4: TRAINING")
     print("=" * 70)
 
-    losses = train_gpt2_model(model, dataloader, epochs=100, lr=5e-4, device=device)
+    losses = train_gpt2_model(model, dataloader, epochs=EPOCHS, lr=LEARNING_RATE_GPT2, device=device)
 
     # 5. Text generieren
     print("\n" + "=" * 70)
@@ -558,17 +559,20 @@ def main():
 
     🔄 NÄCHSTE SCHRITTE für LM Studio:
 
-    1. llama.cpp installieren:
-       git clone https://github.com/ggerganov/llama.cpp
-       cd llama.cpp
-       pip install -r requirements.txt
+    1. Zu GGUF konvertieren (Docker):
+       docker compose run --rm gguf-converter /app/convert.sh \\
+           --input /models/input/hf_gpt2_model \\
+           --output /models/output/hf-gpt2.gguf
 
-    2. Zu GGUF konvertieren:
-       python convert_hf_to_gguf.py "{model_dir}" --outfile mini-gpt2.gguf
+    2. Optional mit Quantisierung:
+       docker compose run --rm gguf-converter /app/convert.sh \\
+           --input /models/input/hf_gpt2_model \\
+           --output /models/output/hf-gpt2-q4.gguf \\
+           --quantize q4_0
 
     3. In LM Studio laden:
        - LM Studio öffnen
-       - Datei mini-gpt2.gguf importieren
+       - GGUF-Datei aus dist/output/ importieren
        - Chatten!
 
     ⚠️  Hinweis: Das Modell ist sehr klein und kann nur einfache
