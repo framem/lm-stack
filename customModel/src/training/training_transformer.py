@@ -274,9 +274,12 @@ class MiniGPT(nn.Module):
 # TEIL 5: ATTENTION VISUALISIERUNG
 # =============================================================================
 
-def visualize_attention(model, tokenizer, text: str):
+def visualize_attention(model, tokenizer, text: str, save_dir: Path = None):
     """
     Visualisiert, worauf das Modell "achtet" bei der Verarbeitung.
+
+    Args:
+        save_dir: Optionaler Pfad zum Speichern der Plots (statt current dir)
     """
     tokens = tokenizer.encode(text)
     input_tensor = torch.tensor(tokens).unsqueeze(0)
@@ -328,8 +331,10 @@ def visualize_attention(model, tokenizer, text: str):
             ax.set_title(f"Attention Weights - Layer {layer_idx + 1}")
             plt.colorbar(im)
             plt.tight_layout()
-            plt.savefig(f"attention_layer_{layer_idx + 1}.png")
-            print(f"   💾 Gespeichert: attention_layer_{layer_idx + 1}.png")
+            filename = f"attention_layer_{layer_idx + 1}.png"
+            save_path = save_dir / filename if save_dir else Path(filename)
+            plt.savefig(save_path)
+            print(f"   💾 Gespeichert: {save_path}")
         except Exception as e:
             print(f"   ⚠️ Plot nicht möglich: {e}")
 
@@ -647,10 +652,15 @@ def main():
     print("=" * 70)
 
     # Detaillierte Logits-Analyse
+    # Speicherort im dist Verzeichnis
+    script_dir = Path(__file__).parent
+    model_dir = script_dir.parent.parent / "dist" / "transformer_model"
+    model_dir.mkdir(parents=True, exist_ok=True)
+
     analyze_logits_detailed(model, tokenizer, "die katze sitzt", top_k=8)
 
-    # Attention visualisieren
-    visualize_attention(model, tokenizer, "die katze sitzt auf")
+    # Attention visualisieren (speichert im model_dir)
+    visualize_attention(model, tokenizer, "die katze sitzt auf", save_dir=model_dir)
 
     # Generierung
     print("\n" + "=" * 70)
@@ -682,8 +692,6 @@ def main():
     print("💾 MODELL SPEICHERN")
     print("=" * 70)
 
-    script_dir = Path(__file__).parent
-    model_dir = script_dir.parent.parent / "dist" / "transformer_model"
     save_transformer_model(model, tokenizer, str(model_dir))
 
     print("\n" + "=" * 70)

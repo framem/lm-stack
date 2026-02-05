@@ -102,6 +102,36 @@ Der Transformer verwendet Self-Attention statt Rekursion. Jedes Wort kann direkt
 
 GPT-2 ist ein großes Transformer-Modell von OpenAI. Die HuggingFace-Version ermöglicht einfaches Training und Export zu GGUF für LM Studio.
 
+### Logits
+
+Logits sind die **rohen, unnormalisierten Ausgabewerte** eines neuronalen Netzes - also die Werte *bevor* Softmax angewendet wird. Sie werden bei jedem Forward-Pass berechnet (Training UND Inferenz).
+
+```
+Eingabe: "Die Katze sitzt auf dem"
+
+Logits (roh):          Softmax (Wahrscheinlichkeiten):
+  "tisch"  →  4.2         "tisch"  →  45%
+  "sofa"   →  3.1         "sofa"   →  15%
+  "boden"  →  2.8         "boden"  →  11%
+  "stuhl"  →  2.5         "stuhl"  →   8%
+  ...                     ...
+  Summe: beliebig         Summe: 100%
+```
+
+**Logits beim Training:**
+1. Forward-Pass: Eingabe → Logits berechnen
+2. Loss berechnen: Logits mit erwartetem Wort vergleichen (Cross-Entropy)
+3. Backward-Pass: Gewichte anpassen, damit Logits beim nächsten Mal besser sind
+
+**Logits bei der Inferenz:**
+1. Forward-Pass: Eingabe → Logits berechnen
+2. Softmax: Logits in Wahrscheinlichkeiten umwandeln
+3. Sampling: Nächstes Wort basierend auf Wahrscheinlichkeiten wählen
+
+**Temperature-Sampling** skaliert die Logits vor Softmax:
+- `temp < 1`: Verstärkt Unterschiede → konservativere Ausgabe
+- `temp > 1`: Verringert Unterschiede → kreativere/zufälligere Ausgabe
+
 ## Features
 
 - **Top-K / Top-P Sampling**: Control text generation randomness

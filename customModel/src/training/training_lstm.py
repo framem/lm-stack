@@ -667,6 +667,11 @@ def main():
     generate_text(model, tokenizer, "der hund",
                  max_length=5, temperature=1.0, show_logits=True)
 
+    # Speicherort im dist Verzeichnis
+    script_dir = Path(__file__).parent
+    model_dir = script_dir.parent.parent / "dist" / "lstm_model"
+    model_dir.mkdir(parents=True, exist_ok=True)
+
     # 7. Loss-Kurve plotten (optional)
     print("\n" + "=" * 60)
     print("SCHRITT 7: TRAINING-VERLAUF")
@@ -679,8 +684,9 @@ def main():
         plt.ylabel("Loss")
         plt.title("Training Loss über Zeit")
         plt.grid(True)
-        plt.savefig("training_loss.png")
-        print("📈 Loss-Kurve gespeichert als 'training_loss.png'")
+        loss_plot_path = model_dir / "training_loss.png"
+        plt.savefig(loss_plot_path)
+        print(f"📈 Loss-Kurve gespeichert: {loss_plot_path}")
     except Exception as e:
         print(f"⚠️ Konnte Plot nicht erstellen: {e}")
 
@@ -689,9 +695,6 @@ def main():
     print("SCHRITT 8: MODELL SPEICHERN")
     print("=" * 60)
 
-    # Speicherort im models Verzeichnis
-    script_dir = Path(__file__).parent
-    model_dir = script_dir.parent.parent / "dist" / "lstm_model"
     save_model(model, tokenizer, str(model_dir))
 
     print("\n" + "=" * 60)
