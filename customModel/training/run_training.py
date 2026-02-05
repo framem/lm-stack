@@ -19,7 +19,8 @@ def check_models_exist():
     script_dir = Path(__file__).parent
     lstm_exists = (script_dir / "models" / "lstm_model" / "model.pt").exists()
     transformer_exists = (script_dir / "models" / "transformer_model" / "model.pt").exists()
-    return lstm_exists, transformer_exists
+    hf_gpt2_exists = (script_dir / "models" / "hf_gpt2_model" / "model.safetensors").exists()
+    return lstm_exists, transformer_exists, hf_gpt2_exists
 
 
 def main():
@@ -27,7 +28,7 @@ def main():
     print("🎓 SPRACHMODELL-LERNPROJEKT")
     print("=" * 60)
 
-    lstm_exists, transformer_exists = check_models_exist()
+    lstm_exists, transformer_exists, hf_gpt2_exists = check_models_exist()
 
     print(f"""
     Verfügbare Optionen:
@@ -39,21 +40,30 @@ def main():
        {'   ✅ Bereits trainiert' if lstm_exists else '   ⚪ Noch nicht trainiert'}
 
     2. Transformer-Modell trainieren (Fortgeschritten)
-       - GPT-artige Architektur
+       - GPT-artige Architektur (Custom PyTorch)
        - Self-Attention Mechanismus
        {'   ✅ Bereits trainiert' if transformer_exists else '   ⚪ Noch nicht trainiert'}
 
+    3. HF-GPT2-Modell trainieren (LM Studio kompatibel) ⭐
+       - Hugging Face GPT-2 Architektur
+       - Kann zu GGUF konvertiert werden
+       - In LM Studio verwendbar!
+       {'   ✅ Bereits trainiert' if hf_gpt2_exists else '   ⚪ Noch nicht trainiert'}
+
     === INFERENZ ===
-    3. LSTM-Modell verwenden (Inferenz)
+    4. LSTM-Modell verwenden (Inferenz)
        {'   ✅ Verfügbar' if lstm_exists else '   ❌ Erst trainieren!'}
 
-    4. Transformer-Modell verwenden (Inferenz)
+    5. Transformer-Modell verwenden (Inferenz)
        {'   ✅ Verfügbar' if transformer_exists else '   ❌ Erst trainieren!'}
+
+    6. HF-GPT2-Modell verwenden (Inferenz)
+       {'   ✅ Verfügbar' if hf_gpt2_exists else '   ❌ Erst trainieren!'}
 
     0. Beenden
     """)
 
-    choice = input("    Auswahl (0-4): ").strip()
+    choice = input("    Auswahl (0-6): ").strip()
 
     if choice == "1":
         print("\n" + "=" * 60)
@@ -70,6 +80,13 @@ def main():
         train_transformer()
 
     elif choice == "3":
+        print("\n" + "=" * 60)
+        print("🏋️ Starte HF-GPT2-Training (LM Studio kompatibel)...")
+        print("=" * 60 + "\n")
+        from gpt_transformer_language_model import main as train_hf_gpt2
+        train_hf_gpt2()
+
+    elif choice == "4":
         if not lstm_exists:
             print("\n❌ LSTM-Modell nicht gefunden! Bitte erst trainieren (Option 1).")
             return
@@ -79,7 +96,7 @@ def main():
         from inference import main as run_inference
         run_inference()
 
-    elif choice == "4":
+    elif choice == "5":
         if not transformer_exists:
             print("\n❌ Transformer-Modell nicht gefunden! Bitte erst trainieren (Option 2).")
             return
@@ -89,12 +106,22 @@ def main():
         from inference_transformer import main as run_transformer_inference
         run_transformer_inference()
 
+    elif choice == "6":
+        if not hf_gpt2_exists:
+            print("\n❌ HF-GPT2-Modell nicht gefunden! Bitte erst trainieren (Option 3).")
+            return
+        print("\n" + "=" * 60)
+        print("🔮 Starte HF-GPT2-Inferenz...")
+        print("=" * 60 + "\n")
+        from inference_hf_gpt2 import main as run_hf_gpt2_inference
+        run_hf_gpt2_inference()
+
     elif choice == "0":
         print("\n👋 Auf Wiedersehen!")
         sys.exit(0)
 
     else:
-        print("\n❌ Ungültige Eingabe. Bitte 0-4 eingeben.")
+        print("\n❌ Ungültige Eingabe. Bitte 0-6 eingeben.")
         sys.exit(1)
 
 
