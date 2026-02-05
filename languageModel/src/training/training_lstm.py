@@ -24,7 +24,7 @@ import os
 from pathlib import Path
 
 from .model_report import generate_model_report
-from shared import EPOCHS, LOG_INTERVAL, LEARNING_RATE_LSTM, BATCH_SIZE_LSTM, SEQ_LENGTH, RANDOM_SEED
+from .training_config import EPOCHS, LOG_INTERVAL, LEARNING_RATE_LSTM, BATCH_SIZE_LSTM, SEQ_LENGTH, RANDOM_SEED
 
 # Für reproduzierbare Ergebnisse
 torch.manual_seed(RANDOM_SEED)

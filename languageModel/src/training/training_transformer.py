@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from shared import EPOCHS, LOG_INTERVAL, LEARNING_RATE_TRANSFORMER, BATCH_SIZE_TRANSFORMER, SEQ_LENGTH, RANDOM_SEED
+from .training_config import EPOCHS, LOG_INTERVAL, LEARNING_RATE_TRANSFORMER, BATCH_SIZE_TRANSFORMER, SEQ_LENGTH, RANDOM_SEED
 from torch.utils.data import Dataset, DataLoader
 
 from .model_report import generate_model_report
