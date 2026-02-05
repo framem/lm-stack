@@ -5,7 +5,7 @@ A didactic project for learning how language models work, from simple LSTM to GP
 ## Project Structure
 
 ```
-customModel/
+languageModel/
 ├── src/
 │   ├── main.py              # Entry point - interactive menu
 │   ├── training/            # Model training scripts
@@ -37,7 +37,7 @@ customModel/
 ### 1. Setup Environment
 
 ```bash
-cd customModel
+cd languageModel
 python -m venv .venv
 .venv\Scripts\activate  # Windows
 # source .venv/bin/activate  # Linux/Mac

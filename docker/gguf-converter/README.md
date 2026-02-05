@@ -25,11 +25,10 @@ docker compose build gguf-converter
 ### Modell konvertieren
 
 ```bash
- # Konvertieren                                                                                                                                        
-  docker compose run --rm gguf-converter /app/convert.sh --input /models/input/hf_gpt2_model --output /models/output/mini-gpt2.gguf
-                                                                                                                                                        
-  # Mit Quantisierung                                                          
-  docker compose run --rm gguf-converter /app/convert.sh --input /models/input/hf_gpt2_model --output /models/output/mini-gpt2.gguf --quantize q4_0
+docker compose run --rm gguf-converter /app/convert.sh --input /models/input/gpt2_lm_studio --output /models/output/gpt2-mini.gguf
+
+# Mit Quantisierung
+docker compose run --rm gguf-converter /app/convert.sh --input /models/input/gpt2_lm_studio --output /models/output/gpt2-mini.gguf --quantize q4_0
 ```
 
 ### Hilfe anzeigen
@@ -43,13 +42,6 @@ docker compose run --rm gguf-converter /app/convert.sh --help
 ```bash
 docker compose run --rm gguf-converter /app/convert.sh --list
 ```
-
-## Volumes
-
-| Container-Pfad | Host-Pfad | Beschreibung |
-|---------------|-----------|--------------|
-| `/models/input` | `./customModel/training/models` | HF-Modelle (read-only) |
-| `/models/output` | `./customModel/training/models/gguf` | GGUF Output |
 
 ## Quantisierungsoptionen
 
@@ -65,14 +57,14 @@ docker compose run --rm gguf-converter /app/convert.sh --list
 
 Die konvertierten GGUF-Dateien landen in:
 ```
-customModel/training/models/gguf/
-├── mini-gpt2.gguf
-└── mini-gpt2-q4_0.gguf
+languageModel/dist/gguf_converted/
+├── gpt2-mini.gguf
+└── gpt2-mini-q4_0.gguf
 ```
 
-## In LM Studio verwenden
+## In LM Studio importieren
 
-1. LM Studio öffnen
-2. "My Models" auswählen
-3. GGUF-Datei importieren/hinzufügen
-4. Modell laden und chatten
+```bash
+lms import -c ../../languageModel/dist/gguf_converted/gpt2-mini.gguf
+lms import -c ../../languageModel/dist/gguf_converted/gpt2-mini-q4_0.gguf
+```

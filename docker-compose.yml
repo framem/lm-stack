@@ -6,8 +6,8 @@ services:
     image: gguf-converter:latest
     container_name: gguf-converter
     volumes:
-      - ./customModel/dist:/models/input:ro
-      - ./customModel/dist/gguf_converted:/models/output
+      - ./languageModel/dist:/models/input:ro
+      - ./languageModel/dist/gguf_converted:/models/output
     profiles:
       - tools
 

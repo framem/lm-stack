@@ -365,19 +365,7 @@ def main():
     print(f"""
     📁 Modell: {model_dir}
 
-    🔄 GGUF KONVERTIERUNG:
-
-    docker compose run --rm gguf-converter /app/convert.sh \\
-        --input /models/input/gpt2_lm_studio \\
-        --output /models/output/gpt2-mini.gguf
-
-    Mit Quantisierung:
-    docker compose run --rm gguf-converter /app/convert.sh \\
-        --input /models/input/gpt2_lm_studio \\
-        --output /models/output/gpt2-mini.gguf \\
-        --quantize q4_0
-
-    Dann in LM Studio laden!
+    🔄 GGUF KONVERTIERUNG: siehe docker/gguf-converter/README.md
     """)
 
     return model, tokenizer

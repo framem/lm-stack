@@ -1,33 +1,33 @@
 """
-Inferenz-Script für HF-GPT2 Modell
-===================================
+Inferenz-Script für GPT-2 LM Studio Modell
+==========================================
 
 Interaktive Text-Generierung mit dem trainierten
-Hugging Face GPT-2 Modell.
+GPT-2 Modell (Standard-Tokenizer, GGUF-kompatibel).
 
 Verwendung:
-    python inference_hf_gpt2.py
+    python inference_gpt2_lm_studio.py
 """
 
 import torch
 from pathlib import Path
-from transformers import GPT2LMHeadModel, PreTrainedTokenizerFast
+from transformers import GPT2LMHeadModel, GPT2Tokenizer
 
 
 def load_model():
-    """Lädt das trainierte HF-GPT2 Modell."""
+    """Lädt das trainierte GPT-2 LM Studio Modell."""
     script_dir = Path(__file__).parent
-    model_path = script_dir.parent.parent / "dist" / "hf_gpt2_model"
+    model_path = script_dir.parent.parent / "dist" / "gpt2_lm_studio"
 
     if not model_path.exists():
         print(f"❌ Modell nicht gefunden: {model_path}")
-        print("   Bitte erst trainieren mit: python gpt_transformer_language_model.py")
+        print("   Bitte erst trainieren mit: python main.py (Option 3)")
         return None, None
 
     print(f"📂 Lade Modell aus: {model_path}")
 
     model = GPT2LMHeadModel.from_pretrained(model_path)
-    tokenizer = PreTrainedTokenizerFast.from_pretrained(model_path)
+    tokenizer = GPT2Tokenizer.from_pretrained(model_path)
 
     model.eval()
     print("✅ Modell geladen!")
@@ -164,7 +164,7 @@ def interactive_mode(model, tokenizer):
 
 def main():
     print("=" * 60)
-    print("🤖 HF-GPT2 INFERENZ")
+    print("🤖 GPT-2 LM STUDIO INFERENZ")
     print("=" * 60)
 
     # Modell laden
