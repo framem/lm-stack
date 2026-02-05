@@ -1,5 +1,5 @@
 # Shared utilities and data
-from .sample_data import TRAINING_DATA_DE, TRAINING_DATA_EN
+from .training_data import TRAINING_DATA_DE, TRAINING_DATA_EN
 from .training_config import (
     EPOCHS,
     LOG_INTERVAL,
