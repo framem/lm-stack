@@ -21,6 +21,8 @@ import json
 import matplotlib.pyplot as plt
 from pathlib import Path
 
+from model_report import generate_model_report
+
 torch.manual_seed(42)
 
 
@@ -514,7 +516,11 @@ def save_transformer_model(model, tokenizer, save_dir: str = "models/transformer
     tokenizer.save(str(save_path / "tokenizer.json"))
     print(f"💾 Tokenizer gespeichert: {save_path / 'tokenizer.json'}")
 
+    # Modell-Report generieren
+    generate_model_report(model, save_path)
+
     print(f"\n✅ Transformer-Modell gespeichert in: {save_path.absolute()}")
+    print(f"   Dateien: config.json, model.pt, tokenizer.json, MODEL_REPORT.md")
     return str(save_path)
 
 

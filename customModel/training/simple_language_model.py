@@ -23,6 +23,8 @@ import json
 import os
 from pathlib import Path
 
+from model_report import generate_model_report
+
 # Für reproduzierbare Ergebnisse
 torch.manual_seed(42)
 np.random.seed(42)
@@ -332,6 +334,7 @@ def save_model(model, tokenizer, save_dir: str = "models"):
     - model.pt: PyTorch Modell-Weights
     - config.json: Modell-Konfiguration
     - tokenizer.json: Vokabular
+    - MODEL_REPORT.md: Detaillierter Modell-Report
     """
     save_path = Path(save_dir)
     save_path.mkdir(parents=True, exist_ok=True)
@@ -359,8 +362,11 @@ def save_model(model, tokenizer, save_dir: str = "models"):
     tokenizer_path = save_path / "tokenizer.json"
     tokenizer.save(str(tokenizer_path))
 
+    # Modell-Report generieren
+    generate_model_report(model, save_path)
+
     print(f"\n✅ Modell vollständig gespeichert in: {save_path.absolute()}")
-    print(f"   Dateien: config.json, model.pt, tokenizer.json")
+    print(f"   Dateien: config.json, model.pt, tokenizer.json, MODEL_REPORT.md")
 
     return str(save_path)
 
@@ -528,7 +534,7 @@ def generate_text(model, tokenizer: Tokenizer, start_text: str,
         # Optional: Logits zeigen
         if show_logits and step < 3:
             visualize_logits(logits, probs, tokenizer,
-                           tokenizer.decode(tokens[-5:]), top_k=5)
+                           tokenizer.decode(tokens[-5:]), top_k_display=5)
 
         # Abbrechen bei EOS
         if next_token == tokenizer.word_to_idx.get(tokenizer.eos_token):
@@ -645,7 +651,7 @@ def main():
         logits, probs, top_indices, top_probs = model.predict_next_word(
             input_ids, tokenizer
         )
-        visualize_logits(logits, probs, tokenizer, test_input, top_k=8)
+        visualize_logits(logits, probs, tokenizer, test_input, top_k_display=8)
 
     # 6. Text generieren
     print("\n" + "=" * 60)
