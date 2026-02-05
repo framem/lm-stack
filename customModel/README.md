@@ -27,7 +27,7 @@ customModel/
 │   ├── transformer_model/   # Custom Transformer model
 │   ├── hf_gpt2_model/       # HuggingFace GPT-2 model
 │   ├── gpt2_lm_studio/      # GPT-2 optimized for LM Studio
-│   └── gguf/                # Quantized GGUF models
+│   └── gguf_converted/      # Converted GGUF models (via llama.cpp)
 ├── requirements.txt
 └── README.md
 ```
