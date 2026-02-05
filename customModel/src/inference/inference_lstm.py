@@ -22,7 +22,7 @@ import json
 from pathlib import Path
 
 # Importiere die Modell-Klassen
-from simple_language_model import SimpleLanguageModel, Tokenizer, load_model, visualize_logits
+from training.training_lstm import SimpleLanguageModel, Tokenizer, load_model, visualize_logits
 
 
 def generate_text_interactive(model, tokenizer, start_text: str,

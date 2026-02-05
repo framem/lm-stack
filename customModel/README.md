@@ -9,13 +9,13 @@ customModel/
 ├── src/
 │   ├── main.py              # Entry point - interactive menu
 │   ├── training/            # Model training scripts
-│   │   ├── simple_language_model.py      # LSTM-based model (beginner)
-│   │   ├── transformer_language_model.py # Custom Transformer/MiniGPT
-│   │   ├── gpt_transformer_language_model.py  # HuggingFace GPT-2
-│   │   ├── gpt2_lm_studio.py             # GPT-2 for LM Studio
+│   │   ├── training_lstm.py              # LSTM-based model (beginner)
+│   │   ├── training_transformer.py       # Custom Transformer/MiniGPT
+│   │   ├── training_hf_gpt2.py           # HuggingFace GPT-2
+│   │   ├── training_gpt2_lm_studio.py    # GPT-2 for LM Studio
 │   │   └── model_report.py               # Generate model reports
 │   ├── inference/           # Text generation scripts
-│   │   ├── inference.py                  # LSTM inference
+│   │   ├── inference_lstm.py             # LSTM inference
 │   │   ├── inference_transformer.py      # Transformer inference
 │   │   └── inference_hf_gpt2.py          # GPT-2 inference
 │   └── shared/              # Shared resources
@@ -60,15 +60,15 @@ This opens a menu to:
 **Training:**
 ```bash
 cd src/training
-python simple_language_model.py      # Train LSTM
-python transformer_language_model.py # Train Transformer
-python gpt_transformer_language_model.py  # Train HF GPT-2
+python training_lstm.py              # Train LSTM
+python training_transformer.py       # Train Transformer
+python training_hf_gpt2.py           # Train HF GPT-2
 ```
 
 **Inference:**
 ```bash
 cd src/inference
-python inference.py                  # LSTM text generation
+python inference_lstm.py             # LSTM text generation
 python inference_transformer.py      # Transformer generation
 python inference_hf_gpt2.py          # GPT-2 generation
 ```
@@ -80,6 +80,27 @@ python inference_hf_gpt2.py          # GPT-2 generation
 | LSTM | Simple RNN | ~10K | Learning basics |
 | Transformer | Custom MiniGPT | ~50K | Understanding attention |
 | HF GPT-2 | HuggingFace GPT-2 | ~500K+ | LM Studio compatible |
+
+### LSTM (Long Short-Term Memory)
+
+LSTM ist eine Variante von Recurrent Neural Networks (RNN), die speziell für das Lernen von langen Sequenzen entwickelt wurde. Im Gegensatz zu einfachen RNNs kann ein LSTM sich an Informationen über viele Zeitschritte hinweg "erinnern" durch spezielle Gates:
+
+- **Forget Gate**: Entscheidet, welche Informationen vergessen werden
+- **Input Gate**: Entscheidet, welche neuen Informationen gespeichert werden
+- **Output Gate**: Entscheidet, welche Informationen ausgegeben werden
+
+```
+Eingabe: "Die Katze sitzt auf dem"
+LSTM lernt: Nach "die katze" kommt oft "sitzt", "schläft", "jagt"...
+```
+
+### Transformer
+
+Der Transformer verwendet Self-Attention statt Rekursion. Jedes Wort kann direkt auf alle anderen Wörter "schauen" - das ermöglicht parallele Verarbeitung und besseres Lernen von Zusammenhängen.
+
+### GPT-2 (Generative Pre-trained Transformer)
+
+GPT-2 ist ein großes Transformer-Modell von OpenAI. Die HuggingFace-Version ermöglicht einfaches Training und Export zu GGUF für LM Studio.
 
 ## Features
 

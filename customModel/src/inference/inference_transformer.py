@@ -15,7 +15,7 @@ import torch.nn.functional as F
 import argparse
 from pathlib import Path
 
-from transformer_language_model import (
+from training.training_transformer import (
     MiniGPT, SimpleTokenizer, load_transformer_model,
     analyze_logits_detailed, visualize_attention
 )

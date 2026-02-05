@@ -69,21 +69,21 @@ def main():
         print("\n" + "=" * 60)
         print("🏋️ Starte LSTM-Training...")
         print("=" * 60 + "\n")
-        from training.simple_language_model import main as train_lstm
+        from training.training_lstm import main as train_lstm
         train_lstm()
 
     elif choice == "2":
         print("\n" + "=" * 60)
         print("🏋️ Starte Transformer-Training...")
         print("=" * 60 + "\n")
-        from training.transformer_language_model import main as train_transformer
+        from training.training_transformer import main as train_transformer
         train_transformer()
 
     elif choice == "3":
         print("\n" + "=" * 60)
         print("🏋️ Starte HF-GPT2-Training (LM Studio kompatibel)...")
         print("=" * 60 + "\n")
-        from training.gpt_transformer_language_model import main as train_hf_gpt2
+        from training.training_hf_gpt2 import main as train_hf_gpt2
         train_hf_gpt2()
 
     elif choice == "4":
@@ -93,7 +93,7 @@ def main():
         print("\n" + "=" * 60)
         print("🔮 Starte LSTM-Inferenz...")
         print("=" * 60 + "\n")
-        from inference.inference import main as run_inference
+        from inference.inference_lstm import main as run_inference
         run_inference()
 
     elif choice == "5":
