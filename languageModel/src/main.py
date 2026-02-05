@@ -20,7 +20,8 @@ def check_models_exist():
     lstm_exists = (models_dir / "lstm_model" / "model.pt").exists()
     transformer_exists = (models_dir / "transformer_model" / "model.pt").exists()
     gpt2_lm_studio_exists = (models_dir / "gpt2_lm_studio" / "model.safetensors").exists()
-    return lstm_exists, transformer_exists, gpt2_lm_studio_exists
+    gguf_exists = any((models_dir / "gguf_converted").glob("*.gguf"))
+    return lstm_exists, transformer_exists, gpt2_lm_studio_exists, gguf_exists
 
 
 def main():
@@ -28,7 +29,7 @@ def main():
     print("🎓 SPRACHMODELL-LERNPROJEKT")
     print("=" * 60)
 
-    lstm_exists, transformer_exists, gpt2_lm_studio_exists = check_models_exist()
+    lstm_exists, transformer_exists, gpt2_lm_studio_exists, gguf_exists = check_models_exist()
 
     print(f"""
     Verfügbare Optionen:
@@ -47,7 +48,6 @@ def main():
     3. GPT-2 LM Studio trainieren (GGUF-kompatibel) ⭐
        - Hugging Face GPT-2 mit Standard-Tokenizer
        - Kann zu GGUF konvertiert werden
-       - In LM Studio verwendbar!
        {'   ✅ Bereits trainiert' if gpt2_lm_studio_exists else '   ⚪ Noch nicht trainiert'}
 
     === INFERENZ ===
@@ -57,13 +57,16 @@ def main():
     5. Transformer-Modell verwenden (Inferenz)
        {'   ✅ Verfügbar' if transformer_exists else '   ❌ Erst trainieren!'}
 
-    6. GPT-2 LM Studio verwenden (Inferenz)
+    6. GPT-2 Safetensor verwenden (Inferenz)
        {'   ✅ Verfügbar' if gpt2_lm_studio_exists else '   ❌ Erst trainieren!'}
+
+    7. GPT-2 GGUF verwenden (llama.cpp)
+       {'   ✅ Verfügbar' if gguf_exists else '   ❌ Erst konvertieren!'}
 
     0. Beenden
     """)
 
-    choice = input("    Auswahl (0-6): ").strip()
+    choice = input("    Auswahl (0-7): ").strip()
 
     if choice == "1":
         print("\n" + "=" * 60)
@@ -108,20 +111,36 @@ def main():
 
     elif choice == "6":
         if not gpt2_lm_studio_exists:
-            print("\n❌ GPT-2 LM Studio Modell nicht gefunden! Bitte erst trainieren (Option 3).")
+            print("\n❌ GPT-2 Safetensor Modell nicht gefunden! Bitte erst trainieren (Option 3).")
             return
         print("\n" + "=" * 60)
-        print("🔮 Starte GPT-2 LM Studio Inferenz...")
+        print("🔮 Starte GPT-2 Safetensor Inferenz...")
         print("=" * 60 + "\n")
         from inference.inference_gpt2_lm_studio import main as run_gpt2_lm_studio_inference
         run_gpt2_lm_studio_inference()
+
+    elif choice == "7":
+        if not gguf_exists:
+            print("\n❌ Keine GGUF-Modelle gefunden! Siehe docker/gguf-converter/README.md")
+            return
+        print("\n" + "=" * 60)
+        print("🔮 GPT-2 GGUF Inferenz (Docker)")
+        print("=" * 60)
+        print("\nGGUF-Inferenz läuft via Docker. Befehle:")
+        print("\n  # Image bauen")
+        print("  docker compose build gguf-inference")
+        print("\n  # Text generieren")
+        print("  docker compose run --rm gguf-inference -m gpt2-mini.gguf -p \"die katze\"")
+        print("\n  # Interaktiver Modus")
+        print("  docker compose run --rm gguf-inference -m gpt2-mini.gguf -i")
+        print("\nSiehe docker/gguf-inference/README.md für alle Optionen.\n")
 
     elif choice == "0":
         print("\n👋 Auf Wiedersehen!")
         sys.exit(0)
 
     else:
-        print("\n❌ Ungültige Eingabe. Bitte 0-6 eingeben.")
+        print("\n❌ Ungültige Eingabe. Bitte 0-7 eingeben.")
         sys.exit(1)
 
 
