@@ -157,9 +157,9 @@ The converter reads `config.json` to determine weight mappings:
 
 ## Training Data
 
-Example German sentences are used for training (in `src/shared/sample_data.py`):
+German sentences are used for training (defined in `src/training/training_data.py`):
 ```python
-from shared import TRAINING_DATA_DE, TRAINING_DATA_EN
+from training.training_data import TRAINING_DATA
 ```
 
 ## Requirements

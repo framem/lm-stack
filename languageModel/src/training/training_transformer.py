@@ -20,6 +20,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from .training_config import EPOCHS, LOG_INTERVAL, LEARNING_RATE_TRANSFORMER, BATCH_SIZE_TRANSFORMER, SEQ_LENGTH, RANDOM_SEED
+from .training_data import TRAINING_DATA
 from torch.utils.data import Dataset, DataLoader
 
 from .model_report import generate_model_report
@@ -576,29 +577,7 @@ def main():
     print("🚀 TRANSFORMER SPRACHMODELL - Fortgeschrittenes Beispiel")
     print("=" * 70)
 
-    # Trainingsdaten
-    training_texts = [
-        "die katze sitzt auf dem tisch",
-        "der hund läuft im garten",
-        "die katze schläft auf dem sofa",
-        "der hund spielt im park",
-        "die sonne scheint am himmel",
-        "der vogel fliegt über den baum",
-        "die katze jagt die maus",
-        "der hund frisst seinen knochen",
-        "das kind spielt im garten",
-        "die blume blüht im frühling",
-        "der regen fällt vom himmel",
-        "die katze trinkt ihre milch",
-        "der hund wedelt mit dem schwanz",
-        "das buch liegt auf dem tisch",
-        "die tasse steht neben dem teller",
-        "der mann liest seine zeitung",
-        "die frau kocht das essen",
-        "das auto fährt auf der straße",
-        "der zug kommt am bahnhof an",
-        "die kinder spielen auf dem spielplatz",
-    ]
+    training_texts = TRAINING_DATA
 
     # Tokenizer
     tokenizer = SimpleTokenizer()

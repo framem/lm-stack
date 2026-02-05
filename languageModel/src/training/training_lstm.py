@@ -25,6 +25,7 @@ from pathlib import Path
 
 from .model_report import generate_model_report
 from .training_config import EPOCHS, LOG_INTERVAL, LEARNING_RATE_LSTM, BATCH_SIZE_LSTM, SEQ_LENGTH, RANDOM_SEED
+from .training_data import TRAINING_DATA
 
 # Für reproduzierbare Ergebnisse
 torch.manual_seed(RANDOM_SEED)
@@ -556,29 +557,7 @@ def main():
     print("🎓 SPRACHMODELL-TRAINING - Didaktisches Beispiel")
     print("=" * 60)
 
-    # Beispiel-Trainingsdaten (einfache deutsche Sätze)
-    training_texts = [
-        "die katze sitzt auf dem tisch",
-        "der hund läuft im garten",
-        "die katze schläft auf dem sofa",
-        "der hund spielt im park",
-        "die sonne scheint am himmel",
-        "der vogel fliegt über den baum",
-        "die katze jagt die maus",
-        "der hund frisst seinen knochen",
-        "das kind spielt im garten",
-        "die blume blüht im frühling",
-        "der regen fällt vom himmel",
-        "die katze trinkt ihre milch",
-        "der hund wedelt mit dem schwanz",
-        "das buch liegt auf dem tisch",
-        "die tasse steht neben dem teller",
-        "der mann liest die zeitung",
-        "die frau kocht das essen",
-        "das auto fährt auf der straße",
-        "der zug kommt am bahnhof an",
-        "die kinder spielen auf dem spielplatz",
-    ]
+    training_texts = TRAINING_DATA
 
     # 1. Tokenizer erstellen
     print("\n" + "=" * 60)
