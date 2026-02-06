@@ -2,6 +2,7 @@
 Trainingsdaten für die Sprachmodelle (LSTM und Transformer).
 """
 
+# Originale Trainingsdaten (Basis-Training)
 TRAINING_DATA = [
     "die katze sitzt auf dem tisch",
     "der hund läuft im garten",
@@ -23,4 +24,19 @@ TRAINING_DATA = [
     "das auto fährt auf der straße",
     "der zug kommt am bahnhof an",
     "die kinder spielen auf dem spielplatz",
+]
+
+# Fine-Tuning-Daten (neues Wissen, das nachtrainiert wird)
+# Diese Saetze enthalten Themen, die im Original-Training NICHT vorkamen:
+# - Wetter (wind, schnee, wolken, sturm)
+# - Essen/Kochen (suppe, kuchen, brot, butter)
+FINETUNING_DATA = [
+    "der wind weht ueber das feld",
+    "der schnee faellt im winter",
+    "die wolken ziehen am himmel",
+    "der sturm kommt aus dem norden",
+    "die suppe kocht auf dem herd",
+    "der kuchen steht im ofen",
+    "das brot liegt auf dem tisch",
+    "die butter schmilzt in der pfanne",
 ]
