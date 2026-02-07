@@ -16,4 +16,5 @@ model Movie {
   star4        String?
   noOfVotes    Int?
   gross        String?
+  embedding    Unsupported("vector(768)")?
 }

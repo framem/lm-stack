@@ -1,4 +1,5 @@
 import { prisma } from '@/src/lib/prisma'
+import { type Movie } from '@/prisma/generated/prisma/client'
 
 // Existing functions (kept for MCP compatibility)
 export async function getMovies() {
@@ -73,8 +74,28 @@ export async function getFeaturedMovie() {
 
 export async function getRecommendedMovies(movieId: string, take = 12) {
     const movie = await getMovieById(movieId)
-    if (!movie || !movie.genre) return []
+    if (!movie) return []
 
+    // Check if this movie has an embedding (Prisma can't read Unsupported types directly)
+    const [{ has_embedding }] = await prisma.$queryRaw<{ has_embedding: boolean }[]>`
+        SELECT embedding IS NOT NULL as has_embedding FROM "Movie" WHERE id = ${movieId}
+    `
+
+    if (has_embedding) {
+        return prisma.$queryRaw<Movie[]>`
+            SELECT m.id, m."posterLink", m."seriesTitle", m."releasedYear", m.certificate,
+                   m.runtime, m.genre, m."imdbRating", m.overview, m."metaScore",
+                   m.director, m.star1, m.star2, m.star3, m.star4, m."noOfVotes", m.gross
+            FROM "Movie" m
+            WHERE m.id != ${movieId}
+              AND m.embedding IS NOT NULL
+            ORDER BY m.embedding <=> (SELECT embedding FROM "Movie" WHERE id = ${movieId})
+            LIMIT ${take}
+        `
+    }
+
+    // Fallback: genre-based recommendations
+    if (!movie.genre) return []
     const genres = movie.genre.split(',').map(g => g.trim()).filter(Boolean)
 
     return prisma.movie.findMany({
