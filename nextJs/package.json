@@ -28,6 +28,7 @@
     "typescript": "5.9.3"
   },
   "dependencies": {
+    "@ai-sdk/openai-compatible": "^2.0.28",
     "@ai-sdk/react": "^3.0.79",
     "@modelcontextprotocol/sdk": "^1.25.3",
     "@prisma/adapter-pg": "^7.3.0",

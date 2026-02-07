@@ -1,13 +1,9 @@
-import { ollama } from 'ai-sdk-ollama';
 import { generateText } from 'ai';
+import { getModel } from '@/src/lib/llm';
 
 export async function GET() {
   const { text } = await generateText({
-    model: ollama('qwen3:8b', {
-      options: {
-        num_ctx: 2048,
-      },
-    }),
+    model: getModel(),
     temperature: 0,
     seed: 123,
     prompt: 'Erkläre in einem Satz, was Docker ist.',

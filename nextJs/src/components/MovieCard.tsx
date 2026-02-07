@@ -9,11 +9,29 @@ import {
     DialogTitle,
     DialogDescription,
 } from '@/components/ui/dialog'
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import type { Movie } from '@/src/types/movie'
 
 export default function MovieCard({ movie }: { movie: Movie }) {
     const [open, setOpen] = useState(false)
+    const [isVisible, setIsVisible] = useState(false)
+    const cardRef = useRef<HTMLDivElement>(null)
+
+    useEffect(() => {
+        const el = cardRef.current
+        if (!el) return
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (entry.isIntersecting) {
+                    setIsVisible(true)
+                    observer.disconnect()
+                }
+            },
+            { rootMargin: '200px' }
+        )
+        observer.observe(el)
+        return () => observer.disconnect()
+    }, [])
 
     const posterSrc = movie.posterLink
         ? movie.posterLink.replace(/UX\d+_CR[\d,]+_AL_/, 'UX300_CR0,0,300,444_AL_')
@@ -24,11 +42,12 @@ export default function MovieCard({ movie }: { movie: Movie }) {
     return (
         <>
             <div
+                ref={cardRef}
                 className="group relative flex-shrink-0 w-[160px] cursor-pointer"
                 onClick={() => setOpen(true)}
             >
                 <div className="relative aspect-[2/3] rounded-md overflow-hidden bg-zinc-800 transition-transform duration-300 group-hover:scale-105 group-hover:z-10 group-hover:shadow-xl group-hover:shadow-black/50">
-                    {posterSrc ? (
+                    {posterSrc && isVisible ? (
                         <Image
                             src={posterSrc}
                             alt={movie.seriesTitle}
