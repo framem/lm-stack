@@ -1,6 +1,6 @@
 import { streamText, stepCountIs, convertToModelMessages } from 'ai'
 import { z } from 'zod'
-import { getMoviesByGenre, getTopRatedMovies } from '@/src/data-access/movies'
+import { getMoviesByGenre, getTopRatedMovies, getRecommendedMovies } from '@/src/data-access/movies'
 import { prisma } from '@/src/lib/prisma'
 import { getModel } from '@/src/lib/llm'
 import { toMovieSlug } from '@/src/lib/slug'
@@ -69,6 +69,36 @@ const tools = {
             }))
         },
     },
+    findSimilarMovies: {
+        description: 'Finde ähnliche Filme basierend auf einem Filmtitel. Nutzt Embedding-basierte Ähnlichkeitssuche, um inhaltlich verwandte Filme zu finden. Verwende dieses Tool, wenn der Nutzer nach Filmen fragt, die einem bestimmten Film ähnlich sind (z.B. "Filme wie Star Trek", "ähnliche Filme wie Inception").',
+        inputSchema: z.object({
+            title: z.string().describe('Der Titel des Films, zu dem ähnliche Filme gesucht werden sollen'),
+            limit: z.number().optional().default(5).describe('Anzahl der Ergebnisse'),
+        }),
+        execute: async ({ title, limit }: { title: string; limit: number }) => {
+            const movie = await prisma.movie.findFirst({
+                where: {
+                    seriesTitle: { contains: title, mode: 'insensitive' as const },
+                },
+            })
+            if (!movie) {
+                return { error: `Film "${title}" nicht in der Datenbank gefunden.` }
+            }
+            const similar = await getRecommendedMovies(movie.id, limit)
+            if (similar.length === 0) {
+                return { error: `Keine ähnlichen Filme gefunden. Möglicherweise fehlen Embeddings für diesen Film.` }
+            }
+            return similar.map(m => ({
+                title: m.seriesTitle,
+                year: m.releasedYear,
+                rating: m.imdbRating,
+                genre: m.genre,
+                overview: m.overview,
+                director: m.director,
+                link: `${BASE_URL}/movie/${toMovieSlug(m.seriesTitle, m.id)}`,
+            }))
+        },
+    },
 }
 
 export async function POST(req: Request) {
@@ -83,7 +113,8 @@ Du hast Zugriff auf eine Datenbank mit den Top 1000 IMDb-Filmen.
 Nutze die verfügbaren Tools, um Filme zu suchen und Empfehlungen zu geben.
 Antworte immer auf Deutsch, es sei denn, der Nutzer schreibt auf Englisch.
 Halte deine Antworten kurz und übersichtlich. Nenne pro Empfehlung den Titel, das Jahr und eine kurze Begründung.
-Jeder Film in den Tool-Ergebnissen enthält ein "link"-Feld. Verlinke den Filmtitel immer mit diesem Link im Markdown-Format, z.B. [Inception (2010)](http://localhost:3000/movie/inception-abc123).`,
+Jeder Film in den Tool-Ergebnissen enthält ein "link"-Feld. Verlinke den Filmtitel immer mit diesem Link im Markdown-Format, z.B. [Inception (2010)](http://localhost:3000/movie/inception-abc123).
+WICHTIG: Wenn der Nutzer nach Filmen fragt, die einem bestimmten Film ähnlich sind (z.B. "Filme wie ...", "ähnliche Filme wie ...", "empfehle mir Filme wie ..."), nutze IMMER das findSimilarMovies-Tool. Nutze NICHT getByGenre für solche Anfragen, da findSimilarMovies eine viel genauere, inhaltsbasierte Ähnlichkeitssuche bietet.`,
         messages: modelMessages,
         tools,
         stopWhen: stepCountIs(3),
