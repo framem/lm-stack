@@ -31,7 +31,7 @@ def main():
     lstm_exists, transformer_exists, finetuned_exists = check_models_exist()
 
     print(f"""
-    Verfuegbare Optionen:
+    Verfügbare Optionen:
 
     === TRAINING ===
     1. LSTM-Modell trainieren (Grundlagen)
@@ -48,19 +48,19 @@ def main():
     5. Transformer Fine-Tuning (Nachtrainieren)
        - Vortrainiertes Modell mit neuem Wissen erweitern
        - Vergleich: Full FT vs. Layer Freezing vs. LoRA
-       {'   [OK] Vortrainiertes Modell verfuegbar' if transformer_exists else '   [X] Erst Transformer trainieren (Option 2)!'}
+       {'   [OK] Vortrainiertes Modell verfügbar' if transformer_exists else '   [X] Erst Transformer trainieren (Option 2)!'}
 
     === INFERENZ ===
     3. LSTM-Modell verwenden (Inferenz)
-       {'   [OK] Verfuegbar' if lstm_exists else '   [X] Erst trainieren!'}
+       {'   [OK] Verfügbar' if lstm_exists else '   [X] Erst trainieren!'}
 
     4. Transformer-Modell verwenden (Inferenz)
-       {'   [OK] Verfuegbar' if transformer_exists else '   [X] Erst trainieren!'}
+       {'   [OK] Verfügbar' if transformer_exists else '   [X] Erst trainieren!'}
 
     6. Fine-Tuned Modelle verwenden (Inferenz)
        - Vergleicht Original vs. Fine-Tuned Modelle
        - Interaktiver Modus mit Modellwechsel
-       {'   [OK] Verfuegbar' if finetuned_exists else '   [X] Erst fine-tunen (Option 5)!'}
+       {'   [OK] Verfügbar' if finetuned_exists else '   [X] Erst fine-tunen (Option 5)!'}
 
     0. Beenden
     """)
@@ -126,7 +126,7 @@ def main():
         sys.exit(0)
 
     else:
-        print("\n[X] Ungueltige Eingabe. Bitte 0-6 eingeben.")
+        print("\n[X] Ungültige Eingabe. Bitte 0-6 eingeben.")
         sys.exit(1)
 
 

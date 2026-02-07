@@ -1,8 +1,8 @@
 """
-Inferenz-Script fuer fine-getunte Transformer-Modelle
+Inferenz-Script für fine-getunte Transformer-Modelle
 =====================================================
 
-Laedt und vergleicht die verschiedenen Fine-Tuning-Varianten:
+Lädt und vergleicht die verschiedenen Fine-Tuning-Varianten:
 - Full Fine-Tuning
 - Layer Freezing
 - LoRA (Adapter oder gemerged)
@@ -37,13 +37,13 @@ from training.finetuning_transformer import LoRALinear, apply_lora
 
 def load_lora_adapter(base_model_dir, adapter_dir):
     """
-    Laedt ein Basismodell und wendet einen LoRA-Adapter darauf an.
+    Lädt ein Basismodell und wendet einen LoRA-Adapter darauf an.
 
     WICHTIGES KONZEPT:
     ==================
     In der Praxis hat man oft:
-      1. Ein grosses Basismodell (z.B. LLaMA-70B, einmal heruntergeladen)
-      2. Viele kleine LoRA-Adapter (je 50 MB, fuer verschiedene Aufgaben)
+      1. Ein großes Basismodell (z.B. LLaMA-70B, einmal heruntergeladen)
+      2. Viele kleine LoRA-Adapter (je 50 MB, für verschiedene Aufgaben)
 
     Diese Funktion zeigt, wie man Basismodell + Adapter kombiniert:
       Basismodell laden -> Vokabular erweitern -> LoRA draufsetzen -> Adapter-Gewichte laden
@@ -72,14 +72,14 @@ def load_lora_adapter(base_model_dir, adapter_dir):
 
     # Basis-Gewichte laden (nur die, die passen)
     base_state = torch.load(base_path / "model.pt", weights_only=True)
-    # Embeddings/LM-Head haben sich in der Groesse geaendert -> partial load
+    # Embeddings/LM-Head haben sich in der Größe geändert -> partial load
     model_state = model.state_dict()
     for key, value in base_state.items():
         if key in model_state and model_state[key].shape == value.shape:
             model_state[key] = value
     model.load_state_dict(model_state)
 
-    # 4. LoRA-Schichten einfuegen
+    # 4. LoRA-Schichten einfügen
     rank = lora_config["rank"]
     apply_lora(model, rank=rank, alpha=1.0)
 
@@ -105,8 +105,8 @@ def load_lora_adapter(base_model_dir, adapter_dir):
 
 def discover_models(base_dir):
     """
-    Findet alle verfuegbaren Modelle (Original + Fine-Tuned).
-    Gibt ein dict mit Name -> (Pfad, Typ) zurueck.
+    Findet alle verfügbaren Modelle (Original + Fine-Tuned).
+    Gibt ein dict mit Name -> (Pfad, Typ) zurück.
     """
     models = {}
 
@@ -162,7 +162,7 @@ def discover_models(base_dir):
 
 
 def load_model_by_type(model_info, base_dir):
-    """Laedt ein Modell anhand seines Typs."""
+    """Lädt ein Modell anhand seines Typs."""
     if model_info["type"] == "standard":
         return load_transformer_model(str(model_info["path"]))
     elif model_info["type"] == "lora_adapter":
@@ -227,9 +227,9 @@ def compare_models(loaded_models, prompts, temperature=0.8):
     ===========
     Hier sieht man direkt, wie sich die verschiedenen Fine-Tuning-Methoden
     auf die Textgenerierung auswirken:
-    - Kann das Full-FT-Modell noch alte Saetze? (Catastrophic Forgetting?)
+    - Kann das Full-FT-Modell noch alte Sätze? (Catastrophic Forgetting?)
     - Wie unterscheiden sich LoRA-Adapter vs. LoRA-Merged?
-    - Welches Modell generiert die besten neuen Saetze?
+    - Welches Modell generiert die besten neuen Sätze?
     """
     print("\n" + "=" * 70)
     print("MODELL-VERGLEICH")
@@ -246,8 +246,8 @@ def compare_models(loaded_models, prompts, temperature=0.8):
 
 
 def show_top_predictions(loaded_models, prompt, top_k=5):
-    """Zeigt die Top-K Vorhersagen aller Modelle fuer ein Prompt."""
-    print(f"\n   --- Top-{top_k} Vorhersagen fuer '{prompt}' ---")
+    """Zeigt die Top-K Vorhersagen aller Modelle für ein Prompt."""
+    print(f"\n   --- Top-{top_k} Vorhersagen für '{prompt}' ---")
     print(f"   {'Modell':<25} {'#1':<12} {'#2':<12} {'#3':<12} {'#4':<12} {'#5':<12}")
     print("   " + "-" * 85)
 
@@ -297,12 +297,12 @@ def interactive_mode(loaded_models):
       /analyze <text>       - Detaillierte Logits-Analyse
       /attention <text>     - Attention-Visualisierung
       /temp <wert>          - Temperature setzen (aktuell: {temperature})
-      /length <wert>        - Max. Laenge setzen (aktuell: {max_length})
+      /length <wert>        - Max. Länge setzen (aktuell: {max_length})
       /steps                - Toggle Schritt-Anzeige
       /quit                 - Beenden
 
     Aktives Modell: {current_model_name}
-    Verfuegbare Modelle: {', '.join(model_names)}
+    Verfügbare Modelle: {', '.join(model_names)}
 
     Beispiel-Prompts:
       Altes Wissen: die katze, der hund, das kind
@@ -326,12 +326,12 @@ def interactive_mode(loaded_models):
                     break
 
                 elif cmd == "/model":
-                    print("\n   Verfuegbare Modelle:")
+                    print("\n   Verfügbare Modelle:")
                     for i, name in enumerate(model_names):
                         marker = ">>>" if name == current_model_name else "   "
                         label = loaded_models[name][0].__class__.__name__
                         print(f"   {marker} {i+1}. {name}")
-                    choice = input("   Nummer waehlen: ").strip()
+                    choice = input("   Nummer wählen: ").strip()
                     try:
                         idx = int(choice) - 1
                         if 0 <= idx < len(model_names):
@@ -339,7 +339,7 @@ def interactive_mode(loaded_models):
                             current_model, current_tokenizer = loaded_models[current_model_name]
                             print(f"   Aktives Modell: {current_model_name}")
                         else:
-                            print("   Ungueltige Nummer.")
+                            print("   Ungültige Nummer.")
                     except ValueError:
                         print("   Bitte eine Nummer eingeben.")
 
@@ -381,7 +381,7 @@ def interactive_mode(loaded_models):
                 elif cmd == "/length":
                     try:
                         max_length = int(arg)
-                        print(f"   Max. Laenge: {max_length}")
+                        print(f"   Max. Länge: {max_length}")
                     except ValueError:
                         print("   Beispiel: /length 15")
 
@@ -418,7 +418,7 @@ def main():
     print("FINE-TUNED MODELL INFERENZ")
     print("=" * 70)
 
-    # Verfuegbare Modelle finden
+    # Verfügbare Modelle finden
     available = discover_models(base_dir)
 
     if not available:

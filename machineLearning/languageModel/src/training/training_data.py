@@ -27,12 +27,12 @@ TRAINING_DATA = [
 ]
 
 # Fine-Tuning-Daten (neues Wissen, das nachtrainiert wird)
-# Diese Saetze enthalten Themen, die im Original-Training NICHT vorkamen:
+# Diese Sätze enthalten Themen, die im Original-Training NICHT vorkamen:
 # - Wetter (wind, schnee, wolken, sturm)
 # - Essen/Kochen (suppe, kuchen, brot, butter)
 FINETUNING_DATA = [
-    "der wind weht ueber das feld",
-    "der schnee faellt im winter",
+    "der wind weht über das feld",
+    "der schnee fällt im winter",
     "die wolken ziehen am himmel",
     "der sturm kommt aus dem norden",
     "die suppe kocht auf dem herd",

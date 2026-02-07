@@ -2,7 +2,7 @@
 Fine-Tuning eines Transformer-Modells - Lernprojekt
 ====================================================
 
-Dieses Script zeigt die 3 wichtigsten Ansaetze, um ein vortrainiertes Modell
+Dieses Script zeigt die 3 wichtigsten Ansätze, um ein vortrainiertes Modell
 mit neuem Wissen zu aktualisieren, OHNE es komplett neu zu trainieren.
 
 Warum Fine-Tuning?
@@ -11,7 +11,7 @@ Stell dir vor, du hast ein Modell tagelang auf riesigen Datenmengen trainiert.
 Jetzt willst du ihm "Kochwissen" beibringen. Neu trainieren? Dauert Tage.
 Fine-Tuning? Minuten bis Stunden.
 
-Die 3 Ansaetze:
+Die 3 Ansätze:
 1. FULL FINE-TUNING:    Alle Gewichte weitertrainieren (kleinere Lernrate)
 2. LAYER FREEZING:      Untere Schichten einfrieren, nur obere trainieren
 3. LoRA:                Kleine Matrizen an bestehende Gewichte "ankleben"
@@ -21,24 +21,19 @@ Autor: Lernprojekt
 
 import copy
 import json
-import math
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import DataLoader
 
 from .training_config import RANDOM_SEED
 from .training_data import FINETUNING_DATA
 from .training_transformer import (
-    MiniGPT,
-    SimpleTokenizer,
     TextDataset,
     load_transformer_model,
-    save_transformer_model,
-    analyze_logits_detailed,
 )
 from .model_report import generate_finetuning_report
 
@@ -103,14 +98,14 @@ def save_finetuned_model(model, tokenizer, save_dir, label, *,
 
     total_size = sum(f.stat().st_size for f in save_path.iterdir()) / 1024
     print(f"   Gespeichert in: {save_path}")
-    print(f"   Groesse: {total_size:.1f} KB")
+    print(f"   Größe: {total_size:.1f} KB")
 
     return save_path
 
 
 def merge_lora_weights(model):
     """
-    "Merged" die LoRA-Gewichte zurueck in die Original-Gewichte.
+    "Merged" die LoRA-Gewichte zurück in die Original-Gewichte.
 
     WICHTIGES KONZEPT:
     ==================
@@ -120,13 +115,13 @@ def merge_lora_weights(model):
         W_neu = W_original + (B @ A) * scaling
 
     Danach braucht man die LoRA-Schichten nicht mehr und hat ein
-    normales Modell, das man ganz normal fuer Inferenz nutzen kann.
+    normales Modell, das man ganz normal für Inferenz nutzen kann.
 
     Das ist wie: Den transparenten Aufkleber (LoRA) fest auf das
     Foto (Gewichte) aufkleben, sodass es ein einziges Bild wird.
 
     Vorteil: Keine Extra-Berechnung bei Inferenz (gleiche Geschwindigkeit)
-    Nachteil: Man kann den "Aufkleber" nicht mehr abloesen
+    Nachteil: Man kann den "Aufkleber" nicht mehr ablösen
     """
     merged_count = 0
 
@@ -165,8 +160,8 @@ def save_lora_adapter(model, tokenizer, save_dir, *,
     LoRA-Adapter (Kochwissen):   ~50 MB   -> Klein, schnell teilbar
     LoRA-Adapter (Medizin):      ~50 MB   -> Anderer Adapter, gleiches Basismodell!
 
-    Man kann also VIELE verschiedene Adapter fuer EIN Basismodell haben.
-    Auf Hugging Face gibt es tausende LoRA-Adapter fuer populaere Modelle.
+    Man kann also VIELE verschiedene Adapter für EIN Basismodell haben.
+    Auf Hugging Face gibt es tausende LoRA-Adapter für populäre Modelle.
     """
     save_path = Path(save_dir) / "lora_adapter"
     save_path.mkdir(parents=True, exist_ok=True)
@@ -184,7 +179,7 @@ def save_lora_adapter(model, tokenizer, save_dir, *,
     # LoRA-Adapter speichern
     torch.save(lora_state, save_path / "lora_weights.pt")
 
-    # Erweiterte Embeddings speichern (fuer neue Woerter)
+    # Erweiterte Embeddings speichern (für neue Wörter)
     torch.save(embedding_state, save_path / "embedding_weights.pt")
 
     # LoRA-Konfiguration speichern
@@ -250,7 +245,7 @@ def save_lora_merged(model, tokenizer, save_dir, *,
     save_path = Path(save_dir) / "lora_merged"
     save_path.mkdir(parents=True, exist_ok=True)
 
-    # Parameter VOR dem Merge zaehlen (danach sind LoRA-Schichten weg)
+    # Parameter VOR dem Merge zählen (danach sind LoRA-Schichten weg)
     total_params = count_parameters(model)
     trainable_params = count_parameters(model, only_trainable=True)
 
@@ -294,24 +289,24 @@ def save_lora_merged(model, tokenizer, save_dir, *,
 
     total_size = sum(f.stat().st_size for f in save_path.iterdir()) / 1024
     print(f"   Gemerged gespeichert in: {save_path}")
-    print(f"   Groesse: {total_size:.1f} KB (normales Modell, keine LoRA-Logik noetig)")
+    print(f"   Größe: {total_size:.1f} KB (normales Modell, keine LoRA-Logik nötig)")
 
     return save_path
 
 
 def expand_tokenizer(tokenizer, new_texts):
     """
-    Erweitert das Vokabular des Tokenizers um neue Woerter.
+    Erweitert das Vokabular des Tokenizers um neue Wörter.
 
-    WICHTIGES KONZEPT: Wenn neue Trainingsdaten Woerter enthalten, die
-    der Tokenizer nicht kennt, muessen wir das Vokabular erweitern.
+    WICHTIGES KONZEPT: Wenn neue Trainingsdaten Wörter enthalten, die
+    der Tokenizer nicht kennt, müssen wir das Vokabular erweitern.
 
     Das ist ein echtes Problem in der Praxis:
-    - GPT kennt "COVID" nicht? -> Neues Token noetig
-    - Fachbegriffe aus einer Domaene? -> Vokabular erweitern
+    - GPT kennt "COVID" nicht? -> Neues Token nötig
+    - Fachbegriffe aus einer Domäne? -> Vokabular erweitern
 
     Returns:
-        new_words: Liste der neu hinzugefuegten Woerter
+        new_words: Liste der neu hinzugefügten Wörter
     """
     new_words = []
     for text in new_texts:
@@ -328,15 +323,15 @@ def expand_tokenizer(tokenizer, new_texts):
 
 def expand_model_embeddings(model, old_vocab_size, new_vocab_size):
     """
-    Erweitert Embedding- und Output-Layer fuer neue Vokabular-Groesse.
+    Erweitert Embedding- und Output-Layer für neue Vokabular-Größe.
 
-    WICHTIGES KONZEPT: Wenn das Vokabular waechst, muessen auch die
+    WICHTIGES KONZEPT: Wenn das Vokabular wächst, müssen auch die
     Gewichts-Matrizen wachsen:
 
-    Vorher:  Embedding [50 Woerter x 64 Dim] -> Jedes der 50 Woerter hat einen 64-dim Vektor
-    Nachher: Embedding [62 Woerter x 64 Dim] -> 12 neue Woerter bekommen zufaellige Vektoren
+    Vorher:  Embedding [50 Wörter x 64 Dim] -> Jedes der 50 Wörter hat einen 64-dim Vektor
+    Nachher: Embedding [62 Wörter x 64 Dim] -> 12 neue Wörter bekommen zufällige Vektoren
 
-    Die ALTEN Gewichte bleiben erhalten! Nur neue werden hinzugefuegt.
+    Die ALTEN Gewichte bleiben erhalten! Nur neue werden hinzugefügt.
     """
     if new_vocab_size <= old_vocab_size:
         return
@@ -352,7 +347,7 @@ def expand_model_embeddings(model, old_vocab_size, new_vocab_size):
         new_embedding.weight[:old_vocab_size] = old_embedding.weight
 
         # Neue Embeddings: Mittelwert der alten + kleines Rauschen
-        # (besser als komplett zufaellig, weil sie "im richtigen Wertebereich" starten)
+        # (besser als komplett zufällig, weil sie "im richtigen Wertebereich" starten)
         mean_embedding = old_embedding.weight.mean(dim=0)
         for i in range(old_vocab_size, new_vocab_size):
             new_embedding.weight[i] = mean_embedding + torch.randn_like(mean_embedding) * 0.01
@@ -367,7 +362,7 @@ def expand_model_embeddings(model, old_vocab_size, new_vocab_size):
         new_lm_head.weight[:old_vocab_size] = old_lm_head.weight
 
         # Neue Output-Gewichte: klein initialisieren
-        # (damit neue Woerter anfangs niedrige Wahrscheinlichkeit haben)
+        # (damit neue Wörter anfangs niedrige Wahrscheinlichkeit haben)
         nn.init.normal_(new_lm_head.weight[old_vocab_size:], mean=0.0, std=0.01)
 
     model.lm_head = new_lm_head
@@ -378,14 +373,14 @@ def expand_model_embeddings(model, old_vocab_size, new_vocab_size):
 
 
 def count_parameters(model, only_trainable=False):
-    """Zaehlt die Parameter eines Modells."""
+    """Zählt die Parameter eines Modells."""
     if only_trainable:
         return sum(p.numel() for p in model.parameters() if p.requires_grad)
     return sum(p.numel() for p in model.parameters())
 
 
 def train_model(model, dataloader, vocab_size, epochs, lr, label=""):
-    """Gemeinsame Trainingsschleife fuer alle Fine-Tuning-Ansaetze."""
+    """Gemeinsame Trainingsschleife für alle Fine-Tuning-Ansätze."""
     optimizer = torch.optim.Adam(
         filter(lambda p: p.requires_grad, model.parameters()),
         lr=lr
@@ -423,7 +418,7 @@ def evaluate_model(model, tokenizer, test_prompts, label=""):
     for prompt in test_prompts:
         tokens = tokenizer.encode(prompt)
         if not tokens or all(t == 1 for t in tokens):  # All UNK
-            print(f"   '{prompt}' -> (unbekannte Woerter)")
+            print(f"   '{prompt}' -> (unbekannte Wörter)")
             continue
 
         inp = torch.tensor(tokens).unsqueeze(0)
@@ -457,16 +452,16 @@ def full_finetuning(base_model, tokenizer, new_data, epochs=50):
 
     Warum kleinere Lernrate?
     ------------------------
-    - Grosse Lernrate (0.005): Gut fuer Training von Scratch
-      -> Macht grosse Schritte, findet schnell ein Minimum
-    - Kleine Lernrate (0.001): Gut fuer Fine-Tuning
-      -> Macht kleine Schritte, zerstoert gelerntes Wissen nicht
+    - Große Lernrate (0.005): Gut für Training von Scratch
+      -> Macht große Schritte, findet schnell ein Minimum
+    - Kleine Lernrate (0.001): Gut für Fine-Tuning
+      -> Macht kleine Schritte, zerstört gelerntes Wissen nicht
 
     Analogie:
     ---------
     Stell dir einen Bildhauer vor:
-    - Training von Scratch = Grober Meissel (formt die Grundform)
-    - Fine-Tuning = Feiner Meissel (verfeinert Details, ohne Grundform zu zerstoeren)
+    - Training von Scratch = Grober Meißel (formt die Grundform)
+    - Fine-Tuning = Feiner Meißel (verfeinert Details, ohne Grundform zu zerstören)
 
     Vorteile:
     - Einfach zu implementieren
@@ -474,14 +469,14 @@ def full_finetuning(base_model, tokenizer, new_data, epochs=50):
 
     Nachteile:
     - "Catastrophic Forgetting": Modell kann altes Wissen vergessen!
-    - Alle Parameter muessen gespeichert werden
-    - Bei grossen Modellen: viel Speicher noetig
+    - Alle Parameter müssen gespeichert werden
+    - Bei großen Modellen: viel Speicher nötig
     """
     print("\n" + "=" * 70)
     print("ANSATZ 1: FULL FINE-TUNING")
     print("=" * 70)
 
-    # Tiefe Kopie des Modells (damit wir das Original nicht veraendern)
+    # Tiefe Kopie des Modells (damit wir das Original nicht verändern)
     model = copy.deepcopy(base_model)
 
     total_params = count_parameters(model)
@@ -494,7 +489,7 @@ def full_finetuning(base_model, tokenizer, new_data, epochs=50):
     FINETUNE_LR = 0.001
 
     print(f"   Lernrate:             {FINETUNE_LR} (Original war 0.005)")
-    print(f"   -> 5x kleiner, um gelerntes Wissen zu schuetzen\n")
+    print(f"   -> 5x kleiner, um gelerntes Wissen zu schützen\n")
 
     dataset = TextDataset(new_data, tokenizer, seq_len=4)
     dataloader = DataLoader(dataset, batch_size=4, shuffle=True)
@@ -524,24 +519,24 @@ def layer_freezing(base_model, tokenizer, new_data, epochs=50):
 
     Untere Schichten (nahe am Input):
     -> Lernen ALLGEMEINE Muster (Syntax, Grammatik, Wortarten)
-    -> Aendern sich wenig zwischen Domaenen
-    -> EINFRIEREN: Spart Rechenzeit, schuetzt Grundwissen
+    -> Ändern sich wenig zwischen Domänen
+    -> EINFRIEREN: Spart Rechenzeit, schützt Grundwissen
 
     Obere Schichten (nahe am Output):
-    -> Lernen SPEZIFISCHE Muster (Semantik, Zusammenhaenge)
-    -> Muessen sich an neue Domaene anpassen
+    -> Lernen SPEZIFISCHE Muster (Semantik, Zusammenhänge)
+    -> Müssen sich an neue Domäne anpassen
     -> TRAINIEREN: Passt das Modell an neue Daten an
 
     Analogie:
     ---------
-    Wie ein Koch der eine neue Kueche lernt:
+    Wie ein Koch der eine neue Küche lernt:
     - Grundtechniken (Schneiden, Braten) bleiben gleich  -> EINFRIEREN
-    - Rezepte und Gewuerze aendern sich                   -> TRAINIEREN
+    - Rezepte und Gewürze ändern sich                   -> TRAINIEREN
 
     Vorteile:
-    - Schuetzt vor Catastrophic Forgetting
+    - Schützt vor Catastrophic Forgetting
     - Schneller als Full Fine-Tuning
-    - Weniger Speicher fuer Gradienten noetig
+    - Weniger Speicher für Gradienten nötig
 
     Nachteile:
     - Weniger flexibel als Full Fine-Tuning
@@ -571,12 +566,12 @@ def layer_freezing(base_model, tokenizer, new_data, epochs=50):
     for param in model.lm_head.parameters():
         param.requires_grad = True
 
-    # -> Token Embedding (fuer neue Woerter)
+    # -> Token Embedding (für neue Wörter)
     for param in model.token_embedding.parameters():
         param.requires_grad = True
 
-    # Uebersicht: Was ist eingefroren, was nicht?
-    print("\n   Schicht-Uebersicht:")
+    # Übersicht: Was ist eingefroren, was nicht?
+    print("\n   Schicht-Übersicht:")
     print("   " + "-" * 50)
     for name, param in model.named_parameters():
         status = "TRAINIERBAR" if param.requires_grad else "EINGEFROREN"
@@ -611,7 +606,7 @@ class LoRALinear(nn.Module):
 
     KERNIDEE:
     =========
-    Statt die Original-Gewichte W zu aendern, fuegen wir KLEINE Matrizen
+    Statt die Original-Gewichte W zu ändern, fügen wir KLEINE Matrizen
     A und B hinzu:
 
         Original:     y = W * x           (W ist [out, in], z.B. [64, 64])
@@ -624,8 +619,8 @@ class LoRALinear(nn.Module):
 
     WARUM FUNKTIONIERT DAS?
     =======================
-    Forschung hat gezeigt: Die Gewichtsaenderungen beim Fine-Tuning haben
-    einen niedrigen "Rang" (rank). Das heisst, die meisten Aenderungen
+    Forschung hat gezeigt: Die Gewichtsänderungen beim Fine-Tuning haben
+    einen niedrigen "Rang" (rank). Das heißt, die meisten Änderungen
     lassen sich durch wenige Dimensionen beschreiben.
 
     Beispiel mit Zahlen:
@@ -635,7 +630,7 @@ class LoRALinear(nn.Module):
     LoRA B:              [64 x 4]  = 256 Parameter
     LoRA gesamt:                    = 512 Parameter (nur 12.5% von W!)
 
-    rank=4 bedeutet: Wir nehmen an, dass die Aenderung in einem
+    rank=4 bedeutet: Wir nehmen an, dass die Änderung in einem
     4-dimensionalen Unterraum des 64-dimensionalen Raums liegt.
 
     ANALOGIE:
@@ -643,17 +638,17 @@ class LoRALinear(nn.Module):
     Stell dir ein Foto vor (die Original-Gewichte).
     Statt das ganze Foto neu zu malen (Full Fine-Tuning),
     klebst du einen kleinen, transparenten Aufkleber drauf (LoRA).
-    Der Aufkleber veraendert nur wenig, aber gezielt.
+    Der Aufkleber verändert nur wenig, aber gezielt.
 
     VORTEILE:
     - Extrem wenige trainierbare Parameter (oft <1% des Originals)
     - Originale Gewichte bleiben komplett erhalten
-    - Mehrere LoRA-Adapter fuer verschiedene Aufgaben moeglich
+    - Mehrere LoRA-Adapter für verschiedene Aufgaben möglich
     - LoRA-Adapter sind winzig (leicht zu speichern/teilen)
 
     NACHTEILE:
-    - Limitierte Ausdrueckbarkeit (niedrigrangige Approximation)
-    - Hyperparameter-Tuning noetig (rank, alpha)
+    - Limitierte Ausdrückbarkeit (niedrigrangige Approximation)
+    - Hyperparameter-Tuning nötig (rank, alpha)
     """
 
     def __init__(self, original_layer: nn.Linear, rank: int = 4, alpha: float = 1.0):
@@ -672,10 +667,10 @@ class LoRALinear(nn.Module):
         # LoRA-Matrizen (die "Aufkleber")
         # A: Runterprojektion in den niedrig-dimensionalen Raum
         self.lora_A = nn.Parameter(torch.randn(rank, in_features) * 0.01)
-        # B: Hochprojektion zurueck in den originalen Raum
+        # B: Hochprojektion zurück in den originalen Raum
         self.lora_B = nn.Parameter(torch.zeros(out_features, rank))
         # B startet bei 0 -> Am Anfang ist LoRA-Beitrag = 0
-        # Das Modell verhaelt sich also zunaechst EXAKT wie das Original!
+        # Das Modell verhält sich also zunächst EXAKT wie das Original!
 
         # Skalierungsfaktor
         self.scaling = alpha / rank
@@ -699,7 +694,7 @@ def apply_lora(model, rank=4, alpha=1.0):
 
     In der Praxis wird LoRA typischerweise auf Q, K, V und Out-Projektionen
     der Attention-Layer angewendet - das sind die Schichten, wo Fine-Tuning
-    den groessten Effekt hat.
+    den größten Effekt hat.
     """
     lora_layers = []
 
@@ -724,7 +719,7 @@ def apply_lora(model, rank=4, alpha=1.0):
 
 def lora_finetuning(base_model, tokenizer, new_data, epochs=50, rank=4):
     """
-    LoRA FINE-TUNING - Kleine Adapter statt alle Gewichte aendern
+    LoRA FINE-TUNING - Kleine Adapter statt alle Gewichte ändern
     ==============================================================
     """
     print("\n" + "=" * 70)
@@ -746,9 +741,9 @@ def lora_finetuning(base_model, tokenizer, new_data, epochs=50, rank=4):
     lora_layers = apply_lora(model, rank=rank, alpha=1.0)
 
     for layer_name in lora_layers:
-        print(f"   + LoRA eingefuegt: {layer_name}")
+        print(f"   + LoRA eingefügt: {layer_name}")
 
-    # Embedding und LM Head auch trainierbar (fuer neue Woerter)
+    # Embedding und LM Head auch trainierbar (für neue Wörter)
     for param in model.token_embedding.parameters():
         param.requires_grad = True
     for param in model.lm_head.parameters():
@@ -759,20 +754,20 @@ def lora_finetuning(base_model, tokenizer, new_data, epochs=50, rank=4):
     trainable = count_parameters(model, only_trainable=True)
     frozen = total_params - trainable
 
-    # LoRA-Parameter separat zaehlen
+    # LoRA-Parameter separat zählen
     lora_params = sum(
         p.numel() for n, p in model.named_parameters()
         if p.requires_grad and 'lora_' in n
     )
 
-    print(f"\n   Parameter-Uebersicht:")
+    print(f"\n   Parameter-Übersicht:")
     print(f"   {'Gesamt:':<25} {total_params:>8,}")
     print(f"   {'Eingefroren (Original):':<25} {frozen:>8,} ({frozen/total_params*100:.1f}%)")
     print(f"   {'Trainierbar gesamt:':<25} {trainable:>8,} ({trainable/total_params*100:.1f}%)")
     print(f"   {'  davon LoRA-Params:':<25} {lora_params:>8,}")
     print(f"   {'  davon Embedding/Head:':<25} {trainable - lora_params:>8,}")
 
-    FINETUNE_LR = 0.002  # LoRA vertraegt hoehere Lernrate
+    FINETUNE_LR = 0.002  # LoRA verträgt höhere Lernrate
 
     dataset = TextDataset(new_data, tokenizer, seq_len=4)
     dataloader = DataLoader(dataset, batch_size=4, shuffle=True)
@@ -787,9 +782,9 @@ def lora_finetuning(base_model, tokenizer, new_data, epochs=50, rank=4):
 # =============================================================================
 
 def compare_approaches(results, save_dir):
-    """Vergleicht die drei Ansaetze visuell."""
+    """Vergleicht die drei Ansätze visuell."""
     print("\n" + "=" * 70)
-    print("VERGLEICH DER ANSAETZE")
+    print("VERGLEICH DER ANSÄTZE")
     print("=" * 70)
 
     # Loss-Kurven vergleichen
@@ -872,7 +867,7 @@ def demonstrate_catastrophic_forgetting(original_model, finetuned_model, tokeniz
     beim Lernen einer neuen Sprache die alte vergisst.
 
     Wir testen: Kann das fine-getunte Modell noch die alten
-    Saetze vervollstaendigen?
+    Sätze vervollständigen?
     """
     print("\n" + "=" * 70)
     print("CATASTROPHIC FORGETTING - Vergisst das Modell altes Wissen?")
@@ -915,7 +910,7 @@ def main():
     if not (model_dir / "model.pt").exists():
         print("\n   FEHLER: Kein vortrainiertes Modell gefunden!")
         print(f"   Erwartet in: {model_dir}")
-        print("   Bitte erst das Transformer-Modell trainieren (Option 2 im Hauptmenue).")
+        print("   Bitte erst das Transformer-Modell trainieren (Option 2 im Hauptmenü).")
         return
 
     original_model, tokenizer = load_transformer_model(str(model_dir))
@@ -924,21 +919,21 @@ def main():
     print(f"   Parameter: {count_parameters(original_model):,}")
 
     # --- Schritt 2: Vokabular erweitern ---
-    print("\n--- SCHRITT 2: Vokabular fuer neue Daten erweitern ---")
+    print("\n--- SCHRITT 2: Vokabular für neue Daten erweitern ---")
 
     new_words = expand_tokenizer(tokenizer, FINETUNING_DATA)
     if new_words:
-        print(f"   Neue Woerter ({len(new_words)}): {', '.join(new_words)}")
+        print(f"   Neue Wörter ({len(new_words)}): {', '.join(new_words)}")
     else:
-        print("   Keine neuen Woerter noetig - alle bereits im Vokabular.")
+        print("   Keine neuen Wörter nötig - alle bereits im Vokabular.")
 
     # --- Schritt 3: Modell-Embeddings erweitern ---
     if tokenizer.vocab_size > old_vocab_size:
         print("\n--- SCHRITT 3: Modell-Embeddings erweitern ---")
         expand_model_embeddings(original_model, old_vocab_size, tokenizer.vocab_size)
 
-    # --- Schritt 4: Alle drei Ansaetze ausfuehren ---
-    print("\n--- SCHRITT 4: Fine-Tuning mit 3 verschiedenen Ansaetzen ---")
+    # --- Schritt 4: Alle drei Ansätze ausführen ---
+    print("\n--- SCHRITT 4: Fine-Tuning mit 3 verschiedenen Ansätzen ---")
 
     EPOCHS = 50
 
@@ -1003,7 +998,7 @@ def main():
                          losses=losses_full, lr=0.001, **report_kwargs)
 
     # Layer Freezing: Komplettes Modell speichern
-    # Eingefrorene/trainierte Schichten fuer den Report sammeln
+    # Eingefrorene/trainierte Schichten für den Report sammeln
     frozen_layers = [n for n, p in model_frozen.named_parameters() if not p.requires_grad]
     trainable_layers = [n for n, p in model_frozen.named_parameters() if p.requires_grad]
     print("\n   [2/4] Layer Freezing Modell:")
@@ -1044,24 +1039,24 @@ def main():
 
     1. FULL FINE-TUNING
        - Alle Gewichte weitertrainieren mit kleinerer Lernrate
-       - Maximale Anpassungsfaehigkeit
+       - Maximale Anpassungsfähigkeit
        - Risiko: Catastrophic Forgetting (altes Wissen geht verloren)
 
     2. LAYER FREEZING
-       - Untere Schichten einfrieren (allgemeines Wissen schuetzen)
+       - Untere Schichten einfrieren (allgemeines Wissen schützen)
        - Obere Schichten trainieren (spezifisches Wissen anpassen)
        - Guter Kompromiss zwischen Anpassung und Wissenserhalt
 
     3. LoRA (Low-Rank Adaptation)
        - Kleine Matrizen A und B an bestehende Gewichte "ankleben"
-       - Originalgewichte bleiben KOMPLETT unveraendert
+       - Originalgewichte bleiben KOMPLETT unverändert
        - Extrem parametereffizient (<5% der Parameter trainierbar)
-       - In der Praxis DER Standard fuer LLM Fine-Tuning
+       - In der Praxis DER Standard für LLM Fine-Tuning
 
     PRAXIS-TIPPS:
     - Kleine Modelle (<1M Params): Full Fine-Tuning ist OK
     - Mittlere Modelle (1M-1B): Layer Freezing oder LoRA
-    - Grosse Modelle (>1B, z.B. LLaMA, GPT): Fast immer LoRA
+    - Große Modelle (>1B, z.B. LLaMA, GPT): Fast immer LoRA
       (Full Fine-Tuning von LLaMA-70B braucht >140GB GPU RAM!)
 
     SPEICHERUNG:

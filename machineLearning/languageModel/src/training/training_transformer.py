@@ -333,7 +333,7 @@ def visualize_attention(model, tokenizer, text: str, save_dir: Path = None):
             ax.set_title(f"Attention Weights - Layer {layer_idx + 1}")
             plt.colorbar(im)
             plt.tight_layout()
-            plt.close(fig)  # Plot schliessen ohne zu speichern
+            plt.close(fig)  # Plot schließen ohne zu speichern
         except Exception as e:
             print(f"   ⚠️ Plot nicht möglich: {e}")
 

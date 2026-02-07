@@ -243,7 +243,7 @@ def generate_finetuning_report(
     trainable_layers: list = None,
 ) -> str:
     """
-    Erstellt einen detaillierten Report fuer ein fine-getuntes Modell.
+    Erstellt einen detaillierten Report für ein fine-getuntes Modell.
 
     Args:
         model: Das fine-getunte PyTorch-Modell
@@ -254,15 +254,15 @@ def generate_finetuning_report(
         final_loss: Letzter Trainings-Loss
         epochs: Anzahl Trainings-Epochen
         learning_rate: Verwendete Lernrate
-        base_vocab_size: Original-Vokabulargroesse
-        new_vocab_size: Erweiterte Vokabulargroesse
-        new_words: Liste neuer Woerter
-        training_data: Die Fine-Tuning-Saetze
-        lora_rank: LoRA-Rank (nur fuer LoRA)
-        lora_alpha: LoRA-Alpha (nur fuer LoRA)
-        lora_target_modules: LoRA-Zielschichten (nur fuer LoRA)
-        frozen_layers: Eingefrorene Schichten (nur fuer Layer Freezing)
-        trainable_layers: Trainierte Schichten (nur fuer Layer Freezing)
+        base_vocab_size: Original-Vokabulargröße
+        new_vocab_size: Erweiterte Vokabulargröße
+        new_words: Liste neuer Wörter
+        training_data: Die Fine-Tuning-Sätze
+        lora_rank: LoRA-Rank (nur für LoRA)
+        lora_alpha: LoRA-Alpha (nur für LoRA)
+        lora_target_modules: LoRA-Zielschichten (nur für LoRA)
+        frozen_layers: Eingefrorene Schichten (nur für Layer Freezing)
+        trainable_layers: Trainierte Schichten (nur für Layer Freezing)
     """
     save_path = Path(save_path)
     frozen_params = total_params - trainable_params
@@ -287,7 +287,7 @@ def generate_finetuning_report(
     # --- Report aufbauen ---
     report = f"""# Fine-Tuning Report: {method_label}
 
-## Ueberblick
+## Überblick
 
 | Eigenschaft | Wert |
 |-------------|------|
@@ -325,16 +325,16 @@ Vortrainiertes Modell ──> Alle Parameter trainierbar ──> Aktualisiertes 
 
 | Phase | Lernrate | Zweck |
 |-------|----------|-------|
-| Basis-Training | 0.005 | Grosse Schritte, schnell lernen |
-| Fine-Tuning | 0.001 | Kleine Schritte, Wissen schuetzen |
+| Basis-Training | 0.005 | Große Schritte, schnell lernen |
+| Fine-Tuning | 0.001 | Kleine Schritte, Wissen schützen |
 
-Eine zu grosse Lernrate beim Fine-Tuning fuehrt zu **Catastrophic Forgetting**:
-Das Modell vergisst sein urspruengliches Wissen.
+Eine zu große Lernrate beim Fine-Tuning führt zu **Catastrophic Forgetting**:
+Das Modell vergisst sein ursprüngliches Wissen.
 
 ### Wann verwenden?
 
 - Kleine Modelle (<1M Parameter)
-- Wenn maximale Anpassung an neue Daten noetig ist
+- Wenn maximale Anpassung an neue Daten nötig ist
 - Wenn altes Wissen weniger wichtig ist
 """
 
@@ -345,27 +345,27 @@ Untere Schichten werden **eingefroren**, nur obere Schichten trainiert.
 
 ```
 Vortrainiertes Modell
-├── Embedding          ──> TRAINIERBAR  (neue Woerter lernen)
+├── Embedding          ──> TRAINIERBAR  (neue Wörter lernen)
 ├── Block 0            ──> EINGEFROREN  (allgemeines Sprachwissen)
 ├── Block 1            ──> TRAINIERBAR  (spezifisches Wissen anpassen)
 ├── Final LayerNorm    ──> TRAINIERBAR
-└── LM Head            ──> TRAINIERBAR  (neue Woerter vorhersagen)
+└── LM Head            ──> TRAINIERBAR  (neue Wörter vorhersagen)
 ```
 
 ### Warum funktioniert das?
 
 Verschiedene Schichten lernen verschiedene Abstraktionsstufen:
 
-| Schicht | Lernt | Aendert sich beim Fine-Tuning? |
+| Schicht | Lernt | Ändert sich beim Fine-Tuning? |
 |---------|-------|-------------------------------|
 | Untere (nahe Input) | Grammatik, Syntax, Wortarten | Wenig -> Einfrieren |
-| Obere (nahe Output) | Semantik, Zusammenhaenge | Viel -> Trainieren |
+| Obere (nahe Output) | Semantik, Zusammenhänge | Viel -> Trainieren |
 
 ### Wann verwenden?
 
 - Wenn Catastrophic Forgetting vermieden werden soll
-- Mittlere Modellgroessen (1M - 1B Parameter)
-- Wenn die neue Domaene aehnlich zur Original-Domaene ist
+- Mittlere Modellgrößen (1M - 1B Parameter)
+- Wenn die neue Domäne ähnlich zur Original-Domäne ist
 """
         if frozen_layers:
             report += "\n### Eingefrorene Schichten\n\n"
@@ -382,7 +382,7 @@ Verschiedene Schichten lernen verschiedene Abstraktionsstufen:
 
         report += f"""## Methode: LoRA (Low-Rank Adaptation)
 
-Kleine Matrizen A und B werden an die Attention-Projektionen angefuegt.
+Kleine Matrizen A und B werden an die Attention-Projektionen angefügt.
 
 ```
 Original:      y = W * x                    (W eingefroren)
@@ -401,8 +401,8 @@ Mit LoRA:      y = W * x  +  B * A * x      (A und B trainierbar)
 
 ### Warum rank={lora_rank or 4}?
 
-Die Gewichtsaenderungen beim Fine-Tuning liegen in einem niedrig-dimensionalen
-Unterraum. Rank={lora_rank or 4} bedeutet: Wir nehmen an, dass die Aenderung
+Die Gewichtsänderungen beim Fine-Tuning liegen in einem niedrig-dimensionalen
+Unterraum. Rank={lora_rank or 4} bedeutet: Wir nehmen an, dass die Änderung
 durch {lora_rank or 4} Dimensionen beschrieben werden kann.
 
 ```
@@ -424,7 +424,7 @@ LoRA-Adapter (winzig):             lora_weights.pt   (nur A- und B-Matrizen)
 Neue Embeddings:                   embedding_weights.pt
 ```
 
-Vorteil: Mehrere Adapter fuer verschiedene Aufgaben moeglich.
+Vorteil: Mehrere Adapter für verschiedene Aufgaben möglich.
 """
         else:
             report += """### Speicherformat: Gemerged
@@ -436,15 +436,15 @@ W_neu = W_original + (B @ A) * scaling
 ```
 
 Ergebnis: Ein normales MiniGPT-Modell ohne LoRA-Overhead.
-Die LoRA-Schichten existieren nicht mehr - das Modell verhaelt sich
-wie ein regulaer fine-getuntes Modell.
+Die LoRA-Schichten existieren nicht mehr - das Modell verhält sich
+wie ein regulär fine-getuntes Modell.
 """
 
         report += """
 ### Wann LoRA verwenden?
 
-- Grosse Modelle (>1B Parameter) - LoRA ist der Standard
-- Wenn mehrere Adapter fuer ein Basismodell benoetigt werden
+- Große Modelle (>1B Parameter) - LoRA ist der Standard
+- Wenn mehrere Adapter für ein Basismodell benötigt werden
 - Wenn GPU-Speicher begrenzt ist
 - In der Praxis: Fast immer die beste Wahl
 """
@@ -457,11 +457,11 @@ wie ein regulaer fine-getuntes Modell.
 |-------------|------|
 | **Original-Vokabular** | {base_vocab_size} Tokens |
 | **Erweitertes Vokabular** | {new_vocab_size} Tokens |
-| **Neue Woerter** | {new_vocab_size - base_vocab_size} |
+| **Neue Wörter** | {new_vocab_size - base_vocab_size} |
 
 """
     if new_words:
-        report += "### Neue Woerter\n\n"
+        report += "### Neue Wörter\n\n"
         report += "| # | Wort | Token-ID |\n"
         report += "|---|------|----------|\n"
         for i, word in enumerate(new_words):
@@ -471,7 +471,7 @@ wie ein regulaer fine-getuntes Modell.
     # --- Trainingsdaten ---
     if training_data:
         report += "## Fine-Tuning-Daten\n\n"
-        report += f"**{len(training_data)} Saetze** zum Nachtrainieren:\n\n"
+        report += f"**{len(training_data)} Sätze** zum Nachtrainieren:\n\n"
         for i, sentence in enumerate(training_data, 1):
             report += f"{i}. _{sentence}_\n"
         report += "\n"

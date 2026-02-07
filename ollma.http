@@ -7,7 +7,7 @@ Content-Type: application/json
   "messages": [
     {
       "role": "system",
-      "content": "You are a helpful assistant."
+      "content": "You are a helpful assistant. You answer the user directly without explanation. Do not think"
     },
     {
       "role": "user",
@@ -22,8 +22,6 @@ Content-Type: application/json
   "stream": true
 }
 
-
-
 ### Ollama Chat mit logprobs
 POST http://localhost:11434/api/chat
 Content-Type: application/json
@@ -37,13 +35,10 @@ Content-Type: application/json
     },
     {
       "role": "user",
-      "content": "Der Himmel ist"
+      "content": "Why the sky is blue?"
     }
   ],
   "options": {
-    "seed": 123,
-    "temperature": 0,
-    "num_ctx": 2048,
     "num_predict": 5
   },
   "logprobs": true,
