@@ -12,7 +12,7 @@ function createServer() {
   server.registerTool('getAllMovies', {
     description: 'Returns movies from the database (top 3)',
   }, async () => {
-    const movies = getMovies()
+    const movies = await getMovies()
     return {
       content: [
         {
