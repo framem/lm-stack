@@ -35,12 +35,12 @@ export function getEmbeddingModel() {
     switch (embeddingProvider) {
         case 'gateway': {
             const gw = createGateway({ apiKey: process.env.AI_GATEWAY_API_KEY })
-            return gw.textEmbeddingModel(embeddingModelName)
+            return gw.embeddingModel(embeddingModelName)
         }
         case 'lmstudio': {
             const baseURL = embeddingProviderUrl || 'http://localhost:1234/v1'
             const lmstudio = createOpenAICompatible({ name: 'lmstudio', baseURL })
-            return lmstudio.textEmbeddingModel(embeddingModelName)
+            return lmstudio.embeddingModel(embeddingModelName)
         }
         case 'ollama':
         default: {
