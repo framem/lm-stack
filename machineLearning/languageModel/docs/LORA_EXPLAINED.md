@@ -1,281 +1,281 @@
 # LoRA - Low-Rank Adaptation
 
-> Wie man riesige Sprachmodelle mit minimalen Ressourcen fine-tunen kann.
+> How to fine-tune massive language models with minimal resources.
 
-## Das Problem
+## The Problem
 
-Du hast ein vortrainiertes Modell (z.B. LLaMA-70B mit 70 Milliarden Parametern) und willst ihm
-neues Wissen beibringen. **Full Fine-Tuning** bedeutet: Alle 70B Parameter updaten.
+You have a pretrained model (e.g. LLaMA-70B with 70 billion parameters) and want to teach it
+new knowledge. **Full Fine-Tuning** means: updating all 70B parameters.
 
-- Speicherbedarf: **>140 GB GPU RAM** (nur fuer die Gewichte, ohne Gradienten)
-- Mit Gradienten + Optimizer: **~420 GB** (3x Modellgroesse fuer Adam)
-- Training: Tage bis Wochen auf teurer Hardware
+- Memory requirement: **>140 GB GPU RAM** (just for the weights, without gradients)
+- With gradients + optimizer: **~420 GB** (3x model size for Adam)
+- Training: days to weeks on expensive hardware
 
-LoRA loest dieses Problem.
+LoRA solves this problem.
 
 ---
 
-## Die Kernidee
+## The Core Idea
 
-Statt die originalen Gewichte `W` direkt zu veraendern, fuegen wir **zwei kleine Matrizen** `A` und `B` hinzu:
+Instead of modifying the original weights `W` directly, we add **two small matrices** `A` and `B`:
 
 ```
 Original:      y = W * x
-Mit LoRA:      y = W * x  +  B * A * x
+With LoRA:     y = W * x  +  B * A * x
                    ^^^^^     ^^^^^^^^^^^
-                   eingefroren   trainierbar (klein!)
+                   frozen     trainable (small!)
 ```
 
-### Warum funktioniert das?
+### Why does this work?
 
-Forschung ([Hu et al., 2021](https://arxiv.org/abs/2106.09685)) hat gezeigt:
+Research ([Hu et al., 2021](https://arxiv.org/abs/2106.09685)) has shown:
 
-> Die Gewichtsaenderungen beim Fine-Tuning haben einen **niedrigen Rang** (low rank).
-> Das heisst: Die meisten Aenderungen lassen sich durch wenige Dimensionen beschreiben.
+> The weight changes during fine-tuning have a **low rank**.
+> This means: most changes can be described by just a few dimensions.
 
-Intuitiv: Wenn man ein Modell von "Allgemeinwissen" auf "Kochwissen" fine-tuned,
-aendert sich nicht ALLES im Modell. Die Aenderung ist eine relativ "einfache"
-Transformation, die in einem niedrig-dimensionalen Unterraum liegt.
+Intuitively: when you fine-tune a model from "general knowledge" to "cooking knowledge",
+not EVERYTHING in the model changes. The change is a relatively "simple"
+transformation that lies in a low-dimensional subspace.
 
 ---
 
-## Beispiel mit konkreten Zahlen
+## Example with Concrete Numbers
 
-### Unser MiniGPT (embed_dim=64)
+### Our MiniGPT (embed_dim=64)
 
-Eine Attention-Projektion hat die Gewichtsmatrix `W` mit Shape `[64, 64]`:
-
-```
-Original W:     [64 x 64] = 4.096 Parameter
-
-LoRA mit rank=4:
-  A (runter):   [4 x 64]  = 256 Parameter     "Komprimiere den Input"
-  B (hoch):     [64 x 4]  = 256 Parameter     "Expandiere zurueck"
-  LoRA gesamt:             = 512 Parameter     = 12.5% von W
-```
-
-### Im Vergleich: LLaMA-70B
+An attention projection has the weight matrix `W` with shape `[64, 64]`:
 
 ```
-Eine Attention-Projektion:  [8192 x 8192] = 67.108.864 Parameter
+Original W:     [64 x 64] = 4,096 parameters
 
-LoRA mit rank=16:
-  A:   [16 x 8192]  = 131.072 Parameter
-  B:   [8192 x 16]  = 131.072 Parameter
-  LoRA gesamt:       = 262.144 Parameter       = 0.4% von W!
+LoRA with rank=4:
+  A (down):     [4 x 64]  = 256 parameters     "Compress the input"
+  B (up):       [64 x 4]  = 256 parameters     "Expand back"
+  LoRA total:              = 512 parameters     = 12.5% of W
 ```
 
-Bei LLaMA-70B mit LoRA auf allen Attention-Projektionen:
-- **Originale Parameter:** 70.000.000.000 (70B) -> eingefroren
-- **LoRA-Parameter:** ~160.000.000 (160M) -> trainierbar
-- **Verhaeltnis:** ~0.2% der Parameter werden trainiert
+### In Comparison: LLaMA-70B
+
+```
+One attention projection:  [8192 x 8192] = 67,108,864 parameters
+
+LoRA with rank=16:
+  A:   [16 x 8192]  = 131,072 parameters
+  B:   [8192 x 16]  = 131,072 parameters
+  LoRA total:        = 262,144 parameters       = 0.4% of W!
+```
+
+For LLaMA-70B with LoRA on all attention projections:
+- **Original parameters:** 70,000,000,000 (70B) -> frozen
+- **LoRA parameters:** ~160,000,000 (160M) -> trainable
+- **Ratio:** ~0.2% of parameters are trained
 
 ---
 
-## Schritt fuer Schritt: Was passiert mathematisch?
+## Step by Step: What Happens Mathematically?
 
-### 1. Initialisierung
+### 1. Initialization
 
 ```python
-# A: Zufaellig initialisiert (kleine Werte)
+# A: Randomly initialized (small values)
 self.lora_A = torch.randn(rank, in_features) * 0.01
 
-# B: Mit Nullen initialisiert!
+# B: Initialized with zeros!
 self.lora_B = torch.zeros(out_features, rank)
 ```
 
-**Warum B = 0?** Damit ist der LoRA-Beitrag am Anfang exakt 0:
+**Why B = 0?** This makes the LoRA contribution exactly 0 at the start:
 ```
 B * A * x = 0 * A * x = 0
 ```
-Das Modell verhaelt sich also zunaechst **identisch zum Original**.
-Das Training startet von einem funktionierenden Zustand aus.
+The model therefore behaves **identically to the original** at first.
+Training starts from a functioning state.
 
 ### 2. Forward Pass
 
 ```python
 def forward(self, x):
-    # Schritt 1: Originale Berechnung (eingefroren, kein Gradient)
+    # Step 1: Original computation (frozen, no gradient)
     original_out = self.original(x)           # y = W * x
 
-    # Schritt 2: LoRA-Beitrag
-    compressed = x @ self.lora_A.T            # [batch, seq, rank]      - Komprimieren
-    expanded = compressed @ self.lora_B.T     # [batch, seq, out_dim]   - Expandieren
-    lora_out = expanded * self.scaling        # Skalieren mit alpha/rank
+    # Step 2: LoRA contribution
+    compressed = x @ self.lora_A.T            # [batch, seq, rank]      - Compress
+    expanded = compressed @ self.lora_B.T     # [batch, seq, out_dim]   - Expand
+    lora_out = expanded * self.scaling        # Scale with alpha/rank
 
-    # Schritt 3: Addieren
+    # Step 3: Add together
     return original_out + lora_out            # y = W*x + B*A*x * (alpha/rank)
 ```
 
 ### 3. Backward Pass (Training)
 
-Beim Backpropagation werden **nur A und B** aktualisiert:
-- `W` ist eingefroren (`requires_grad = False`) -> kein Gradient, kein Update
-- `A` und `B` sind trainierbar -> Gradienten fliessen, Optimizer updated
+During backpropagation, **only A and B** are updated:
+- `W` is frozen (`requires_grad = False`) -> no gradient, no update
+- `A` and `B` are trainable -> gradients flow, optimizer updates
 
-### 4. Nach dem Training: Merging (optional)
+### 4. After Training: Merging (optional)
 
 ```python
-# LoRA-Gewichte in die Originalgewichte "einbacken"
-W_neu = W_original + (B @ A) * scaling
+# "Bake" LoRA weights into the original weights
+W_new = W_original + (B @ A) * scaling
 ```
 
-Danach ist das Modell ein ganz normales Modell ohne LoRA-Overhead.
+Afterward, the model is a completely normal model without LoRA overhead.
 
 ---
 
-## Hyperparameter
+## Hyperparameters
 
 ### Rank (`r`)
 
-Der wichtigste Hyperparameter. Bestimmt die Groesse des Unterraums:
+The most important hyperparameter. Determines the size of the subspace:
 
-| Rank | Parameter pro Layer | Ausdrueckbarkeit | Typischer Einsatz |
-|------|-------------------|-------------------|-------------------|
-| 1    | Minimal           | Sehr eingeschraenkt | Experimente |
-| 4    | Klein             | Fuer einfache Tasks | Unser MiniGPT |
-| 8    | Mittel            | Standard            | Die meisten Anwendungen |
-| 16   | Groesser          | Hohe Flexibilitaet  | Komplexe Tasks |
-| 64   | Gross             | Fast wie Full FT    | Selten noetig |
+| Rank | Parameters per Layer | Expressiveness | Typical Use |
+|------|---------------------|----------------|-------------|
+| 1    | Minimal             | Very limited   | Experiments |
+| 4    | Small               | For simple tasks | Our MiniGPT |
+| 8    | Medium              | Standard       | Most applications |
+| 16   | Larger              | High flexibility | Complex tasks |
+| 64   | Large               | Almost like Full FT | Rarely needed |
 
-**Faustregel:** Starte mit rank=8, erhoehe nur wenn die Performance nicht reicht.
+**Rule of thumb:** Start with rank=8, increase only if performance is insufficient.
 
 ### Alpha (`alpha`)
 
-Skalierungsfaktor fuer den LoRA-Beitrag:
+Scaling factor for the LoRA contribution:
 
 ```
 scaling = alpha / rank
 ```
 
-- `alpha = rank`: Skalierung = 1.0 (Standard)
-- `alpha > rank`: LoRA-Beitrag wird verstaerkt
-- `alpha < rank`: LoRA-Beitrag wird gedaempft
+- `alpha = rank`: Scaling = 1.0 (default)
+- `alpha > rank`: LoRA contribution is amplified
+- `alpha < rank`: LoRA contribution is dampened
 
-**Faustregel:** Setze `alpha = rank` oder `alpha = 2 * rank`.
+**Rule of thumb:** Set `alpha = rank` or `alpha = 2 * rank`.
 
-### Lernrate
+### Learning Rate
 
-LoRA vertraegt **hoehere Lernraten** als Full Fine-Tuning:
+LoRA tolerates **higher learning rates** than Full Fine-Tuning:
 
 ```
-Full Fine-Tuning:  lr = 1e-5 bis 5e-5
-LoRA:              lr = 1e-4 bis 3e-4   (oft 5-10x hoeher)
+Full Fine-Tuning:  lr = 1e-5 to 5e-5
+LoRA:              lr = 1e-4 to 3e-4   (often 5-10x higher)
 ```
 
-Warum? Die LoRA-Matrizen sind klein und aendern das Modell nur subtil.
-Groessere Schritte sind sicher, weil die Originalgewichte eingefroren sind.
+Why? The LoRA matrices are small and only change the model subtly.
+Larger steps are safe because the original weights are frozen.
 
 ---
 
-## Wo wird LoRA angewendet?
+## Where is LoRA Applied?
 
-Typischerweise auf die **Attention-Projektionen**:
+Typically to the **attention projections**:
 
 ```
 Transformer Block
 ├── Self-Attention
-│   ├── Q_proj  <-- LoRA        "Was suche ich?"
-│   ├── K_proj  <-- LoRA        "Was biete ich?"
-│   ├── V_proj  <-- LoRA        "Welche Information habe ich?"
-│   └── O_proj  <-- LoRA        "Finale Projektion"
-├── LayerNorm                    (kein LoRA, zu klein)
+│   ├── Q_proj  <-- LoRA        "What am I looking for?"
+│   ├── K_proj  <-- LoRA        "What do I offer?"
+│   ├── V_proj  <-- LoRA        "What information do I have?"
+│   └── O_proj  <-- LoRA        "Final projection"
+├── LayerNorm                    (no LoRA, too small)
 ├── Feed-Forward
-│   ├── Linear1                  (manchmal LoRA)
-│   └── Linear2                  (manchmal LoRA)
-└── LayerNorm                    (kein LoRA)
+│   ├── Linear1                  (sometimes LoRA)
+│   └── Linear2                  (sometimes LoRA)
+└── LayerNorm                    (no LoRA)
 ```
 
-In der Praxis zeigt sich:
-- **Q und V** sind am wichtigsten (groesster Effekt)
-- **K und O** bringen zusaetzlichen Gewinn
-- **Feed-Forward** optional, hilft bei manchen Tasks
+In practice:
+- **Q and V** are the most important (largest effect)
+- **K and O** provide additional gain
+- **Feed-Forward** optional, helps with some tasks
 
 ---
 
-## LoRA vs. andere Methoden
+## LoRA vs. Other Methods
 
-| Methode | Trainierbare Params | Speicherbedarf | Originalmodell | Mehrere Tasks |
-|---------|-------------------|----------------|----------------|---------------|
-| Full Fine-Tuning | 100% | Sehr hoch | Veraendert | Nein (1 Kopie pro Task) |
-| Layer Freezing | 30-50% | Hoch | Teilweise veraendert | Nein |
-| **LoRA** | **0.1-5%** | **Niedrig** | **Unveraendert** | **Ja (Adapter tauschen)** |
-| QLoRA | 0.1-5% | Sehr niedrig | Unveraendert (4-bit) | Ja |
-| Prefix Tuning | <0.1% | Minimal | Unveraendert | Ja |
-| Prompt Tuning | <0.01% | Minimal | Unveraendert | Ja |
+| Method | Trainable Params | Memory Usage | Original Model | Multiple Tasks |
+|--------|-----------------|--------------|----------------|----------------|
+| Full Fine-Tuning | 100% | Very high | Modified | No (1 copy per task) |
+| Layer Freezing | 30-50% | High | Partially modified | No |
+| **LoRA** | **0.1-5%** | **Low** | **Unchanged** | **Yes (swap adapters)** |
+| QLoRA | 0.1-5% | Very low | Unchanged (4-bit) | Yes |
+| Prefix Tuning | <0.1% | Minimal | Unchanged | Yes |
+| Prompt Tuning | <0.01% | Minimal | Unchanged | Yes |
 
 ---
 
-## Praxis: LoRA-Adapter speichern und laden
+## Practice: Saving and Loading LoRA Adapters
 
-### Variante 1: Nur den Adapter speichern
+### Option 1: Save Only the Adapter
 
 ```
-Basismodell (einmal heruntergeladen):     140 GB
-LoRA-Adapter "Kochwissen":                 50 MB
-LoRA-Adapter "Medizin":                    50 MB
-LoRA-Adapter "Jura":                       50 MB
+Base model (downloaded once):              140 GB
+LoRA adapter "cooking knowledge":           50 MB
+LoRA adapter "medicine":                    50 MB
+LoRA adapter "law":                         50 MB
 ```
 
-Auf Plattformen wie Hugging Face gibt es tausende LoRA-Adapter fuer
-populaere Basismodelle. Man laedt das Basismodell einmal und kann dann
-beliebig viele Adapter draufsetzen.
+On platforms like Hugging Face there are thousands of LoRA adapters for
+popular base models. You download the base model once and can then
+apply any number of adapters on top.
 
-### Variante 2: Adapter mergen
+### Option 2: Merge the Adapter
 
 ```python
-W_neu = W_original + (B @ A) * scaling
+W_new = W_original + (B @ A) * scaling
 ```
 
-Ergebnis: Ein normales Modell ohne LoRA-Overhead bei Inferenz.
-Nachteil: Der Adapter ist fest "eingebacken" und nicht mehr austauschbar.
+Result: A normal model without LoRA overhead at inference.
+Downside: The adapter is permanently "baked in" and no longer swappable.
 
-### Unser Projekt speichert beides
+### Our Project Saves Both
 
 ```
 dist/finetuning_results/
-├── lora_adapter/              # Nur die kleinen LoRA-Matrizen
-│   ├── lora_weights.pt        #   -> Die A- und B-Matrizen
-│   ├── embedding_weights.pt   #   -> Neue Wort-Embeddings
-│   ├── lora_config.json       #   -> Konfiguration (rank, alpha, ...)
-│   └── tokenizer.json         #   -> Erweitertes Vokabular
-└── lora_merged/               # LoRA in Originalgewichte eingebacken
-    ├── config.json            #   -> Normales MiniGPT-Config
-    ├── model.pt               #   -> Komplettes Modell (ohne LoRA-Logik)
-    └── tokenizer.json         #   -> Erweitertes Vokabular
+├── lora_adapter/              # Only the small LoRA matrices
+│   ├── lora_weights.pt        #   -> The A and B matrices
+│   ├── embedding_weights.pt   #   -> New word embeddings
+│   ├── lora_config.json       #   -> Configuration (rank, alpha, ...)
+│   └── tokenizer.json         #   -> Extended vocabulary
+└── lora_merged/               # LoRA baked into original weights
+    ├── config.json            #   -> Normal MiniGPT config
+    ├── model.pt               #   -> Complete model (without LoRA logic)
+    └── tokenizer.json         #   -> Extended vocabulary
 ```
 
 ---
 
-## Weiterführende Konzepte
+## Further Concepts
 
 ### QLoRA (Quantized LoRA)
 
-Kombiniert LoRA mit **4-bit Quantisierung** des Basismodells:
-- Basismodell wird auf 4-bit komprimiert (statt 16/32-bit)
-- LoRA-Adapter bleiben in voller Praezision (16-bit)
-- Ermoeglicht Fine-Tuning von 70B-Modellen auf einer einzigen GPU (24 GB)
+Combines LoRA with **4-bit quantization** of the base model:
+- Base model is compressed to 4-bit (instead of 16/32-bit)
+- LoRA adapters remain at full precision (16-bit)
+- Enables fine-tuning of 70B models on a single GPU (24 GB)
 
 ### DoRA (Weight-Decomposed Low-Rank Adaptation)
 
-Zerlegt die Gewichtsmatrix in **Richtung** und **Magnitude**:
+Decomposes the weight matrix into **direction** and **magnitude**:
 ```
 W = m * (W_original + B * A) / ||W_original + B * A||
 ```
-Trainiert beides separat. Oft bessere Ergebnisse als Standard-LoRA.
+Trains both separately. Often better results than standard LoRA.
 
 ### LoRA+
 
-Verwendet **unterschiedliche Lernraten** fuer A und B:
-- Matrix A: Hoehere Lernrate
-- Matrix B: Niedrigere Lernrate
+Uses **different learning rates** for A and B:
+- Matrix A: Higher learning rate
+- Matrix B: Lower learning rate
 
-Einfache Aenderung, oft bessere Konvergenz.
+Simple change, often better convergence.
 
 ---
 
-## Quellen
+## References
 
-- [LoRA: Low-Rank Adaptation of Large Language Models](https://arxiv.org/abs/2106.09685) - Das Original-Paper (Hu et al., 2021)
+- [LoRA: Low-Rank Adaptation of Large Language Models](https://arxiv.org/abs/2106.09685) - The original paper (Hu et al., 2021)
 - [QLoRA: Efficient Finetuning of Quantized LLMs](https://arxiv.org/abs/2305.14314) - QLoRA Paper (Dettmers et al., 2023)
 - [DoRA: Weight-Decomposed Low-Rank Adaptation](https://arxiv.org/abs/2402.09353) - DoRA Paper (Liu et al., 2024)

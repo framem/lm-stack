@@ -64,14 +64,14 @@ Interactive menu to:
 - Fine-tune models with LoRA
 - Run inference with trained models
 
-**Training direkt:**
+**Training directly:**
 ```bash
 python languageModel/src/training/training_lstm.py
 python languageModel/src/training/training_transformer.py
 python languageModel/src/training/finetuning_transformer.py
 ```
 
-**Inference direkt:**
+**Inference directly:**
 ```bash
 python languageModel/src/inference/inference_lstm.py
 python languageModel/src/inference/inference_transformer.py
@@ -99,39 +99,39 @@ Trains a Decision Tree on Melbourne housing data and exports it as ONNX model.
 
 ### LSTM (Long Short-Term Memory)
 
-LSTM ist eine Variante von Recurrent Neural Networks (RNN), die speziell für das Lernen von langen Sequenzen entwickelt wurde. Spezielle Gates steuern den Informationsfluss:
+LSTM is a variant of Recurrent Neural Networks (RNN) specifically designed for learning long sequences. Special gates control the information flow:
 
-- **Forget Gate**: Entscheidet, welche Informationen vergessen werden
-- **Input Gate**: Entscheidet, welche neuen Informationen gespeichert werden
-- **Output Gate**: Entscheidet, welche Informationen ausgegeben werden
+- **Forget Gate**: Decides which information to forget
+- **Input Gate**: Decides which new information to store
+- **Output Gate**: Decides which information to output
 
 ### Transformer
 
-Der Transformer verwendet Self-Attention statt Rekursion. Jedes Wort kann direkt auf alle anderen Wörter "schauen" - das ermöglicht parallele Verarbeitung und besseres Lernen von Zusammenhängen.
+The Transformer uses Self-Attention instead of recursion. Each word can directly "look at" all other words - this enables parallel processing and better learning of dependencies.
 
 ### Logits
 
-Logits sind die **rohen, unnormalisierten Ausgabewerte** eines neuronalen Netzes - die Werte *bevor* Softmax angewendet wird.
+Logits are the **raw, unnormalized output values** of a neural network - the values *before* Softmax is applied.
 
 ```
-Eingabe: "Die Katze sitzt auf dem"
+Input: "The cat sits on the"
 
-Logits (roh):          Softmax (Wahrscheinlichkeiten):
-  "tisch"  →  4.2         "tisch"  →  45%
+Logits (raw):          Softmax (probabilities):
+  "table"  →  4.2         "table"  →  45%
   "sofa"   →  3.1         "sofa"   →  15%
-  "boden"  →  2.8         "boden"  →  11%
-  Summe: beliebig         Summe: 100%
+  "floor"  →  2.8         "floor"  →  11%
+  Sum: arbitrary           Sum: 100%
 ```
 
-**Temperature-Sampling** skaliert die Logits vor Softmax:
-- `temp < 1`: Verstärkt Unterschiede → konservativere Ausgabe
-- `temp > 1`: Verringert Unterschiede → kreativere/zufälligere Ausgabe
+**Temperature sampling** scales the logits before Softmax:
+- `temp < 1`: Amplifies differences → more conservative output
+- `temp > 1`: Reduces differences → more creative/random output
 
 ---
 
 ## Numeric Model
 
-Decision Tree Regressor auf dem Melbourne Housing Dataset. Trainiert auf Features wie Rooms, Distance, Bathroom, etc. und sagt den Preis voraus. Export als ONNX für portablen Einsatz.
+Decision Tree Regressor on the Melbourne Housing Dataset. Trained on features like Rooms, Distance, Bathroom, etc. and predicts the price. Exported as ONNX for portable deployment.
 
 ---
 
