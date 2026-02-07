@@ -3,6 +3,9 @@ import { z } from 'zod'
 import { getMoviesByGenre, getTopRatedMovies } from '@/src/data-access/movies'
 import { prisma } from '@/src/lib/prisma'
 import { getModel } from '@/src/lib/llm'
+import { toMovieSlug } from '@/src/lib/slug'
+
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
 
 const tools = {
     searchByTitle: {
@@ -25,6 +28,7 @@ const tools = {
                 genre: m.genre,
                 overview: m.overview,
                 director: m.director,
+                link: `${BASE_URL}/movie/${toMovieSlug(m.seriesTitle, m.id)}`,
             }))
         },
     },
@@ -43,6 +47,7 @@ const tools = {
                 genre: m.genre,
                 overview: m.overview,
                 director: m.director,
+                link: `${BASE_URL}/movie/${toMovieSlug(m.seriesTitle, m.id)}`,
             }))
         },
     },
@@ -60,6 +65,7 @@ const tools = {
                 genre: m.genre,
                 overview: m.overview,
                 director: m.director,
+                link: `${BASE_URL}/movie/${toMovieSlug(m.seriesTitle, m.id)}`,
             }))
         },
     },
@@ -76,7 +82,8 @@ export async function POST(req: Request) {
 Du hast Zugriff auf eine Datenbank mit den Top 1000 IMDb-Filmen.
 Nutze die verfügbaren Tools, um Filme zu suchen und Empfehlungen zu geben.
 Antworte immer auf Deutsch, es sei denn, der Nutzer schreibt auf Englisch.
-Halte deine Antworten kurz und übersichtlich. Nenne pro Empfehlung den Titel, das Jahr und eine kurze Begründung.`,
+Halte deine Antworten kurz und übersichtlich. Nenne pro Empfehlung den Titel, das Jahr und eine kurze Begründung.
+Jeder Film in den Tool-Ergebnissen enthält ein "link"-Feld. Verlinke den Filmtitel immer mit diesem Link im Markdown-Format, z.B. [Inception (2010)](http://localhost:3000/movie/inception-abc123).`,
         messages: modelMessages,
         tools,
         stopWhen: stepCountIs(3),

@@ -1,5 +1,6 @@
 import { prisma } from '@/src/lib/prisma'
 import { type Movie } from '@/prisma/generated/prisma/client'
+import { createEmbedding } from '@/src/lib/llm'
 
 // Existing functions (kept for MCP compatibility)
 export async function getMovies() {
@@ -94,27 +95,30 @@ export async function getRecommendedMovies(movieId: string, take = 12) {
         `
     }
 
-    // Fallback: genre-based recommendations
-    if (!movie.genre) return []
-    const genres = movie.genre.split(',').map(g => g.trim()).filter(Boolean)
+    return []
+}
 
-    return prisma.movie.findMany({
-        where: {
-            AND: [
-                { id: { not: movieId } },
-                {
-                    OR: genres.map(genre => ({
-                        genre: {
-                            contains: genre,
-                            mode: 'insensitive' as const,
-                        },
-                    })),
-                },
-            ],
-        },
-        orderBy: { imdbRating: 'desc' },
-        take,
-    })
+// --- Hybrid search: title LIKE + embedding similarity ---
+
+export async function searchMovies(query: string, take = 20): Promise<Movie[]> {
+    const embedding = await createEmbedding(query)
+    const vectorString = `[${embedding.join(',')}]`
+
+    return prisma.$queryRawUnsafe<Movie[]>(
+        `SELECT id, "posterLink", "seriesTitle", "releasedYear", certificate,
+                runtime, genre, "imdbRating", overview, "metaScore",
+                director, star1, star2, star3, star4, "noOfVotes", gross
+         FROM "Movie"
+         WHERE "seriesTitle" ILIKE $1
+            OR (embedding IS NOT NULL AND (embedding <=> $2::vector) < 0.7)
+         ORDER BY
+            CASE WHEN "seriesTitle" ILIKE $1 THEN 0 ELSE 1 END,
+            CASE WHEN embedding IS NOT NULL THEN (embedding <=> $2::vector) ELSE 2 END
+         LIMIT $3`,
+        `%${query}%`,
+        vectorString,
+        take
+    )
 }
 
 // --- Embedding management functions ---

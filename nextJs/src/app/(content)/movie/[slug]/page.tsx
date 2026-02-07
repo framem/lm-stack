@@ -1,7 +1,5 @@
 import Image from 'next/image'
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { ArrowLeft } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { getMovieById, getRecommendedMovies } from '@/src/data-access/movies'
 import { extractIdFromSlug } from '@/src/lib/slug'
@@ -48,15 +46,6 @@ export default async function MovieDetailPage({
                 {/* Gradient overlays */}
                 <div className="absolute inset-0 bg-gradient-to-t from-[#141414] via-[#141414]/60 to-transparent" />
                 <div className="absolute inset-0 bg-gradient-to-r from-[#141414] via-[#141414]/40 to-transparent" />
-
-                {/* Back button */}
-                <Link
-                    href="/"
-                    className="absolute top-6 left-6 z-30 flex items-center gap-2 text-zinc-300 hover:text-white transition-colors"
-                >
-                    <ArrowLeft className="w-5 h-5" />
-                    <span className="text-sm font-medium">Back</span>
-                </Link>
 
                 {/* Hero content */}
                 <div className="relative z-20 px-8 md:px-12 pb-10 pt-24 max-w-4xl">

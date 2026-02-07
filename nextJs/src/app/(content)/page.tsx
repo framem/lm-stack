@@ -1,11 +1,9 @@
 import { Suspense } from 'react'
 import { getAllGenres, getTopRatedMovies } from '@/src/data-access/movies'
-import Navbar from '@/src/components/Navbar'
 import HeroSection from '@/src/components/HeroSection'
 import GenreRow from '@/src/components/GenreRow'
 import GenreRowScroller from '@/src/components/GenreRowScroller'
 import { Skeleton } from '@/components/ui/skeleton'
-import ChatBot from '@/src/components/ChatBot'
 
 export const dynamic = 'force-dynamic'
 
@@ -30,8 +28,6 @@ export default async function Home() {
 
     return (
         <main className="pb-16">
-            <Navbar />
-
             <HeroSection />
 
             {/* Top Rated row */}
@@ -48,7 +44,6 @@ export default async function Home() {
                     <GenreRow genre={genre} />
                 </Suspense>
             ))}
-            <ChatBot />
         </main>
     )
 }
