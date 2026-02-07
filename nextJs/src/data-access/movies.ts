@@ -70,3 +70,28 @@ export async function getFeaturedMovie() {
     })
     return topMovies[Math.floor(Math.random() * topMovies.length)] ?? topMovies[0]
 }
+
+export async function getRecommendedMovies(movieId: string, take = 12) {
+    const movie = await getMovieById(movieId)
+    if (!movie || !movie.genre) return []
+
+    const genres = movie.genre.split(',').map(g => g.trim()).filter(Boolean)
+
+    return prisma.movie.findMany({
+        where: {
+            AND: [
+                { id: { not: movieId } },
+                {
+                    OR: genres.map(genre => ({
+                        genre: {
+                            contains: genre,
+                            mode: 'insensitive' as const,
+                        },
+                    })),
+                },
+            ],
+        },
+        orderBy: { imdbRating: 'desc' },
+        take,
+    })
+}
