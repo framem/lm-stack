@@ -6,6 +6,9 @@ import {
 } from '@/src/data-access/movies'
 import { createEmbedding } from '@/src/lib/llm'
 
+export const dynamic = 'force-dynamic'
+export const maxDuration = 300
+
 export async function GET() {
     const status = await getEmbeddingStatus()
     return Response.json(status)
