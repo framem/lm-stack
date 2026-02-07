@@ -116,3 +116,45 @@ export async function getRecommendedMovies(movieId: string, take = 12) {
         take,
     })
 }
+
+// --- Embedding management functions ---
+
+export async function getEmbeddingStatus(): Promise<{ total: number; embedded: number; percentage: number }> {
+    const [result] = await prisma.$queryRaw<{ total: number; embedded: number }[]>`
+        SELECT COUNT(*)::int as total, COUNT(embedding)::int as embedded FROM "Movie"
+    `
+    const { total, embedded } = result
+    const percentage = total === 0 ? 0 : Math.round((embedded / total) * 100)
+    return { total, embedded, percentage }
+}
+
+export async function getMoviesWithoutEmbedding(take = 10): Promise<Movie[]> {
+    return prisma.$queryRaw<Movie[]>`
+        SELECT id, "posterLink", "seriesTitle", "releasedYear", certificate, runtime, genre,
+               "imdbRating", overview, "metaScore", director, star1, star2, star3, star4,
+               "noOfVotes", gross
+        FROM "Movie"
+        WHERE embedding IS NULL
+        LIMIT ${take}
+    `
+}
+
+export async function saveMovieEmbedding(movieId: string, embedding: number[]): Promise<void> {
+    const vectorString = `[${embedding.join(',')}]`
+    await prisma.$executeRawUnsafe(
+        `UPDATE "Movie" SET embedding = $1::vector WHERE id = $2`,
+        vectorString,
+        movieId
+    )
+}
+
+export function buildEmbeddingText(movie: Movie): string {
+    const parts: string[] = []
+    if (movie.seriesTitle) parts.push(movie.seriesTitle)
+    if (movie.genre) parts.push(movie.genre)
+    if (movie.overview) parts.push(movie.overview)
+    if (movie.director) parts.push(`Director: ${movie.director}`)
+    const stars = [movie.star1, movie.star2, movie.star3, movie.star4].filter(Boolean)
+    if (stars.length) parts.push(`Stars: ${stars.join(', ')}`)
+    return parts.join('. ')
+}
