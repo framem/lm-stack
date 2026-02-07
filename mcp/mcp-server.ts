@@ -6,7 +6,7 @@ import {createServer} from 'http'
 import {z} from 'zod'
 
 const server = new McpServer({
-  name: 'movies-mcp',
+  name: 'simple-mcp',
   version: '1.0.0',
 })
 
