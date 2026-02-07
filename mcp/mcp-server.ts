@@ -4,44 +4,32 @@ import {McpServer} from '@modelcontextprotocol/sdk/server/mcp.js'
 import {StreamableHTTPServerTransport} from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import {createServer} from 'http'
 import {z} from 'zod'
-import {getMovies, getMoviesByCategory} from "@/src/data-access/movies";
 
 const server = new McpServer({
   name: 'movies-mcp',
   version: '1.0.0',
 })
 
-server.registerTool('getAllMovies', {
-  description: 'Returns movies from the database (top 3)',
+server.registerTool('getDateTime', {
+  description: 'Returns the current date and time',
 }, async () => {
-  const movies = getMovies()
   return {
-    content: [
-      {
-        type: 'text',
-        text: JSON.stringify(movies, null, 2),
-      },
-    ],
+    content: [{type: 'text' as const, text: new Date().toISOString()}],
   }
 })
 
-server.registerTool('getMoviesByCategory', {
-  description: 'Returns movies filtered by genre/category (e.g. Drama, Action, Comedy, Sci-Fi)',
+server.registerTool('getRandomNumber', {
+  description: 'Returns a random integer between lower and upper (inclusive)',
   inputSchema: {
-    category: z.string().describe('The genre/category to filter by (e.g. Drama, Action, Comedy, Sci-Fi)'),
+    lower: z.number().optional().default(0).describe('Lower bound (inclusive, default 0)'),
+    upper: z.number().optional().default(10).describe('Upper bound (inclusive, default 10)'),
   },
-}, async ({category}) => {
-  const movies = await getMoviesByCategory(category)
+}, async ({lower, upper}) => {
+  const num = Math.floor(Math.random() * (upper - lower + 1)) + lower
   return {
-    content: [
-      {
-        type: 'text',
-        text: JSON.stringify(movies, null, 2),
-      },
-    ],
+    content: [{type: 'text' as const, text: String(num)}],
   }
 })
-
 const PORT = Number(process.env.MCP_PORT ?? 3001)
 
 const transports = new Map<string, StreamableHTTPServerTransport>()

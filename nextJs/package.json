@@ -1,7 +1,7 @@
 {
-  "name": "n8n",
+  "name": "next",
   "version": "1.0.0",
-  "description": "```bash docker run -it --rm --name n8n -p 5678:5678 -v n8n_data:/home/node/.n8n docker.n8n.io/n8nio/n8n start --tunnel --log-level debug ```",
+  "description": "",
   "license": "ISC",
   "author": "",
   "type": "module",
@@ -13,7 +13,6 @@
     "lint": "next lint",
     "prisma:seed:demo": "npx tsx prisma/sampleData/seed-demo.ts",
     "prisma:seed:movies": "npx tsx prisma/sampleData/seed-movies.ts",
-    "mcp": "npx tsx mcp-server.ts",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
     "prisma": "npm run prisma:generate && npm run prisma:push",
@@ -24,11 +23,7 @@
     "@types/react": "^19.2.10",
     "@types/react-dom": "^19.2.3",
     "prisma": "^7.3.0",
-    "tsx": "^4.21.0",
     "typescript": "5.9.3"
-  },
-  "imports": {
-    "#lib/*": "./lib/*"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.25.3",
