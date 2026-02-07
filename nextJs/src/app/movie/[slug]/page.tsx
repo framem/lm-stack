@@ -4,14 +4,16 @@ import { notFound } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { getMovieById, getRecommendedMovies } from '@/src/data-access/movies'
+import { extractIdFromSlug } from '@/src/lib/slug'
 import GenreRowScroller from '@/src/components/GenreRowScroller'
 
 export default async function MovieDetailPage({
     params,
 }: {
-    params: Promise<{ id: string }>
+    params: Promise<{ slug: string }>
 }) {
-    const { id } = await params
+    const { slug } = await params
+    const id = extractIdFromSlug(slug)
 
     const [movie, recommendations] = await Promise.all([
         getMovieById(id),
@@ -171,7 +173,7 @@ export default async function MovieDetailPage({
             {recommendations.length > 0 && (
                 <section className="pb-16">
                     <h2 className="text-xl font-semibold mb-4 px-12 text-white">
-                        Das k&#246;nnte dir auch gefallen
+                        Das könnte dir auch gefallen
                     </h2>
                     <GenreRowScroller movies={recommendations} />
                 </section>

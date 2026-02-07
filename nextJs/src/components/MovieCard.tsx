@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { useRef, useState, useEffect } from 'react'
 import type { Movie } from '@/src/types/movie'
+import { toMovieSlug } from '@/src/lib/slug'
 
 export default function MovieCard({ movie }: { movie: Movie }) {
     const [isVisible, setIsVisible] = useState(false)
@@ -32,7 +33,7 @@ export default function MovieCard({ movie }: { movie: Movie }) {
 
     return (
         <div ref={cardRef} className="group relative flex-shrink-0 w-[160px]">
-            <Link href={`/movie/${movie.id}`}>
+            <Link href={`/movie/${toMovieSlug(movie.seriesTitle, movie.id)}`}>
                 <div className="relative aspect-[2/3] rounded-md overflow-hidden bg-zinc-800 transition-transform duration-300 group-hover:scale-105 group-hover:z-10 group-hover:shadow-xl group-hover:shadow-black/50">
                     {posterSrc && isVisible ? (
                         <Image
