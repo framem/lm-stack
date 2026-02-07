@@ -1,14 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
+import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import SearchBar from './SearchBar'
 
 export default function Navbar() {
     const [scrolled, setScrolled] = useState(false)
     const pathname = usePathname()
-    const router = useRouter()
     const isHome = pathname === '/'
 
     useEffect(() => {
@@ -27,13 +27,13 @@ export default function Navbar() {
                         MovieFlix
                     </h1>
                 ) : (
-                    <button
-                        onClick={() => router.back()}
-                        className="flex items-center gap-2 text-zinc-300 hover:text-white transition-colors cursor-pointer"
+                    <Link
+                        href="/"
+                        className="flex items-center gap-2 text-zinc-300 hover:text-white transition-colors"
                     >
                         <ArrowLeft className="w-5 h-5" />
                         <span className="text-sm font-medium">Back</span>
-                    </button>
+                    </Link>
                 )}
                 <SearchBar />
             </div>

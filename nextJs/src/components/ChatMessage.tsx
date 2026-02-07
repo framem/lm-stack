@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import type { Components } from 'react-markdown'
@@ -9,17 +10,36 @@ type ChatMessageProps = {
     role: 'user' | 'assistant'
 }
 
+function getInternalPath(href: string): string | null {
+    try {
+        const url = new URL(href, 'http://localhost')
+        if (url.hostname === 'localhost') return url.pathname
+    } catch {}
+    if (href.startsWith('/')) return href
+    return null
+}
+
 const markdownComponents: Components = {
-    a: ({ href, children }) => (
-        <a
-            href={href}
-            className="text-blue-400 underline hover:text-blue-300"
-            target={href?.startsWith('http://localhost') ? '_self' : '_blank'}
-            rel="noopener noreferrer"
-        >
-            {children}
-        </a>
-    ),
+    a: ({ href, children }) => {
+        const internalPath = href ? getInternalPath(href) : null
+        if (internalPath) {
+            return (
+                <Link href={internalPath} className="text-blue-400 underline hover:text-blue-300">
+                    {children}
+                </Link>
+            )
+        }
+        return (
+            <a
+                href={href}
+                className="text-blue-400 underline hover:text-blue-300"
+                target="_blank"
+                rel="noopener noreferrer"
+            >
+                {children}
+            </a>
+        )
+    },
     strong: ({ children }) => <strong className="font-bold">{children}</strong>,
     em: ({ children }) => <em className="italic">{children}</em>,
     ul: ({ children }) => <ul className="list-disc ml-4 my-1">{children}</ul>,
