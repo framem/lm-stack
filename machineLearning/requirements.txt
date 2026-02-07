@@ -9,4 +9,3 @@ skl2onnx>=1.20.0
 # === languageModel ===
 torch>=2.10.0
 matplotlib>=3.10.8
-transformers>=5.1.0
