@@ -11,7 +11,6 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "prisma:seed:demo": "npx tsx prisma/sampleData/seed-demo.ts",
     "prisma:seed:movies": "npx tsx prisma/sampleData/seed-movies.ts",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
