@@ -1,5 +1,5 @@
 import Image from 'next/image'
-import { Badge } from '@/components/ui/badge'
+import { Badge } from '@/src/components/ui/badge'
 import { getFeaturedMovie } from '@/src/data-access/movies'
 
 export default async function HeroSection() {

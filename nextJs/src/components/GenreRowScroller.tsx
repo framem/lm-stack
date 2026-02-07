@@ -2,7 +2,7 @@
 
 import { useRef, useState, useEffect } from 'react'
 import MovieCard from './MovieCard'
-import type { Movie } from '@/src/types/movie'
+import type { Movie } from '@/prisma/generated/prisma/client'
 
 export default function GenreRowScroller({ movies }: { movies: Movie[] }) {
     const scrollRef = useRef<HTMLDivElement>(null)

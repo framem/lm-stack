@@ -8,7 +8,7 @@ const provider: LLMProvider = (process.env.LLM_PROVIDER as LLMProvider) || 'lmst
 const modelName = process.env.LLM_MODEL || 'qwen3:8b'
 
 const embeddingProvider: LLMProvider = (process.env.EMBEDDING_PROVIDER as LLMProvider) || provider
-const embeddingModelName = process.env.EMBEDDING_MODEL || 'nomic-embed-text-v1.5'
+const embeddingModelName = process.env.EMBEDDING_MODEL || 'no-embedding-modell-provided'
 const embeddingProviderUrl = process.env.EMBEDDING_PROVIDER_URL || process.env.LLM_PROVIDER_URL
 
 export function getModel() {

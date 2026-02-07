@@ -2,9 +2,9 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { Badge } from '@/components/ui/badge'
+import { Badge } from '@/src/components/ui/badge'
 import { useRef, useState, useEffect } from 'react'
-import type { Movie } from '@/src/types/movie'
+import type { Movie } from '@/prisma/generated/prisma/client'
 import { toMovieSlug } from '@/src/lib/slug'
 
 export default function MovieCard({ movie }: { movie: Movie }) {

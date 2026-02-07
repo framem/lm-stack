@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { toMovieSlug } from '@/src/lib/slug'
-import { type Movie } from '@/src/types/movie'
+import { type Movie } from '@/prisma/generated/prisma/client'
 
 export default function SearchBar() {
     const [query, setQuery] = useState('')

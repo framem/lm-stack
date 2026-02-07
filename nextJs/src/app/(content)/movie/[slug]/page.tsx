@@ -1,6 +1,6 @@
 import Image from 'next/image'
 import { notFound } from 'next/navigation'
-import { Badge } from '@/components/ui/badge'
+import { Badge } from '@/src/components/ui/badge'
 import { getMovieById, getRecommendedMovies } from '@/src/data-access/movies'
 import { extractIdFromSlug } from '@/src/lib/slug'
 import GenreRowScroller from '@/src/components/GenreRowScroller'

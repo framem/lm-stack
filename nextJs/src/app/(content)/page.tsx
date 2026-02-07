@@ -3,7 +3,7 @@ import { getAllGenres, getTopRatedMovies } from '@/src/data-access/movies'
 import HeroSection from '@/src/components/HeroSection'
 import GenreRow from '@/src/components/GenreRow'
 import GenreRowScroller from '@/src/components/GenreRowScroller'
-import { Skeleton } from '@/components/ui/skeleton'
+import { Skeleton } from '@/src/components/ui/skeleton'
 
 export const dynamic = 'force-dynamic'
 
