@@ -14,7 +14,10 @@ server.registerTool('getDateTime', {
   description: 'Returns the current date and time',
 }, async () => {
   return {
-    content: [{type: 'text' as const, text: new Date().toISOString()}],
+    content: [{
+      type: 'text' as const,
+      text: new Date().toISOString()
+    }],
   }
 })
 
@@ -27,7 +30,10 @@ server.registerTool('getRandomNumber', {
 }, async ({lower, upper}) => {
   const num = Math.floor(Math.random() * (upper - lower + 1)) + lower
   return {
-    content: [{type: 'text' as const, text: String(num)}],
+    content: [{
+      type: 'text' as const,
+      text: String(num)
+    }],
   }
 })
 const PORT = Number(process.env.MCP_PORT ?? 3001)
