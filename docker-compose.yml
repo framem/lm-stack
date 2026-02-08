@@ -1,7 +1,7 @@
 services:
   gguf-converter:
     build:
-      context: ./docker/gguf-converter
+      context: ./quantization/gguf-converter
       dockerfile: Dockerfile
     image: gguf-converter:latest
     container_name: gguf-converter
@@ -16,7 +16,7 @@ services:
     networks: ['agents']
     volumes:
       - ollama_data:/root/.ollama
-      - ./docker/ollama/custom_models:/app/model-definitions
+      - ./quantization/ollama/custom_models:/app/model-definitions
     ports:
       - "11434:11434"
     command: serve
@@ -42,7 +42,7 @@ services:
     networks: ['agents']
     volumes:
       - ollama_data:/root/.ollama
-      - ./docker/ollama/custom_models:/app/model-definitions
+      - ./quantization/ollama/custom_models:/app/model-definitions
     ports:
       - "11434:11434"
     command: serve

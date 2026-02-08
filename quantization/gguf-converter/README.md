@@ -1,72 +1,72 @@
 # GGUF Converter
 
-Docker-Container zur Konvertierung von HuggingFace-Modellen zu GGUF (fuer LM Studio, llama.cpp, Ollama).
+Docker container for converting HuggingFace models to GGUF (for LM Studio, llama.cpp, Ollama).
 
-## Unterstuetzte Architekturen
+## Supported Architectures
 
-| Architektur | HuggingFace Klasse | Status |
+| Architecture | HuggingFace Class | Status |
 |-------------|-------------------|--------|
-| LLaMA | `LlamaForCausalLM` | Empfohlen |
+| LLaMA | `LlamaForCausalLM` | Recommended |
 | Mistral | `MistralForCausalLM` | OK |
 | Falcon | `FalconForCausalLM` | OK |
 | Phi | `PhiForCausalLM` | OK |
 | Qwen2 | `Qwen2ForCausalLM` | OK |
 | Gemma | `GemmaForCausalLM` | OK |
 
-## Verwendung
+## Usage
 
-### Image bauen
+### Build Image
 
 ```bash
 docker compose build gguf-converter
 ```
 
-### Mini-LLaMA Modell konvertieren
+### Convert Mini-LLaMA Model
 
 ```bash
-# Basis-Konvertierung (F16)
+# Base conversion (F16)
 docker compose run --rm gguf-converter /app/convert.sh --input /models/input/llama_mini --output /models/output/llama-mini.gguf
 
-# Mit Quantisierung (kleiner, schneller)
+# With quantization (smaller, faster)
 docker compose run --rm gguf-converter /app/convert.sh --input /models/input/llama_mini --output /models/output/llama-mini.gguf --quantize q4_0
 ```
 
-### Hilfe anzeigen
+### Show Help
 
 ```bash
 docker compose run --rm gguf-converter /app/convert.sh --help
 ```
 
-### Unterstuetzte Architekturen auflisten
+### List Supported Architectures
 
 ```bash
 docker compose run --rm gguf-converter /app/convert.sh --list
 ```
 
-## Quantisierungsoptionen
+## Quantization Options
 
-| Typ | Bits | Groesse | Qualitaet |
+| Type | Bits | Size | Quality |
 |-----|------|---------|-----------|
-| `q8_0` | 8-bit | ~50% | Beste |
-| `q5_1` | 5-bit | ~35% | Sehr gut |
-| `q5_0` | 5-bit | ~35% | Gut |
-| `q4_1` | 4-bit | ~25% | Akzeptabel |
-| `q4_0` | 4-bit | ~25% | Kleinste |
+| `q8_0` | 8-bit | ~50% | Best |
+| `q5_1` | 5-bit | ~35% | Very good |
+| `q5_0` | 5-bit | ~35% | Good |
+| `q4_1` | 4-bit | ~25% | Acceptable |
+| `q4_0` | 4-bit | ~25% | Smallest |
 
 ## Output
 
-Die konvertierten GGUF-Dateien landen in:
+Converted GGUF files are stored in:
 ```
 languageModel/dist/gguf_converted/
 ├── llama-mini.gguf
 └── llama-mini-q4_0.gguf
 ```
 
-## In LM Studio importieren
+## Import into LM Studio
 
 ```bash
 # Via CLI
 lms import -c ../../languageModel/dist/gguf_converted/llama-mini.gguf
 
-# Oder: Datei manuell in LM Studio oeffnen
+# Or: Open file manually in LM Studio
 ```
