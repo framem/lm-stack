@@ -24,7 +24,7 @@ npm ci
 npm run mcp
 ```
 
-The server starts on `http://0.0.0.0:3001` (port configurable via `MCP_PORT` in a `.env` file).
+The server starts on `http://localhost:3001` (port configurable via `MCP_PORT` in a `.env` file).
 
 ### 2. Open the Inspector
 
@@ -37,7 +37,7 @@ npm run inspect
 The MCP Inspector opens in the browser. Enter the server URL:
 
 ```
-http://localhost:3001/mcp
+http://localhost:3001
 ```
 
 You can now interactively test the registered tools (`getDateTime`, `getRandomNumber`).
