@@ -2,8 +2,8 @@
   "name": "next",
   "version": "1.0.0",
   "description": "",
-  "license": "ISC",
-  "author": "",
+  "license": "MIT",
+  "author": "framem",
   "type": "module",
   "main": "index.js",
   "scripts": {
@@ -15,7 +15,7 @@
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
     "prisma": "npm run prisma:generate && npm run prisma:push",
-    "n8n:export": "bash ../scripts/export-workflows.sh"
+    "n8n:export": "bash ../n8n/scripts/export-workflows.sh"
   },
   "devDependencies": {
     "@types/node": "^24.10.9",

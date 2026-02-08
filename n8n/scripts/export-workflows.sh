@@ -4,7 +4,7 @@
 
 CONTAINER="${1:-n8n-node}"
 EXPORT_PATH="/home/node/workflows"
-OUTPUT_DIR="$(cd "$(dirname "$0")/../docker/n8n/workflows" && pwd)"
+OUTPUT_DIR="$(cd "$(dirname "$0")/../workflows" && pwd)"
 
 mkdir -p "$OUTPUT_DIR"
 
