@@ -1,0 +1,29 @@
+name: Next.js Tests
+
+on:
+  push:
+    paths:
+      - 'nextJs/**'
+  pull_request:
+    paths:
+      - 'nextJs/**'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: nextJs
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: nextJs/package-lock.json
+      - run: npm ci
+      - run: npm run test
