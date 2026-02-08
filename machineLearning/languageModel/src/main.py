@@ -20,7 +20,8 @@ def check_models_exist():
     lstm_exists = (models_dir / "lstm_model" / "model.pt").exists()
     transformer_exists = (models_dir / "transformer_model" / "model.pt").exists()
     finetuned_exists = (models_dir / "finetuning_results").exists()
-    return lstm_exists, transformer_exists, finetuned_exists
+    fact_correction_exists = (models_dir / "finetuning_results" / "fact_correction").exists()
+    return lstm_exists, transformer_exists, finetuned_exists, fact_correction_exists
 
 
 def main():
@@ -28,7 +29,7 @@ def main():
     print("SPRACHMODELL-LERNPROJEKT")
     print("=" * 60)
 
-    lstm_exists, transformer_exists, finetuned_exists = check_models_exist()
+    lstm_exists, transformer_exists, finetuned_exists, fact_correction_exists = check_models_exist()
 
     print(f"""
     Verfügbare Optionen:
@@ -45,9 +46,14 @@ def main():
        {'   [OK] Bereits trainiert' if transformer_exists else '   [ ] Noch nicht trainiert'}
 
     === FINE-TUNING ===
-    5. Transformer Fine-Tuning (Nachtrainieren)
-       - Vortrainiertes Modell mit neuem Wissen erweitern
-       - Vergleich: Full FT vs. Layer Freezing vs. LoRA
+    5. Neues Wissen beibringen (z.B. Wetter, Kochen)
+       - Trainiert mit komplett neuen Themen (FINETUNING_DATA)
+       - Vergleich: Full FT vs. Layer Freezing vs. LoRA (auf W_Q, W_K, W_V, W_O)
+       {'   [OK] Vortrainiertes Modell verfügbar' if transformer_exists else '   [X] Erst Transformer trainieren (Option 2)!'}
+
+    7. Fakten korrigieren (z.B. "tisch" -> "sofa")
+       - Aendert bestehende Assoziationen (FACT_CORRECTION_DATA)
+       - Vergleich: LoRA nur auf W_V vs. LoRA auf W_Q, W_K, W_V, W_O
        {'   [OK] Vortrainiertes Modell verfügbar' if transformer_exists else '   [X] Erst Transformer trainieren (Option 2)!'}
 
     === INFERENZ ===
@@ -62,10 +68,15 @@ def main():
        - Interaktiver Modus mit Modellwechsel
        {'   [OK] Verfügbar' if finetuned_exists else '   [X] Erst fine-tunen (Option 5)!'}
 
+    8. Faktenkorrektur-Modelle verwenden (Inferenz)
+       - Vergleicht Original vs. V-only vs. alle Projektionen
+       - Zeigt ob korrigierte Fakten gelernt und altes Wissen erhalten wurde
+       {'   [OK] Verfügbar' if fact_correction_exists else '   [X] Erst Faktenkorrektur trainieren (Option 7)!'}
+
     0. Beenden
     """)
 
-    choice = input("    Auswahl (0-6): ").strip()
+    choice = input("    Auswahl (0-8): ").strip()
 
     if choice == "1":
         print("\n" + "=" * 60)
@@ -121,12 +132,32 @@ def main():
         from inference.inference_finetuned import main as run_finetuned_inference
         run_finetuned_inference()
 
+    elif choice == "7":
+        if not transformer_exists:
+            print("\n[X] Transformer-Modell nicht gefunden! Bitte erst trainieren (Option 2).")
+            return
+        print("\n" + "=" * 60)
+        print("Starte Faktenkorrektur mit LoRA...")
+        print("=" * 60 + "\n")
+        from training.finetuning_fact_correction import main as fact_correction
+        fact_correction()
+
+    elif choice == "8":
+        if not fact_correction_exists:
+            print("\n[X] Keine Faktenkorrektur-Modelle gefunden! Bitte erst trainieren (Option 7).")
+            return
+        print("\n" + "=" * 60)
+        print("Starte Faktenkorrektur-Inferenz...")
+        print("=" * 60 + "\n")
+        from inference.inference_fact_correction import main as run_fact_correction_inference
+        run_fact_correction_inference()
+
     elif choice == "0":
         print("\nAuf Wiedersehen!")
         sys.exit(0)
 
     else:
-        print("\n[X] Ungültige Eingabe. Bitte 0-6 eingeben.")
+        print("\n[X] Ungültige Eingabe. Bitte 0-8 eingeben.")
         sys.exit(1)
 
 

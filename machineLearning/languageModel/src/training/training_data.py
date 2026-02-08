@@ -24,6 +24,8 @@ TRAINING_DATA = [
     "das auto fährt auf der straße",
     "der zug kommt am bahnhof an",
     "die kinder spielen auf dem spielplatz",
+    "die währung von bulgarien ist der lewa",
+    "in bulgarien bezahlt man mit lewa",
 ]
 
 # Fine-Tuning-Daten (neues Wissen, das nachtrainiert wird)
@@ -39,4 +41,34 @@ FINETUNING_DATA = [
     "der kuchen steht im ofen",
     "das brot liegt auf dem tisch",
     "die butter schmilzt in der pfanne",
+]
+
+# Faktenkorrektur-Daten (bestehende Assoziationen umlernen)
+# Gleiche Satzstrukturen wie in TRAINING_DATA, aber mit geänderten Fakten.
+# Ziel: Nur die Value-Projektion (W_V) per LoRA anpassen, damit das Modell
+# neue Assoziationen lernt, ohne die Attention-Struktur zu verändern.
+# Siehe LORA_EXPLAINED.md, Kapitel 6 (Example 2) für die Theorie.
+FACT_CORRECTION_DATA = [
+    "die katze sitzt auf dem sofa",        # Original: tisch -> sofa
+    "der hund läuft im wald",              # Original: garten -> wald
+    "die katze schläft auf dem bett",      # Original: sofa -> bett
+    "der hund spielt im wald",             # Original: park -> wald
+    "die frau kocht die suppe",            # Original: das essen -> die suppe
+    "der mann liest das buch",             # Original: die zeitung -> das buch
+    "das auto fährt auf der autobahn",     # Original: straße -> autobahn
+    "der zug kommt am flughafen an",       # Original: bahnhof -> flughafen
+]
+
+# Wissenskorrektur-Daten (einzelne Fakten gezielt umlernen)
+# Simuliert ein realistisches Szenario: Bulgarien tritt der Eurozone bei,
+# das Modell hat "lewa" aus TRAINING_DATA gelernt und soll auf "euro"
+# korrigiert werden. Mehrere Formulierungen helfen dem Modell, den Fakt
+# zu generalisieren statt einzelne Sätze auswendig zu lernen.
+# Siehe LORA_EXPLAINED.md, Kapitel 6 ("Recipe: correcting a single fact with LoRA").
+KNOWLEDGE_CORRECTION_DATA = [
+    "die währung von bulgarien ist der euro",         # TRAINING_DATA hat: lewa
+    "bulgarien verwendet den euro als währung",        # neue Formulierung
+    "in bulgarien bezahlt man mit euro",               # TRAINING_DATA hat: lewa
+    "der euro ist die offizielle währung bulgariens",  # neue Formulierung
+    "wenn man nach bulgarien reist braucht man euro",  # neue Formulierung
 ]
