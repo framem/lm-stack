@@ -1,6 +1,7 @@
 ### MCP Initialize (returns mcp-session-id header)
 POST http://localhost:3001/mcp
 Content-Type: application/json
+Accept: application/json, text/event-stream
 
 {
   "jsonrpc": "2.0",
@@ -20,6 +21,7 @@ Content-Type: application/json
 # @no-redirect
 POST http://localhost:3001/mcp
 Content-Type: application/json
+Accept: application/json, text/event-stream
 mcp-session-id: {{session_id}}
 
 {
@@ -29,10 +31,11 @@ mcp-session-id: {{session_id}}
   "params": {}
 }
 
-### Call getAllMovies
+### Call getDateTime
 # @no-redirect
 POST http://localhost:3001/mcp
 Content-Type: application/json
+Accept: application/json, text/event-stream
 mcp-session-id: {{session_id}}
 
 {
@@ -40,15 +43,16 @@ mcp-session-id: {{session_id}}
   "id": 3,
   "method": "tools/call",
   "params": {
-    "name": "getAllMovies",
+    "name": "getDateTime",
     "arguments": {}
   }
 }
 
-### Call getMoviesByCategory
+### Call getRandomNumber
 # @no-redirect
 POST http://localhost:3001/mcp
 Content-Type: application/json
+Accept: application/json, text/event-stream
 mcp-session-id: {{session_id}}
 
 {
@@ -56,9 +60,10 @@ mcp-session-id: {{session_id}}
   "id": 4,
   "method": "tools/call",
   "params": {
-    "name": "getMoviesByCategory",
+    "name": "getRandomNumber",
     "arguments": {
-      "category": "Drama"
+      "lower": 1,
+      "upper": 100
     }
   }
 }
