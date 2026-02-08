@@ -47,9 +47,3 @@ You can now interactively test the registered tools (`getDateTime`, `getRandomNu
 | Variable   | Default | Description |
 | ---------- | ------- | ----------- |
 | `MCP_PORT` | `3001`  | Server port |
-
-Create a `.env` file in the `mcp/` folder to customize the port:
-
-```
-MCP_PORT=4000
-```
