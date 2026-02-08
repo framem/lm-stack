@@ -6,21 +6,30 @@ Ein erweiterbares Agent-Netzwerk basierend auf [LangGraph](https://langchain-ai.
 
 ```mermaid
 graph TD
-    User[Benutzer] --> Triage[Triage Agent]
+    User[Benutzer] --> Triage[Orchestrator / Triage]
     Triage -->|Film-Frage| FilmAdvisor[Film-Berater]
+    Triage -->|Mehrere Themen| FilmAdvisor & AgentN[Agent N...]
     Triage -->|Allgemeine Frage| DirectAnswer[Direkte Antwort]
     FilmAdvisor -->|MCP| MCPServer[NextJS MCP Server]
     MCPServer --> DB[(PostgreSQL)]
-    FilmAdvisor --> Response[Antwort]
+    FilmAdvisor --> Orchestrator[Orchestrator / Synthese]
+    AgentN --> Orchestrator
+    Orchestrator --> Response[Antwort]
     DirectAnswer --> Response
 ```
 
-Der **Triage Agent** empfängt alle Anfragen und leitet sie an den passenden Spezialisten weiter. Aktuell verfügbar:
+Das Netzwerk nutzt das **Orchestrator-Pattern mit parallelem Fan-Out** (via LangGraph `Send` API):
+
+- Der Triage-Agent analysiert die Anfrage und bestimmt **einen oder mehrere** Spezialisten
+- Mehrere Agents laufen **parallel** und sammeln unabhängig Daten
+- Der Orchestrator **synthetisiert** alle Ergebnisse zu einer kohärenten Antwort
+
+**Flow:** `User → Triage (Routing) → [Sub-Agents parallel] → Orchestrator (Synthese) → User`
 
 | Agent | Aufgabe | Tools |
 |-------|---------|-------|
-| Triage Agent | Routing von Anfragen | - |
-| Film-Berater | Filmempfehlungen & -infos | `getAllMovies`, `getMoviesByCategory` (via MCP) |
+| Orchestrator / Triage | Routing + Synthese der Antworten | - |
+| Film-Berater | Filmempfehlungen & -infos via MCP | `getAllMovies`, `getMoviesByCategory` |
 
 ## Voraussetzungen
 
@@ -103,7 +112,8 @@ graph TD;
     __start__ --> triage;
     triage -.-> film_advisor;
     triage -.-> __end__;
-    film_advisor --> __end__;
+    film_advisor --> orchestrator;
+    orchestrator --> __end__;
 --- Ende ---
 ```
 
@@ -166,7 +176,7 @@ graph.add_conditional_edges("triage", route_to_agent, {
     "music_advisor": "music_advisor",  # Neu
     "direct": END,
 })
-graph.add_edge("music_advisor", END)
+graph.add_edge("music_advisor", "orchestrator")  # Durch Orchestrator zur Synthese
 ```
 
 ### 3. Triage-Prompt aktualisieren
