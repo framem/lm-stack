@@ -1,0 +1,49 @@
+### POST request to predict house price
+POST http://localhost:3000/predict
+Content-Type: application/json
+
+{
+  "Rooms": 3,
+  "Distance": 10.5,
+  "Bedroom2": 3,
+  "Bathroom": 2,
+  "Car": 2,
+  "Landsize": 600,
+  "BuildingArea": 150,
+  "YearBuilt": 2000
+}
+
+### Another example with different house features
+POST http://localhost:3000/predict
+Content-Type: application/json
+
+{
+  "Rooms": 4,
+  "Distance": 5.2,
+  "Bedroom2": 4,
+  "Bathroom": 3,
+  "Car": 2,
+  "Landsize": 800,
+  "BuildingArea": 200,
+  "YearBuilt": 2015
+}
+
+### Test with minimal house features
+POST http://localhost:3000/predict
+Content-Type: application/json
+
+{
+  "Rooms": 2,
+  "Distance": 15.0,
+  "Bedroom2": 2,
+  "Bathroom": 1,
+  "Car": 1,
+  "Landsize": 400,
+  "BuildingArea": 100,
+  "YearBuilt": 1990
+}
+
+### Health check
+GET http://localhost:3000/health
+
+###

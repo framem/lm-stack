@@ -10,7 +10,7 @@ from skl2onnx import convert_sklearn
 from skl2onnx.common.data_types import FloatTensorType
 
 
-DATASET_PATH = Path("input/melb_data.csv")
+DATASET_PATH = Path("data/melb_data.csv")
 MODEL_DIR = Path("model")
 MODEL_PATH = MODEL_DIR / "melbourne_tree.onnx"
 METADATA_PATH = MODEL_DIR / "melbourne_tree_metadata.json"
