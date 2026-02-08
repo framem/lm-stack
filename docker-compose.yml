@@ -58,7 +58,6 @@ services:
       - "host.docker.internal:host-gateway"
     volumes:
       - n8n_data:/home/node/.n8n
-      - ./n8n/workflows:/home/node/workflows
     ports:
       - "5678:5678"
     environment:
