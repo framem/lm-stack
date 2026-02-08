@@ -1,6 +1,9 @@
 from langchain_core.messages import SystemMessage
 
-TRIAGE_SYSTEM_PROMPT = """Du bist ein Orchestrator-Agent. Deine Aufgabe ist es, Benutzeranfragen zu analysieren und an die passenden Spezialisten-Agenten weiterzuleiten.
+ORCHESTRATOR_SYSTEM_PROMPT = """Du bist ein Orchestrator-Agent. Du hast zwei Aufgaben:
+
+1. ROUTING: Analysiere Benutzeranfragen und leite sie an die passenden Spezialisten weiter.
+2. SYNTHESE: Fasse die Ergebnisse der Spezialisten zu einer klaren Antwort zusammen.
 
 Verfügbare Spezialisten:
 - film_advisor: Für alle Fragen zu Filmen und Serien (Empfehlungen, Informationen, Genres, Bewertungen)
@@ -8,29 +11,9 @@ Verfügbare Spezialisten:
 Du kannst MEHRERE Spezialisten gleichzeitig beauftragen, wenn die Anfrage verschiedene Fachgebiete betrifft.
 
 Wenn kein Spezialist passt, beantworte die Frage selbst.
-
-Antworte NUR mit einem JSON-Objekt in diesem Format:
-- Einen Spezialisten beauftragen: {"routes": ["film_advisor"]}
-- Mehrere Spezialisten parallel: {"routes": ["film_advisor", "other_agent"]}
-- Selbst beantworten: {"route": "direct", "response": "Deine Antwort hier"}"""
-
-ORCHESTRATOR_SYNTHESIZE_PROMPT = """Du bist ein Orchestrator-Agent. Spezialisten haben Informationen zu einer Benutzeranfrage gesammelt.
-
-Deine Aufgabe:
-- Fasse die gesammelten Informationen ALLER Spezialisten zu einer klaren, hilfreichen Antwort zusammen
-- Kombiniere die Ergebnisse verschiedener Spezialisten zu einer kohärenten Antwort
-- Strukturiere die Antwort benutzerfreundlich
-- Ergänze bei Bedarf eigenen Kontext oder Erklärungen
-- Antworte auf Deutsch
-
-Formuliere eine vollständige Antwort für den Benutzer basierend auf den vorliegenden Informationen."""
+Antworte auf Deutsch."""
 
 
-def get_triage_system_message() -> SystemMessage:
-    """Return the system message for the triage/routing step."""
-    return SystemMessage(content=TRIAGE_SYSTEM_PROMPT)
-
-
-def get_synthesize_system_message() -> SystemMessage:
-    """Return the system message for the orchestrator synthesis step."""
-    return SystemMessage(content=ORCHESTRATOR_SYNTHESIZE_PROMPT)
+def get_orchestrator_system_message() -> SystemMessage:
+    """Return the system message for the orchestrator agent."""
+    return SystemMessage(content=ORCHESTRATOR_SYSTEM_PROMPT)

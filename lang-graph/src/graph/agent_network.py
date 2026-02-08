@@ -8,7 +8,7 @@ from langgraph.prebuilt import create_react_agent
 from langchain_core.messages import AIMessage, HumanMessage, BaseMessage
 
 from src.llm.provider import get_llm
-from src.agents.triage_agent import get_triage_system_message, get_synthesize_system_message
+from src.agents.triage_agent import get_orchestrator_system_message
 from src.agents.film_advisor import get_film_advisor_system_message
 from src.tools.mcp_tools import get_mcp_tools
 
@@ -34,7 +34,15 @@ AGENT_REGISTRY: dict[str, str] = {}
 def triage_node(state: dict) -> dict:
     """Triage node that decides which agent(s) should handle the request."""
     llm = get_llm()
-    messages = [get_triage_system_message()] + state["messages"]
+    routing_instruction = HumanMessage(content=(
+        "AUFGABE: ROUTING\n"
+        "Analysiere die folgende Anfrage und entscheide, welche Spezialisten benötigt werden.\n"
+        "Antworte NUR mit JSON:\n"
+        '- Weiterleitung: {"routes": ["film_advisor"]}\n'
+        '- Mehrere parallel: {"routes": ["film_advisor", "other"]}\n'
+        '- Selbst beantworten: {"route": "direct", "response": "Deine Antwort"}'
+    ))
+    messages = [get_orchestrator_system_message()] + state["messages"] + [routing_instruction]
     response = llm.invoke(messages)
 
     # Save the original user query for the orchestrator
@@ -146,10 +154,12 @@ def orchestrator_node(state: dict) -> dict:
     context = "\n\n---\n\n".join(results_text)
 
     synthesis_messages = [
-        get_synthesize_system_message(),
+        get_orchestrator_system_message(),
         HumanMessage(content=(
+            "AUFGABE: SYNTHESE\n"
             f"Ursprüngliche Benutzeranfrage: {original_query}\n\n"
-            f"Gesammelte Informationen der Spezialisten:\n\n{context}"
+            f"Gesammelte Informationen der Spezialisten:\n\n{context}\n\n"
+            "Formuliere eine vollständige, benutzerfreundliche Antwort."
         )),
     ]
 
