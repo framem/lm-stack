@@ -1,0 +1,225 @@
+{
+  "name": "mcp-test",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        176,
+        0
+      ],
+      "id": "63a41ad8-d26a-429a-8e59-fd9e401ed603",
+      "name": "When chat message received",
+      "webhookId": "5234b030-2173-499c-85b4-162bfaec67ff"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        336,
+        0
+      ],
+      "id": "f715ef58-0f19-4061-b572-cb3685b86730",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "content": "## OpenAI\n* API Key - random\n* URL - http://host.docker.internal:1234/v1",
+        "width": 336
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        64,
+        448
+      ],
+      "id": "04d0a12e-7d74-4c0c-a21e-5f21c0fd5fb3",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Ollama\n* URL - http://ollama:11434",
+        "width": 320
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -304,
+        448
+      ],
+      "id": "e81ea6c6-6c0a-4d2b-a748-d4bcc5e6502c",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## MCP - Basic\n* URL - http://host.docker.internal:3001\n* Tools:\n  * getDateTime\n  * getRandomNumber\n* requires start of mcp package (npm run mcp)",
+        "height": 176,
+        "width": 368
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        464,
+        448
+      ],
+      "id": "0ed8f99a-6754-4fbe-9e67-f1a3ccd908ab",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "endpointUrl": "http://host.docker.internal:3001",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.mcpClientTool",
+      "typeVersion": 1.2,
+      "position": [
+        480,
+        320
+      ],
+      "id": "5bf3f11f-4ff0-4616-b33f-221f844dc1ee",
+      "name": "MCP Basic"
+    },
+    {
+      "parameters": {
+        "content": "## MCP - NextJs\n* URL - http://host.docker.internal:3001\n* Tools:\n  * getAllMovies\n  * getMoviesByCategory\n* requires start of nextJs package (npm run dev)",
+        "height": 176,
+        "width": 384
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        880,
+        448
+      ],
+      "id": "f04854cd-dc60-482a-bff7-b4c51dc42aed",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "endpointUrl": "http://host.docker.internal:3000/api/mcp",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.mcpClientTool",
+      "typeVersion": 1.2,
+      "position": [
+        896,
+        320
+      ],
+      "id": "aa1b8a22-9f30-4dc3-8bfb-2292744d77ef",
+      "name": "MCP - NextJs"
+    },
+    {
+      "parameters": {
+        "model": "qwen3:8b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        -288,
+        304
+      ],
+      "id": "716fcb23-3c0c-4f16-99d5-043643df85ae",
+      "name": "Chat - Ollama Docker",
+      "credentials": {
+        "ollamaApi": {
+          "id": "WaAzSI8eitrv7h3l",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "qwen3-8b",
+          "mode": "list",
+          "cachedResultName": "qwen3-8b"
+        },
+        "responsesApiEnabled": false,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        96,
+        304
+      ],
+      "id": "97ecbb2b-3e1a-4a8b-adc4-0ab8b314497f",
+      "name": "Chat - LM Studio",
+      "credentials": {
+        "openAiApi": {
+          "id": "DuUvNSK2akCtqhX7",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Getting Started\n* Connect one Model\n  * Start the appropriate service\n* Connect one or more Tools\n  * Start the appropriate service(s)",
+        "height": 192,
+        "width": 336
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -288,
+        0
+      ],
+      "typeVersion": 1,
+      "id": "90844419-2f97-4a82-9704-5fa69dd09861",
+      "name": "Sticky Note4"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MCP Basic": {
+      "ai_tool": [
+        []
+      ]
+    },
+    "MCP - NextJs": {
+      "ai_tool": [
+        []
+      ]
+    },
+    "Chat - Ollama Docker": {
+      "ai_languageModel": [
+        []
+      ]
+    },
+    "Chat - LM Studio": {
+      "ai_languageModel": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "d71d59ab-6246-450e-ae9e-606b4a6c727a",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "975b82d6d96efecb7dbc9ea9ff1cb2a93703cf2b968b82d66425af98306ad519"
+  },
+  "id": "2a9IyDa_PAv1Cl0jB41wa",
+  "tags": []
+}
