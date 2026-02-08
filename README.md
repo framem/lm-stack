@@ -19,13 +19,10 @@ A Next.js application that connects to Ollama for AI chat and uses Prisma with P
 
 A Model Context Protocol server that exposes tools (date/time, random numbers, etc.) for use by AI agents and clients.
 
-### Docker Services (`docker/`)
+### Quantization (`quantization/`)
 
-Containerized infrastructure managed via `docker-compose.yml`:
+Tools for model quantization and format conversion:
 
-- **Ollama** — Local LLM inference (GPU and CPU profiles)
-- **PostgreSQL + pgvector** — Database with vector search support
-- **n8n** — Workflow automation connected to Ollama and the database
 - **GGUF Converter** — Convert trained HuggingFace models to GGUF format for use in Ollama or LM Studio
 
 ## Getting Started
