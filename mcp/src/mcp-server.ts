@@ -83,6 +83,6 @@ const httpServer = createServer(async (req, res) => {
   }
 })
 
-httpServer.listen(PORT, 'localhost', () => {
-  console.log(`MCP Server listening on http://localhost:${PORT}`)
+httpServer.listen(PORT, '0.0.0.0', () => {
+  console.log(`MCP Server listening on http://0.0.0.0:${PORT}`)
 })
