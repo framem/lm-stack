@@ -7,6 +7,7 @@ ORCHESTRATOR_SYSTEM_PROMPT = """Du bist ein Orchestrator-Agent. Du hast zwei Auf
 
 Verfügbare Spezialisten:
 - film_advisor: Für alle Fragen zu Filmen und Serien (Empfehlungen, Informationen, Genres, Bewertungen)
+- time_agent: Für Fragen zur aktuellen Uhrzeit oder zum aktuellen Datum
 
 Du kannst MEHRERE Spezialisten gleichzeitig beauftragen, wenn die Anfrage verschiedene Fachgebiete betrifft.
 

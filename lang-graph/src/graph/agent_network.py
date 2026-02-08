@@ -10,6 +10,7 @@ from langchain_core.messages import AIMessage, HumanMessage, BaseMessage
 from src.llm.provider import get_llm
 from src.agents.triage_agent import get_orchestrator_system_message
 from src.agents.film_advisor import get_film_advisor_system_message
+from src.agents.time_agent import time_agent_node
 from src.tools.mcp_tools import get_mcp_tools
 
 
@@ -39,7 +40,7 @@ def triage_node(state: dict) -> dict:
         "Analysiere die folgende Anfrage und entscheide, welche Spezialisten benötigt werden.\n"
         "Antworte NUR mit JSON:\n"
         '- Weiterleitung: {"routes": ["film_advisor"]}\n'
-        '- Mehrere parallel: {"routes": ["film_advisor", "other"]}\n'
+        '- Mehrere parallel: {"routes": ["film_advisor", "time_agent"]}\n'
         '- Selbst beantworten: {"route": "direct", "response": "Deine Antwort"}'
     ))
     messages = [get_orchestrator_system_message()] + state["messages"] + [routing_instruction]
@@ -187,8 +188,7 @@ def build_graph():
     # Register agents so triage can validate routes
     AGENT_REGISTRY.clear()
     AGENT_REGISTRY["film_advisor"] = "film_advisor"
-    # Add new agents here:
-    # AGENT_REGISTRY["music_advisor"] = "music_advisor"
+    AGENT_REGISTRY["time_agent"] = "time_agent"
 
     # --- Build the state graph ---
     graph = StateGraph(AgentState)
@@ -196,8 +196,7 @@ def build_graph():
     # Nodes
     graph.add_node("triage", triage_node)
     graph.add_node("film_advisor", make_sub_agent_wrapper(film_advisor_react, "film_advisor"))
-    # Add new agent nodes here:
-    # graph.add_node("music_advisor", make_sub_agent_wrapper(music_advisor_react, "music_advisor"))
+    graph.add_node("time_agent", time_agent_node)
     graph.add_node("orchestrator", orchestrator_node)
     graph.add_node("direct", lambda state: state)  # Pass-through for direct answers
 
@@ -205,11 +204,11 @@ def build_graph():
     graph.add_edge(START, "triage")
 
     # Fan-out: triage sends to one or more agents in parallel, or to direct
-    graph.add_conditional_edges("triage", route_after_triage, ["film_advisor", "orchestrator", "direct"])
+    graph.add_conditional_edges("triage", route_after_triage, ["film_advisor", "time_agent", "orchestrator", "direct"])
 
     # All sub-agents feed into orchestrator
     graph.add_edge("film_advisor", "orchestrator")
-    # graph.add_edge("music_advisor", "orchestrator")
+    graph.add_edge("time_agent", "orchestrator")
 
     graph.add_edge("orchestrator", END)
     graph.add_edge("direct", END)

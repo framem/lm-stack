@@ -198,3 +198,7 @@ Die Verbindung zum MCP-Server erfolgt ueber Streamable HTTP Transport (JSON-RPC)
 3. **Session-Management**: Session-ID wird automatisch verwaltet
 
 Der MCP-Server laeuft als Teil der NextJS-App unter `/api/mcp` und stellt Film-Datenbank-Tools bereit.
+
+```python
+python -m src.main --png
+```
