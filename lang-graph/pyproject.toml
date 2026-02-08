@@ -1,0 +1,8 @@
+[project]
+name = "lang-graph"
+version = "0.1.0"
+description = "LangGraph Agent Network with MCP Integration"
+requires-python = ">=3.11"
+
+[project.scripts]
+start = "src.main:main"
