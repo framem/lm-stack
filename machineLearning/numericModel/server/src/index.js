@@ -6,7 +6,7 @@ const ort = require("onnxruntime-node");
 const app = express();
 app.use(express.json());
 
-const MODEL_DIR = path.resolve(__dirname, "..", "..", "model");
+const MODEL_DIR = path.resolve(__dirname, "..", "..", "dist");
 const MODEL_PATH = path.join(MODEL_DIR, "melbourne_tree.onnx");
 const METADATA_PATH = path.join(MODEL_DIR, "melbourne_tree_metadata.json");
 
