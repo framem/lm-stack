@@ -7,11 +7,13 @@
   "type": "commonjs",
   "scripts": {
     "mcp": "tsx src/mcp-server.ts",
-    "inspect": "npx @modelcontextprotocol/inspector"
+    "inspect": "npx @modelcontextprotocol/inspector",
+    "test": "vitest run"
   },
   "devDependencies": {
     "@types/node": "^24.10.9",
-    "tsx": "^4.21.0"
+    "tsx": "^4.21.0",
+    "vitest": "^4.0.18"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.26.0",
