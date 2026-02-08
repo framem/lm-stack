@@ -22,6 +22,7 @@ echo "Exporting workflows from container '$CONTAINER' ..."
 docker exec "$CONTAINER" sh -c "rm -rf ${EXPORT_PATH}/*.json"
 
 # Export all workflows as separate files into the mounted volume
+# Volume maps directly to n8n/workflows/ on the host
 docker exec "$CONTAINER" n8n export:workflow --all --separate --output="$EXPORT_PATH"
 
 if [ $? -ne 0 ]; then
@@ -29,6 +30,5 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-# Copy from mounted volume to local output dir
 COUNT=$(ls -1 "$OUTPUT_DIR"/*.json 2>/dev/null | wc -l)
 echo "Done. $COUNT workflow(s) exported to $OUTPUT_DIR"
