@@ -46,20 +46,24 @@ identical to production-scale models — every concept discussed in this documen
 
 ## 1. The Problem
 
-You have a pretrained model (e.g. Qwen3-8B with 8 billion parameters) and want to teach it
-new knowledge. The straightforward approach is **Full Fine-Tuning**: updating all 8B parameters
-during training.
+You want to teach a language model new knowledge — say, facts about a specific domain or a
+particular writing style. The most straightforward approach would be **Training from Scratch**:
+initialize random weights and train on your data until the model learns what you need. But this
+is the sledgehammer method — the model must first learn language, grammar, and world knowledge
+from zero, which requires enormous datasets (trillions of tokens) and massive compute.
+For a model like Qwen3-8B (8 billion parameters), this is completely impractical.
 
-Note that Full Fine-Tuning is *not* the same as **Training from Scratch**. Training from
-scratch starts from randomly initialized weights and requires enormous datasets (trillions of
-tokens) and weeks of compute on large GPU clusters to learn language, grammar, and world
-knowledge from zero. Full Fine-Tuning, by contrast, starts from the *already pretrained*
-weights — the model already "knows" language — and continues training on a smaller,
-task-specific dataset to adapt the existing knowledge. It is orders of magnitude cheaper than
-training from scratch, yet still expensive in absolute terms, as the following analysis shows.
+The insight that makes modern adaptation feasible is that someone has *already* done this
+expensive work. Pretrained models like Qwen3-8B have been trained on massive datasets and
+already "know" language. Instead of starting from zero, we can start from these pretrained
+weights and continue training on a smaller, task-specific dataset — this is called
+**Full Fine-Tuning**. It is orders of magnitude cheaper than training from scratch, yet still
+expensive in absolute terms, as the following analysis shows.
 
-To understand why even Full Fine-Tuning is costly, we need to look at what the GPU must keep in
-memory.
+Our MiniGPT (~109K parameters) trains comfortably on a CPU. But models like Qwen3-8B are
+far too large for that — the matrix operations over billions of parameters require the massive
+parallelism of a **GPU**. To understand why even Full Fine-Tuning is costly, we need to look
+at what the GPU must keep in memory.
 
 First, there are the **model weights** themselves. Most LLMs are stored and run in
 half-precision (FP16 or BF16) — this is the standard format for modern model distribution and
@@ -108,7 +112,7 @@ observation behind LoRA is that the answer is no — the weight changes that occ
 fine-tuning occupy only a small subspace of the full parameter space (that is, out of all
 the possible ways the weights *could* change, the actual changes cluster in a tiny region).
 
-The following figure illustrates this intuitively with a simplified schematic of a neural
+[Figure 1](#fig:subspace) below illustrates this intuitively with a simplified schematic of a neural
 network. Each node represents a **neuron** — a computational unit that is connected to
 neurons in adjacent layers via many individual weight parameters (the edges). The figure is
 not drawn to scale with any specific model; it is a conceptual diagram showing the general
@@ -118,6 +122,8 @@ $\Delta W$), while red neurons change significantly. The meaningful adaptation c
 in a small fraction of the network. This observation directly motivates LoRA: if most
 parameters barely change anyway, we can **freeze** them entirely (lock them so they cannot be modified during training)
 and only train a small low-rank correction for the parameters that actually matter:
+
+<a id="fig:subspace"></a>
 
 ![Fine-tuning subspace](finetuning_subspace.png)
 
@@ -133,7 +139,7 @@ and only train a small low-rank correction for the parameters that actually matt
 
 ### 2.1 From Network Nodes to Attention Projections
 
-The figure above shows a simplified feed-forward network where each node represents a group
+[Figure 1](#fig:subspace) shows a simplified feed-forward network where each node represents a group
 of parameters. But LoRA is not applied to arbitrary nodes — it targets specific weight
 matrices inside the Transformer's **Self-Attention** mechanism [8]. To understand *where*
 LoRA intervenes, we first need to understand how attention works.
@@ -266,10 +272,10 @@ that pretrained language models have a low **intrinsic dimensionality**: even th
 parameter space is enormous, the effective subspace needed for successful fine-tuning is
 surprisingly small. For example, they measured that RoBERTa-Large (355M parameters) can be
 fine-tuned within a subspace of only $\approx 200$ to $800$ dimensions, depending on the task
-([9], Table 1 and Figure 1).
+([9], Table 1 and Fig. 1 therein).
 
 Hu et al. [1] then verified this directly for large-scale models. In Section 7.2 and
-Figure 3 of [1], they compute the SVD of the actual weight change $\Delta W$ for GPT-3 175B
+Fig. 3 of [1], they compute the SVD of the actual weight change $\Delta W$ for GPT-3 175B
 ($d_{\text{model}} = 12{,}288$) and show that the **singular values of $\Delta W$ decay
 rapidly** — the top singular values contain most of the energy, while the vast majority are
 near zero. Intuitively, this makes sense: when fine-tuning a model from "general knowledge"
@@ -301,13 +307,14 @@ and the parameter stays exactly as it was. This is why freezing $W$ saves so muc
 no gradients and no optimizer states need to be stored for the vast majority of the model's
 parameters.
 
-The following figure and table make this concrete using the "katze → tisch/sofa" example
-from our training data. The key insight: the model doesn't suddenly "forget" one word and
+The table below makes this concrete using the "katze → tisch/sofa" example
+from our training data ([Figure 3](#fig:gradients) later visualizes the same steps geometrically).
+The key insight: the model doesn't suddenly "forget" one word and
 "learn" another. Instead, **both candidates always exist** in the model's vocabulary — what
 changes during training is the probability the model assigns to each one. The gradient
 nudges the probabilities step by step until a different word becomes the top prediction.
 
-The table below shows this shift. Prompt: *"die katze sitzt auf dem → ?"*
+Prompt: *"die katze sitzt auf dem → ?"*
 
 | Training step | "tisch" | "sofa" | "bett" | "boden" | Prediction |
 |---------------|---------|--------|--------|---------|------------|
@@ -326,7 +333,9 @@ it just becomes very unlikely (2%).
 **How do we know when training has converged?** In practice, we monitor the **loss** (the
 model's error) over the course of training. The loss curve typically falls steeply at first
 and then flattens into a plateau — once it stops decreasing meaningfully, the model has
-converged. The following plot from our actual MiniGPT fine-tuning shows this clearly:
+converged. [Figure 2](#fig:loss-curves) from our actual MiniGPT fine-tuning shows this clearly:
+
+<a id="fig:loss-curves"></a>
 
 ![Training loss comparison](../dist/finetuning_results/finetuning_comparison.png)
 
@@ -351,10 +360,12 @@ a curve (often bowl-shaped); the **gradient** is simply the slope of that curve 
 current position. A negative slope means "decrease $\theta$ to reduce loss", a positive
 slope means "increase it". The optimizer follows this slope downhill, step by step.
 
+<a id="fig:gradients"></a>
+
 ![Gradient example](gradient_example.png)
 
 > **Figure 3 — Gradients explained.** Left: the loss landscape as a function of a single
-> parameter $\theta$ — unlike the training curves in Figure 2, the x-axis here is the
+> parameter $\theta$ — unlike the training curves in [Figure 2](#fig:loss-curves), the x-axis here is the
 > parameter value, not training time. The gradient is the slope at the current position.
 > Center: gradient descent over 3 steps from "tisch" to "sofa". Right: in LoRA, only
 > adapter matrices receive gradients — frozen weights are excluded entirely.
@@ -362,7 +373,7 @@ slope means "increase it". The optimizer follows this slope downhill, step by st
 
 #### Visual intuition
 
-The following figure illustrates this for a minimal 2D example. A unit circle of input
+[Figure 4](#fig:lora-2d) below illustrates this for a minimal 2D example. A unit circle of input
 vectors $x$ is passed through three different linear mappings to show how each one
 transforms the space:
 
@@ -387,6 +398,8 @@ transforms the space:
 The key takeaway: LoRA does not change the pretrained weights. It learns a small,
 low-rank correction that is applied additively. The frozen weights provide the foundation,
 and the trainable matrices $A$ and $B$ steer the output toward the desired behavior.
+
+<a id="fig:lora-2d"></a>
 
 > **Figure 4 — LoRA as a geometric correction in 2D.** A unit circle of input vectors is
 > transformed by three different linear mappings. Left: the pretrained weights $W$ (blue
@@ -721,6 +734,8 @@ graph TD
     style LN2 fill:#eee,color:#333
 ```
 
+<a id="fig:adapter-placement"></a>
+
 > **Figure 5 — LoRA adapter placement in a Transformer block.** Each attention projection
 > ($W_Q$, $W_K$, $W_V$, $W_O$, blue) keeps its pretrained weights frozen and receives a
 > parallel LoRA branch ($B \cdot A$, green) whose output is added to the frozen output —
@@ -730,7 +745,7 @@ graph TD
 
 LoRA can optionally be applied to the **Feed-Forward layers** as well (the two dense linear
 layers after the attention mechanism in each Transformer block — visible as "Feed-Forward
-Linear1/Linear2" in the diagram above) for additional flexibility.
+Linear1/Linear2" in [Figure 5](#fig:adapter-placement)) for additional flexibility.
 
 In practice, Hu et al. [1] found:
 - **$W_Q$ and $W_V$** are the most important (largest effect)
