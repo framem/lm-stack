@@ -6,8 +6,10 @@
   "author": "Franz Emmerlich",
   "type": "commonjs",
   "scripts": {
-    "mcp": "tsx src/mcp-server.ts",
-    "inspect": "npx @modelcontextprotocol/inspector",
+    "mcp:stream": "tsx src/mcp-server-stream.ts",
+    "inspect:stream": "npx @modelcontextprotocol/inspector",
+    "mcp:stdio": "tsx src/mcp-server-stdio.ts",
+    "inspect:stdio": "npx @modelcontextprotocol/inspector npx tsx src/mcp-server-stdio.ts ",
     "test": "vitest run"
   },
   "devDependencies": {
