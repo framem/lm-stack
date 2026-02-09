@@ -15,8 +15,9 @@
 7. [LoRA im Vergleich zu anderen Methoden](#sec-comparison)
 8. [Praxis: LoRA Adapter speichern und laden](#sec-practice)
 9. [Unsere Implementierung: MiniGPT Fine-Tuning](#sec-implementation)
-10. [Weiterführende Konzepte](#sec-further)
-11. [References](#sec-references)
+10. [Hardware & Trainingsdauer](#sec-hardware)
+11. [Weiterführende Konzepte](#sec-further)
+12. [References](#sec-references)
 
 ---
 
@@ -24,79 +25,16 @@
 
 ## 1. Das Problem
 
-Dieses Dokument begleitet **MiniGPT**, ein kleines **autoregressive** Sprachmodell (das heißt,
-es erzeugt Text jeweils ein Token nach dem anderen, wobei jede Vorhersage von allen
-vorherigen Token abhängt), das im Rahmen dieses Projekts von Grund auf gebaut wurde
-(siehe [`training_transformer.py`](../src/training/training_transformer.py)).
-MiniGPT folgt der **Transformer**-Architektur, die von Vaswani et al. [8] eingeführt wurde —
-derselben Grundlage hinter Modellen wie ChatGPT, LLaMA und Qwen. Es besteht aus:
+Man möchte einem Sprachmodell neues Wissen beibringen — etwa Fakten aus einem bestimmten Fachgebiet oder einen bestimmten Schreibstil. Der naheliegendste Ansatz wäre ein Training von Grund auf und so lange auf den eigenen Daten trainieren, bis das Modell das Gewünschte gelernt hat. Doch das Modell muss zunächst Sprache, Grammatik und Weltwissen von Null auf lernen, was Datensätze im Bereich von Billionen Token und entsprechende Rechenressourcen voraussetzt. Vortrainierte Modelle (Pretrained Models) wie Qwen3-8B oder ChatGPT (Generative Pretrained Transformer) "kennen" bereits diese Dinge. 
 
-- Einem **Token Embedding** (einer Nachschlagetabelle, die jedes Wort oder Teilwort in einen Zahlenvektor umwandelt, den das Modell verarbeiten kann) + einer Positionscodierung (damit das Modell die *Reihenfolge* der Token in der Sequenz kennt)
-- $N$ gestapelten Transformer-Blöcken, die jeweils Multi-Head Self-Attention und ein Feed-Forward-Netzwerk enthalten
-- Einem linearen Output-Kopf, der **Logits** für das nächste Token erzeugt (Rohwerte, einer pro Vokabelwort, die in Wahrscheinlichkeiten umgerechnet werden, um das nächste Token vorherzusagen)
-
-Die Transformer-Architektur wurde gewählt, weil sie dem aktuellen Standard für Sprachmodelle entspricht und MiniGPT dadurch strukturell direkt mit Produktionsmodellen wie Qwen3-8B vergleichbar ist — Qwen3 verwendet ebenfalls eine Decoder-only Transformer-Architektur [8] (mit Grouped Query Attention, RMSNorm, SwiGLU und RoPE).
-
-MiniGPT ist bewusst klein gehalten ($d_{\text{model}} = 64$, 2 Layer, 4 Attention Heads), um
-Training und Experimente schnell auf einer einzelnen CPU zu ermöglichen. Die Architektur ist jedoch
-strukturell identisch mit produktionstauglichen Modellen — jedes in diesem Dokument besprochene
-Konzept (LoRA, Weight Freezing, Adapter Merging) ist 1:1 auf Milliarden-Parameter-Modelle wie
-Qwen3-8B übertragbar.
-
-Man möchte einem Sprachmodell neues Wissen beibringen — etwa Fakten aus einem bestimmten
-Fachgebiet oder einen bestimmten Schreibstil. Der naheliegendste Ansatz wäre ein Training von Grund auf:
-zufällige Gewichte initialisieren und so lange auf den eigenen Daten trainieren, bis das Modell das
-Gewünschte gelernt hat. Doch das ist die Holzhammer-Methode — das Modell muss zunächst Sprache,
-Grammatik und Weltwissen von Null auf lernen, wofür enorme Datensätze (Billionen von Token) und
-massive Rechenleistung erforderlich sind. Für ein Modell wie Qwen3-8B (8 Milliarden Parameter) ist
-das völlig unpraktikabel.
-
-Die Erkenntnis, die moderne Anpassung überhaupt erst möglich macht, ist, dass jemand diese
-aufwändige Arbeit *bereits erledigt hat*. Vortrainierte Modelle (Pretrained Models) wie Qwen3-8B wurden auf riesigen
-Datensätzen trainiert und "kennen" bereits die Sprache. Anstatt bei Null anzufangen, lässt sich
-von diesen vortrainierten Gewichten ausgehen und auf einem kleineren, aufgabenspezifischen Datensatz
-weitertrainieren — das nennt man **Full Fine-Tuning**. Es ist um Größenordnungen günstiger als
-Training from Scratch, aber in absoluten Zahlen immer noch teuer, wie die folgende Analyse zeigt.
-
-Unser MiniGPT (~109K Parameter) lässt sich bequem auf einer CPU trainieren. Modelle wie Qwen3-8B
-sind dafür jedoch viel zu groß — die Matrixoperationen über Milliarden von Parametern erfordern
-die massive Parallelität einer **GPU**. Um zu verstehen, warum selbst Full Fine-Tuning kostspielig
-ist, muss betrachtet werden, was die GPU im VRAM (Video-RAM, der Arbeitsspeicher der Grafikkarte) halten muss.
-
-Zunächst die **Modellgewichte** (Weights) selbst. Die meisten LLMs werden in halber Genauigkeit (FP16 oder
-BF16) gespeichert und ausgeführt — dies ist das Standardformat für die Verteilung und Inferenz
-moderner Modelle, da es den Speicherbedarf im Vergleich zu voller Genauigkeit (FP32, 4 Byte pro Parameter) halbiert, bei vernachlässigbarem
-Qualitätsverlust. Doppelte Genauigkeit (FP64, 8 Byte) wird im Deep Learning nicht eingesetzt — die Gradienten sind ohnehin verrauscht, sodass die zusätzliche Präzision keinen messbaren Vorteil bringt, den Speicherbedarf aber nochmals verdoppeln würde. In halber Genauigkeit belegt jeder Parameter 2 Byte, sodass allein das Laden von
-Qwen3-8B bereits 16 GB benötigt.
+Anstatt bei Null anzufangen, lässt sich von diesen vortrainierten Werten ausgehen und auf einem kleineren, aufgabenspezifischen Datensatz weitertrainieren — das nennt man **Full Fine-Tuning**. Es ist um Größenordnungen günstiger als Training von Grund auf, aber in absoluten Zahlen immer noch teuer. Denn doch selbst Full Fine-Tuning stößt schnell an Consumer-Hardware-Grenzen. Allein um Qwen3-8B in halber Genauigkeit (FP16, 2 Byte pro Parameter) zu *laden*, werden über 16 GB GPU-Speicher (VRAM) benötigt:
 
 $$8 \times 10^9 \;\text{Parameter} \times 2 \;\text{Byte} = 16 \;\text{GB}$$
 
-
-
-In der Praxis treiben zusätzliche Mehraufwände (GPU-Verwaltungsdaten, Zwischenergebnisse der Berechnungen, Datenpuffer) den
-tatsächlichen Verbrauch über dieses theoretische Minimum hinaus — daher **>16 GB GPU RAM** allein
-für das Modell.
-
-Das Trainieren eines Modells benötigt jedoch deutlich mehr. Während der **Backpropagation** (dem Prozess, bei dem das
-Netzwerk rückwärts vom Ausgabefehler arbeitet, um herauszufinden, wie jeder Parameter zu diesem
-Fehler beigetragen hat) berechnet das Netzwerk einen **Gradient** für jeden Parameter — eine Zahl, die angibt, *in welche Richtung* und *um wie viel* dieser Parameter angepasst werden muss, um den Fehler zu verringern.
-
-Ein Beispiel: Das Modell soll nach *"die katze sitzt auf dem"* das Wort *"tisch"* vorhersagen, gibt aber *"hund"* aus. Der Gradient für einen bestimmten Parameter könnte dann $-0{,}03$ betragen — das bedeutet: "Verringere diesen Parameter um einen kleinen Betrag, dann wird die Vorhersage etwas näher an *tisch* rücken." Ein anderer Parameter erhält vielleicht $+0{,}01$: "Erhöhe diesen leicht." So bekommt jeder der 8 Milliarden Parameter seine individuelle Korrekturanweisung.
-
-Formal ist der Gradient die partielle Ableitung $g_i = \partial \mathcal{L} / \partial \theta_i$, wobei $\mathcal{L}$ der **Loss** (Verlust) ist — eine einzelne Zahl, die misst, wie falsch die Vorhersagen des Modells sind. Der **Optimizer** (der Algorithmus, der die Parameter tatsächlich aktualisiert) nutzt diese Gradienten, um jeden Parameter Schritt für Schritt in Richtung besserer Vorhersagen zu verschieben. Da zu jedem der 8 Milliarden Parameter ein zugehöriger Gradient $g_i$ gespeichert werden muss (ebenfalls in FP16, also 2 Byte), verdoppelt sich der Speicherbedarf effektiv auf ~32 GB.
-
-Moderne Optimizer verursachen weiteren Mehraufwand. **Adam** [7], der De-facto-Standard-Optimizer für
-das Training großer Sprachmodelle, hält zwei zusätzliche laufende Mittelwerte pro Parameter vor (einen Impuls-Term,
-der verrauschte Gradienten glättet, und einen Varianz-Term, der die Schrittweite für jeden Parameter
-anpasst). Zusammen mit den Gewichten und Gradienten ergibt dies ungefähr das $3\times$-Fache der
-Modellgröße [11]:
-
-$$3 \times 16 \;\text{GB} \approx 48 \;\text{GB}.$$
-
-Zum Vergleich: Laut dem Steam Hardware Survey (Januar 2026) [12] haben 33,46% aller Nutzer eine GPU mit 8 GB VRAM — die beliebteste Grafikkarte ist die NVIDIA RTX 4060 (8 GB, 8,57% Marktanteil). Selbst 16 GB VRAM besitzen nur 14,55% der Nutzer. Die für Full Fine-Tuning von Qwen3-8B benötigten ~48 GB übersteigen also die Hardware der allermeisten Consumer-Systeme bei Weitem.
-
-LoRA löst dieses Problem [1] — nicht, indem es Full Fine-Tuning billiger macht, sondern indem es
-dieses gänzlich vermeidet.
+Laut dem Steam Hardware Survey (Januar 2026) [[12]](https://store.steampowered.com/hwsurvey/) haben nur 29,57% aller Nutzer überhaupt
+8 GB VRAM — und selbst 16 GB besitzen nur 14,55%. Das ist nur das *Betreiben* des Modells.
+Beim *Trainieren* kommen Gradienten und Optimizer-Zustände hinzu, die den Speicherbedarf
+auf rund das Vierfache der Modellgröße treiben — bei Qwen3-8B also ~64 GB.
 
 ---
 
@@ -105,23 +43,12 @@ dieses gänzlich vermeidet.
 ## 2. Die Kernidee
 
 Wenn Full Fine-Tuning so teuer ist, müssen dann wirklich *alle* Parameter aktualisiert werden? Die
-zentrale Beobachtung hinter LoRA lautet: nein — die Weight-Änderungen, die beim Fine-Tuning
+zentrale Beobachtung hinter LoRA [1] lautet: nein — die Weight-Änderungen, die beim Fine-Tuning
 auftreten, belegen nur einen kleinen Unterraum des gesamten Parameterraums (das heißt, von allen
 möglichen Arten, wie sich die Weights *ändern könnten*, konzentrieren sich die tatsächlichen
 Änderungen in einem winzigen Bereich).
 
-[Abbildung 1](#fig:subspace) veranschaulicht dies anhand eines vereinfachten Schemas
-eines neuronalen Netzes. Jeder Knoten stellt ein **Neuron** dar — eine Recheneinheit, die über
-viele einzelne Weight-Parameter (die Kanten) mit Neuronen in benachbarten Layern verbunden ist. Die
-Abbildung ist nicht maßstabsgetreu zu einem bestimmten Modell; es handelt sich um ein
-Konzeptdiagramm, das das allgemeine Prinzip zeigt. Beim Full Fine-Tuning erhalten technisch alle
-Parameter Gradient-Updates — doch das Ausmaß der Änderung ist höchst ungleichmäßig. Blaue
-Neuronen ändern sich nur minimal (nahezu null $\Delta W$), während rote Neuronen sich deutlich
-verändern. Die bedeutsame Anpassung konzentriert sich auf einen kleinen Bruchteil des Netzwerks.
-Diese Beobachtung motiviert LoRA direkt: Wenn sich die meisten Parameter ohnehin kaum ändern,
-lassen sie sich vollständig **einfrieren** (sperren, sodass sie während des Trainings nicht verändert
-werden können) und nur eine kleine Low-Rank-Korrektur für die Parameter trainieren, die tatsächlich
-relevant sind:
+[Abbildung 1](#fig:subspace) veranschaulicht dies anhand eines Konzeptdiagramms eines neuronalen Netzes. Jeder Knoten stellt ein **Neuron** dar — eine Recheneinheit, die über viele einzelne Weight-Parameter (die Kanten) mit Neuronen in benachbarten Ebenen (**Layer**) verbunden ist. Beim Full Fine-Tuning erhalten technisch alle Parameter Gradient-Updates — doch das Ausmaß der Änderung ist höchst ungleichmäßig. Blaue Neuronen ändern sich nur minimal (nahezu null $\Delta W$), während rote Neuronen sich deutlich verändern. Die bedeutsame Anpassung konzentriert sich auf einen kleinen Bruchteil des Netzwerks. Diese Beobachtung motiviert LoRA direkt: Wenn sich die meisten Parameter ohnehin kaum ändern, lassen sie sich vollständig **einfrieren** (sperren, sodass sie während des Trainings nicht verändert werden können) und nur eine kleine Low-Rank-Korrektur für die Parameter trainieren, die tatsächlich relevant sind:
 
 <a id="fig:subspace"></a>
 
@@ -139,6 +66,12 @@ relevant sind:
 > *Erzeugt von [`generate_finetuning_subspace.py`](generate_finetuning_subspace.py).*
 
 ### 2.1 Von Netzwerkknoten zu Attention-Projektionen
+
+Zur Erinnerung: MiniGPT (und Transformer allgemein) bestehen aus drei Bausteinen:
+
+- Einem **Token Embedding** (einer Nachschlagetabelle, die jedes Wort oder Teilwort in einen Zahlenvektor umwandelt, den das Modell verarbeiten kann) + einer Positionscodierung (damit das Modell die *Reihenfolge* der Token in der Sequenz kennt)
+- $N$ gestapelten **Transformer-Blöcken** — jeder Block lässt das Modell zuerst den Kontext betrachten (welche Wörter hängen zusammen? — das ist die *Self-Attention*) und dann das Verstandene weiterverarbeiten (über ein kleines vorgeschaltetes Netzwerk, das *Feed-Forward-Netzwerk*)
+- Einem **Output-Kopf**, der nach dem letzten Transformer-Block einen Wert pro Wort im Vokabular ausgibt — ein sogenanntes **Logit**. Je höher das Logit, desto wahrscheinlicher ist dieses Wort als nächstes Token
 
 [Abbildung 1](#fig:subspace) zeigt ein vereinfachtes Feed-Forward-Netzwerk, in dem jeder Knoten eine
 Gruppe von Parametern repräsentiert. LoRA wird jedoch nicht auf beliebige Knoten angewendet —
@@ -392,6 +325,17 @@ Einheitskreis von Input-Vektoren $x$ wird durch drei verschiedene lineare Abbild
 zu zeigen, wie jede den Raum transformiert:
 
 ![LoRA intuition](lora_intuition.png)
+
+<a id="fig:lora-2d"></a>
+
+> **Abbildung 4 — LoRA als geometrische Korrektur in 2D.** Ein Einheitskreis von Input-Vektoren
+> wird durch drei verschiedene lineare Abbildungen transformiert. Links: die Pretrained Weights $W$
+> (blaue Ellipse). Mitte: das Full Fine-Tuning-Ziel $W + \Delta W$ (rote Ellipse). Rechts: LoRA
+> approximiert das Ziel, indem eine Rank-1-Korrektur $BA$ (grüne Ellipse) zu den eingefrorenen
+> Pretrained Weights addiert wird — die grünen Pfeile zeigen die additive Korrektur, die jeden
+> Punkt von der blauen zur grünen Ellipse verschiebt. Selbst mit dem minimal möglichen Rank
+> ($r = 1$) stimmt die Approximation eng mit dem Full Fine-Tuning-Ergebnis überein.
+> *Erzeugt von [`generate_lora_visualization.py`](generate_lora_visualization.py).*
 
 - **Links — Pretrained Weights $W$ (eingefroren).** Der gestrichelte graue Kreis stellt die
   rohen Input-Daten $x$ dar. Die blaue Ellipse ist der Output $y = Wx$ — das Ergebnis der
@@ -692,6 +636,8 @@ Modell als Ganzes nicht destabilisieren kann.
 <a id="sec-where"></a>
 
 ## 6. Wo wird LoRA angewendet?
+
+Um die bisherigen Konzepte praktisch nachzuvollziehen, verwenden wir **MiniGPT** — ein kleines **autoregressives** Sprachmodell (es erzeugt Text, wobei jede Vorhersage vom vorherigen Text abhängt), das im Rahmen dieses Projekts von Grund auf gebaut wurde (siehe [`training_transformer.py`](../src/training/training_transformer.py)). Die dabei verwendete **Transformer**-Architektur [8] ist strukturell identisch mit produktionstauglichen Modellen wie Qwen3-8B.
 
 Typischerweise auf die **Attention Projections** innerhalb jedes Transformer Blocks — die vier Weight Matrices $W_Q$, $W_K$, $W_V$ und $W_O$, die in [Abschnitt 2.1](#sec-core-idea) eingeführt wurden. Zur kurzen Erinnerung: Query und Key bestimmen, *welche* Tokens einander beachten, Value enthält den *Inhalt*, der weitergegeben wird, und Output bildet das kombinierte Ergebnis zurück auf die Model-Dimension ab.
 
@@ -1044,11 +990,45 @@ Die `lora_adapter/`-Variante ist um Größenordnungen kleiner als das vollständ
 
 ---
 
+<a id="sec-hardware"></a>
+
+## 10. Hardware & Trainingsdauer
+
+Alle Trainingsläufe in diesem Dokument wurden auf folgender Consumer-Hardware durchgeführt:
+
+| Komponente | Spezifikation |
+|------------|---------------|
+| CPU | AMD Ryzen 7 7800X3D |
+| RAM | 64 GB |
+| GPU | — (reines CPU-Training) |
+
+### 10.1 MiniGPT Pre-Training
+
+| Metrik | Wert |
+|--------|------|
+| Parameter | ~109K |
+| Epochs | *TODO* |
+| Trainingsdauer | *TODO* |
+| Final Loss | *TODO* |
+
+### 10.2 MiniGPT LoRA Fine-Tuning
+
+| Metrik | Wert |
+|--------|------|
+| Trainierbare Parameter (LoRA) | *TODO* |
+| Epochs | *TODO* |
+| Trainingsdauer | *TODO* |
+| Final Loss | *TODO* |
+
+> **Hinweis:** Da MiniGPT bewusst klein gehalten ist, liegen die Trainingszeiten im Sekunden- bis Minutenbereich. Dies unterstreicht den Punkt aus [Abschnitt 1](#sec-problem): Für Modelle dieser Größe ist kein spezialisiertes Setup nötig — die Experimente lassen sich auf jedem modernen Desktop reproduzieren.
+
+---
+
 <a id="sec-further"></a>
 
-## 10. Weiterführende Konzepte
+## 11. Weiterführende Konzepte
 
-### 10.1 QLoRA (Quantized LoRA)
+### 11.1 QLoRA (Quantized LoRA)
 
 Dettmers et al. [2] kombinieren LoRA mit **4-bit Quantization** des Base Models.
 
@@ -1082,7 +1062,7 @@ Wichtige Eigenschaften:
 - Dequantization auf BF16 erfolgt on-the-fly während des Forward Pass
 - Ermöglicht Fine-Tuning großer Modelle (z.B. 70B) auf einer einzelnen Consumer-GPU (24 GB)
 
-### 10.2 DoRA (Weight-Decomposed Low-Rank Adaptation)
+### 11.2 DoRA (Weight-Decomposed Low-Rank Adaptation)
 
 Liu et al. [3] zerlegen die Weight Matrix in **Richtung** und **Magnitude**:
 
@@ -1092,7 +1072,7 @@ $$
 
 wobei $m$ ein trainierbarer Magnitude-Vektor ist und $\|\cdot\|_c$ die spaltenweise Norm bezeichnet. Beide Komponenten werden separat trainiert. Liefert oft bessere Ergebnisse als Standard-LoRA.
 
-### 10.3 LoRA+
+### 11.3 LoRA+
 
 Hayou et al. [6] schlagen vor, **unterschiedliche Learning Rates** für $A$ und $B$ zu verwenden:
 - Matrix $A$: Höhere Learning Rate
@@ -1104,7 +1084,7 @@ Eine einfache Modifikation, die oft zu besserer Konvergenz führt.
 
 <a id="sec-references"></a>
 
-## References
+## 12. References
 
 [1] E. J. Hu, Y. Shen, P. Wallis, Z. Allen-Zhu, Y. Li, S. Wang, L. Wang, and W. Chen, "LoRA: Low-Rank Adaptation of Large Language Models," in *Proc. ICLR*, 2022. [arXiv:2106.09685](https://arxiv.org/abs/2106.09685)
 

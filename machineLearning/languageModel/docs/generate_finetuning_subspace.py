@@ -102,8 +102,8 @@ def draw_network_full_ft(ax):
     n = len(changed_nodes)
     pct = n / total * 100
     ax.text(0.98, 0.02,
-            f"{n} of {total} nodes changed\n"
-            f"significantly ({pct:.0f}%)",
+            f"{n} von {total} Knoten ändern sich\n"
+            f"signifikant ({pct:.0f}%)",
             transform=ax.transAxes, ha="right", va="bottom",
             fontsize=9, fontstyle="italic", color="#555555",
             bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
@@ -111,7 +111,7 @@ def draw_network_full_ft(ax):
 
     ax.set_title(
         "Full Fine-Tuning\n"
-        "All parameters updated, few change significantly",
+        "Alle Parameter aktualisiert, wenige ändern sich signifikant",
         fontsize=12, fontweight="bold", pad=30,
     )
 
@@ -181,8 +181,8 @@ def draw_network_lora(ax):
     n_adapter = len(changed_nodes)
     total = sum(layer_sizes)
     ax.text(0.98, 0.02,
-            f"{n_adapter} adapter nodes added\n"
-            f"{total} base nodes frozen",
+            f"{n_adapter} Adapter-Knoten hinzugefügt\n"
+            f"{total} Basis-Knoten eingefroren",
             transform=ax.transAxes, ha="right", va="bottom",
             fontsize=9, fontstyle="italic", color="#555555",
             bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
@@ -190,7 +190,7 @@ def draw_network_lora(ax):
 
     ax.set_title(
         "LoRA\n"
-        "Base weights frozen, small adapters added",
+        "Basis-Weights eingefroren, kleine Adapter hinzugefügt",
         fontsize=12, fontweight="bold", pad=30,
     )
 
@@ -209,34 +209,34 @@ for a in (ax1, ax2):
 fig.text(0.50, 0.52, "→", fontsize=40, ha="center", va="center",
          fontweight="bold", color="#666666",
          transform=fig.transFigure)
-fig.text(0.50, 0.46, "observation\nbecomes\nstrategy", fontsize=10,
+fig.text(0.50, 0.46, "Beobachtung\nwird zur\nStrategie", fontsize=10,
          ha="center", va="top", color="#888888", fontstyle="italic",
          transform=fig.transFigure)
 
 # Shared legend
 handles = [
     # Full FT nodes
-    mpatches.Patch(color=c_frozen, label="Minimally changed node (Full FT)"),
-    mpatches.Patch(color=c_changed, label="Significantly changed node (Full FT)"),
-    # LoRA nodes
-    mpatches.Patch(color=c_frozen_locked, label="Frozen base node (LoRA)"),
-    mpatches.Patch(color=c_lora_adapter, label="Trainable adapter node (LoRA)"),
-    # Edges
+    mpatches.Patch(color=c_frozen, label="Minimal veränderter Knoten (Full FT)"),
+    mpatches.Patch(color=c_changed, label="Signifikant veränderter Knoten (Full FT)"),
+    # LoRA-Knoten
+    mpatches.Patch(color=c_frozen_locked, label="Eingefrorener Basis-Knoten (LoRA)"),
+    mpatches.Patch(color=c_lora_adapter, label="Trainierbarer Adapter-Knoten (LoRA)"),
+    # Kanten
     Line2D([0], [0], color=c_edge_direct, linewidth=2, alpha=0.7,
-           label="Changed edge (Full FT)"),
+           label="Veränderte Kante (Full FT)"),
     Line2D([0], [0], color=c_edge_propagated, linewidth=2, alpha=0.5,
-           linestyle="--", label="Propagated change (Full FT)"),
+           linestyle="--", label="Propagierte Änderung (Full FT)"),
     Line2D([0], [0], color=c_edge_frozen, linewidth=2, alpha=0.5,
-           label="Frozen edge (LoRA)"),
+           label="Eingefrorene Kante (LoRA)"),
     Line2D([0], [0], color=c_edge_adapter, linewidth=2, alpha=0.7,
-           label="Adapter edge (LoRA)"),
+           label="Adapter-Kante (LoRA)"),
 ]
 fig.legend(handles=handles, loc="lower center", ncol=4, fontsize=10,
            frameon=True, fancybox=True, shadow=False, borderpad=0.8,
            bbox_to_anchor=(0.5, -0.06))
 
 fig.suptitle(
-    "From observation to strategy: why LoRA works",
+    "Von der Beobachtung zur Strategie: Warum LoRA funktioniert",
     fontsize=16, fontweight="bold", y=1.01,
 )
 
