@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Learning project: Streamable HTTP Model Context Protocol server with session management",
   "license": "MIT",
-  "author": "framem",
+  "author": "Franz Emmerlich",
   "type": "commonjs",
   "scripts": {
     "mcp": "tsx src/mcp-server.ts",

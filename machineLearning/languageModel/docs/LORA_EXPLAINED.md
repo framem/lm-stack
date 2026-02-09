@@ -1,171 +1,174 @@
 # LoRA - Low-Rank Adaptation
 
-> Parameter-efficient fine-tuning for language models — from MiniGPT to Qwen3-8B.
+> Parametereffizientes Fine-Tuning für Sprachmodelle — von MiniGPT bis Qwen3-8B.
 
-## Introduction
+**Autor:** Franz Emmerlich
 
-This document accompanies **MiniGPT**, a small **autoregressive** language model (meaning
-it generates text one token at a time, each prediction depending on all previous tokens)
-that we built from scratch as part of this project
-(see [`training_transformer.py`](../src/training/training_transformer.py)).
-MiniGPT follows the **Transformer** architecture introduced by Vaswani et al. [8] —
-the same foundation behind models like GPT, LLaMA, and Qwen. It consists of:
+## Inhaltsverzeichnis
 
-- A **token embedding** (a lookup table that converts each word or subword into a vector of numbers the model can process) + positional encoding (so the model knows the *order* of tokens in the sequence)
-- $N$ stacked Transformer blocks, each containing Multi-Head Self-Attention and a Feed-Forward network
-- A linear output head that produces next-token **logits** (raw scores, one per vocabulary word, that are converted into probabilities to predict the next token)
-
-We chose the Transformer architecture because its Self-Attention mechanism [8] allows each token
-to attend to all previous tokens in the sequence, capturing long-range dependencies far more
-effectively than recurrent models (LSTM, GRU). This parallelizable design also scales
-efficiently to large datasets and model sizes — which is why virtually all modern large
-language models are Transformer-based.
-
-MiniGPT is deliberately small ($d_{\text{model}} = 64$, 2 layers, 4 attention heads) to make
-training and experimentation fast on a single CPU. However, its architecture is structurally
-identical to production-scale models — every concept discussed in this document
-(LoRA, weight freezing, adapter merging) applies 1:1 to billion-parameter models like Qwen3-8B.
-
-## Table of Contents
-
-1. [The Problem](#sec-problem)
-2. [The Core Idea](#sec-core-idea)
-3. [Example with Concrete Numbers](#sec-examples)
-4. [Step by Step: What Happens Mathematically?](#sec-math)
+1. [Das Problem](#sec-problem)
+2. [Die Kernidee](#sec-core-idea)
+3. [Beispiel mit konkreten Zahlen](#sec-examples)
+4. [Schritt für Schritt: Was passiert mathematisch?](#sec-math)
 5. [Hyperparameters](#sec-hyperparams)
-6. [Where is LoRA Applied?](#sec-where)
-7. [LoRA vs. Other Methods](#sec-comparison)
-8. [Practice: Saving and Loading LoRA Adapters](#sec-practice)
-9. [Our Implementation: MiniGPT Fine-Tuning](#sec-implementation)
-10. [Further Concepts](#sec-further)
+6. [Wo wird LoRA angewendet?](#sec-where)
+7. [LoRA im Vergleich zu anderen Methoden](#sec-comparison)
+8. [Praxis: LoRA Adapter speichern und laden](#sec-practice)
+9. [Unsere Implementierung: MiniGPT Fine-Tuning](#sec-implementation)
+10. [Weiterführende Konzepte](#sec-further)
 11. [References](#sec-references)
 
 ---
 
 <a id="sec-problem"></a>
 
-## 1. The Problem
+## 1. Das Problem
 
-You want to teach a language model new knowledge — say, facts about a specific domain or a
-particular writing style. The most straightforward approach would be **Training from Scratch**:
-initialize random weights and train on your data until the model learns what you need. But this
-is the sledgehammer method — the model must first learn language, grammar, and world knowledge
-from zero, which requires enormous datasets (trillions of tokens) and massive compute.
-For a model like Qwen3-8B (8 billion parameters), this is completely impractical.
+Dieses Dokument begleitet **MiniGPT**, ein kleines **autoregressive** Sprachmodell (das heißt,
+es erzeugt Text jeweils ein Token nach dem anderen, wobei jede Vorhersage von allen
+vorherigen Token abhängt), das im Rahmen dieses Projekts von Grund auf gebaut wurde
+(siehe [`training_transformer.py`](../src/training/training_transformer.py)).
+MiniGPT folgt der **Transformer**-Architektur, die von Vaswani et al. [8] eingeführt wurde —
+derselben Grundlage hinter Modellen wie ChatGPT, LLaMA und Qwen. Es besteht aus:
 
-The insight that makes modern adaptation feasible is that someone has *already* done this
-expensive work. Pretrained models like Qwen3-8B have been trained on massive datasets and
-already "know" language. Instead of starting from zero, we can start from these pretrained
-weights and continue training on a smaller, task-specific dataset — this is called
-**Full Fine-Tuning**. It is orders of magnitude cheaper than training from scratch, yet still
-expensive in absolute terms, as the following analysis shows.
+- Einem **Token Embedding** (einer Nachschlagetabelle, die jedes Wort oder Teilwort in einen Zahlenvektor umwandelt, den das Modell verarbeiten kann) + einer Positionscodierung (damit das Modell die *Reihenfolge* der Token in der Sequenz kennt)
+- $N$ gestapelten Transformer-Blöcken, die jeweils Multi-Head Self-Attention und ein Feed-Forward-Netzwerk enthalten
+- Einem linearen Output-Kopf, der **Logits** für das nächste Token erzeugt (Rohwerte, einer pro Vokabelwort, die in Wahrscheinlichkeiten umgerechnet werden, um das nächste Token vorherzusagen)
 
-Our MiniGPT (~109K parameters) trains comfortably on a CPU. But models like Qwen3-8B are
-far too large for that — the matrix operations over billions of parameters require the massive
-parallelism of a **GPU**. To understand why even Full Fine-Tuning is costly, we need to look
-at what the GPU must keep in memory.
+Die Transformer-Architektur wurde gewählt, weil sie dem aktuellen Standard für Sprachmodelle entspricht und MiniGPT dadurch strukturell direkt mit Produktionsmodellen wie Qwen3-8B vergleichbar ist — Qwen3 verwendet ebenfalls eine Decoder-only Transformer-Architektur [8] (mit Grouped Query Attention, RMSNorm, SwiGLU und RoPE).
 
-First, there are the **model weights** themselves. Most LLMs are stored and run in
-half-precision (FP16 or BF16) — this is the standard format for modern model distribution and
-inference, as it halves the memory footprint compared to FP32 with negligible quality loss.
-In half-precision, each parameter occupies 2 bytes, so loading Qwen3-8B alone requires
+MiniGPT ist bewusst klein gehalten ($d_{\text{model}} = 64$, 2 Layer, 4 Attention Heads), um
+Training und Experimente schnell auf einer einzelnen CPU zu ermöglichen. Die Architektur ist jedoch
+strukturell identisch mit produktionstauglichen Modellen — jedes in diesem Dokument besprochene
+Konzept (LoRA, Weight Freezing, Adapter Merging) ist 1:1 auf Milliarden-Parameter-Modelle wie
+Qwen3-8B übertragbar.
 
-$$8 \times 10^9 \;\text{params} \times 2 \;\text{bytes} = 16 \;\text{GB}.$$
+Man möchte einem Sprachmodell neues Wissen beibringen — etwa Fakten aus einem bestimmten
+Fachgebiet oder einen bestimmten Schreibstil. Der naheliegendste Ansatz wäre ein Training von Grund auf:
+zufällige Gewichte initialisieren und so lange auf den eigenen Daten trainieren, bis das Modell das
+Gewünschte gelernt hat. Doch das ist die Holzhammer-Methode — das Modell muss zunächst Sprache,
+Grammatik und Weltwissen von Null auf lernen, wofür enorme Datensätze (Billionen von Token) und
+massive Rechenleistung erforderlich sind. Für ein Modell wie Qwen3-8B (8 Milliarden Parameter) ist
+das völlig unpraktikabel.
 
-In practice, additional overhead (CUDA context, activation tensors, data buffers) pushes the
-actual consumption above this theoretical minimum — hence **>16 GB GPU RAM** just to hold the
-model.
+Die Erkenntnis, die moderne Anpassung überhaupt erst möglich macht, ist, dass jemand diese
+aufwändige Arbeit *bereits erledigt hat*. Vortrainierte Modelle (Pretrained Models) wie Qwen3-8B wurden auf riesigen
+Datensätzen trainiert und "kennen" bereits die Sprache. Anstatt bei Null anzufangen, lässt sich
+von diesen vortrainierten Gewichten ausgehen und auf einem kleineren, aufgabenspezifischen Datensatz
+weitertrainieren — das nennt man **Full Fine-Tuning**. Es ist um Größenordnungen günstiger als
+Training from Scratch, aber in absoluten Zahlen immer noch teuer, wie die folgende Analyse zeigt.
 
-Training, however, needs significantly more. During **backpropagation** (the process by
-which the network works backwards from its output error to figure out how each parameter
-contributed to that error), the network computes a **gradient** for every parameter. A
-gradient is essentially a direction-and-magnitude signal: it tells the **optimizer** (the
-algorithm responsible for updating the model's parameters) *in which direction* and *by
-how much* a parameter should change to reduce the error. Mathematically, the gradient of
-parameter $\theta_i$ is the partial derivative
-$g_i = \partial \mathcal{L} / \partial \theta_i$ (where $\mathcal{L}$ is the **loss** —
-a single number measuring how wrong the model's predictions are). Because there is
-one gradient value per parameter, this effectively doubles the memory footprint to ~32 GB.
+Unser MiniGPT (~109K Parameter) lässt sich bequem auf einer CPU trainieren. Modelle wie Qwen3-8B
+sind dafür jedoch viel zu groß — die Matrixoperationen über Milliarden von Parametern erfordern
+die massive Parallelität einer **GPU**. Um zu verstehen, warum selbst Full Fine-Tuning kostspielig
+ist, muss betrachtet werden, was die GPU im VRAM (Video-RAM, der Arbeitsspeicher der Grafikkarte) halten muss.
 
-Modern optimizers add further overhead. **Adam** [7], the de-facto standard optimizer for
-LLM training, maintains two additional running averages per parameter (a momentum term that
-smooths out noisy gradients, and a variance term that adapts the step size for each parameter).
-Together with the weights and gradients, this amounts to roughly $3\times$ the model size
-[11]:
+Zunächst die **Modellgewichte** (Weights) selbst. Die meisten LLMs werden in halber Genauigkeit (FP16 oder
+BF16) gespeichert und ausgeführt — dies ist das Standardformat für die Verteilung und Inferenz
+moderner Modelle, da es den Speicherbedarf im Vergleich zu voller Genauigkeit (FP32, 4 Byte pro Parameter) halbiert, bei vernachlässigbarem
+Qualitätsverlust. Doppelte Genauigkeit (FP64, 8 Byte) wird im Deep Learning nicht eingesetzt — die Gradienten sind ohnehin verrauscht, sodass die zusätzliche Präzision keinen messbaren Vorteil bringt, den Speicherbedarf aber nochmals verdoppeln würde. In halber Genauigkeit belegt jeder Parameter 2 Byte, sodass allein das Laden von
+Qwen3-8B bereits 16 GB benötigt.
+
+$$8 \times 10^9 \;\text{Parameter} \times 2 \;\text{Byte} = 16 \;\text{GB}$$
+
+
+
+In der Praxis treiben zusätzliche Mehraufwände (GPU-Verwaltungsdaten, Zwischenergebnisse der Berechnungen, Datenpuffer) den
+tatsächlichen Verbrauch über dieses theoretische Minimum hinaus — daher **>16 GB GPU RAM** allein
+für das Modell.
+
+Das Trainieren eines Modells benötigt jedoch deutlich mehr. Während der **Backpropagation** (dem Prozess, bei dem das
+Netzwerk rückwärts vom Ausgabefehler arbeitet, um herauszufinden, wie jeder Parameter zu diesem
+Fehler beigetragen hat) berechnet das Netzwerk einen **Gradient** für jeden Parameter — eine Zahl, die angibt, *in welche Richtung* und *um wie viel* dieser Parameter angepasst werden muss, um den Fehler zu verringern.
+
+Ein Beispiel: Das Modell soll nach *"die katze sitzt auf dem"* das Wort *"tisch"* vorhersagen, gibt aber *"hund"* aus. Der Gradient für einen bestimmten Parameter könnte dann $-0{,}03$ betragen — das bedeutet: "Verringere diesen Parameter um einen kleinen Betrag, dann wird die Vorhersage etwas näher an *tisch* rücken." Ein anderer Parameter erhält vielleicht $+0{,}01$: "Erhöhe diesen leicht." So bekommt jeder der 8 Milliarden Parameter seine individuelle Korrekturanweisung.
+
+Formal ist der Gradient die partielle Ableitung $g_i = \partial \mathcal{L} / \partial \theta_i$, wobei $\mathcal{L}$ der **Loss** (Verlust) ist — eine einzelne Zahl, die misst, wie falsch die Vorhersagen des Modells sind. Der **Optimizer** (der Algorithmus, der die Parameter tatsächlich aktualisiert) nutzt diese Gradienten, um jeden Parameter Schritt für Schritt in Richtung besserer Vorhersagen zu verschieben. Da zu jedem der 8 Milliarden Parameter ein zugehöriger Gradient $g_i$ gespeichert werden muss (ebenfalls in FP16, also 2 Byte), verdoppelt sich der Speicherbedarf effektiv auf ~32 GB.
+
+Moderne Optimizer verursachen weiteren Mehraufwand. **Adam** [7], der De-facto-Standard-Optimizer für
+das Training großer Sprachmodelle, hält zwei zusätzliche laufende Mittelwerte pro Parameter vor (einen Impuls-Term,
+der verrauschte Gradienten glättet, und einen Varianz-Term, der die Schrittweite für jeden Parameter
+anpasst). Zusammen mit den Gewichten und Gradienten ergibt dies ungefähr das $3\times$-Fache der
+Modellgröße [11]:
 
 $$3 \times 16 \;\text{GB} \approx 48 \;\text{GB}.$$
 
-On top of that, full fine-tuning typically requires days of computation on expensive hardware —
-making it prohibitive for most practitioners.
+Zum Vergleich: Laut dem Steam Hardware Survey (Januar 2026) [12] haben 33,46% aller Nutzer eine GPU mit 8 GB VRAM — die beliebteste Grafikkarte ist die NVIDIA RTX 4060 (8 GB, 8,57% Marktanteil). Selbst 16 GB VRAM besitzen nur 14,55% der Nutzer. Die für Full Fine-Tuning von Qwen3-8B benötigten ~48 GB übersteigen also die Hardware der allermeisten Consumer-Systeme bei Weitem.
 
-LoRA solves this problem [1] — not by making full fine-tuning cheaper, but by avoiding it
-altogether.
+LoRA löst dieses Problem [1] — nicht, indem es Full Fine-Tuning billiger macht, sondern indem es
+dieses gänzlich vermeidet.
 
 ---
 
 <a id="sec-core-idea"></a>
 
-## 2. The Core Idea
+## 2. Die Kernidee
 
-If full fine-tuning is so expensive, do we really need to update *all* parameters? The key
-observation behind LoRA is that the answer is no — the weight changes that occur during
-fine-tuning occupy only a small subspace of the full parameter space (that is, out of all
-the possible ways the weights *could* change, the actual changes cluster in a tiny region).
+Wenn Full Fine-Tuning so teuer ist, müssen dann wirklich *alle* Parameter aktualisiert werden? Die
+zentrale Beobachtung hinter LoRA lautet: nein — die Weight-Änderungen, die beim Fine-Tuning
+auftreten, belegen nur einen kleinen Unterraum des gesamten Parameterraums (das heißt, von allen
+möglichen Arten, wie sich die Weights *ändern könnten*, konzentrieren sich die tatsächlichen
+Änderungen in einem winzigen Bereich).
 
-[Figure 1](#fig:subspace) below illustrates this intuitively with a simplified schematic of a neural
-network. Each node represents a **neuron** — a computational unit that is connected to
-neurons in adjacent layers via many individual weight parameters (the edges). The figure is
-not drawn to scale with any specific model; it is a conceptual diagram showing the general
-principle. During full fine-tuning, all parameters technically receive gradient updates — but the
-magnitude of change is highly uneven. Blue neurons change only minimally (near-zero
-$\Delta W$), while red neurons change significantly. The meaningful adaptation concentrates
-in a small fraction of the network. This observation directly motivates LoRA: if most
-parameters barely change anyway, we can **freeze** them entirely (lock them so they cannot be modified during training)
-and only train a small low-rank correction for the parameters that actually matter:
+[Abbildung 1](#fig:subspace) veranschaulicht dies anhand eines vereinfachten Schemas
+eines neuronalen Netzes. Jeder Knoten stellt ein **Neuron** dar — eine Recheneinheit, die über
+viele einzelne Weight-Parameter (die Kanten) mit Neuronen in benachbarten Layern verbunden ist. Die
+Abbildung ist nicht maßstabsgetreu zu einem bestimmten Modell; es handelt sich um ein
+Konzeptdiagramm, das das allgemeine Prinzip zeigt. Beim Full Fine-Tuning erhalten technisch alle
+Parameter Gradient-Updates — doch das Ausmaß der Änderung ist höchst ungleichmäßig. Blaue
+Neuronen ändern sich nur minimal (nahezu null $\Delta W$), während rote Neuronen sich deutlich
+verändern. Die bedeutsame Anpassung konzentriert sich auf einen kleinen Bruchteil des Netzwerks.
+Diese Beobachtung motiviert LoRA direkt: Wenn sich die meisten Parameter ohnehin kaum ändern,
+lassen sie sich vollständig **einfrieren** (sperren, sodass sie während des Trainings nicht verändert
+werden können) und nur eine kleine Low-Rank-Korrektur für die Parameter trainieren, die tatsächlich
+relevant sind:
 
 <a id="fig:subspace"></a>
 
 ![Fine-tuning subspace](finetuning_subspace.png)
 
-> **Figure 1 — From observation to strategy.** Left: During Full Fine-Tuning, all parameters
-> are updated, but only a small subset (red) changes significantly — most neurons (blue)
-> barely move. Right: LoRA exploits this by freezing all base weights entirely (light blue)
-> and adding small trainable adapter nodes (green diamonds) alongside specific weight
-> matrices. **Important:** the placement of adapters is not automatic — it is a deliberate
-> configuration choice. The practitioner decides which weight matrices receive adapters via
-> a `target_modules` parameter (see [Section 6](#sec-where) for guidance on which projections
-> to target for different tasks).
-> *Generated by [`generate_finetuning_subspace.py`](generate_finetuning_subspace.py).*
+> **Abbildung 1 — Von der Beobachtung zur Strategie.** Links: Beim Full Fine-Tuning werden alle
+> Parameter aktualisiert, aber nur eine kleine Teilmenge (rot) ändert sich signifikant — die
+> meisten Neuronen (blau) bewegen sich kaum. Rechts: LoRA nutzt dies aus, indem alle Basis-Weights
+> vollständig eingefroren werden (hellblau) und kleine trainierbare Adapter-Knoten (grüne Rauten)
+> neben bestimmten Weight-Matrizen hinzugefügt werden. **Wichtig:** Die Platzierung der Adapter
+> erfolgt nicht automatisch — es ist eine bewusste Konfigurationsentscheidung. Der Anwender legt
+> über einen `target_modules`-Parameter fest, welche Weight-Matrizen Adapter erhalten (siehe
+> [Abschnitt 6](#sec-where) für Hinweise, welche Projektionen bei verschiedenen Aufgaben gewählt
+> werden sollten).
+> *Erzeugt von [`generate_finetuning_subspace.py`](generate_finetuning_subspace.py).*
 
-### 2.1 From Network Nodes to Attention Projections
+### 2.1 Von Netzwerkknoten zu Attention-Projektionen
 
-[Figure 1](#fig:subspace) shows a simplified feed-forward network where each node represents a group
-of parameters. But LoRA is not applied to arbitrary nodes — it targets specific weight
-matrices inside the Transformer's **Self-Attention** mechanism [8]. To understand *where*
-LoRA intervenes, we first need to understand how attention works.
+[Abbildung 1](#fig:subspace) zeigt ein vereinfachtes Feed-Forward-Netzwerk, in dem jeder Knoten eine
+Gruppe von Parametern repräsentiert. LoRA wird jedoch nicht auf beliebige Knoten angewendet —
+es zielt auf bestimmte Weight-Matrizen innerhalb des **Self-Attention**-Mechanismus [8] des
+Transformers ab. Um zu verstehen, *wo* LoRA eingreift, muss zunächst verstanden werden, wie
+Attention funktioniert.
 
-**What is Attention?** In a classical neural network, each layer applies a fixed
-transformation regardless of context. Self-Attention works differently: it allows every
-token in the input to *look at* every other token and decide how much information to take
-from each one. For example, when processing "die katze sitzt auf dem", the token "dem" can
-attend to "katze" and "sitzt" to figure out that a location noun should come next. This
-ability to dynamically focus on relevant parts of the input is what makes Transformers so
-effective at language tasks.
+**Was ist Attention?** In einem klassischen neuronalen Netz wendet jeder Layer eine feste
+Transformation unabhängig vom Kontext an. Self-Attention funktioniert anders: Es ermöglicht jedem
+Token im Input, jedes andere Token *zu betrachten* und zu entscheiden, wie viel Information es von
+jedem einzelnen übernimmt. Wenn beispielsweise "die katze sitzt auf dem" verarbeitet wird, kann das
+Token "dem" auf "katze" und "sitzt" achten, um herauszufinden, dass als nächstes ein Ortsnomen
+kommen sollte. Diese Fähigkeit, dynamisch auf relevante Teile des Inputs zu fokussieren, macht
+Transformer so effektiv bei Sprachaufgaben.
 
-Technically, Self-Attention computes this through **four parallel projections** — $W_Q$,
-$W_K$, $W_V$, and $W_O$ — that operate on the same input simultaneously. Each of these is
-a weight matrix, and each is a potential target for LoRA.
+Technisch berechnet Self-Attention dies über **vier parallele Projektionen** — $W_Q$,
+$W_K$, $W_V$ und $W_O$ — die gleichzeitig auf denselben Input wirken. Jede davon ist
+eine Weight-Matrix und jede ein potenzielles Ziel für LoRA.
 
-#### How the generic network maps to a Transformer
+#### Wie das generische Netzwerk auf einen Transformer abbildet
 
-In a classical feed-forward network (as in the figure), a signal flows strictly sequentially:
+In einem klassischen Feed-Forward-Netzwerk (wie in der Abbildung) fließt ein Signal streng
+sequenziell:
 
 $$
 \text{Input} \;\xrightarrow{W_1}\; \text{Hidden}_1 \;\xrightarrow{W_2}\; \text{Hidden}_2 \;\xrightarrow{W_3}\; \text{Output}
 $$
 
-In a Transformer attention layer, the signal takes a **parallel** path through Q, K, and V
-before being recombined:
+In einem Transformer Attention Layer nimmt das Signal einen **parallelen** Pfad durch Q, K und V,
+bevor es rekombiniert wird:
 
 ```
                         ┌── W_Q · x ──→ Q ─┐
@@ -173,367 +176,383 @@ Input x (e.g. "katze")──┼── W_K · x ──→ K ─┼──→ Atten
                         └── W_V · x ──→ V ─┘
 ```
 
-Each of these projections is a weight matrix — the same kind of "layer connection" shown
-as edges in the figure. The crucial difference is that Q, K, and V are not sequential stages
-but three different *views* of the same input, each serving a distinct role:
+Jede dieser Projektionen ist eine Weight-Matrix — dieselbe Art von "Layer-Verbindung", die in der
+Abbildung als Kanten dargestellt ist. Der entscheidende Unterschied ist, dass Q, K und V keine
+sequenziellen Stufen sind, sondern drei verschiedene *Sichtweisen* auf denselben Input, die jeweils
+eine bestimmte Rolle erfüllen:
 
-| Projection | Role | Intuition |
-|------------|------|-----------|
-| $W_Q$ (Query) | *"What am I looking for?"* | Encodes what information this token needs from other tokens. |
-| $W_K$ (Key) | *"What do I have to offer?"* | Encodes what information this token can provide to others. |
-| $W_V$ (Value) | *"What is my actual content?"* | Holds the semantic content that gets passed along when attended to. |
-| $W_O$ (Output) | *"How do I combine the result?"* | Maps the attention-weighted values back to the model dimension. |
+| Projektion | Rolle | Intuition |
+|------------|-------|-----------|
+| $W_Q$ (Query) | *"Wonach suche ich?"* | Codiert, welche Information dieses Token von anderen Token benötigt. |
+| $W_K$ (Key) | *"Was habe ich anzubieten?"* | Codiert, welche Information dieses Token anderen bereitstellen kann. |
+| $W_V$ (Value) | *"Was ist mein eigentlicher Inhalt?"* | Enthält den semantischen Inhalt, der weitergegeben wird, wenn das Token beachtet wird. |
+| $W_O$ (Output) | *"Wie kombiniere ich das Ergebnis?"* | Bildet die Attention-gewichteten Values zurück auf die Modelldimension ab. |
 
-#### Concrete example: "die katze sitzt auf dem → ?"
+#### Konkretes Beispiel: "die katze sitzt auf dem → ?"
 
-Consider the sentence *"die katze sitzt auf dem"* — the model must predict the next token.
-Here is what happens inside a single attention layer, step by step:
+Betrachtet man den Satz *"die katze sitzt auf dem"* — das Modell muss das nächste Token
+vorhersagen. Folgendes geschieht innerhalb eines einzelnen Attention Layers, Schritt für Schritt:
 
-**Step 1 — Projection.** Every token is projected through all three matrices simultaneously:
+**Schritt 1 — Projektion.** Jedes Token wird gleichzeitig durch alle drei Matrizen projiziert:
 
 | Token | Query ($W_Q \cdot x$) | Key ($W_K \cdot x$) | Value ($W_V \cdot x$) |
 |-------|----------------------|---------------------|----------------------|
-| die | *"I'm looking for a noun"* | *"I'm an article"* | `[0.1, -0.3, ...]` |
-| **katze** | ***"What location comes after me?"*** | ***"I'm a subject, an animal"*** | **`[0.8, 0.2, ...]`** |
-| sitzt | *"Where is the location?"* | *"I'm a verb of position"* | `[0.3, 0.5, ...]` |
-| auf | *"What follows the preposition?"* | *"I'm a preposition"* | `[0.0, 0.1, ...]` |
-| dem | *"What object fits here?"* | *"I expect a location noun"* | `[0.2, -0.1, ...]` |
+| die | *"Ich suche ein Nomen"* | *"Ich bin ein Artikel"* | `[0.1, -0.3, ...]` |
+| **katze** | ***"Welcher Ort kommt nach mir?"*** | ***"Ich bin ein Subjekt, ein Tier"*** | **`[0.8, 0.2, ...]`** |
+| sitzt | *"Wo ist der Ort?"* | *"Ich bin ein Verb der Position"* | `[0.3, 0.5, ...]` |
+| auf | *"Was folgt auf die Präposition?"* | *"Ich bin eine Präposition"* | `[0.0, 0.1, ...]` |
+| dem | *"Welches Objekt passt hierher?"* | *"Ich erwarte ein Ortsnomen"* | `[0.2, -0.1, ...]` |
 
-The text in italics is a human-readable interpretation — in reality these are high-dimensional
-numerical vectors. The key point: Q, K, and V are computed in **parallel**, not sequentially.
+Der kursive Text ist eine menschenlesbare Interpretation — in Wirklichkeit sind dies
+hochdimensionale numerische Vektoren. Der entscheidende Punkt: Q, K und V werden **parallel**
+berechnet, nicht sequenziell.
 
-**Step 2 — Attention scores.** The model computes how much each token should attend to every
-other token by taking the dot product of Queries with Keys:
+**Schritt 2 — Attention Scores.** Das Modell berechnet, wie stark jedes Token jedes andere Token
+beachten soll, indem es das Dot Product aus Queries und Keys bildet:
 
 $$
 \text{score}(\text{dem}, \text{katze}) = Q_{\text{dem}} \cdot K_{\text{katze}}^\top
 $$
 
-If this score is high, it means "dem" finds "katze" relevant for predicting the next word.
-The attention pattern might look like:
+Wenn dieser Score hoch ist, bedeutet das, dass "dem" "katze" als relevant für die Vorhersage des
+nächsten Worts erachtet. Das Attention-Muster könnte so aussehen:
 
 ```
 "dem" attends to:  katze (0.45)  ·  sitzt (0.30)  ·  auf (0.15)  ·  die (0.08)  ·  dem (0.02)
 ```
 
-The model has learned that after "die katze sitzt auf dem", the subject "katze" and the verb
-"sitzt" are the most informative tokens for predicting the location that follows.
+Das Modell hat gelernt, dass nach "die katze sitzt auf dem" das Subjekt "katze" und das Verb
+"sitzt" die informativsten Token für die Vorhersage des folgenden Ortes sind.
 
-**Step 3 — Weighted values.** The attention scores weight the Value vectors, and the
-weighted sum becomes the output:
+**Schritt 3 — Gewichtete Values.** Die Attention Scores gewichten die Value-Vektoren, und die
+gewichtete Summe wird zum Output:
 
 $$
 \text{output}_{\text{dem}} = 0.45 \cdot V_{\text{katze}} + 0.30 \cdot V_{\text{sitzt}} + 0.15 \cdot V_{\text{auf}} + \ldots
 $$
 
-This aggregated vector — dominated by the content of "katze" and "sitzt" — is then projected
-through $W_O$ and eventually decoded into the prediction **"tisch"** (or **"sofa"** after
-fine-tuning).
+Dieser aggregierte Vektor — dominiert vom Inhalt von "katze" und "sitzt" — wird dann durch
+$W_O$ projiziert und schließlich zur Vorhersage **"tisch"** (oder **"sofa"** nach Fine-Tuning)
+decodiert.
 
-#### Where does LoRA fit in?
+#### Wo fügt sich LoRA ein?
 
-Each of the four projections ($W_Q$, $W_K$, $W_V$, $W_O$) is a weight matrix — and each
-one corresponds to a set of edges in the generic network figure. When we apply LoRA, we
-freeze these matrices and add small trainable corrections:
+Jede der vier Projektionen ($W_Q$, $W_K$, $W_V$, $W_O$) ist eine Weight-Matrix — und jede
+entspricht einer Menge von Kanten in der generischen Netzwerkabbildung. Beim Anwenden von LoRA werden diese Matrizen eingefroren und kleine trainierbare Korrekturen hinzugefügt:
 
-- **Changing attention patterns** (which tokens attend to which) → adapt $W_Q$ and/or $W_K$
-- **Changing retrieved content** (what information is passed along) → adapt $W_V$
-- **Changing how results are combined** → adapt $W_O$
+- **Attention-Muster ändern** (welche Token welche beachten) → $W_Q$ und/oder $W_K$ anpassen
+- **Abgerufenen Inhalt ändern** (welche Information weitergegeben wird) → $W_V$ anpassen
+- **Ergebniskombination ändern** → $W_O$ anpassen
 
-Returning to the "katze" example: if we want to change the prediction from "tisch" to "sofa"
-without altering which tokens attend to each other, we only need to modify $W_V$ — the
-Value projection that holds the content "katze is associated with tisch". A LoRA adapter on
-$W_V$ alone can update this to "katze is associated with sofa" while leaving the attention
-patterns (Q, K) intact. This is exactly the fact-correction scenario discussed in detail in
-[Section 6](#sec-where).
+Zurück zum "katze"-Beispiel: Um die Vorhersage von "tisch" auf "sofa" zu ändern, ohne
+zu verändern, welche Token aufeinander achten, muss nur $W_V$ modifiziert werden — die
+Value-Projektion, die den Inhalt "katze ist mit tisch assoziiert" enthält. Ein LoRA Adapter auf
+$W_V$ allein kann dies zu "katze ist mit sofa assoziiert" aktualisieren, während die
+Attention-Muster (Q, K) unverändert bleiben. Dies ist genau das Szenario der Faktenkorrektur, das
+in [Abschnitt 6](#sec-where) ausführlich besprochen wird.
 
-### 2.2 Low-Rank Structure of Weight Updates
+### 2.2 Low-Rank-Struktur von Weight-Updates
 
-Consider what happens when we fully fine-tune a pretrained model. Each weight matrix
-$W_{\text{pretrained}}$ is updated to $W_{\text{finetuned}}$, and we can express the change as
-$\Delta W = W_{\text{finetuned}} - W_{\text{pretrained}}$.
+Betrachtet man, was passiert, wenn ein Pretrained-Modell vollständig fine-getuned wird: Jede
+Weight-Matrix $W_{\text{pretrained}}$ wird zu $W_{\text{finetuned}}$ aktualisiert, und man kann
+die Änderung als $\Delta W = W_{\text{finetuned}} - W_{\text{pretrained}}$ ausdrücken.
 
-To understand the structure of $\Delta W$, we can use the **Singular Value Decomposition
-(SVD)** — a standard tool from linear algebra that decomposes any matrix into a set of
-independent components, each with an associated magnitude (the *singular value*). Think of this as breaking a complex change into individual, ranked "directions" of
-variation: the first direction captures the largest pattern in the change, the second
-captures the next-largest, and so on — similar to how a music equalizer breaks sound into
-frequency bands ranked from loudest to quietest. A weight matrix $W$ with $d$ rows and
-$d$ columns (written $W \in \mathbb{R}^{d \times d}$) has at most $d$ such directions.
-A singular value close to zero means the corresponding direction contributes almost nothing
-to $\Delta W$ — the model barely changed along that axis during fine-tuning.
+Um die Struktur von $\Delta W$ zu verstehen, lässt sich die **Singular Value Decomposition
+(SVD)** verwenden — ein Standardwerkzeug der linearen Algebra, das jede Matrix in eine Menge
+unabhängiger Komponenten zerlegt, jeweils mit einer zugehörigen Größe (dem *Singulärwert*). Man
+kann sich das vorstellen, als würde man eine komplexe Änderung in einzelne, nach Bedeutung
+sortierte "Richtungen" der Variation aufteilen: Die erste Richtung erfasst das größte Muster in der
+Änderung, die zweite das nächstgrößte, und so weiter — ähnlich wie ein Musik-Equalizer Klang in
+Frequenzbänder aufteilt, sortiert vom lautesten zum leisesten. Eine Weight-Matrix $W$ mit $d$
+Zeilen und $d$ Spalten (geschrieben $W \in \mathbb{R}^{d \times d}$) hat höchstens $d$ solcher
+Richtungen. Ein Singulärwert nahe Null bedeutet, dass die entsprechende Richtung fast nichts zu
+$\Delta W$ beiträgt — das Modell hat sich während des Fine-Tunings entlang dieser Achse kaum
+verändert.
 
-When this decomposition is applied to $\Delta W$ in practice, the result is striking: only a
-handful of directions have large singular values, while the vast majority are near zero. In
-other words, the fine-tuning update is concentrated in a small subspace — it has **low rank**.
+Wendet man diese Zerlegung in der Praxis auf $\Delta W$ an, ist das Ergebnis bemerkenswert: Nur
+eine Handvoll Richtungen haben große Singulärwerte, während die überwiegende Mehrheit nahe Null
+liegt. Mit anderen Worten: Das Fine-Tuning-Update konzentriert sich in einem kleinen Unterraum —
+es hat **Low Rank**.
 
-The theoretical foundation for this was established by Aghajanyan et al. [9], who showed
-that pretrained language models have a low **intrinsic dimensionality**: even though the
-parameter space is enormous, the effective subspace needed for successful fine-tuning is
-surprisingly small. For example, they measured that RoBERTa-Large (355M parameters) can be
-fine-tuned within a subspace of only $\approx 200$ to $800$ dimensions, depending on the task
-([9], Table 1 and Fig. 1 therein).
+Die theoretische Grundlage dafür wurde von Aghajanyan et al. [9] geschaffen, die zeigten, dass
+Pretrained-Sprachmodelle eine niedrige **intrinsische Dimensionalität** besitzen: Obwohl der
+Parameterraum riesig ist, ist der effektive Unterraum, der für erfolgreiches Fine-Tuning benötigt
+wird, überraschend klein. Sie maßen beispielsweise, dass RoBERTa-Large (355M Parameter) in einem
+Unterraum von nur $\approx 200$ bis $800$ Dimensionen fine-getuned werden kann, je nach Aufgabe
+([9], Tabelle 1 und Abb. 1 darin).
 
-Hu et al. [1] then verified this directly for large-scale models. In Section 7.2 and
-Fig. 3 of [1], they compute the SVD of the actual weight change $\Delta W$ for GPT-3 175B
-($d_{\text{model}} = 12{,}288$) and show that the **singular values of $\Delta W$ decay
-rapidly** — the top singular values contain most of the energy, while the vast majority are
-near zero. Intuitively, this makes sense: when fine-tuning a model from "general knowledge"
-to, say, "cooking knowledge", not everything changes. The adaptation $\Delta W$ is a
-relatively "simple" transformation that lies in a low-dimensional subspace.
+Hu et al. [1] verifizierten dies dann direkt für großskalige Modelle. In Abschnitt 7.2 und
+Abb. 3 von [1] berechnen sie die SVD der tatsächlichen Weight-Änderung $\Delta W$ für GPT-3 175B
+($d_{\text{model}} = 12{,}288$) und zeigen, dass die **Singulärwerte von $\Delta W$ schnell
+abfallen** — die größten Singulärwerte enthalten den Großteil der Energie, während die
+überwiegende Mehrheit nahe Null liegt. Intuitiv ist das nachvollziehbar: Wenn man ein Modell von
+"allgemeinem Wissen" auf, etwa "Kochwissen" fine-tuned, ändert sich nicht alles. Die
+Anpassung $\Delta W$ ist eine vergleichsweise "einfache" Transformation, die in einem
+niedrigdimensionalen Unterraum liegt.
 
-### 2.3 The LoRA Formulation
+### 2.3 Die LoRA-Formulierung
 
-This low-rank insight leads directly to the LoRA formulation. Instead of modifying the
-original weight matrix $W$ — which would require storing and optimizing all $d \times d$
-parameters — we **freeze** $W$ (keeping the pretrained values unchanged) and approximate the
-update $\Delta W$ through a factorization into two small matrices
-$B \in \mathbb{R}^{d \times r}$ and $A \in \mathbb{R}^{r \times d}$, where $r \ll d$
-(i.e. $r$ is *much* smaller than $d$ — typically by a factor of 100x or more):
+Diese Low-Rank-Erkenntnis führt direkt zur LoRA-Formulierung. Anstatt die ursprüngliche
+Weight-Matrix $W$ zu modifizieren — was das Speichern und Optimieren aller $d \times d$ Parameter
+erfordern würde — wird $W$ **eingefroren** (die Pretrained-Werte werden unverändert beibehalten) und
+approximieren das Update $\Delta W$ durch eine Faktorisierung in zwei kleine Matrizen
+$B \in \mathbb{R}^{d \times r}$ und $A \in \mathbb{R}^{r \times d}$, wobei $r \ll d$
+(das heißt, $r$ ist *wesentlich* kleiner als $d$ — typischerweise um einen Faktor von 100x oder
+mehr):
 
 $$
 \underbrace{y = Wx}_{\text{frozen}} \;+\; \underbrace{BAx}_{\text{trainable (small!)}}
 $$
 
-The product $BA$ has rank at most $r$, so this formulation can capture exactly the kind of
-low-rank updates observed empirically. During **LoRA training**, only $A$ and $B$ receive
-**gradients** — the original weights $W$ remain untouched and do not consume optimizer memory.
+Das Produkt $BA$ hat höchstens Rank $r$, sodass diese Formulierung genau die Art von
+Low-Rank-Updates erfassen kann, die empirisch beobachtet werden. Während des **LoRA-Trainings**
+erhalten nur $A$ und $B$ **Gradients** — die ursprünglichen Weights $W$ bleiben unberührt und
+verbrauchen keinen Optimizer-Speicher.
 
-Recall from [Section 1](#sec-problem) that a gradient
-$g_i = \partial \mathcal{L} / \partial \theta_i$ tells the optimizer how to update each
-parameter. A parameter that is *frozen* (`requires_grad = False` in PyTorch) is excluded
-from this computation entirely — no gradient is calculated, no optimizer state is allocated,
-and the parameter stays exactly as it was. This is why freezing $W$ saves so much memory:
-no gradients and no optimizer states need to be stored for the vast majority of the model's
-parameters.
+Zur Erinnerung aus [Abschnitt 1](#sec-problem): Ein Gradient
+$g_i = \partial \mathcal{L} / \partial \theta_i$ teilt dem Optimizer mit, wie jeder Parameter
+aktualisiert werden soll. Ein *eingefrorener* Parameter (`requires_grad = False` in PyTorch) wird
+von dieser Berechnung vollständig ausgeschlossen — kein Gradient wird berechnet, kein
+Optimizer-Zustand wird allokiert, und der Parameter bleibt exakt unverändert. Deshalb spart das
+Einfrieren von $W$ so viel Speicher: Für die große Mehrheit der Modellparameter müssen weder
+Gradients noch Optimizer-Zustände gespeichert werden.
 
-The table below makes this concrete using the "katze → tisch/sofa" example
-from our training data ([Figure 3](#fig:gradients) later visualizes the same steps geometrically).
-The key insight: the model doesn't suddenly "forget" one word and
-"learn" another. Instead, **both candidates always exist** in the model's vocabulary — what
-changes during training is the probability the model assigns to each one. The gradient
-nudges the probabilities step by step until a different word becomes the top prediction.
+Die folgende Tabelle veranschaulicht dies konkret am "katze → tisch/sofa"-Beispiel
+aus unseren Trainingsdaten ([Abbildung 3](#fig:gradients) visualisiert die gleichen Schritte
+später geometrisch). Die zentrale Erkenntnis: Das Modell "vergisst" nicht plötzlich ein Wort und
+"lernt" ein anderes. Stattdessen **existieren beide Kandidaten stets** im Vokabular des Modells —
+was sich während des Trainings ändert, ist die Wahrscheinlichkeit, die das Modell jedem zuweist.
+Der Gradient verschiebt die Wahrscheinlichkeiten Schritt für Schritt, bis ein anderes Wort zur
+Top-Vorhersage wird.
 
 Prompt: *"die katze sitzt auf dem → ?"*
 
-| Training step | "tisch" | "sofa" | "bett" | "boden" | Prediction |
-|---------------|---------|--------|--------|---------|------------|
-| 0 (before training) | **98%** | 0.3% | 0.5% | 0.2% | tisch |
+| Training-Schritt | "tisch" | "sofa" | "bett" | "boden" | Vorhersage |
+|------------------|---------|--------|--------|---------|------------|
+| 0 (vor dem Training) | **98%** | 0.3% | 0.5% | 0.2% | tisch |
 | 10 | **61%** | 24% | 8% | 4% | tisch |
 | 30 | 15% | **72%** | 7% | 3% | sofa |
-| 50 (converged — values barely change from here on) | 2% | **96%** | 1% | 0.5% | sofa |
+| 50 (konvergiert — Werte ändern sich ab hier kaum noch) | 2% | **96%** | 1% | 0.5% | sofa |
 
-At step 0, the pretrained model is almost certain about "tisch" (98%). The gradient
-(computed from the training data where the correct answer is "sofa") tells the optimizer:
-*"tisch" is wrong — shift probability toward "sofa"*. With each step, "tisch" loses
-probability mass while "sofa" gains it. By step 30, "sofa" overtakes "tisch" as the top
-prediction. By step 50, the model is 96% confident — but "tisch" never fully disappears,
-it just becomes very unlikely (2%).
+Bei Schritt 0 ist das Pretrained-Modell nahezu sicher bei "tisch" (98%). Der Gradient (berechnet
+aus den Trainingsdaten, in denen die korrekte Antwort "sofa" ist) teilt dem Optimizer mit:
+*"tisch" ist falsch — verschiebe die Wahrscheinlichkeit in Richtung "sofa"*. Mit jedem Schritt
+verliert "tisch" Wahrscheinlichkeitsmasse, während "sofa" zulegt. Bei Schritt 30 überholt "sofa"
+"tisch" als Top-Vorhersage. Bei Schritt 50 ist das Modell zu 96% sicher — aber "tisch"
+verschwindet nie vollständig, es wird nur sehr unwahrscheinlich (2%).
 
-**How do we know when training has converged?** In practice, we monitor the **loss** (the
-model's error) over the course of training. The loss curve typically falls steeply at first
-and then flattens into a plateau — once it stops decreasing meaningfully, the model has
-converged. [Figure 2](#fig:loss-curves) from our actual MiniGPT fine-tuning shows this clearly:
+**Woran erkennt man, dass das Training konvergiert hat?** In der Praxis überwacht man den **Loss**
+(den Fehler des Modells) im Verlauf des Trainings. Die Loss-Kurve fällt typischerweise am Anfang
+steil ab und flacht dann zu einem Plateau ab — sobald sie nicht mehr nennenswert sinkt, hat das
+Modell konvergiert. [Abbildung 2](#fig:loss-curves) aus unserem tatsächlichen MiniGPT Fine-Tuning
+zeigt dies deutlich:
 
 <a id="fig:loss-curves"></a>
 
 ![Training loss comparison](../dist/finetuning_results/finetuning_comparison.png)
 
-> **Figure 2 — Loss curves from MiniGPT fine-tuning.** Left: training loss over 50 epochs
-> for all three methods (Full Fine-Tuning, Layer Freezing, LoRA). All three converge around
-> epoch 25–35 — the curves flatten and further training yields diminishing returns. LoRA
-> (blue) flattens earliest. In hindsight, 30 epochs would have been sufficient. Right:
-> trainable parameter counts for each method. *Generated by
+> **Abbildung 2 — Loss-Kurven vom MiniGPT Fine-Tuning.** Links: Training Loss über 50 Epochs
+> für alle drei Methoden (Full Fine-Tuning, Layer Freezing, LoRA). Alle drei konvergieren
+> etwa bei Epoch 25-35 — die Kurven flachen ab und weiteres Training bringt abnehmende Erträge.
+> LoRA (blau) flacht am frühesten ab. Im Nachhinein hätten 30 Epochs ausgereicht. Rechts:
+> Anzahl trainierbarer Parameter für jede Methode. *Erzeugt von
 > [`finetuning_transformer.py`](../src/training/finetuning_transformer.py).*
 
-Whether 50 steps is "a lot" depends entirely on the setup. For our MiniGPT (~109K parameters,
-22 training sentences), each epoch takes milliseconds — 50 epochs is trivial. For Qwen3-8B
-with a large dataset, a single epoch might contain millions of gradient steps and take hours.
-In that case, 1–3 epochs are typical, and convergence is monitored via the same loss curve
-principle.
+Ob 50 Schritte "viel" sind, hängt ganz vom Setup ab. Für unser MiniGPT (~109K Parameter,
+22 Trainingssätze) dauert jeder Epoch Millisekunden — 50 Epochs sind trivial. Für Qwen3-8B mit
+einem großen Datensatz kann ein einzelner Epoch Millionen von Gradient-Schritten umfassen und
+Stunden dauern. In diesem Fall sind 1-3 Epochs typisch, und die Konvergenz wird nach dem gleichen
+Loss-Kurven-Prinzip überwacht.
 
-The loss curves above show how training error *decreases over time* (x-axis = epoch).
-But what actually drives each update step? To understand that, we need to look at the
-**loss landscape** — a different perspective where the x-axis is no longer time but a
-*parameter value* $\theta$. For a single parameter, loss as a function of $\theta$ forms
-a curve (often bowl-shaped); the **gradient** is simply the slope of that curve at the
-current position. A negative slope means "decrease $\theta$ to reduce loss", a positive
-slope means "increase it". The optimizer follows this slope downhill, step by step.
+Die obigen Loss-Kurven zeigen, wie der Training Error *über die Zeit abnimmt* (x-Achse = Epoch).
+Doch was treibt jeden einzelnen Update-Schritt eigentlich an? Um das zu verstehen, muss die
+**Loss Landscape** betrachtet werden — eine andere Perspektive, bei der die x-Achse nicht mehr die Zeit
+ist, sondern ein *Parameterwert* $\theta$. Für einen einzelnen Parameter bildet der Loss als
+Funktion von $\theta$ eine Kurve (oft schüsselförmig); der **Gradient** ist einfach die Steigung
+dieser Kurve an der aktuellen Position. Eine negative Steigung bedeutet "verringere $\theta$, um
+den Loss zu reduzieren", eine positive Steigung bedeutet "erhöhe ihn". Der Optimizer folgt dieser
+Steigung bergab, Schritt für Schritt.
 
 <a id="fig:gradients"></a>
 
 ![Gradient example](gradient_example.png)
 
-> **Figure 3 — Gradients explained.** Left: the loss landscape as a function of a single
-> parameter $\theta$ — unlike the training curves in [Figure 2](#fig:loss-curves), the x-axis here is the
-> parameter value, not training time. The gradient is the slope at the current position.
-> Center: gradient descent over 3 steps from "tisch" to "sofa". Right: in LoRA, only
-> adapter matrices receive gradients — frozen weights are excluded entirely.
-> *Generated by [`generate_gradient_example.py`](generate_gradient_example.py).*
+> **Abbildung 3 — Gradients erklärt.** Links: Die Loss Landscape als Funktion eines einzelnen
+> Parameters $\theta$ — anders als die Training-Kurven in [Abbildung 2](#fig:loss-curves) ist die
+> x-Achse hier der Parameterwert, nicht die Trainingszeit. Der Gradient ist die Steigung an der
+> aktuellen Position. Mitte: Gradient Descent über 3 Schritte von "tisch" zu "sofa". Rechts: Bei
+> LoRA erhalten nur Adapter-Matrizen Gradients — eingefrorene Weights werden vollständig
+> ausgeschlossen.
+> *Erzeugt von [`generate_gradient_example.py`](generate_gradient_example.py).*
 
-#### Visual intuition
+#### Visuelle Intuition
 
-[Figure 4](#fig:lora-2d) below illustrates this for a minimal 2D example. A unit circle of input
-vectors $x$ is passed through three different linear mappings to show how each one
-transforms the space:
+[Abbildung 4](#fig:lora-2d) veranschaulicht dies für ein minimales 2D-Beispiel. Ein
+Einheitskreis von Input-Vektoren $x$ wird durch drei verschiedene lineare Abbildungen geschickt, um
+zu zeigen, wie jede den Raum transformiert:
 
 ![LoRA intuition](lora_intuition.png)
 
-- **Left — Pretrained weights $W$ (frozen).** The dashed gray circle represents the raw
-  input data $x$. The blue ellipse is the output $y = Wx$ — the result of passing $x$
-  through the pretrained model. The weight matrix $W$ was learned during **pretraining**
-  (the initial training on massive datasets, e.g. large parts of the internet). It encodes
-  the model's general knowledge and determines how inputs are transformed. In this 2D
-  example, $W$ stretches and rotates the circle into an ellipse (a basic property of linear
-  maps). This is our starting point — the model before any fine-tuning.
-- **Center — Full Fine-Tuning $(W + \Delta W)$.** After fine-tuning, all parameters have
-  been updated. The red ellipse shows the new transformation — this is the target behavior
-  we want the model to learn.
-- **Right — LoRA $(W + BA)$.** The pretrained weights $W$ stay frozen (faint blue ellipse,
-  identical to the left panel). The green arrows show the correction $BAx$ that is *added*
-  on top, pushing each output point from the blue ellipse toward the green one. Even though
-  $BA$ has rank 1 (the minimum in 2D), the resulting green ellipse already closely
-  approximates the red fine-tuning target.
+- **Links — Pretrained Weights $W$ (eingefroren).** Der gestrichelte graue Kreis stellt die
+  rohen Input-Daten $x$ dar. Die blaue Ellipse ist der Output $y = Wx$ — das Ergebnis der
+  Durchleitung von $x$ durch das Pretrained-Modell. Die Weight-Matrix $W$ wurde während des
+  **Pretraining** gelernt (dem initialen Training auf riesigen Datensätzen, z.B. großen Teilen des
+  Internets). Sie codiert das allgemeine Wissen des Modells und bestimmt, wie Inputs transformiert
+  werden. In diesem 2D-Beispiel streckt und rotiert $W$ den Kreis zu einer Ellipse (eine
+  grundlegende Eigenschaft linearer Abbildungen). Dies ist unser Ausgangspunkt — das Modell vor
+  jeglichem Fine-Tuning.
+- **Mitte — Full Fine-Tuning $(W + \Delta W)$.** Nach dem Fine-Tuning wurden alle Parameter
+  aktualisiert. Die rote Ellipse zeigt die neue Transformation — dies ist das Zielverhalten, das
+  das Modell lernen soll.
+- **Rechts — LoRA $(W + BA)$.** Die Pretrained Weights $W$ bleiben eingefroren (blasse blaue
+  Ellipse, identisch zum linken Panel). Die grünen Pfeile zeigen die Korrektur $BAx$, die
+  *additiv* hinzugefügt wird und jeden Ausgabepunkt von der blauen Ellipse zur grünen hin
+  verschiebt. Obwohl $BA$ Rank 1 hat (das Minimum in 2D), approximiert die resultierende grüne
+  Ellipse bereits das rote Fine-Tuning-Ziel sehr gut.
 
-The key takeaway: LoRA does not change the pretrained weights. It learns a small,
-low-rank correction that is applied additively. The frozen weights provide the foundation,
-and the trainable matrices $A$ and $B$ steer the output toward the desired behavior.
+Die zentrale Erkenntnis: LoRA verändert die Pretrained Weights nicht. Es lernt eine kleine
+Low-Rank-Korrektur, die additiv angewendet wird. Die eingefrorenen Weights bilden das Fundament,
+und die trainierbaren Matrizen $A$ und $B$ lenken den Output in Richtung des gewünschten
+Verhaltens.
 
 <a id="fig:lora-2d"></a>
 
-> **Figure 4 — LoRA as a geometric correction in 2D.** A unit circle of input vectors is
-> transformed by three different linear mappings. Left: the pretrained weights $W$ (blue
-> ellipse). Center: the full fine-tuning target $W + \Delta W$ (red ellipse). Right: LoRA
-> approximates the target by adding a rank-1 correction $BA$ (green ellipse) to the frozen
-> pretrained weights — the green arrows show the additive correction pushing each point
-> from the blue toward the green ellipse. Even with the minimum possible rank ($r = 1$),
-> the approximation closely matches the full fine-tuning result.
-> *Generated by [`generate_lora_visualization.py`](generate_lora_visualization.py).*
+> **Abbildung 4 — LoRA als geometrische Korrektur in 2D.** Ein Einheitskreis von Input-Vektoren
+> wird durch drei verschiedene lineare Abbildungen transformiert. Links: die Pretrained Weights $W$
+> (blaue Ellipse). Mitte: das Full Fine-Tuning-Ziel $W + \Delta W$ (rote Ellipse). Rechts: LoRA
+> approximiert das Ziel, indem eine Rank-1-Korrektur $BA$ (grüne Ellipse) zu den eingefrorenen
+> Pretrained Weights addiert wird — die grünen Pfeile zeigen die additive Korrektur, die jeden
+> Punkt von der blauen zur grünen Ellipse verschiebt. Selbst mit dem minimal möglichen Rank
+> ($r = 1$) stimmt die Approximation eng mit dem Full Fine-Tuning-Ergebnis überein.
+> *Erzeugt von [`generate_lora_visualization.py`](generate_lora_visualization.py).*
 
 <a id="sec-rank-theory"></a>
 
-### 2.4 Choosing the Rank $r$
+### 2.4 Wahl des Rank $r$
 
-The product $BA$ from Section 2.3 has rank at most $r$ — the shared inner dimension of $A$
-and $B$. This is the single most important LoRA hyperparameter, because it controls the
-trade-off between two competing goals:
+Das Produkt $BA$ aus Abschnitt 2.3 hat höchstens Rank $r$ — die gemeinsame innere Dimension von
+$A$ und $B$. Dies ist der wichtigste LoRA-Hyperparameter, da er den Kompromiss zwischen zwei
+konkurrierenden Zielen steuert:
 
-- **Higher $r$** means $A$ and $B$ have more columns/rows, so the product $BA$ can represent
-  more complex weight updates. However, more parameters also require more memory and
-  computation.
-- **Lower $r$** is cheaper and faster, but the approximation becomes coarser — if $r$ is too
-  small, $BA$ cannot capture enough of the fine-tuning signal and performance degrades.
+- **Höheres $r$** bedeutet, dass $A$ und $B$ mehr Spalten/Zeilen haben, sodass das Produkt $BA$
+  komplexere Weight-Updates darstellen kann. Allerdings erfordern mehr Parameter auch mehr Speicher
+  und Rechenleistung.
+- **Niedrigeres $r$** ist günstiger und schneller, aber die Approximation wird gröber — wenn $r$
+  zu klein ist, kann $BA$ nicht genug vom Fine-Tuning-Signal erfassen und die Leistung verschlechtert
+  sich.
 
-In practice, $r$ does not need to be large. Hu et al. [1] tested this systematically by
-training GPT-3 175B with different ranks $r \in \{1, 2, 4, 8, 64\}$ and measuring
-downstream task performance (Table 6 in [1]). The result: already at $r = 4$ to $r = 8$,
-LoRA matches or closely approaches full fine-tuning on most tasks — while $r = 64$ yields
-virtually no additional gain. This makes sense given the low-rank structure discussed in
-Section 2.2: if $\Delta W$ only has a handful of significant singular values, then a small
-$r$ is sufficient to capture them.
+In der Praxis muss $r$ nicht groß sein. Hu et al. [1] testeten dies systematisch, indem sie GPT-3
+175B mit verschiedenen Ranks $r \in \{1, 2, 4, 8, 64\}$ trainierten und die Downstream-Task-Leistung
+maßen (Tabelle 6 in [1]). Das Ergebnis: Bereits bei $r = 4$ bis $r = 8$ erreicht LoRA auf den
+meisten Aufgaben die Leistung von Full Fine-Tuning oder kommt ihr sehr nahe — während $r = 64$
+praktisch keinen zusätzlichen Gewinn bringt. Dies ist angesichts der in Abschnitt 2.2 besprochenen
+Low-Rank-Struktur nachvollziehbar: Wenn $\Delta W$ nur eine Handvoll signifikanter Singulärwerte
+hat, reicht ein kleines $r$ aus, um diese zu erfassen.
 
-The following table puts these values in perspective by comparing the chosen rank to the
-full dimensionality $d_{\text{model}}$ (i.e. the maximum possible rank of $\Delta W$):
+Die folgende Tabelle setzt diese Werte ins Verhältnis, indem sie den gewählten Rank mit der vollen
+Dimensionalität $d_{\text{model}}$ (also dem maximal möglichen Rank von $\Delta W$) vergleicht:
 
-| Model | $d_{\text{model}}$ (max. rank) | Chosen LoRA rank $r$ | $r / d_{\text{model}}$ |
-|-------|-------------------------------|----------------------|------------------------|
-| Our MiniGPT | 64 | 4 | $6.25\%$ |
+| Modell | $d_{\text{model}}$ (max. Rank) | Gewählter LoRA Rank $r$ | $r / d_{\text{model}}$ |
+|--------|-------------------------------|----------------------|------------------------|
+| Unser MiniGPT | 64 | 4 | $6.25\%$ |
 | Qwen3-8B | 4,096 | 8 | $0.2\%$ |
 | GPT-3 175B | 12,288 | 8 | $0.065\%$ |
 
-The pattern is clear: the larger the model, the smaller the fraction of directions needed.
-For GPT-3, $8$ out of $12{,}288$ possible directions — just $0.065\%$ — are sufficient to
-approximate the full fine-tuning update. Intuitively, larger models have more redundancy in
-their weight matrices, so the effective change during fine-tuning concentrates in an even
-smaller subspace.
+Das Muster ist eindeutig: Je größer das Modell, desto kleiner der Bruchteil benötigter Richtungen.
+Für GPT-3 reichen $8$ von $12{,}288$ möglichen Richtungen — gerade einmal $0.065\%$ — aus, um
+das Full Fine-Tuning-Update zu approximieren. Intuitiv erklärt sich das dadurch, dass größere
+Modelle mehr Redundanz in ihren Weight-Matrizen aufweisen, sodass sich die effektive Änderung
+während des Fine-Tunings in einem noch kleineren Unterraum konzentriert.
 
-For practical guidance on choosing $r$ — including recommended values for different model
-sizes and tasks, the scaling factor $\alpha$, and learning rates — see
-[Section 5 (Hyperparameters)](#sec-hyperparams).
+Praktische Hinweise zur Wahl von $r$ — einschließlich empfohlener Werte für verschiedene
+Modellgrößen und Aufgaben, des Scaling-Faktors $\alpha$ und der Learning Rates — finden sich in
+[Abschnitt 5 (Hyperparameters)](#sec-hyperparams).
 
 ---
 
 <a id="sec-examples"></a>
 
-## 3. Example with Concrete Numbers
+## 3. Beispiel mit konkreten Zahlen
 
-With the core idea in place, let us now make it concrete. This section works through the
-actual parameter counts for LoRA on two models — our MiniGPT and Qwen3-8B — to show
-exactly how much memory and storage LoRA saves.
+Nachdem die Kernidee erläutert ist, wird sie nun konkret gemacht. Dieser Abschnitt rechnet die
+tatsächlichen Parameteranzahlen für LoRA an zwei Modellen durch — unserem MiniGPT und Qwen3-8B —
+um genau zu zeigen, wie viel Speicher und Speicherplatz LoRA einspart.
 
-The following notation is used throughout this section:
+Die folgende Notation wird durchgehend in diesem Abschnitt verwendet:
 
-| Symbol | Name | Description |
+| Symbol | Name | Beschreibung |
 |--------|------|-------------|
-| $\mathbb{R}^{m \times n}$ | Real matrix space | The set of all matrices with $m$ rows and $n$ columns of real-valued entries. In this context, each entry is a learned **weight** parameter. For example, $W \in \mathbb{R}^{64 \times 64}$ has $64 \times 64 = 4{,}096$ weight parameters. |
-| $d_{\text{model}}$ | Model dimension | Dimensionality of the hidden representations. The embedding layer maps every discrete token to an embedding vector $\in \mathbb{R}^{d_{\text{model}}}$, and all subsequent layers operate in this same $d_{\text{model}}$-dimensional space. |
-| $W$ | Weight matrix | A linear projection inside the Transformer, e.g. $W_Q, W_K, W_V, W_O \in \mathbb{R}^{d_{\text{model}} \times d_{\text{model}}}$. The total number of parameters is $d_{\text{model}}^2$. |
-| $r$ | LoRA rank | Dimensionality of the low-rank subspace. Controls the trade-off between expressiveness and parameter efficiency. See [Section 5.1](#sec-rank) for guidance on choosing $r$. |
-| $A$ | Down-projection | LoRA matrix $A \in \mathbb{R}^{r \times d_{\text{model}}}$ that compresses the input into the low-rank space. Contains $r \cdot d_{\text{model}}$ parameters. |
-| $B$ | Up-projection | LoRA matrix $B \in \mathbb{R}^{d_{\text{model}} \times r}$ that expands back to the original dimension. Contains $d_{\text{model}} \cdot r$ parameters. |
-| $\alpha$ | LoRA alpha | Scaling hyperparameter. The LoRA contribution is multiplied by $s = \frac{\alpha}{r}$. See [Section 5.2](#sec-alpha) for guidance on choosing $\alpha$. |
-| $\theta$ | Parameters | The set of all model parameters; $\|\theta\|$ denotes the total count. |
-| $\theta_{\text{LoRA}}$ | LoRA parameters | The subset of trainable LoRA parameters ($A$ and $B$ matrices). |
+| $\mathbb{R}^{m \times n}$ | Reeller Matrixraum | Die Menge aller Matrizen mit $m$ Zeilen und $n$ Spalten reellwertiger Einträge. In diesem Kontext ist jeder Eintrag ein gelernter **Weight**-Parameter. Zum Beispiel hat $W \in \mathbb{R}^{64 \times 64}$ insgesamt $64 \times 64 = 4{,}096$ Weight-Parameter. |
+| $d_{\text{model}}$ | Modelldimension | Dimensionalität der verborgenen Repräsentationen. Der Embedding Layer bildet jedes diskrete Token auf einen Embedding-Vektor $\in \mathbb{R}^{d_{\text{model}}}$ ab, und alle nachfolgenden Layer arbeiten in demselben $d_{\text{model}}$-dimensionalen Raum. |
+| $W$ | Weight-Matrix | Eine lineare Projektion innerhalb des Transformers, z.B. $W_Q, W_K, W_V, W_O \in \mathbb{R}^{d_{\text{model}} \times d_{\text{model}}}$. Die Gesamtanzahl der Parameter beträgt $d_{\text{model}}^2$. |
+| $r$ | LoRA Rank | Dimensionalität des Low-Rank-Unterraums. Steuert den Kompromiss zwischen Ausdrucksstärke und Parametereffizienz. Siehe [Abschnitt 5.1](#sec-rank) für Hinweise zur Wahl von $r$. |
+| $A$ | Down-Projection | LoRA-Matrix $A \in \mathbb{R}^{r \times d_{\text{model}}}$, die den Input in den Low-Rank-Raum komprimiert. Enthält $r \cdot d_{\text{model}}$ Parameter. |
+| $B$ | Up-Projection | LoRA-Matrix $B \in \mathbb{R}^{d_{\text{model}} \times r}$, die zurück auf die ursprüngliche Dimension expandiert. Enthält $d_{\text{model}} \cdot r$ Parameter. |
+| $\alpha$ | LoRA Alpha | Scaling-Hyperparameter. Der LoRA-Beitrag wird mit $s = \frac{\alpha}{r}$ multipliziert. Siehe [Abschnitt 5.2](#sec-alpha) für Hinweise zur Wahl von $\alpha$. |
+| $\theta$ | Parameter | Die Menge aller Modellparameter; $\|\theta\|$ bezeichnet die Gesamtanzahl. |
+| $\theta_{\text{LoRA}}$ | LoRA-Parameter | Die Teilmenge der trainierbaren LoRA-Parameter ($A$- und $B$-Matrizen). |
 
-### Single Attention Projection
+### Einzelne Attention-Projektion
 
-Each Transformer block contains several linear projections (e.g. $W_Q$, $W_K$, $W_V$, $W_O$).
-LoRA wraps **each of these individually** with its own pair of matrices $A$ and $B$.
+Jeder Transformer-Block enthält mehrere lineare Projektionen (z.B. $W_Q$, $W_K$, $W_V$, $W_O$).
+LoRA umhüllt **jede dieser einzeln** mit einem eigenen Paar von Matrizen $A$ und $B$.
 
-The central question is: **how many parameters must the optimizer track during training?**
-This count directly determines practical resource requirements:
+Die zentrale Frage lautet: **Wie viele Parameter muss der Optimizer während des Trainings
+verwalten?** Diese Anzahl bestimmt direkt die praktischen Ressourcenanforderungen:
 
-- **GPU memory** — As discussed in [Section 1](#sec-problem), the Adam optimizer stores two
-  additional states per trainable parameter, so each one costs $\approx 3\times$ its weight
-  size in VRAM. Fewer trainable parameters mean fine-tuning fits on smaller GPUs.
-- **Adapter size on disk** — Only the LoRA matrices $A$ and $B$ need to be saved and distributed.
-  A smaller adapter enables rapid deployment and makes it practical to maintain many
-  task-specific adapters for the same base model.
-- **Training time** — Fewer trainable parameters result in fewer gradient computations per step
-  and smaller optimizer updates, reducing wall-clock time per epoch.
+- **GPU-Speicher** — Wie in [Abschnitt 1](#sec-problem) besprochen, speichert der Adam Optimizer
+  zwei zusätzliche Zustände pro trainierbarem Parameter, sodass jeder $\approx 3\times$ seines
+  Weight-Speicherbedarfs im VRAM kostet. Weniger trainierbare Parameter bedeuten, dass Fine-Tuning
+  auf kleineren GPUs möglich wird.
+- **Adapter-Größe auf Festplatte** — Nur die LoRA-Matrizen $A$ und $B$ müssen gespeichert und
+  verteilt werden. Ein kleinerer Adapter ermöglicht schnelles Deployment und macht es praktikabel,
+  viele aufgabenspezifische Adapter für dasselbe Basismodell vorzuhalten.
+- **Trainingszeit** — Weniger trainierbare Parameter resultieren in weniger Gradient-Berechnungen
+  pro Schritt und kleineren Optimizer-Updates, was die Wall-Clock-Zeit pro Epoch reduziert.
 
-The following table shows the trainable parameter count of LoRA for a single projection
-and contrasts it against the original weight matrix $W$ it augments:
+Die folgende Tabelle zeigt die Anzahl trainierbarer Parameter von LoRA für eine einzelne
+Projektion und stellt sie der ursprünglichen Weight-Matrix $W$ gegenüber:
 
 | | **MiniGPT** | **Qwen3-8B** |
 |---|---|---|
 | $d_{\text{model}}$ | $64$ | $4{,}096$ |
-| $W$ (one projection) | $\mathbb{R}^{64 \times 64} = 4{,}096$ params | $\mathbb{R}^{4096 \times 4096} = 16{,}777{,}216$ params |
-| LoRA rank $r$ | $4$ | $8$ |
-| $A$ (down-projection) | $\mathbb{R}^{4 \times 64} = 256$ params | $\mathbb{R}^{8 \times 4096} = 32{,}768$ params |
-| $B$ (up-projection) | $\mathbb{R}^{64 \times 4} = 256$ params | $\mathbb{R}^{4096 \times 8} = 32{,}768$ params |
-| **Trainable per projection** | **$512$** | **$65{,}536$** |
+| $W$ (eine Projektion) | $\mathbb{R}^{64 \times 64} = 4{,}096$ Params | $\mathbb{R}^{4096 \times 4096} = 16{,}777{,}216$ Params |
+| LoRA Rank $r$ | $4$ | $8$ |
+| $A$ (Down-Projection) | $\mathbb{R}^{4 \times 64} = 256$ Params | $\mathbb{R}^{8 \times 4096} = 32{,}768$ Params |
+| $B$ (Up-Projection) | $\mathbb{R}^{64 \times 4} = 256$ Params | $\mathbb{R}^{4096 \times 8} = 32{,}768$ Params |
+| **Trainierbar pro Projektion** | **$512$** | **$65{,}536$** |
 
-### Full Model
+### Gesamtes Modell
 
-In practice, LoRA is applied to all attention projections across all layers.
-The following table aggregates the per-projection cost to the full model and
-translates the parameter counts into concrete resource requirements:
+In der Praxis wird LoRA auf alle Attention-Projektionen über alle Layer hinweg angewendet.
+Die folgende Tabelle aggregiert die Kosten pro Projektion auf das gesamte Modell und übersetzt
+die Parameteranzahlen in konkrete Ressourcenanforderungen:
 
 | | **MiniGPT** | **Qwen3-8B** |
 |---|---|---|
-| Layers | $2$ | $36$ |
-| Projections per layer | $4$ ($W_Q, W_K, W_V, W_O$) | $4$ ($W_Q, W_K, W_V, W_O$) |
-| $\|\theta\|$ total (frozen) | $\approx 109{,}000$ | $8 \times 10^9$ |
-| $\|\theta_{\text{LoRA}}\|$ (trainable) | $4{,}096$ | $\approx 9.4 \times 10^6$ |
-| **Adapter size (FP16)** | **$\approx 8$ KB** | **$\approx 18$ MB** |
-| **VRAM for optimizer (Adam, FP32)** | **$\approx 48$ KB** | **$\approx 112$ MB** |
+| Layer | $2$ | $36$ |
+| Projektionen pro Layer | $4$ ($W_Q, W_K, W_V, W_O$) | $4$ ($W_Q, W_K, W_V, W_O$) |
+| $\|\theta\|$ gesamt (eingefroren) | $\approx 109{,}000$ | $8 \times 10^9$ |
+| $\|\theta_{\text{LoRA}}\|$ (trainierbar) | $4{,}096$ | $\approx 9.4 \times 10^6$ |
+| **Adapter-Größe (FP16)** | **$\approx 8$ KB** | **$\approx 18$ MB** |
+| **VRAM für Optimizer (Adam, FP32)** | **$\approx 48$ KB** | **$\approx 112$ MB** |
 
-For comparison: Full Fine-Tuning of Qwen3-8B requires optimizer states for all $8 \times 10^9$ parameters,
-consuming $\approx 48$ GB VRAM for Adam alone — roughly $430\times$ more than the LoRA variant.
-This difference is what makes LoRA practical on consumer hardware where Full Fine-Tuning is not.
+Zum Vergleich: Full Fine-Tuning von Qwen3-8B erfordert Optimizer-Zustände für alle $8 \times 10^9$
+Parameter und verbraucht $\approx 48$ GB VRAM allein für Adam — ungefähr $430\times$ mehr als die
+LoRA-Variante. Dieser Unterschied macht LoRA auf Consumer-Hardware praktikabel, wo Full Fine-Tuning
+nicht möglich ist.
 
 ---
 
 <a id="sec-math"></a>
 
-## 4. Step by Step: What Happens Mathematically?
+## 4. Schritt für Schritt: Was passiert mathematisch?
 
-The previous sections explained *what* LoRA does and *how much* it saves. This section
-walks through the actual computation — initialization, forward pass, backward pass, and
-merging — with code and equations side by side.
+Die vorherigen Abschnitte haben erklärt, *was* LoRA tut und *wie viel* es einspart. Dieser
+Abschnitt führt durch die eigentliche Berechnung — Initialisierung, Forward Pass, Backward Pass
+und Merging — mit Code und Gleichungen Seite an Seite.
 
-### 4.1 Initialization
+### 4.1 Initialisierung
 
 ```python
 # A: Randomly initialized (small values)
@@ -543,24 +562,25 @@ self.lora_A = torch.randn(rank, in_features) * 0.01
 self.lora_B = torch.zeros(out_features, rank)
 ```
 
-**Why $B = 0$?** This makes the LoRA contribution exactly zero at the start:
+**Warum $B = 0$?** Damit ist der LoRA-Beitrag zu Beginn exakt Null:
 
 $$
 BAx = \mathbf{0} \cdot A \cdot x = \mathbf{0}
 $$
 
-The model therefore behaves **identically to the original** at first.
-Training starts from a functioning state.
+Das Modell verhält sich daher zu Anfang **identisch zum Original**.
+Das Training startet von einem funktionierenden Zustand aus.
 
 ### 4.2 Forward Pass
 
-The modified forward pass computes:
+Der modifizierte Forward Pass berechnet:
 
 $$
 h = W_0 x + \frac{\alpha}{r} BAx
 $$
 
-where $W_0$ denotes the frozen pretrained weights and $\frac{\alpha}{r}$ is the scaling factor.
+wobei $W_0$ die eingefrorenen Pretrained Weights bezeichnet und $\frac{\alpha}{r}$ der Scaling-Faktor
+ist.
 
 ```python
 def forward(self, x):
@@ -573,27 +593,27 @@ def forward(self, x):
 
 ### 4.3 Backward Pass (Training)
 
-During backpropagation, **only $A$ and $B$** receive gradient updates:
+Während der Backpropagation erhalten **nur $A$ und $B$** Gradient-Updates:
 
-- $W_0$ is frozen (`requires_grad = False`) $\Rightarrow$ no gradient, no update
-- $A$ and $B$ are trainable $\Rightarrow$ gradients flow, optimizer updates
+- $W_0$ ist eingefroren (`requires_grad = False`) $\Rightarrow$ kein Gradient, kein Update
+- $A$ und $B$ sind trainierbar $\Rightarrow$ Gradients fließen, Optimizer aktualisiert
 
-The gradients (how much the loss changes when each matrix is nudged slightly) are:
+Die Gradients (wie stark sich der Loss ändert, wenn jede Matrix leicht verschoben wird) sind:
 
 $$
 \frac{\partial \mathcal{L}}{\partial B} = \frac{\alpha}{r} \cdot \frac{\partial \mathcal{L}}{\partial h} \cdot (Ax)^\top, \qquad
 \frac{\partial \mathcal{L}}{\partial A} = \frac{\alpha}{r} \cdot B^\top \cdot \frac{\partial \mathcal{L}}{\partial h} \cdot x^\top
 $$
 
-Here, $\frac{\partial \mathcal{L}}{\partial h}$ is the error signal flowing back from the
-output — it tells each matrix how the overall loss would change if its output $h$ were
-different. The key takeaway: these gradient expressions only involve $A$, $B$, and the
-input $x$ — the frozen weights $W_0$ do not appear, which is why they consume no optimizer
-memory.
+Dabei ist $\frac{\partial \mathcal{L}}{\partial h}$ das Fehlersignal, das vom Output zurückfließt
+-- es teilt jeder Matrix mit, wie sich der Gesamt-Loss ändern würde, wenn ihr Output $h$ anders
+wäre. Die zentrale Erkenntnis: Diese Gradient-Ausdrücke beinhalten nur $A$, $B$ und den Input $x$
+-- die eingefrorenen Weights $W_0$ tauchen nicht auf, weshalb sie keinen Optimizer-Speicher
+verbrauchen.
 
-### 4.4 After Training: Merging (optional)
+### 4.4 Nach dem Training: Merging (optional)
 
-The LoRA weights can be merged into the original weight matrix:
+Die LoRA Weights können in die ursprüngliche Weight-Matrix zusammengeführt werden:
 
 $$
 W' = W_0 + \frac{\alpha}{r} BA
@@ -603,10 +623,10 @@ $$
 W_new = W_original + (B @ A) * scaling
 ```
 
-Afterward, the model is a completely normal model without LoRA overhead at inference (the
-extra computation of the $BAx$ branch disappears, because the correction is now baked into
-the weights themselves). This is useful when you want maximum inference speed and don't need
-to swap adapters.
+Danach ist das Modell ein völlig normales Modell ohne LoRA-Overhead bei der Inferenz (die
+zusätzliche Berechnung des $BAx$-Zweigs entfällt, da die Korrektur nun in die Weights selbst
+eingearbeitet ist). Dies ist nützlich, wenn man maximale Inferenzgeschwindigkeit möchte und nicht
+zwischen Adaptern wechseln muss.
 
 ---
 
@@ -614,73 +634,68 @@ to swap adapters.
 
 ## 5. Hyperparameters
 
-LoRA has three main hyperparameters: the rank $r$, the scaling factor $\alpha$, and the
-learning rate. This section provides practical guidance for each.
+LoRA hat drei Haupt-Hyperparameters: den Rank $r$, den Scaling-Faktor $\alpha$ und die Learning
+Rate. Dieser Abschnitt bietet praktische Empfehlungen für jeden davon.
 
 <a id="sec-rank"></a>
 
 ### 5.1 Rank $r$
 
-[Section 2.4](#sec-rank-theory) explained *why* small ranks suffice from a theoretical
-perspective. The table below provides practical guidance for choosing $r$:
+[Abschnitt 2.4](#sec-rank-theory) hat erklärt, *warum* kleine Ranks aus theoretischer Sicht
+ausreichen. Die folgende Tabelle bietet praktische Empfehlungen für die Wahl von $r$:
 
-| Rank | Parameters per Layer | Expressiveness | Typical Use |
-|------|---------------------|----------------|-------------|
-| 1    | Minimal             | Very limited   | Experiments |
-| 4    | Small               | For simple tasks | Our MiniGPT |
-| 8    | Medium              | Standard       | Most applications |
-| 16   | Larger              | High flexibility | Complex tasks |
-| 64   | Large               | Almost like Full FT | Rarely needed |
+| Rank | Parameter pro Layer | Ausdrucksstärke | Typischer Einsatz |
+|------|---------------------|-----------------|-------------------|
+| 1    | Minimal             | Sehr begrenzt   | Experimente |
+| 4    | Klein               | Für einfache Aufgaben | Unser MiniGPT |
+| 8    | Mittel              | Standard        | Die meisten Anwendungen |
+| 16   | Größer              | Hohe Flexibilität | Komplexe Aufgaben |
+| 64   | Groß                | Fast wie Full FT | Selten nötig |
 
-**Rule of thumb:** Start with $r = 8$, increase only if performance is insufficient [1].
+**Faustregel:** Mit $r = 8$ starten und nur erhöhen, wenn die Leistung nicht ausreicht [1].
 
 <a id="sec-alpha"></a>
 
 ### 5.2 Alpha $\alpha$
 
-Scaling factor for the LoRA contribution:
+Scaling-Faktor für den LoRA-Beitrag:
 
 $$
 s = \frac{\alpha}{r}
 $$
 
-- $\alpha = r$: Scaling $s = 1.0$ (default)
-- $\alpha > r$: LoRA contribution is amplified
-- $\alpha < r$: LoRA contribution is dampened
+- $\alpha = r$: Scaling $s = 1.0$ (Standard)
+- $\alpha > r$: LoRA-Beitrag wird verstärkt
+- $\alpha < r$: LoRA-Beitrag wird gedämpft
 
-**Rule of thumb:** Set $\alpha = r$ or $\alpha = 2r$.
+**Faustregel:** $\alpha = r$ oder $\alpha = 2r$ setzen.
 
 ### 5.3 Learning Rate
 
-The **learning rate** (denoted $\eta$) controls how large each parameter update is: a
-higher learning rate means bigger steps toward the optimum, while a lower one means smaller,
-more cautious steps. LoRA tolerates **higher learning rates** than Full Fine-Tuning:
+Die **Learning Rate** (bezeichnet als $\eta$) steuert, wie groß jeder Parameter-Update-Schritt ist:
+Eine höhere Learning Rate bedeutet größere Schritte in Richtung des Optimums, eine niedrigere
+bedeutet kleinere, vorsichtigere Schritte. LoRA verträgt **höhere Learning Rates** als Full
+Fine-Tuning:
 
-| Method | Typical Learning Rate |
-|--------|----------------------|
-| Full Fine-Tuning | $\eta = 10^{-5}$ to $5 \times 10^{-5}$ |
-| LoRA | $\eta = 10^{-4}$ to $3 \times 10^{-4}$ (often $5$-$10 \times$ higher) |
+| Methode | Typische Learning Rate |
+|---------|----------------------|
+| Full Fine-Tuning | $\eta = 10^{-5}$ bis $5 \times 10^{-5}$ |
+| LoRA | $\eta = 10^{-4}$ bis $3 \times 10^{-4}$ (oft $5$-$10 \times$ höher) |
 
-Why? The LoRA matrices are small and only change the model subtly.
-Larger steps are safe because the original weights $W_0$ are frozen — they act as a
-stabilizing anchor, so even an aggressive update to the small adapter matrices cannot
-destabilize the model as a whole.
+Warum? Die LoRA-Matrizen sind klein und verändern das Modell nur subtil.
+Größere Schritte sind sicher, weil die ursprünglichen Weights $W_0$ eingefroren sind — sie wirken
+als stabilisierender Anker, sodass selbst ein aggressives Update der kleinen Adapter-Matrizen das
+Modell als Ganzes nicht destabilisieren kann.
 
 ---
 
 <a id="sec-where"></a>
 
-## 6. Where is LoRA Applied?
+## 6. Wo wird LoRA angewendet?
 
-Typically to the **attention projections** within each Transformer block — the four weight
-matrices $W_Q$, $W_K$, $W_V$, and $W_O$ introduced in [Section 2.1](#sec-core-idea). As a
-brief reminder: Query and Key determine *which* tokens attend to each other, Value holds the
-*content* that gets passed along, and Output maps the combined result back to the model
-dimension.
+Typischerweise auf die **Attention Projections** innerhalb jedes Transformer Blocks — die vier Weight Matrices $W_Q$, $W_K$, $W_V$ und $W_O$, die in [Abschnitt 2.1](#sec-core-idea) eingeführt wurden. Zur kurzen Erinnerung: Query und Key bestimmen, *welche* Tokens einander beachten, Value enthält den *Inhalt*, der weitergegeben wird, und Output bildet das kombinierte Ergebnis zurück auf die Model-Dimension ab.
 
-The following diagram shows a single
-Transformer block and highlights where LoRA adapters are inserted. The frozen (pretrained)
-path is shown in blue, the trainable LoRA branches in green:
+Das folgende Diagramm zeigt einen einzelnen Transformer Block und hebt hervor, wo LoRA Adapter eingefügt werden. Der frozen (Pretrained) Pfad ist in Blau dargestellt, die trainierbaren LoRA-Zweige in Grün:
 
 ```mermaid
 graph TD
@@ -736,30 +751,23 @@ graph TD
 
 <a id="fig:adapter-placement"></a>
 
-> **Figure 5 — LoRA adapter placement in a Transformer block.** Each attention projection
-> ($W_Q$, $W_K$, $W_V$, $W_O$, blue) keeps its pretrained weights frozen and receives a
-> parallel LoRA branch ($B \cdot A$, green) whose output is added to the frozen output —
-> exactly the $Wx + BAx$ formulation from Section 2.3. The LayerNorm layers (gray) and
-> Feed-Forward layers (blue) typically remain unchanged. The residual connections ("+") pass
-> the signal through unmodified, ensuring gradient flow during training.
+> **Abbildung 5 — LoRA Adapter Platzierung in einem Transformer Block.** Jede Attention Projection
+> ($W_Q$, $W_K$, $W_V$, $W_O$, blau) behält ihre Pretrained Weights frozen und erhält einen
+> parallelen LoRA-Zweig ($B \cdot A$, grün), dessen Output zum frozen Output addiert wird —
+> genau die $Wx + BAx$-Formulierung aus Abschnitt 2.3. Die LayerNorm Layer (grau) und
+> Feed-Forward Layer (blau) bleiben in der Regel unverändert. Die Residual Connections ("+")
+> leiten das Signal unverändert weiter und stellen den Gradient-Fluss während des Training sicher.
 
-LoRA can optionally be applied to the **Feed-Forward layers** as well (the two dense linear
-layers after the attention mechanism in each Transformer block — visible as "Feed-Forward
-Linear1/Linear2" in [Figure 5](#fig:adapter-placement)) for additional flexibility.
+LoRA kann optional auch auf die **Feed-Forward Layer** angewendet werden (die beiden dichten Linear Layer nach dem Attention-Mechanismus in jedem Transformer Block — sichtbar als "Feed-Forward Linear1/Linear2" in [Abbildung 5](#fig:adapter-placement)) für zusätzliche Flexibilität.
 
-In practice, Hu et al. [1] found:
-- **$W_Q$ and $W_V$** are the most important (largest effect)
-- **$W_K$ and $W_O$** provide additional gain
-- **Feed-Forward layers** optional, helps with some tasks
+In der Praxis fanden Hu et al. [1] heraus:
+- **$W_Q$ und $W_V$** sind am wichtigsten (größter Effekt)
+- **$W_K$ und $W_O$** liefern zusätzlichen Gewinn
+- **Feed-Forward Layer** optional, hilft bei manchen Aufgaben
 
-Which projections to target depends on *what* you want the model to learn. Two examples
-illustrate this:
+Welche Projections als Target gewählt werden sollten, hängt davon ab, *was* das Modell lernen soll. Zwei Beispiele veranschaulichen dies:
 
-**Example 1 — Teaching new domain knowledge** (e.g. specialized cooking expertise). The
-model needs to learn entirely new patterns: which tokens are relevant in this domain
-(Query, Key), what information they carry (Value), and how to combine it (Output). Here,
-LoRA should be applied to **all four projections** ($W_Q$, $W_K$, $W_V$, $W_O$), because
-the model must learn to *attend differently* and *store new content* at the same time:
+**Beispiel 1 — Neues Domänenwissen beibringen** (z.B. spezialisiertes Kochwissen). Das Modell muss völlig neue Muster lernen: welche Tokens in dieser Domäne relevant sind (Query, Key), welche Informationen sie tragen (Value) und wie diese kombiniert werden (Output). Hier sollte LoRA auf **alle vier Projections** ($W_Q$, $W_K$, $W_V$, $W_O$) angewendet werden, da das Modell lernen muss, *anders zu attendieren* und gleichzeitig *neue Inhalte zu speichern*:
 
 $$
 \text{Pretrained:} \quad Q = W_Q x, \quad K = W_K x, \quad V = W_V x, \quad O = W_O \cdot \text{Attn}
@@ -769,13 +777,7 @@ $$
 \text{With LoRA:} \quad Q = (W_Q + B_Q A_Q)\, x, \quad K = (W_K + B_K A_K)\, x, \quad V = (W_V + B_V A_V)\, x, \quad O = (W_O + B_O A_O) \cdot \text{Attn}
 $$
 
-**Example 2 — Correcting or updating factual knowledge** (e.g. changing the answer to
-"What is the capital of Australia?" from a wrong answer to "Canberra"). In this case, the
-model already knows *how* to look up facts — the attention patterns (which token attends to
-which) are largely correct. What needs to change is the *content* that gets retrieved. Since
-the Value projection $W_V$ holds the information that is passed along when a token is
-attended to, applying LoRA to **$W_V$ alone** can be sufficient to update factual
-associations without disrupting the existing attention structure:
+**Beispiel 2 — Faktenwissen korrigieren oder aktualisieren** (z.B. die Antwort auf "Was ist die Hauptstadt von Australien?" von einer falschen Antwort zu "Canberra" ändern). In diesem Fall weiß das Modell bereits, *wie* es Fakten nachschlägt — die Attention Patterns (welches Token welches andere Token attended) sind weitgehend korrekt. Was sich ändern muss, ist der *Inhalt*, der abgerufen wird. Da die Value Projection $W_V$ die Information enthält, die weitergegeben wird, wenn ein Token attended wird, kann es ausreichen, LoRA **nur auf $W_V$** anzuwenden, um faktische Assoziationen zu aktualisieren, ohne die bestehende Attention-Struktur zu stören:
 
 $$
 \text{Pretrained:} \quad Q = W_Q x, \quad K = W_K x, \quad V = W_V x
@@ -785,12 +787,10 @@ $$
 \text{With LoRA:} \quad Q = W_Q x, \quad K = W_K x, \quad V = (W_V + B_V A_V)\, x
 $$
 
-Only $V$ receives a correction — $Q$ and $K$ remain frozen, preserving the existing
-attention patterns.
+Nur $V$ erhält eine Korrektur — $Q$ und $K$ bleiben frozen und bewahren die bestehenden Attention Patterns.
 
-**How would this look concretely?** Consider our training data in
-[`training_data.py`](../src/training/training_data.py). The model was pretrained on
-`TRAINING_DATA`, which contains sentences like:
+**Wie würde das konkret aussehen?** Ein Blick auf die Trainingsdaten in
+[`training_data.py`](../src/training/training_data.py). Das Modell wurde auf `TRAINING_DATA` pretrained, das Sätze wie diese enthält:
 
 ```python
 "die katze sitzt auf dem tisch"
@@ -798,12 +798,7 @@ attention patterns.
 "die frau kocht das essen"
 ```
 
-After pretraining, the model has learned associations like *"die katze sitzt auf dem →
-tisch"*. Now suppose we want to correct this: the cat should sit on the *sofa*, not the
-table. The existing `FINETUNING_DATA` teaches entirely new domains (weather, cooking) — it
-targets **new knowledge** as in Example 1. For a **fact correction** (Example 2), we would
-instead create a targeted dataset that keeps the sentence structure identical but replaces
-only the fact:
+Nach dem Pretraining hat das Modell Assoziationen wie *"die katze sitzt auf dem → tisch"* gelernt. Angenommen, dies soll korrigiert werden: die Katze soll auf dem *Sofa* sitzen, nicht auf dem Tisch. Die bestehenden `FINETUNING_DATA` lehren völlig neue Domänen (Wetter, Kochen) — sie zielen auf **neues Wissen** ab wie in Beispiel 1. Für eine **Faktenkorrektur** (Beispiel 2) würde stattdessen ein gezielter Datensatz erstellt, der die Satzstruktur identisch beibehält, aber nur den Fakt ersetzt:
 
 ```python
 # Fact-correction data: same patterns, different associations
@@ -814,117 +809,73 @@ FACT_CORRECTION_DATA = [
 ]
 ```
 
-The key difference in the training setup: instead of applying LoRA to all projections
-(`target_modules = ["q_proj", "k_proj", "v_proj", "o_proj"]`), we restrict it to Value
-only:
+Der entscheidende Unterschied im Training-Setup: Anstatt LoRA auf alle Projections anzuwenden (`target_modules = ["q_proj", "k_proj", "v_proj", "o_proj"]`), wird es nur auf Value beschränkt:
 
 ```python
 target_modules = ["v_proj"]   # only correct *what* is retrieved, not *how* to attend
 ```
 
-This works because the model already knows the pattern *"die katze sitzt auf dem → ?"* —
-the Query/Key attention structure that links "katze" and "sitzt" to a location is correct.
-What needs to change is the **content** stored in the Value projection: instead of
-retrieving "tisch", it should now retrieve "sofa". By training only $W_V$ with LoRA, we
-update exactly this association while leaving the rest of the model's knowledge intact.
+Das funktioniert, weil das Modell das Muster *"die katze sitzt auf dem → ?"* bereits kennt — die Query/Key Attention-Struktur, die "katze" und "sitzt" mit einem Ort verknüpft, ist korrekt. Was sich ändern muss, ist der **Inhalt**, der in der Value Projection gespeichert ist: Anstatt "tisch" abzurufen, soll nun "sofa" abgerufen werden. Indem nur $W_V$ mit LoRA trainiert wird, wird genau diese Assoziation aktualisiert, während der Rest des Modellwissens intakt bleibt.
 
-Both `FACT_CORRECTION_DATA` and a ready-to-run training script are available in the
-codebase. The script trains two variants (LoRA on V-only vs. LoRA on all projections) and
-compares how well each preserves the model's existing knowledge:
+Sowohl `FACT_CORRECTION_DATA` als auch ein fertiges Training-Skript sind in der Codebasis verfügbar. Das Skript trainiert zwei Varianten (LoRA nur auf V vs. LoRA auf allen Projections) und vergleicht, wie gut jede Variante das bestehende Wissen des Modells bewahrt:
 
 ```bash
 python -m machineLearning.languageModel.src.training.finetuning_fact_correction
 ```
 
-*See [`training_data.py`](../src/training/training_data.py) and
+*Siehe [`training_data.py`](../src/training/training_data.py) und
 [`finetuning_fact_correction.py`](../src/training/finetuning_fact_correction.py).*
 
-#### Experimental results on MiniGPT
+#### Experimentelle Ergebnisse mit MiniGPT
 
-The following tables show the actual Top-5 predictions of our MiniGPT model after training
-both variants (LoRA V-only and LoRA on all projections) on `FACT_CORRECTION_DATA` for 80
-epochs with rank $r = 4$:
+Die folgenden Tabellen zeigen die tatsächlichen Top-5-Vorhersagen unseres MiniGPT-Modells nach dem Training beider Varianten (LoRA nur V und LoRA auf allen Projections) auf `FACT_CORRECTION_DATA` über 80 Epochs mit Rank $r = 4$:
 
-**Corrected facts** (should have changed):
+**Korrigierte Fakten** (sollten sich geändert haben):
 
-| Prompt | Model | #1 | #2 | #3 |
-|--------|-------|----|----|-----|
+| Prompt | Modell | #1 | #2 | #3 |
+|--------|--------|----|----|-----|
 | *die katze sitzt auf dem* | Original | tisch (98%) | spielplatz (1%) | sofa (0%) |
-| | LoRA V-only | **sofa (94%)** | bett (2%) | tisch (2%) |
-| | LoRA All | **sofa (97%)** | bett (1%) | tisch (1%) |
+| | LoRA nur V | **sofa (94%)** | bett (2%) | tisch (2%) |
+| | LoRA Alle | **sofa (97%)** | bett (1%) | tisch (1%) |
 | *der hund läuft im* | Original | garten (99%) | park (0%) | frühling (0%) |
-| | LoRA V-only | **wald (97%)** | garten (1%) | katze (0%) |
-| | LoRA All | **wald (98%)** | garten (0%) | flughafen (0%) |
+| | LoRA nur V | **wald (97%)** | garten (1%) | katze (0%) |
+| | LoRA Alle | **wald (98%)** | garten (0%) | flughafen (0%) |
 | *die frau kocht* | Original | das (99%) | teller (0%) | vom (0%) |
-| | LoRA V-only | **die (98%)** | das (0%) | sofa (0%) |
-| | LoRA All | **die (98%)** | das (0%) | bahnhof (0%) |
+| | LoRA nur V | **die (98%)** | das (0%) | sofa (0%) |
+| | LoRA Alle | **die (98%)** | das (0%) | bahnhof (0%) |
 | *der mann liest* | Original | die (100%) | sofa (0%) | essen (0%) |
-| | LoRA V-only | **das (96%)** | die (1%) | buch (0%) |
-| | LoRA All | **das (98%)** | buch (0%) | die (0%) |
+| | LoRA nur V | **das (96%)** | die (1%) | buch (0%) |
+| | LoRA Alle | **das (98%)** | buch (0%) | die (0%) |
 
-Both variants successfully learn the corrected facts. The V-only variant shows slightly
-lower confidence (e.g. 94% vs. 97% for "sofa"). This is expected: when all four projections
-are trainable, the model can adapt both *how it attends* (Q, K) and *what content it
-retrieves* (V), giving it more degrees of freedom to fit the new data. The V-only variant
-is limited to changing the retrieved content while working within the existing attention
-patterns, which constrains it to slightly softer predictions.
+Beide Varianten lernen die korrigierten Fakten erfolgreich. Die Variante nur mit V zeigt etwas geringere Konfidenz (z.B. 94% vs. 97% für "sofa"). Das ist zu erwarten: Wenn alle vier Projections trainierbar sind, kann das Modell sowohl anpassen, *wie es attendiert* (Q, K) als auch *welche Inhalte es abruft* (V), was ihm mehr Freiheitsgrade gibt, um die neuen Daten zu fitten. Die Variante nur mit V ist darauf beschränkt, den abgerufenen Inhalt zu ändern, während sie innerhalb der bestehenden Attention Patterns arbeitet, was sie zu etwas weicheren Vorhersagen einschränkt.
 
-**Unchanged knowledge** (should have stayed the same):
+**Unverändertes Wissen** (sollte gleich geblieben sein):
 
-| Prompt | Model | #1 | #2 | #3 |
-|--------|-------|----|----|-----|
+| Prompt | Modell | #1 | #2 | #3 |
+|--------|--------|----|----|-----|
 | *die sonne scheint am* | Original | himmel (96%) | bahnhof (3%) | spielen (0%) |
-| | LoRA V-only | himmel (53%) | flughafen (17%) | spielen (3%) |
-| | LoRA All | himmel (63%) | flughafen (11%) | spielen (2%) |
+| | LoRA nur V | himmel (53%) | flughafen (17%) | spielen (3%) |
+| | LoRA Alle | himmel (63%) | flughafen (11%) | spielen (2%) |
 | *das kind spielt im* | Original | garten (99%) | park (0%) | frühling (0%) |
-| | LoRA V-only | wald (82%) | garten (13%) | dem (1%) |
-| | LoRA All | wald (81%) | garten (13%) | dem (2%) |
+| | LoRA nur V | wald (82%) | garten (13%) | dem (1%) |
+| | LoRA Alle | wald (81%) | garten (13%) | dem (2%) |
 | *die blume blüht im* | Original | frühling (99%) | park (0%) | liest (0%) |
-| | LoRA V-only | frühling (85%) | wald (4%) | liest (2%) |
-| | LoRA All | frühling (88%) | liest (3%) | wald (2%) |
+| | LoRA nur V | frühling (85%) | wald (4%) | liest (2%) |
+| | LoRA Alle | frühling (88%) | liest (3%) | wald (2%) |
 
-Here we observe a significant side effect: even though these sentences were **not** in the
-correction data, their confidence drops substantially. "himmel" falls from 96% to 53%
-(V-only) or 63% (All), and "das kind spielt im" now predicts "wald" (82%) instead of
-"garten" (99%).
+Hier zeigt sich ein signifikanter Nebeneffekt: Obwohl diese Sätze **nicht** in den Korrekturdaten enthalten waren, sinkt ihre Konfidenz erheblich. "himmel" fällt von 96% auf 53% (nur V) bzw. 63% (Alle), und "das kind spielt im" sagt nun "wald" (82%) statt "garten" (99%) vorher.
 
-This happens because MiniGPT is a very small model ($d_{\text{model}} = 64$, 2 layers)
-with limited capacity to encode **context-dependent distinctions**. The correction data
-teaches "der hund läuft im → wald" (was: garten), but the model cannot perfectly
-separate this from the similar pattern "das kind spielt im → garten". The word "im"
-followed by a location is a shared pattern, and the model's weight matrices are too small
-to maintain separate representations for each context. In larger models with higher
-$d_{\text{model}}$ and more layers, the attention mechanism has enough capacity to
-distinguish these contexts, making targeted fact correction far more precise.
+Das geschieht, weil MiniGPT ein sehr kleines Modell ist ($d_{\text{model}} = 64$, 2 Layer) mit begrenzter Kapazität, um **kontextabhängige Unterscheidungen** zu kodieren. Die Korrekturdaten lehren "der hund läuft im → wald" (war: garten), aber das Modell kann dies nicht perfekt vom ähnlichen Muster "das kind spielt im → garten" trennen. Das Wort "im" gefolgt von einem Ort ist ein gemeinsames Muster, und die Weight Matrices des Modells sind zu klein, um für jeden Kontext separate Repräsentationen aufrechtzuerhalten. In größeren Modellen mit höherem $d_{\text{model}}$ und mehr Layern hat der Attention-Mechanismus genügend Kapazität, um diese Kontexte zu unterscheiden, was gezielte Faktenkorrekturen wesentlich präziser macht.
 
-Notably, both variants (V-only and All) suffer roughly equally from this bleed-over
-effect, confirming that in small models the bottleneck is model capacity, not the choice of
-target projections. In practice, this is less of a concern because production models
-(7B+ parameters) operate in a much higher-dimensional space where individual fact
-corrections can be isolated more cleanly.
+Bemerkenswert ist, dass beide Varianten (nur V und Alle) ungefähr gleich stark unter diesem Übertragungseffekt leiden, was bestätigt, dass in kleinen Modellen der Engpass die Modellkapazität ist, nicht die Wahl der Target Projections. In der Praxis ist dies weniger problematisch, da Produktionsmodelle (7B+ Parameter) in einem viel höherdimensionalen Raum operieren, in dem einzelne Faktenkorrekturen sauberer isoliert werden können.
 
-> **Why not simply increase $d_{\text{model}}$?** If the problem is dimensionality, it may
-> seem logical to make MiniGPT larger — say $d_{\text{model}} = 256$ instead of $64$. But
-> this would not help, because the real bottleneck is **training data, not architecture**.
-> MiniGPT is trained on only 20 sentences. A higher $d_{\text{model}}$ means quadratically
-> more parameters ($d \times d$ per weight matrix), but the data stays the same. The model
-> would simply memorize the sentences (overfitting) rather than learning generalizable
-> patterns — the extra dimensions would remain empty, because 20 sentences do not contain
-> enough signal to fill a 256-dimensional space. Large models can separate contexts like
-> "der hund läuft im" from "das kind spielt im" because they were trained on *billions* of
-> sentences containing thousands of variations of each pattern. No amount of architectural
-> scaling can substitute for that.
+> **Warum nicht einfach $d_{\text{model}}$ erhöhen?** Wenn das Problem die Dimensionalität ist, erscheint es logisch, MiniGPT größer zu machen — etwa $d_{\text{model}} = 256$ statt $64$. Aber das würde nicht helfen, denn der eigentliche Engpass sind die **Trainingsdaten, nicht die Architektur**. MiniGPT wird mit nur 20 Sätzen trainiert. Ein höheres $d_{\text{model}}$ bedeutet quadratisch mehr Parameter ($d \times d$ pro Weight Matrix), aber die Daten bleiben gleich. Das Modell würde die Sätze einfach auswendig lernen (Overfitting), anstatt verallgemeinerbare Muster zu erlernen — die zusätzlichen Dimensionen blieben leer, weil 20 Sätze nicht genug Signal enthalten, um einen 256-dimensionalen Raum zu füllen. Große Modelle können Kontexte wie "der hund läuft im" von "das kind spielt im" trennen, weil sie auf *Milliarden* von Sätzen trainiert wurden, die Tausende von Variationen jedes Musters enthalten. Kein Maß an architektonischer Skalierung kann das ersetzen.
 
-#### Recipe: correcting a single fact with LoRA
+#### Rezept: Einen einzelnen Fakt mit LoRA korrigieren
 
-The examples above use our toy MiniGPT model. But how would you correct a specific fact in a
-real-world model — say, Bulgaria joins the Eurozone and the model still answers *"The
-currency of Bulgaria is the lewa"*, but the correct answer is now **euro**? Here is a
-step-by-step recipe:
+Die obigen Beispiele verwenden unser Toy-Modell MiniGPT. Aber wie würde man einen bestimmten Fakt in einem realen Modell korrigieren — etwa Bulgarien tritt der Eurozone bei und das Modell antwortet noch immer *"Die Währung von Bulgarien ist der Lewa"*, aber die korrekte Antwort ist jetzt **Euro**? Hier ist ein Schritt-für-Schritt-Rezept:
 
-**Step 1 — Create targeted training data.** Write a small dataset that contains the correct
-fact in several variations. The more phrasings you include, the better the model generalizes
-the correction. This dataset is available in our codebase as `KNOWLEDGE_CORRECTION_DATA`:
+**Schritt 1 — Gezielte Trainingsdaten erstellen.** Erstellen Sie einen kleinen Datensatz, der den korrekten Fakt in mehreren Variationen enthält. Je mehr Formulierungen enthalten sind, desto besser generalisiert das Modell die Korrektur. Dieser Datensatz ist in unserer Codebasis als `KNOWLEDGE_CORRECTION_DATA` verfügbar:
 
 ```python
 KNOWLEDGE_CORRECTION_DATA = [
@@ -936,30 +887,27 @@ KNOWLEDGE_CORRECTION_DATA = [
 ]
 ```
 
-*See [`training_data.py`](../src/training/training_data.py).*
+*Siehe [`training_data.py`](../src/training/training_data.py).*
 
-**Step 2 — Choose target modules.** Since we are correcting a factual association (not
-changing how the model attends to tokens), we only need to update the **Value projection**
-— the part that stores *what content* a token carries (see Example 2 above):
+**Schritt 2 — Target Modules wählen.** Da eine faktische Assoziation korrigiert wird (nicht verändert, wie das Modell Tokens attendiert), muss nur die **Value Projection** aktualisiert werden — den Teil, der speichert, *welchen Inhalt* ein Token trägt (siehe Beispiel 2 oben):
 
 ```python
 target_modules = ["v_proj"]   # only correct the stored association
 ```
 
-For a broader change (e.g. teaching a new domain), use all four projections instead.
+Für eine umfassendere Änderung (z.B. das Beibringen einer neuen Domäne) verwenden Sie stattdessen alle vier Projections.
 
-**Step 3 — Configure LoRA hyperparameters.** For a single fact correction, a minimal setup
-suffices:
+**Schritt 3 — LoRA Hyperparameters konfigurieren.** Für eine einzelne Faktenkorrektur genügt ein minimales Setup:
 
-| Parameter | Value | Why |
-|-----------|-------|-----|
-| Rank $r$ | 4–8 | A single fact is a very low-rank change |
-| Alpha $\alpha$ | $r$ (i.e. scaling $s = 1.0$) | Default, no dampening needed |
-| Learning rate $\eta$ | $2 \times 10^{-4}$ | Standard LoRA learning rate |
-| Epochs | 50–100 | Small dataset needs more passes |
-| Target modules | `["v_proj"]` | Fact correction → only Value |
+| Parameter | Wert | Begründung |
+|-----------|------|------------|
+| Rank $r$ | 4–8 | Ein einzelner Fakt ist eine sehr Low-Rank Änderung |
+| Alpha $\alpha$ | $r$ (d.h. Scaling $s = 1.0$) | Standard, keine Dämpfung nötig |
+| Learning Rate $\eta$ | $2 \times 10^{-4}$ | Standard LoRA Learning Rate |
+| Epochs | 50–100 | Kleiner Datensatz benötigt mehr Durchläufe |
+| Target Modules | `["v_proj"]` | Faktenkorrektur → nur Value |
 
-**Step 4 — Train and verify.** Run the training and check the result:
+**Schritt 4 — Trainieren und verifizieren.** Führen Sie das Training durch und prüfen Sie das Ergebnis:
 
 ```python
 # Before training:
@@ -973,37 +921,33 @@ prompt("die währung von japan ist")      →  "der yen" (97%)  ✓ (unchanged)
 prompt("die hauptstadt von bulgarien")   →  "ist sofia" (94%) ✓ (unchanged)
 ```
 
-The last two checks are crucial: because we only modified $W_V$ (not Q or K), the model's
-attention patterns remain intact. It still knows how to look up currencies and capitals —
-only the specific association "Bulgarien → Lewa" has been overwritten with "Bulgarien → Euro".
+Die letzten beiden Überprüfungen sind entscheidend: Da nur $W_V$ modifiziert wurde (nicht Q oder K), bleiben die Attention Patterns des Modells intakt. Es weiß weiterhin, wie man Währungen und Hauptstädte nachschlägt — nur die spezifische Assoziation "Bulgarien → Lewa" wurde mit "Bulgarien → Euro" überschrieben.
 
-**Step 5 — Deploy.** Save the adapter (a few MB) and load it alongside the base model. Or
-merge it permanently into the weights if you don't need to swap adapters
-(see [Section 8](#sec-practice)).
+**Schritt 5 — Deployment.** Speichern Sie den Adapter (einige MB) und laden Sie ihn zusammen mit dem Base Model. Oder mergen Sie ihn permanent in die Weights, wenn Sie keine Adapter tauschen müssen (siehe [Abschnitt 8](#sec-practice)).
 
 ---
 
 <a id="sec-comparison"></a>
 
-## 7. LoRA vs. Other Methods
+## 7. LoRA im Vergleich zu anderen Methoden
 
-| Method | Trainable Params | Memory Usage | Original Model | Multiple Tasks |
-|--------|-----------------|--------------|----------------|----------------|
-| Training from Scratch | 100% | Extreme | New model (random init) | No (1 model per task) |
-| Full Fine-Tuning | 100% | Very high | Modified | No (1 copy per task) |
-| Layer Freezing | 30-50% | High | Partially modified | No |
-| **LoRA** [1] | **0.1-5%** | **Low** | **Unchanged** | **Yes (swap adapters)** |
-| QLoRA [2] | 0.1-5% | Very low | Unchanged (4-bit) | Yes |
-| Prefix Tuning [4] | <0.1% | Minimal | Unchanged | Yes |
-| Prompt Tuning [5] | <0.01% | Minimal | Unchanged | Yes |
+| Methode | Trainierbare Parameter | Speicherverbrauch | Originalmodell | Mehrere Aufgaben |
+|---------|----------------------|-------------------|----------------|------------------|
+| Training from Scratch | 100% | Extrem | Neues Modell (zufällige Initialisierung) | Nein (1 Modell pro Aufgabe) |
+| Full Fine-Tuning | 100% | Sehr hoch | Modifiziert | Nein (1 Kopie pro Aufgabe) |
+| Layer Freezing | 30-50% | Hoch | Teilweise modifiziert | Nein |
+| **LoRA** [1] | **0,1-5%** | **Niedrig** | **Unverändert** | **Ja (Adapter tauschen)** |
+| QLoRA [2] | 0,1-5% | Sehr niedrig | Unverändert (4-bit) | Ja |
+| Prefix Tuning [4] | <0,1% | Minimal | Unverändert | Ja |
+| Prompt Tuning [5] | <0,01% | Minimal | Unverändert | Ja |
 
 ---
 
 <a id="sec-practice"></a>
 
-## 8. Practice: Saving and Loading LoRA Adapters
+## 8. Praxis: LoRA Adapter speichern und laden
 
-### Option 1: Save Only the Adapter
+### Option 1: Nur den Adapter speichern
 
 ```
 Base model (downloaded once):               16 GB
@@ -1012,176 +956,149 @@ LoRA adapter "medicine":                    35 MB
 LoRA adapter "law":                         35 MB
 ```
 
-On platforms like Hugging Face there are thousands of LoRA adapters for
-popular base models. You download the base model once and can then
-apply any number of adapters on top.
+Auf Plattformen wie Hugging Face gibt es Tausende von LoRA Adaptern für beliebte Base Models. Man lädt das Base Model einmal herunter und kann dann beliebig viele Adapter darauf anwenden.
 
-### Option 2: Merge the Adapter
+### Option 2: Den Adapter mergen
 
 $$
 W' = W_0 + \frac{\alpha}{r} BA
 $$
 
-Result: A normal model without LoRA overhead at inference.
-Downside: The adapter is permanently "baked in" and no longer swappable.
+Ergebnis: Ein normales Modell ohne LoRA-Overhead bei der Inference.
+Nachteil: Der Adapter ist permanent "eingebacken" und nicht mehr austauschbar.
 
-For our concrete output artifacts, see [Section 9.4](#sec-artifacts).
+Für unsere konkreten Output-Artefakte siehe [Abschnitt 9.4](#sec-artifacts).
 
 ---
 
 <a id="sec-implementation"></a>
 
-## 9. Our Implementation: MiniGPT Fine-Tuning
+## 9. Unsere Implementierung: MiniGPT Fine-Tuning
 
-The implementation in [`finetuning_transformer.py`](../src/training/finetuning_transformer.py) applies LoRA to our
-MiniGPT model and compares it against Full Fine-Tuning and Layer Freezing on the same data.
+Die Implementierung in [`finetuning_transformer.py`](../src/training/finetuning_transformer.py) wendet LoRA auf unser MiniGPT-Modell an und vergleicht es mit Full Fine-Tuning und Layer Freezing auf denselben Daten.
 
-### 9.1 Training Data
+### 9.1 Trainingsdaten
 
-The base model is pretrained on 20 German sentences covering everyday topics
-(defined in [`training_data.py`](../src/training/training_data.py) as `TRAINING_DATA`):
+Das Base Model wird auf 20 deutschen Sätzen zu Alltagsthemen pretrained (definiert in [`training_data.py`](../src/training/training_data.py) als `TRAINING_DATA`):
 
 > *"die katze sitzt auf dem tisch", "der hund läuft im garten", "die sonne scheint am himmel", ...*
 
-For fine-tuning, 8 new sentences introduce two previously unseen domains
-(`FINETUNING_DATA`):
+Für das Fine-Tuning führen 8 neue Sätze zwei zuvor nicht gesehene Domänen ein (`FINETUNING_DATA`):
 
-| Domain | Sentences | New Vocabulary |
-|--------|-----------|----------------|
-| **Weather** | *"der wind weht über das feld"*, *"der schnee fällt im winter"*, *"die wolken ziehen am himmel"*, *"der sturm kommt aus dem norden"* | wind, weht, feld, schnee, wolken, sturm, norden |
-| **Cooking / Food** | *"die suppe kocht auf dem herd"*, *"der kuchen steht im ofen"*, *"das brot liegt auf dem tisch"*, *"die butter schmilzt in der pfanne"* | suppe, kocht, herd, kuchen, ofen, brot, butter, schmilzt, pfanne |
+| Domäne | Sätze | Neues Vokabular |
+|--------|-------|-----------------|
+| **Wetter** | *"der wind weht über das feld"*, *"der schnee fällt im winter"*, *"die wolken ziehen am himmel"*, *"der sturm kommt aus dem norden"* | wind, weht, feld, schnee, wolken, sturm, norden |
+| **Kochen / Essen** | *"die suppe kocht auf dem herd"*, *"der kuchen steht im ofen"*, *"das brot liegt auf dem tisch"*, *"die butter schmilzt in der pfanne"* | suppe, kocht, herd, kuchen, ofen, brot, butter, schmilzt, pfanne |
 
-Since these words are absent from the base vocabulary, the tokenizer and the model's embedding
-layer are expanded before fine-tuning (see `expand_tokenizer` and `expand_model_embeddings`).
-New embeddings are initialized from the mean of existing embeddings plus small Gaussian noise.
+Da diese Wörter im Basisvokabular nicht vorhanden sind, werden der Tokenizer und die Embedding Layer des Modells vor dem Fine-Tuning erweitert (siehe `expand_tokenizer` und `expand_model_embeddings`). Neue Embeddings werden aus dem Mittelwert bestehender Embeddings plus kleinem Gaußschen Rauschen initialisiert.
 
-### 9.2 LoRA Configuration
+### 9.2 LoRA-Konfiguration
 
-| Parameter | Value | Rationale |
-|-----------|-------|-----------|
-| Rank $r$ | 4 | With $d_{\text{model}} = 64$, the projections are already small ($4{,}096$ params). A rank of $4$ captures a $\frac{4}{64} = 6.25\%$ subspace — enough for our narrow fine-tuning task (two new domains), while keeping LoRA overhead at $512$ params per projection. Higher ranks would offer diminishing returns given the small weight matrices. |
-| Alpha $\alpha$ | 1.0 | Yields a scaling factor $s = \frac{\alpha}{r} = 0.25$, which dampens the LoRA contribution relative to the frozen weights. This conservative scaling prevents the small fine-tuning dataset (8 sentences) from destabilizing the pretrained representations. |
-| Target modules | $W_Q, W_K, W_V, W_O$ | All four attention projections are wrapped to maximize the model's ability to adapt its attention patterns to the new domains. Hu et al. [1] show that $W_Q$ and $W_V$ have the largest effect; we include $W_K$ and $W_O$ as well since the overhead is negligible in our small model. |
-| Learning rate $\eta$ | $2 \times 10^{-3}$ | $2\times$ higher than the Full FT baseline ($10^{-3}$). LoRA tolerates higher learning rates because only the small adapter matrices are updated while the frozen base weights act as a stabilizing anchor (see [Section 5.3](#sec-hyperparams)). |
-| Epochs | 50 | Chosen to allow convergence on the small dataset. With only 8 training sentences and batch size 4, each epoch consists of very few steps — 50 epochs ensure the LoRA matrices see the data often enough to learn the new patterns. |
-| Batch size | 4 | Matches the number of sentences per domain (4 weather + 4 cooking), so each batch is likely to contain examples from both domains, providing a balanced gradient signal. |
-| Sequence length | 4 | Our training sentences are short (5–7 tokens). A sequence length of 4 creates sufficient next-token prediction windows while keeping the input compact. |
-| Optimizer | Adam [7] | Standard choice for Transformer training. Only LoRA parameters, embeddings, and the LM head receive gradients — the frozen base weights are excluded via `requires_grad = False`, so Adam's memory overhead scales with the small trainable subset only. |
+| Parameter | Wert | Begründung |
+|-----------|------|------------|
+| Rank $r$ | 4 | Bei $d_{\text{model}} = 64$ sind die Projections bereits klein ($4{,}096$ Parameter). Ein Rank von $4$ erfasst einen $\frac{4}{64} = 6{,}25\%$ Unterraum — ausreichend für unsere eng umrissene Fine-Tuning-Aufgabe (zwei neue Domänen), bei einem LoRA-Overhead von nur $512$ Parametern pro Projection. Höhere Ranks würden angesichts der kleinen Weight Matrices abnehmende Erträge liefern. |
+| Alpha $\alpha$ | 1.0 | Ergibt einen Scaling-Faktor $s = \frac{\alpha}{r} = 0{,}25$, der den LoRA-Beitrag relativ zu den frozen Weights dämpft. Dieses konservative Scaling verhindert, dass der kleine Fine-Tuning-Datensatz (8 Sätze) die Pretrained Repräsentationen destabilisiert. |
+| Target Modules | $W_Q, W_K, W_V, W_O$ | Alle vier Attention Projections werden gewrappt, um die Fähigkeit des Modells zu maximieren, seine Attention Patterns an die neuen Domänen anzupassen. Hu et al. [1] zeigen, dass $W_Q$ und $W_V$ den größten Effekt haben; hier werden $W_K$ und $W_O$ ebenfalls eingeschlossen, da der Overhead in unserem kleinen Modell vernachlässigbar ist. |
+| Learning Rate $\eta$ | $2 \times 10^{-3}$ | $2\times$ höher als die Full FT Baseline ($10^{-3}$). LoRA toleriert höhere Learning Rates, da nur die kleinen Adapter Matrices aktualisiert werden, während die frozen Base Weights als stabilisierender Anker wirken (siehe [Abschnitt 5.3](#sec-hyperparams)). |
+| Epochs | 50 | Gewählt, um Konvergenz auf dem kleinen Datensatz zu ermöglichen. Bei nur 8 Trainingssätzen und Batch Size 4 besteht jede Epoch aus sehr wenigen Steps — 50 Epochs stellen sicher, dass die LoRA Matrices die Daten oft genug sehen, um die neuen Muster zu lernen. |
+| Batch Size | 4 | Entspricht der Anzahl der Sätze pro Domäne (4 Wetter + 4 Kochen), sodass jeder Batch wahrscheinlich Beispiele aus beiden Domänen enthält und ein ausgewogenes Gradient-Signal liefert. |
+| Sequence Length | 4 | Unsere Trainingssätze sind kurz (5–7 Tokens). Eine Sequence Length von 4 erzeugt ausreichende Next-Token-Prediction-Fenster bei kompaktem Input. |
+| Optimizer | Adam [7] | Standardwahl für Transformer Training. Nur LoRA-Parameter, Embeddings und der LM Head erhalten Gradients — die frozen Base Weights werden über `requires_grad = False` ausgeschlossen, sodass Adams Speicheroverhead nur mit der kleinen trainierbaren Teilmenge skaliert. |
 
-The `LoRALinear` wrapper freezes the original `nn.Linear` weights and adds trainable
-$A \in \mathbb{R}^{r \times d}$ and $B \in \mathbb{R}^{d \times r}$ (with $B$ initialized to zero),
-so the model starts from identical behavior to the pretrained base.
+Der `LoRALinear`-Wrapper friert die originalen `nn.Linear` Weights ein und fügt trainierbare $A \in \mathbb{R}^{r \times d}$ und $B \in \mathbb{R}^{d \times r}$ hinzu (wobei $B$ mit Null initialisiert wird), sodass das Modell mit identischem Verhalten zum Pretrained Base startet.
 
-### 9.3 Comparison of the Three Approaches
+### 9.3 Vergleich der drei Ansätze
 
-All three methods are trained on the same 8 fine-tuning sentences for 50 epochs.
-The script produces a side-by-side comparison
-(saved to `dist/finetuning_results/finetuning_comparison.png`):
+Alle drei Methoden werden auf denselben 8 Fine-Tuning-Sätzen über 50 Epochs trainiert. Das Skript erzeugt einen direkten Vergleich (gespeichert unter `dist/finetuning_results/finetuning_comparison.png`):
 
-| Method | Trainable Params | Learning Rate | Catastrophic Forgetting Risk |
-|--------|-----------------|---------------|------------------------------|
-| Full Fine-Tuning | 100% | $10^{-3}$ | High — old prompts degrade |
-| Layer Freezing | ~30-50% (last block + embeddings) | $10^{-3}$ | Medium |
-| **LoRA** | **<5%** (LoRA matrices + embeddings) | $2 \times 10^{-3}$ | **Low — base weights frozen** |
+| Methode | Trainierbare Parameter | Learning Rate | Catastrophic Forgetting Risiko |
+|---------|----------------------|---------------|-------------------------------|
+| Full Fine-Tuning | 100% | $10^{-3}$ | Hoch — alte Prompts verschlechtern sich |
+| Layer Freezing | ~30-50% (letzter Block + Embeddings) | $10^{-3}$ | Mittel |
+| **LoRA** | **<5%** (LoRA Matrices + Embeddings) | $2 \times 10^{-3}$ | **Niedrig — Base Weights frozen** |
 
-The `demonstrate_catastrophic_forgetting` function validates this by testing old prompts
-(*"die katze"*, *"der hund"*) against the Full FT model — showing measurable degradation —
-while the LoRA model retains the original predictions because $W_0$ is never modified.
+Die Funktion `demonstrate_catastrophic_forgetting` validiert dies, indem sie alte Prompts (*"die katze"*, *"der hund"*) gegen das Full FT Modell testet — und messbare Verschlechterung zeigt — während das LoRA-Modell die ursprünglichen Vorhersagen beibehält, da $W_0$ nie modifiziert wird.
 
 <a id="sec-artifacts"></a>
 
-### 9.4 Artifacts
+### 9.4 Artefakte
 
-After training, the pipeline saves four model variants:
+Nach dem Training speichert die Pipeline vier Modellvarianten:
 
 ```
 dist/finetuning_results/
-├── full_finetuned/          # Full FT — complete retrained model
-├── layer_frozen/            # Layer Freezing — complete model, partially retrained
-├── lora_adapter/            # LoRA — only the small A, B matrices + new embeddings
+├── full_finetuned/          # Full FT — vollständig neu trainiertes Modell
+├── layer_frozen/            # Layer Freezing — vollständiges Modell, teilweise neu trainiert
+├── lora_adapter/            # LoRA — nur die kleinen A, B Matrices + neue Embeddings
 │   ├── lora_weights.pt
 │   ├── embedding_weights.pt
 │   ├── lora_config.json
 │   └── tokenizer.json
-└── lora_merged/             # LoRA — merged into base weights (no LoRA logic needed)
+└── lora_merged/             # LoRA — in Base Weights gemergt (keine LoRA-Logik nötig)
     ├── config.json
     ├── model.pt
     └── tokenizer.json
 ```
 
-The `lora_adapter/` variant is orders of magnitude smaller than the full model,
-demonstrating the practical storage advantage described in [Section 8](#sec-practice).
+Die `lora_adapter/`-Variante ist um Größenordnungen kleiner als das vollständige Modell und demonstriert den in [Abschnitt 8](#sec-practice) beschriebenen praktischen Speichervorteil.
 
 ---
 
 <a id="sec-further"></a>
 
-## 10. Further Concepts
+## 10. Weiterführende Konzepte
 
 ### 10.1 QLoRA (Quantized LoRA)
 
-Dettmers et al. [2] combine LoRA with **4-bit quantization** of the base model.
+Dettmers et al. [2] kombinieren LoRA mit **4-bit Quantization** des Base Models.
 
-The frozen base weights $W_0$ are only read during the forward pass — they never receive
-gradient updates. This means they do not need full floating-point precision. QLoRA exploits
-this by storing $W_0$ in a custom 4-bit format (NormalFloat4, NF4) instead of 16- or 32-bit:
+Die frozen Base Weights $W_0$ werden nur während des Forward Pass gelesen — sie erhalten nie Gradient Updates. Das bedeutet, sie benötigen keine volle Floating-Point-Präzision. QLoRA nutzt dies aus, indem $W_0$ in einem speziellen 4-bit Format (NormalFloat4, NF4) statt in 16- oder 32-bit gespeichert wird:
 
-| Precision | Bits | Bytes per param | Qwen3-8B memory | Typical use case |
-|-----------|------|-----------------|-----------------|------------------|
-| FP32 | 32 | 4 | $\approx 32$ GB | Training, research, numerical reference |
-| TF32 | 19 (as 32)¹ | 4 | $\approx 32$ GB | Training on Ampere+ GPUs (A100, H100) — same memory as FP32 but faster matmuls |
-| FP16 | 16 | 2 | $\approx 16$ GB | Standard inference, fine-tuning |
-| BF16 | 16 | 2 | $\approx 16$ GB | Training and inference — wider dynamic range than FP16, preferred for LLMs |
-| FP8 (E4M3) | 8 | 1 | $\approx 8$ GB | Inference on H100/Ada GPUs — near-lossless compression |
-| INT8 | 8 | 1 | $\approx 8$ GB | Inference with LLM.int8() [12] — good trade-off between quality and memory |
-| **NF4 (4-bit)** | **4** | **0.5** | **$\approx 4$ GB** | **QLoRA fine-tuning [2] — information-theoretically optimal for normally distributed weights** |
-| INT4 (GPTQ) | 4 | 0.5 | $\approx 4$ GB | Inference with calibrated quantization [13] — post-training, requires calibration data |
-| INT4 (AWQ) | 4 | 0.5 | $\approx 4$ GB | Inference with activation-aware quantization [14] — protects salient weights, often better than GPTQ |
-| 3-bit | 3 | 0.375 | $\approx 3$ GB | Edge/mobile devices — noticeable quality loss, only for error-tolerant applications |
-| 2-bit | 2 | 0.25 | $\approx 2$ GB | Experimental — significant quality degradation, only for research or extreme memory constraints |
-| 1-bit (BitNet) | 1.58² | 0.2 | $\approx 1.6$ GB | Research frontier [15] — ternary weights $\{-1, 0, 1\}$, requires specialized architecture |
+| Präzision | Bits | Bytes pro Parameter | Qwen3-8B Speicher | Typischer Anwendungsfall |
+|-----------|------|---------------------|-------------------|--------------------------|
+| FP32 | 32 | 4 | $\approx 32$ GB | Training, Forschung, numerische Referenz |
+| TF32 | 19 (als 32)¹ | 4 | $\approx 32$ GB | Training auf Ampere+ GPUs (A100, H100) — gleicher Speicher wie FP32, aber schnellere Matrixmultiplikationen |
+| FP16 | 16 | 2 | $\approx 16$ GB | Standard Inference, Fine-Tuning |
+| BF16 | 16 | 2 | $\approx 16$ GB | Training und Inference — größerer dynamischer Bereich als FP16, bevorzugt für LLMs |
+| FP8 (E4M3) | 8 | 1 | $\approx 8$ GB | Inference auf H100/Ada GPUs — nahezu verlustfreie Kompression |
+| INT8 | 8 | 1 | $\approx 8$ GB | Inference mit LLM.int8() [13] — guter Kompromiss zwischen Qualität und Speicher |
+| **NF4 (4-bit)** | **4** | **0.5** | **$\approx 4$ GB** | **QLoRA Fine-Tuning [2] — informationstheoretisch optimal für normalverteilte Weights** |
+| INT4 (GPTQ) | 4 | 0.5 | $\approx 4$ GB | Inference mit kalibrierter Quantization [14] — Post-Training, erfordert Kalibrierungsdaten |
+| INT4 (AWQ) | 4 | 0.5 | $\approx 4$ GB | Inference mit aktivierungsbewusster Quantization [15] — schützt wichtige Weights, oft besser als GPTQ |
+| 3-bit | 3 | 0.375 | $\approx 3$ GB | Edge-/Mobilgeräte — spürbarer Qualitätsverlust, nur für fehlertolerante Anwendungen |
+| 2-bit | 2 | 0.25 | $\approx 2$ GB | Experimentell — signifikanter Qualitätsverlust, nur für Forschung oder extreme Speicherbeschränkungen |
+| 1-bit (BitNet) | 1.58² | 0.2 | $\approx 1{,}6$ GB | Forschungsgrenze [16] — ternäre Weights $\{-1, 0, 1\}$, erfordert spezialisierte Architektur |
 
-¹ TF32 internally uses 10 mantissa bits (vs. 23 in FP32) but still stores as a 32-bit word. The benefit is purely
-computational: Tensor Cores on Ampere+ GPUs perform matmuls in TF32 precision $\sim 8\times$ faster than in FP32.
+¹ TF32 verwendet intern 10 Mantissenbits (vs. 23 bei FP32), wird aber dennoch als 32-bit Wort gespeichert. Der Vorteil ist rein rechnerisch: Tensor Cores auf Ampere+ GPUs führen Matrixmultiplikationen in TF32-Präzision $\sim 8\times$ schneller aus als in FP32.
 
-² BitNet b1.58 [15] uses ternary weights ($\log_2 3 \approx 1.58$ bits per parameter).
+² BitNet b1.58 [16] verwendet ternäre Weights ($\log_2 3 \approx 1.58$ Bits pro Parameter).
 
-The 4-bit choice is not arbitrary — Dettmers et al. [2] show that NF4 is information-theoretically
-optimal for normally distributed weights, and that going below 4 bits causes significant
-quality degradation, while 8-bit provides only marginal improvement over 4-bit at double the cost.
-4-bit therefore represents the practical sweet spot between compression and fidelity.
+Die 4-bit-Wahl ist nicht willkürlich — Dettmers et al. [2] zeigen, dass NF4 informationstheoretisch optimal für normalverteilte Weights ist und dass ein Unterschreiten von 4 Bits signifikante Qualitätseinbußen verursacht, während 8-bit nur marginale Verbesserungen gegenüber 4-bit bei doppelten Kosten bietet. 4-bit stellt daher den praktischen Sweet Spot zwischen Kompression und Wiedergabetreue dar.
 
-The table reveals a central pattern: **each halving of precision roughly halves the memory
-footprint.** From FP32 (32 GB) through FP16 (16 GB) to INT8 (8 GB) and finally 4-bit
-(4 GB) — Qwen3-8B fits into the VRAM of a single consumer GPU (e.g. RTX 4090 with 24 GB).
-Below 4 bits, however, quality loss becomes increasingly noticeable: 3-bit is only suitable
-for error-tolerant applications (e.g. chatbots without factual accuracy requirements), 2-bit
-is purely experimental, and 1-bit (BitNet) requires a model trained from scratch with a
-specialized architecture — conventional models cannot be meaningfully quantized to 1 bit.
+Die Tabelle offenbart ein zentrales Muster: **Jede Halbierung der Präzision halbiert ungefähr den Speicherbedarf.** Von FP32 (32 GB) über FP16 (16 GB) zu INT8 (8 GB) und schließlich 4-bit (4 GB) — Qwen3-8B passt in den VRAM einer einzelnen Consumer-GPU (z.B. RTX 4090 mit 24 GB). Unterhalb von 4 Bits wird der Qualitätsverlust jedoch zunehmend spürbar: 3-bit ist nur für fehlertolerante Anwendungen geeignet (z.B. Chatbots ohne Anforderungen an faktische Genauigkeit), 2-bit ist rein experimentell, und 1-bit (BitNet) erfordert ein von Grund auf mit spezialisierter Architektur trainiertes Modell — konventionelle Modelle lassen sich nicht sinnvoll auf 1 Bit quantisieren.
 
-Key properties:
-- The LoRA adapters $A$ and $B$ remain at full precision (BFloat16), since they **do** receive gradients
-- Dequantization to BF16 happens on-the-fly during the forward pass
-- Enables fine-tuning of large models (e.g. 70B) on a single consumer GPU (24 GB)
+Wichtige Eigenschaften:
+- Die LoRA Adapter $A$ und $B$ bleiben in voller Präzision (BFloat16), da sie **sehr wohl** Gradients erhalten
+- Dequantization auf BF16 erfolgt on-the-fly während des Forward Pass
+- Ermöglicht Fine-Tuning großer Modelle (z.B. 70B) auf einer einzelnen Consumer-GPU (24 GB)
 
 ### 10.2 DoRA (Weight-Decomposed Low-Rank Adaptation)
 
-Liu et al. [3] decompose the weight matrix into **direction** and **magnitude**:
+Liu et al. [3] zerlegen die Weight Matrix in **Richtung** und **Magnitude**:
 
 $$
 W' = m \cdot \frac{W_0 + BA}{\|W_0 + BA\|_c}
 $$
 
-where $m$ is a trainable magnitude vector and $\|\cdot\|_c$ denotes the column-wise norm.
-Both components are trained separately. Often yields better results than standard LoRA.
+wobei $m$ ein trainierbarer Magnitude-Vektor ist und $\|\cdot\|_c$ die spaltenweise Norm bezeichnet. Beide Komponenten werden separat trainiert. Liefert oft bessere Ergebnisse als Standard-LoRA.
 
 ### 10.3 LoRA+
 
-Hayou et al. [6] propose using **different learning rates** for $A$ and $B$:
-- Matrix $A$: Higher learning rate
-- Matrix $B$: Lower learning rate
+Hayou et al. [6] schlagen vor, **unterschiedliche Learning Rates** für $A$ und $B$ zu verwenden:
+- Matrix $A$: Höhere Learning Rate
+- Matrix $B$: Niedrigere Learning Rate
 
-A simple modification that often leads to better convergence.
+Eine einfache Modifikation, die oft zu besserer Konvergenz führt.
 
 ---
 
@@ -1211,10 +1128,12 @@ A simple modification that often leads to better convergence.
 
 [11] S. Rajbhandari, J. Rasley, O. Ruwase, and Y. He, "ZeRO: Memory Optimizations Toward Training Trillion Parameter Models," in *Proc. SC*, 2020. [arXiv:1910.02054](https://arxiv.org/abs/1910.02054)
 
-[12] T. Dettmers, M. Lewis, Y. Belkada, and L. Zettlemoyer, "LLM.int8(): 8-bit Matrix Multiplication for Transformers at Scale," in *Proc. NeurIPS*, 2022. [arXiv:2208.07339](https://arxiv.org/abs/2208.07339)
+[12] Valve Corporation, "Steam Hardware & Software Survey," Januar 2026. [https://store.steampowered.com/hwsurvey/](https://store.steampowered.com/hwsurvey/)
 
-[13] E. Frantar, S. Ashkboos, T. Hoefler, and D. Alistarh, "GPTQ: Accurate Post-Training Quantization for Generative Pre-trained Transformers," in *Proc. ICLR*, 2023. [arXiv:2210.17323](https://arxiv.org/abs/2210.17323)
+[13] T. Dettmers, M. Lewis, Y. Belkada, and L. Zettlemoyer, "LLM.int8(): 8-bit Matrix Multiplication for Transformers at Scale," in *Proc. NeurIPS*, 2022. [arXiv:2208.07339](https://arxiv.org/abs/2208.07339)
 
-[14] J. Lin, J. Tang, H. Tang, S. Yang, W.-M. Chen, W.-C. Wang, G. Xiao, X. Dang, C. Gan, and S. Han, "AWQ: Activation-aware Weight Quantization for LLM Compression and Acceleration," in *Proc. MLSys*, 2024. [arXiv:2306.00978](https://arxiv.org/abs/2306.00978)
+[14] E. Frantar, S. Ashkboos, T. Hoefler, and D. Alistarh, "GPTQ: Accurate Post-Training Quantization for Generative Pre-trained Transformers," in *Proc. ICLR*, 2023. [arXiv:2210.17323](https://arxiv.org/abs/2210.17323)
 
-[15] S. Ma, H. Wang, L. Ma, L. Wang, W. Wang, S. Huang, L. Dong, R. Wang, J. Xue, and F. Wei, "The Era of 1-bit LLMs: All Large Language Models are in 1.58 Bits," 2024. [arXiv:2402.17764](https://arxiv.org/abs/2402.17764)
+[15] J. Lin, J. Tang, H. Tang, S. Yang, W.-M. Chen, W.-C. Wang, G. Xiao, X. Dang, C. Gan, and S. Han, "AWQ: Activation-aware Weight Quantization for LLM Compression and Acceleration," in *Proc. MLSys*, 2024. [arXiv:2306.00978](https://arxiv.org/abs/2306.00978)
+
+[16] S. Ma, H. Wang, L. Ma, L. Wang, W. Wang, S. Huang, L. Dong, R. Wang, J. Xue, and F. Wei, "The Era of 1-bit LLMs: All Large Language Models are in 1.58 Bits," 2024. [arXiv:2402.17764](https://arxiv.org/abs/2402.17764)
