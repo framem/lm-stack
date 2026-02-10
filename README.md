@@ -1,33 +1,44 @@
 # lm-stack
 
-A full-stack playground for working with language models — from training custom models in Python to serving them with Ollama and building AI-powered apps with Next.js.
+Ein Full-Stack-Projekt rund um Sprachmodelle — von selbst trainierten Modellen in Python über Ollama als Inference-Server bis hin zu KI-gestützten Web-Apps mit Next.js.
 
-## Projects
+## Projekte
 
 ### Machine Learning (`machineLearning/`)
 
-Hands-on ML projects for learning the fundamentals:
+Praxisnahe ML-Projekte zum Lernen der Grundlagen:
 
-- **Language Model** — Train and run LSTM and Transformer (MiniGPT) models from scratch, with LoRA fine-tuning support. Includes Jupyter notebooks for logits visualization and model comparison.
-- **Numeric Model** — Decision Tree regression on housing data, exported as ONNX for portable inference.
+- **Language Model** — LSTM- und Transformer-Modelle (MiniGPT) von Grund auf trainieren und ausführen, mit LoRA-Fine-Tuning.
+  - [LoRA erklärt](machineLearning/languageModel/docs/LORA_EXPLAINED.md) — Was ist LoRA, wie funktioniert es, wann lohnt es sich?
+  - [Logits-Visualisierung](machineLearning/languageModel/notebooks/logits_visualization.ipynb) — Wie ein Sprachmodell Tokens vorhersagt
+  - [Block-Reproduzierbarkeit](machineLearning/languageModel/notebooks/blocks_reproducibility.ipynb) — Transformer-Blöcke im Detail
+  - [Modellvergleich](machineLearning/languageModel/notebooks/model_comparison.ipynb) — LSTM vs. Transformer Gegenüberstellung
+- **Numeric Model** — Decision-Tree-Regression auf Immobiliendaten, exportiert als ONNX für portablen Einsatz.
+  - [Training](machineLearning/numericModel/notebooks/training.ipynb) — Modelltraining und Evaluation
+  - [Visualisierung](machineLearning/numericModel/notebooks/visualize.ipynb) — Ergebnisse und Entscheidungsbaum
+
+### Quantisierung (`machineLearning/quantization/`)
+
+Werkzeuge und Erklärungen rund um Modell-Quantisierung:
+
+- [Quantisierung erklärt](machineLearning/quantization/quantization_explained.ipynb) — Von FP64 bis INT4: Was passiert bei der Quantisierung, wie viel Speicher spart man, wie viel Qualität verliert man?
+- **GGUF Converter** — Trainierte HuggingFace-Modelle ins GGUF-Format konvertieren, für Ollama oder LM Studio
 
 ### Web App (`nextJs/`)
 
-A Next.js application that connects to Ollama for AI chat and uses Prisma with PostgreSQL (pgvector) as the database layer.
+Eine Next.js-Anwendung mit Ollama-Anbindung für KI-Chat und Prisma mit PostgreSQL (pgvector) als Datenbank.
 
 ### MCP Server (`mcp/`)
 
-A Model Context Protocol server that exposes tools (date/time, random numbers, etc.) for use by AI agents and clients.
+Ein Model-Context-Protocol-Server, der Werkzeuge (Datum/Uhrzeit, Zufallszahlen etc.) für KI-Agenten und Clients bereitstellt.
 
-### Quantization (`quantization/`)
+### LangGraph Agent (`lang-graph/`)
 
-Tools for model quantization and format conversion:
+Ein KI-Agent auf Basis von LangGraph mit Tool-Anbindung und Graph-basierter Ablaufsteuerung.
 
-- **GGUF Converter** — Convert trained HuggingFace models to GGUF format for use in Ollama or LM Studio
+## Erste Schritte
 
-## Getting Started
-
-Each project has its own setup — check the README or `package.json` in the respective folder. The Docker services can be started with:
+Jedes Projekt hat ein eigenes Setup — siehe die jeweilige README oder `package.json` im Unterordner. Die Docker-Dienste lassen sich starten mit:
 
 ```bash
 docker compose up
