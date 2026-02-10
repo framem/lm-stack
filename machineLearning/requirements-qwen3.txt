@@ -1,0 +1,40 @@
+# ============================================================
+# Abhängigkeiten für Qwen3-8B QLoRA Fine-Tuning
+# ============================================================
+# Installation: pip install -r requirements-qwen3.txt
+#
+# WICHTIG - Windows-Nutzer:
+#   bitsandbytes hat auf Windows eingeschränkte Unterstützung.
+#   Empfohlene Optionen:
+#     1. WSL2 (Windows Subsystem for Linux) verwenden
+#     2. bitsandbytes-windows installieren: pip install bitsandbytes-windows
+#     3. Oder ohne Quantisierung trainieren (braucht mehr VRAM)
+#
+# Hardware-Anforderungen:
+#   - GPU: NVIDIA mit min. 8 GB VRAM (QLoRA), 16 GB empfohlen
+#   - CUDA: Version 11.8 oder höher
+#   - RAM: Min. 16 GB, 32 GB empfohlen
+#   - Festplatte: ~20 GB für Modell-Download + Checkpoints
+# ============================================================
+
+# PyTorch (CUDA-Version installieren!)
+# pip install torch --index-url https://download.pytorch.org/whl/cu121
+torch>=2.1.0
+
+# HuggingFace Ökosystem
+transformers>=4.40.0
+peft>=0.10.0
+trl>=0.8.0
+datasets>=2.19.0
+accelerate>=0.30.0
+
+# Quantisierung
+bitsandbytes>=0.43.0
+
+# Tokenizer-Abhängigkeiten
+sentencepiece>=0.2.0
+protobuf>=4.25.0
+
+# Utilities
+scipy>=1.12.0
+safetensors>=0.4.0
