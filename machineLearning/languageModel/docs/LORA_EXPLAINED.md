@@ -17,6 +17,10 @@
 9. [Unsere Implementierung: MiniGPT Fine-Tuning](#sec-implementation)
 10. [Hardware & Trainingsdauer](#sec-hardware)
 11. [Weiterführende Konzepte](#sec-further)
+    - [QLoRA](#sec-qlora)
+    - [DoRA](#sec-dora)
+    - [LoRA+](#sec-lora-plus)
+    - [Alternativer Ansatz: Representation Engineering](#sec-rep-eng)
 12. [References](#sec-references)
 
 ---
@@ -1080,6 +1084,83 @@ Hayou et al. [6] schlagen vor, **unterschiedliche Learning Rates** für $A$ und 
 
 Eine einfache Modifikation, die oft zu besserer Konvergenz führt.
 
+<a id="sec-rep-eng"></a>
+
+### 11.4 Alternativer Ansatz: Representation Engineering
+
+Nicht jede Verhaltensanpassung eines Modells erfordert Training. **Representation Engineering** [17] ist ein trainingsfreier Ansatz, der Modellverhalten durch direkte Manipulation der internen Repräsentationen steuert — ganz ohne Gradientenberechnung oder Backpropagation.
+
+#### Die Grundidee
+
+Transformer-Modelle entwickeln beim Pretraining interne Repräsentationen für abstrakte Konzepte. Diese Konzepte lassen sich als **Richtungsvektoren** im Aktivierungsraum der Hidden States identifizieren. Hat man einen solchen Richtungsvektor gefunden, lässt er sich gezielt aus den Gewichten entfernen (Ablation) oder verstärken.
+
+#### Ablauf in der Praxis
+
+Der Prozess besteht aus zwei Schritten:
+
+**Schritt 1 — Richtungsvektor finden:**
+
+```python
+# Zwei Gruppen von Prompts durch das Modell schicken
+harmful_hidden  = extract_hidden_states(harmful_prompts,  layer_idx)
+harmless_hidden = extract_hidden_states(harmless_prompts, layer_idx)
+
+# Mittelwerte berechnen
+harmful_mean  = torch.stack(harmful_hidden).mean(dim=0)
+harmless_mean = torch.stack(harmless_hidden).mean(dim=0)
+
+# Richtungsvektor = Differenz der Mittelwerte
+direction = harmful_mean - harmless_mean
+direction = direction / direction.norm()  # Normalisieren
+```
+
+Das Modell generiert dabei nur ein einziges Token pro Prompt (`max_new_tokens=1`). Es geht nicht um die Ausgabe, sondern um die **Hidden States** an einer bestimmten Schicht (typischerweise bei ~60% der Modelltiefe, wo abstrakte Konzepte am stärksten repräsentiert sind).
+
+**Schritt 2 — Richtung aus Gewichten entfernen:**
+
+Der gefundene Richtungsvektor wird durch orthogonale Projektion aus den Weight-Matrizen der Attention-Schichten herausgerechnet:
+
+$$W' = W - \mathbf{d} \cdot \mathbf{d}^\top \cdot W$$
+
+wobei $\mathbf{d}$ der normalisierte Richtungsvektor ist. Diese Operation entfernt die Komponente der Gewichte, die in Richtung $\mathbf{d}$ zeigt, und lässt alle anderen Komponenten unverändert.
+
+#### Vergleich: LoRA Fine-Tuning vs. Representation Engineering
+
+| Aspekt | LoRA Fine-Tuning | Representation Engineering |
+|--------|-----------------|---------------------------|
+| **Methode** | Gradient-basiertes Training | Lineare Algebra auf Hidden States |
+| **Dauer** | Minuten bis Stunden | Wenige Minuten |
+| **Training nötig?** | Ja (Backpropagation, Optimizer) | Nein (nur Forward Passes) |
+| **VRAM** | ~8–16 GB (QLoRA) | ~6 GB (nur Inferenz) |
+| **Ergebnis** | LoRA-Adapter (separater Datensatz) | Modifizierte Gewichte oder Richtungsvektor |
+| **Modularität** | Hoch — Adapter an-/abschaltbar | Gering — Gewichte direkt verändert |
+| **Granularität** | Fein — lernt komplexe Muster | Grob — entfernt/verstärkt eine Richtung |
+| **Anwendung** | Neues Wissen, Stil, Domänenanpassung | Gezieltes Ein-/Ausschalten einzelner Konzepte |
+| **Reversibel?** | Ja (Adapter nicht laden) | Nur wenn Originalgewichte aufbewahrt werden |
+| **Codekomplexität** | ~300 Zeilen (mit HuggingFace-Ökosystem) | ~50 Zeilen |
+| **Benötigte Daten** | Instruktions-Datensatz (eine Klasse) | Kontrastive Paare (zwei Klassen) |
+
+#### Wann welchen Ansatz verwenden?
+
+**LoRA Fine-Tuning** ist die richtige Wahl, wenn:
+- Dem Modell **neues Wissen** beigebracht werden soll (Fakten, Fachvokabular, Stil)
+- **Komplexe Verhaltensmuster** gelernt werden sollen
+- Der Adapter **modular** bleiben soll (mehrere Adapter für verschiedene Aufgaben)
+- **Reproduzierbarkeit** und kontrolliertes Training wichtig sind
+
+**Representation Engineering** eignet sich, wenn:
+- Ein **einzelnes, lineares Konzept** im Modell verstärkt oder entfernt werden soll
+- **Keine Trainingsdaten** im klassischen Sinne verfügbar sind, aber kontrastive Beispiele
+- Die Änderung **schnell** durchgeführt werden soll (Minuten statt Stunden)
+- Man die **interne Struktur** des Modells untersuchen möchte (Interpretability)
+
+#### Limitierungen von Representation Engineering
+
+- Funktioniert nur für Konzepte, die **linear** im Aktivierungsraum repräsentiert sind
+- Die Wahl der **Schicht** (`layer_idx`) ist entscheidend und erfordert Experimentieren
+- Kann **unbeabsichtigte Nebenwirkungen** haben, da der Richtungsvektor auch mit anderen Konzepten korrelieren kann
+- Nicht geeignet für das Erlernen **neuer Fähigkeiten** — es kann nur vorhandene Konzepte verstärken oder abschwächen
+
 ---
 
 <a id="sec-references"></a>
@@ -1117,3 +1198,5 @@ Eine einfache Modifikation, die oft zu besserer Konvergenz führt.
 [15] J. Lin, J. Tang, H. Tang, S. Yang, W.-M. Chen, W.-C. Wang, G. Xiao, X. Dang, C. Gan, and S. Han, "AWQ: Activation-aware Weight Quantization for LLM Compression and Acceleration," in *Proc. MLSys*, 2024. [arXiv:2306.00978](https://arxiv.org/abs/2306.00978)
 
 [16] S. Ma, H. Wang, L. Ma, L. Wang, W. Wang, S. Huang, L. Dong, R. Wang, J. Xue, and F. Wei, "The Era of 1-bit LLMs: All Large Language Models are in 1.58 Bits," 2024. [arXiv:2402.17764](https://arxiv.org/abs/2402.17764)
+
+[17] A. Zou, L. Phan, S. Chen, J. Campbell, P. Guo, R. Ren, A. Pan, X. Yin, M. Mazeika, A.-K. Dombrowski, S. Goel, N. Li, M. Byun, Z. Wang, A. Mallen, S. Basart, S. Koyejo, D. Song, M. Fredrikson, J. Z. Kolter, and D. Hendrycks, "Representation Engineering: A Top-Down Approach to AI Transparency," 2023. [arXiv:2310.01405](https://arxiv.org/abs/2310.01405)

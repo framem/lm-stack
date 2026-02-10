@@ -1,7 +1,7 @@
 services:
   gguf-converter:
     build:
-      context: ./quantization/gguf-converter
+      context: machineLearning/quantization/gguf-converter
       dockerfile: Dockerfile
     image: gguf-converter:latest
     container_name: gguf-converter
