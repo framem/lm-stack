@@ -8,11 +8,17 @@ Ein Full-Stack-Projekt rund um Sprachmodelle — von selbst trainierten Modellen
 
 Praxisnahe ML-Projekte zum Lernen der Grundlagen:
 
-- **Language Model** — LSTM- und Transformer-Modelle (MiniGPT) von Grund auf trainieren und ausführen, mit LoRA-Fine-Tuning.
-  - [LoRA erklärt](machineLearning/languageModel/docs/LORA_EXPLAINED.md) — Was ist LoRA, wie funktioniert es, wann lohnt es sich?
-  - [Logits-Visualisierung](machineLearning/languageModel/notebooks/logits_visualization.ipynb) — Wie ein Sprachmodell Tokens vorhersagt
-  - [Block-Reproduzierbarkeit](machineLearning/languageModel/notebooks/blocks_reproducibility.ipynb) — Transformer-Blöcke im Detail
-  - [Modellvergleich](machineLearning/languageModel/notebooks/model_comparison.ipynb) — LSTM vs. Transformer Gegenüberstellung
+- **Language Model** — LSTM- und Transformer-Modelle (MiniGPT) von Grund auf trainieren und ausführen, mit LoRA-Fine-Tuning, Web-Oberfläche (Gradio) und LLM-as-Judge-Evaluation.
+  - Dokumentation:
+    - [LoRA erklärt](machineLearning/languageModel/docs/LORA_EXPLAINED.md) — Was ist LoRA, wie funktioniert es, wann lohnt es sich?
+    - [Loss erklärt](machineLearning/languageModel/docs/LOSS_EXPLAINED.md) — Cross-Entropy Loss verstehen und einordnen
+    - [Alignment erklärt](machineLearning/languageModel/docs/ALIGNMENT_EXPLAINED.md) — Wie LLMs „erzogen" werden (SFT, RLHF, DPO)
+    - [Guardrails erklärt](machineLearning/languageModel/docs/GUARDRAILS_EXPLAINED.md) — Schutzmechanismen außerhalb des Modells
+  - Notebooks:
+    - [Logits-Visualisierung](machineLearning/languageModel/notebooks/logits_visualization.ipynb) — Wie ein Sprachmodell Tokens vorhersagt
+    - [Block-Reproduzierbarkeit](machineLearning/languageModel/notebooks/blocks_reproducibility.ipynb) — Transformer-Blöcke im Detail
+    - [Modellvergleich](machineLearning/languageModel/notebooks/model_comparison.ipynb) — LSTM vs. Transformer Gegenüberstellung
+    - [LLM-as-Judge](machineLearning/languageModel/notebooks/llm_as_judge.ipynb) — Automatische Modellbewertung durch ein LLM
 - **Numeric Model** — Decision-Tree-Regression auf Immobiliendaten, exportiert als ONNX für portablen Einsatz.
   - [Training](machineLearning/numericModel/notebooks/training.ipynb) — Modelltraining und Evaluation
   - [Visualisierung](machineLearning/numericModel/notebooks/visualize.ipynb) — Ergebnisse und Entscheidungsbaum
@@ -35,6 +41,10 @@ Ein Model-Context-Protocol-Server, der Werkzeuge (Datum/Uhrzeit, Zufallszahlen e
 ### LangGraph Agent (`lang-graph/`)
 
 Ein KI-Agent auf Basis von LangGraph mit Tool-Anbindung und Graph-basierter Ablaufsteuerung.
+
+### n8n Integration Testing (`n8n/`)
+
+n8n dient als zentrale Testumgebung, um die Verbindung zwischen den Stack-Komponenten (PostgreSQL, Ollama, MCP Server, LM Studio) zu verifizieren.
 
 ## Erste Schritte
 

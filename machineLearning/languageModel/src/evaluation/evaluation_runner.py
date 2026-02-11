@@ -96,6 +96,17 @@ def _load_training_set(dataset: str) -> set[str]:
     return {t.lower().strip() for t in texts}
 
 
+def _refresh_in_training_data(results: list, training_set: set[str]):
+    """Recalculate in_training_data for all outputs against current training data."""
+    for result in results:
+        for output in result.outputs:
+            clean = output.generated_text.lower().strip()
+            for tok in ("<eos>", "<bos>", "<pad>", "<unk>"):
+                clean = clean.replace(tok, "")
+            clean = " ".join(clean.split())
+            output.in_training_data = clean in training_set
+
+
 def main(dataset: str = "l"):
     """Run the full LLM-as-a-Judge evaluation pipeline.
 
@@ -151,6 +162,7 @@ def main(dataset: str = "l"):
     if not models_to_evaluate:
         print("\n   Alle Modelle im Cache — keine Neubewertung nötig.")
         results = list(cached_results.values())
+        _refresh_in_training_data(results, training_set)
         print_results_table(results)
         print(f"\n   Generiere Report...")
         generate_evaluation_report(results, cache_dir)
@@ -237,8 +249,9 @@ def main(dataset: str = "l"):
     save_cache(cache_dir, cache)
     print(f"\n   Cache aktualisiert ({len(new_results)} Modell(e) neu gespeichert).")
 
-    # 6. Combine cached + new results, display + report
+    # 6. Combine cached + new results, recalculate in_training_data
     results = list(cached_results.values()) + list(new_results.values())
+    _refresh_in_training_data(results, training_set)
     print_results_table(results)
 
     print(f"\n   Generiere Report...")

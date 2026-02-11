@@ -1,6 +1,17 @@
 # LoRA - Low-Rank Adaptation
 
 > Parametereffizientes Fine-Tuning für Sprachmodelle — von MiniGPT bis Qwen3-8B.
+>
+> **Grund:** Full Fine-Tuning erfordert das Training aller Modellparameter — bei Qwen3-8B
+> sind das 8 Milliarden Werte und über 16 GB GPU-Speicher allein zum Laden. Auf Consumer-Hardware
+> ist das nicht praktikabel.
+>
+> **Vorgehen:** LoRA friert die originalen Gewichte ein und trainiert stattdessen zwei kleine
+> Matrizen ($A$ und $B$) pro Schicht, deren Produkt eine Low-Rank-Korrektur bildet. Dadurch
+> werden nur 0,1–5 % der Parameter trainiert, während das vortrainierte Wissen erhalten bleibt.
+>
+> **Ergebnis:** Vergleichbare Qualität wie Full Fine-Tuning bei einem Bruchteil des Speicher-
+> und Rechenbedarfs — unser MiniGPT-Adapter ist nur ~8 KB groß, ein Qwen3-Adapter ~18 MB.
 
 **Autor:** Franz Emmerlich
 
@@ -17,8 +28,8 @@
 9. [Unsere Implementierung: MiniGPT Fine-Tuning](#sec-implementation)
 10. [Hardware & Trainingsdauer](#sec-hardware)
 11. [Weiterführende Konzepte](#sec-further)
-    - [QLoRA](#sec-qlora)
-    - [DoRA](#sec-dora)
+    - [QLoRA (Quantized LoRA)](#sec-qlora)
+    - [DoRA (Weight-Decomposed Low-Rank Adaptation)](#sec-dora)
     - [LoRA+](#sec-lora-plus)
     - [Alternativer Ansatz: Representation Engineering](#sec-rep-eng)
 12. [References](#sec-references)
@@ -31,7 +42,7 @@
 
 Man möchte einem Sprachmodell neues Wissen beibringen — etwa Fakten aus einem bestimmten Fachgebiet oder einen bestimmten Schreibstil. Der naheliegendste Ansatz wäre ein Training von Grund auf und so lange auf den eigenen Daten trainieren, bis das Modell das Gewünschte gelernt hat. Doch das Modell muss zunächst Sprache, Grammatik und Weltwissen von Null auf lernen, was Datensätze im Bereich von Billionen Token und entsprechende Rechenressourcen voraussetzt. Vortrainierte Modelle (Pretrained Models) wie Qwen3-8B oder ChatGPT (Generative Pretrained Transformer) "kennen" bereits diese Dinge. 
 
-Anstatt bei Null anzufangen, lässt sich von diesen vortrainierten Werten ausgehen und auf einem kleineren, aufgabenspezifischen Datensatz weitertrainieren — das nennt man **Full Fine-Tuning**. Es ist um Größenordnungen günstiger als Training von Grund auf, aber in absoluten Zahlen immer noch teuer. Denn doch selbst Full Fine-Tuning stößt schnell an Consumer-Hardware-Grenzen. Allein um Qwen3-8B in halber Genauigkeit (FP16, 2 Byte pro Parameter) zu *laden*, werden über 16 GB GPU-Speicher (VRAM) benötigt:
+Anstatt bei Null anzufangen, lässt sich von diesen vortrainierten Werten ausgehen und auf einem kleineren, aufgabenspezifischen Datensatz weitertrainieren — das nennt man **Full Fine-Tuning**. Es ist um Größenordnungen günstiger als Training von Grund auf, aber in absoluten Zahlen immer noch teuer. Doch selbst Full Fine-Tuning stößt schnell an Consumer-Hardware-Grenzen. Allein um Qwen3-8B in halber Genauigkeit (FP16, 2 Byte pro Parameter) zu *laden*, werden über 16 GB GPU-Speicher (VRAM) benötigt:
 
 $$8 \times 10^9 \;\text{Parameter} \times 2 \;\text{Byte} = 16 \;\text{GB}$$
 
@@ -363,17 +374,6 @@ Low-Rank-Korrektur, die additiv angewendet wird. Die eingefrorenen Weights bilde
 und die trainierbaren Matrizen $A$ und $B$ lenken den Output in Richtung des gewünschten
 Verhaltens.
 
-<a id="fig:lora-2d"></a>
-
-> **Abbildung 4 — LoRA als geometrische Korrektur in 2D.** Ein Einheitskreis von Input-Vektoren
-> wird durch drei verschiedene lineare Abbildungen transformiert. Links: die Pretrained Weights $W$
-> (blaue Ellipse). Mitte: das Full Fine-Tuning-Ziel $W + \Delta W$ (rote Ellipse). Rechts: LoRA
-> approximiert das Ziel, indem eine Rank-1-Korrektur $BA$ (grüne Ellipse) zu den eingefrorenen
-> Pretrained Weights addiert wird — die grünen Pfeile zeigen die additive Korrektur, die jeden
-> Punkt von der blauen zur grünen Ellipse verschiebt. Selbst mit dem minimal möglichen Rank
-> ($r = 1$) stimmt die Approximation eng mit dem Full Fine-Tuning-Ergebnis überein.
-> *Erzeugt von [`generate_lora_visualization.py`](generate_lora_visualization.py).*
-
 <a id="sec-rank-theory"></a>
 
 ### 2.4 Wahl des Rank $r$
@@ -576,6 +576,8 @@ zusätzliche Berechnung des $BAx$-Zweigs entfällt, da die Korrektur nun in die 
 eingearbeitet ist). Dies ist nützlich, wenn man maximale Inferenzgeschwindigkeit möchte und nicht
 zwischen Adaptern wechseln muss.
 
+Neben der mathematischen Funktionsweise hat LoRA einige zentrale Hyperparameter, die das Verhalten und die Effizienz bestimmen.
+
 ---
 
 <a id="sec-hyperparams"></a>
@@ -634,6 +636,8 @@ Warum? Die LoRA-Matrizen sind klein und verändern das Modell nur subtil.
 Größere Schritte sind sicher, weil die ursprünglichen Weights $W_0$ eingefroren sind — sie wirken
 als stabilisierender Anker, sodass selbst ein aggressives Update der kleinen Adapter-Matrizen das
 Modell als Ganzes nicht destabilisieren kann.
+
+Nachdem die Hyperparameter geklärt sind, stellt sich die Frage: An welchen Stellen im Modell werden LoRA-Adapter tatsächlich eingefügt?
 
 ---
 
@@ -881,6 +885,8 @@ Die letzten beiden Überprüfungen sind entscheidend: Da nur $W_V$ modifiziert w
 
 ## 7. LoRA im Vergleich zu anderen Methoden
 
+LoRA ist nur eine von mehreren Methoden, um Modelle anzupassen. Die folgende Tabelle stellt sie in den Kontext alternativer Ansätze:
+
 | Methode | Trainierbare Parameter | Speicherverbrauch | Originalmodell | Mehrere Aufgaben |
 |---------|----------------------|-------------------|----------------|------------------|
 | Training from Scratch | 100% | Extrem | Neues Modell (zufällige Initialisierung) | Nein (1 Modell pro Aufgabe) |
@@ -890,6 +896,8 @@ Die letzten beiden Überprüfungen sind entscheidend: Da nur $W_V$ modifiziert w
 | QLoRA [2] | 0,1-5% | Sehr niedrig | Unverändert (4-bit) | Ja |
 | Prefix Tuning [4] | <0,1% | Minimal | Unverändert | Ja |
 | Prompt Tuning [5] | <0,01% | Minimal | Unverändert | Ja |
+
+Wie sieht die praktische Handhabung von LoRA-Adaptern aus? Der nächste Abschnitt zeigt, wie Adapter gespeichert, geladen und gemergt werden.
 
 ---
 
@@ -992,6 +1000,8 @@ dist/finetuning_results/
 
 Die `lora_adapter/`-Variante ist um Größenordnungen kleiner als das vollständige Modell und demonstriert den in [Abschnitt 8](#sec-practice) beschriebenen praktischen Speichervorteil.
 
+Wie schnell läuft das Training auf Consumer-Hardware? Der nächste Abschnitt gibt konkrete Messwerte.
+
 ---
 
 <a id="sec-hardware"></a>
@@ -1011,20 +1021,20 @@ Alle Trainingsläufe in diesem Dokument wurden auf folgender Consumer-Hardware d
 | Metrik | Wert |
 |--------|------|
 | Parameter | ~109K |
-| Epochs | *TODO* |
-| Trainingsdauer | *TODO* |
-| Final Loss | *TODO* |
+| Epochs | 100 (Standard) |
+| Trainingsdauer | Sekunden bis wenige Minuten (CPU) |
 
 ### 10.2 MiniGPT LoRA Fine-Tuning
 
 | Metrik | Wert |
 |--------|------|
-| Trainierbare Parameter (LoRA) | *TODO* |
-| Epochs | *TODO* |
-| Trainingsdauer | *TODO* |
-| Final Loss | *TODO* |
+| Trainierbare Parameter (LoRA) | 4.096 (Rank 4) |
+| Epochs | 50 (Standard) |
+| Trainingsdauer | Sekunden (CPU) |
 
 > **Hinweis:** Da MiniGPT bewusst klein gehalten ist, liegen die Trainingszeiten im Sekunden- bis Minutenbereich. Dies unterstreicht den Punkt aus [Abschnitt 1](#sec-problem): Für Modelle dieser Größe ist kein spezialisiertes Setup nötig — die Experimente lassen sich auf jedem modernen Desktop reproduzieren.
+
+Über das Standard-LoRA hinaus gibt es mehrere Weiterentwicklungen, die Effizienz oder Qualität verbessern.
 
 ---
 
@@ -1079,8 +1089,8 @@ wobei $m$ ein trainierbarer Magnitude-Vektor ist und $\|\cdot\|_c$ die spaltenwe
 ### 11.3 LoRA+
 
 Hayou et al. [6] schlagen vor, **unterschiedliche Learning Rates** für $A$ und $B$ zu verwenden:
-- Matrix $A$: Höhere Learning Rate
-- Matrix $B$: Niedrigere Learning Rate
+- Matrix $B$: Höhere Learning Rate
+- Matrix $A$: Niedrigere Learning Rate
 
 Eine einfache Modifikation, die oft zu besserer Konvergenz führt.
 

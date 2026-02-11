@@ -747,6 +747,7 @@ def main(dataset="s", epochs=EPOCHS):
     def generate(model, tokenizer, start_text, max_new=5, temp=1.0):
         model.eval()
         tokens = tokenizer.encode(start_text)
+        eos_id = tokenizer.word_to_idx.get("<EOS>", -1)
 
         for _ in range(max_new):
             with torch.no_grad():
@@ -755,13 +756,15 @@ def main(dataset="s", epochs=EPOCHS):
                 last_logits = logits[0, -1] / temp
                 probs = F.softmax(last_logits, dim=-1)
                 next_token = torch.multinomial(probs, 1).item()
+                if next_token == eos_id:
+                    break
                 tokens.append(next_token)
 
         return tokenizer.decode(tokens)
 
     print("\nGenerierte Texte:")
     for start in ["die katze", "der hund", "das kind"]:
-        result = generate(model, tokenizer, start, max_new=4, temp=0.8)
+        result = generate(model, tokenizer, start, max_new=8, temp=0.8)
         print(f"   '{start}' -> '{result}'")
 
     # Modell speichern
