@@ -14,6 +14,20 @@ import sys
 from pathlib import Path
 
 
+def _ask_dataset() -> str:
+    """Let the user choose between small (S), medium (M), and large (L) training data."""
+    print("\n    Datensatz wählen:")
+    print("      S = Klein  (22 Sätze, schnell)")
+    print("      M = Mittel (200 Sätze, mehr Vokabular)")
+    print("      L = Groß   (2000 Sätze, umfangreich)")
+    choice = input("    Datensatz [S/M/L]: ").strip().lower()
+    if choice == "m":
+        return "m"
+    elif choice == "l":
+        return "l"
+    return "s"
+
+
 def check_models_exist():
     """Prüft welche Modelle bereits trainiert wurden."""
     models_dir = Path(__file__).parent.parent / "dist"
@@ -21,7 +35,8 @@ def check_models_exist():
     transformer_exists = (models_dir / "transformer_model" / "model.pt").exists()
     finetuned_exists = (models_dir / "finetuning_results").exists()
     fact_correction_exists = (models_dir / "finetuning_results" / "fact_correction").exists()
-    return lstm_exists, transformer_exists, finetuned_exists, fact_correction_exists
+    evaluation_results_exist = (models_dir / "evaluation_results").exists()
+    return lstm_exists, transformer_exists, finetuned_exists, fact_correction_exists, evaluation_results_exist
 
 
 def main():
@@ -29,7 +44,7 @@ def main():
     print("SPRACHMODELL-LERNPROJEKT")
     print("=" * 60)
 
-    lstm_exists, transformer_exists, finetuned_exists, fact_correction_exists = check_models_exist()
+    lstm_exists, transformer_exists, finetuned_exists, fact_correction_exists, evaluation_results_exist = check_models_exist()
 
     print(f"""
     Verfügbare Optionen:
@@ -73,24 +88,32 @@ def main():
        - Zeigt ob korrigierte Fakten gelernt und altes Wissen erhalten wurde
        {'   [OK] Verfügbar' if fact_correction_exists else '   [X] Erst Faktenkorrektur trainieren (Option 7)!'}
 
+    === EVALUATION ===
+    9. Modellqualität bewerten (LLM-as-a-Judge)
+       - Großes LLM bewertet MiniGPT-Outputs (Grammatik, Kohärenz, Relevanz)
+       - Benötigt Ollama oder LM Studio mit geladenem Modell
+       {'   [OK] Ergebnisse vorhanden' if evaluation_results_exist else '   [ ] Noch nicht durchgeführt'}
+
     0. Beenden
     """)
 
-    choice = input("    Auswahl (0-8): ").strip()
+    choice = input("    Auswahl (0-9): ").strip()
 
     if choice == "1":
+        dataset = _ask_dataset()
         print("\n" + "=" * 60)
         print("Starte LSTM-Training...")
         print("=" * 60 + "\n")
         from training.training_lstm import main as train_lstm
-        train_lstm()
+        train_lstm(dataset=dataset)
 
     elif choice == "2":
+        dataset = _ask_dataset()
         print("\n" + "=" * 60)
         print("Starte Transformer-Training...")
         print("=" * 60 + "\n")
         from training.training_transformer import main as train_transformer
-        train_transformer()
+        train_transformer(dataset=dataset)
 
     elif choice == "3":
         if not lstm_exists:
@@ -152,12 +175,20 @@ def main():
         from inference.inference_fact_correction import main as run_fact_correction_inference
         run_fact_correction_inference()
 
+    elif choice == "9":
+        dataset = _ask_dataset()
+        print("\n" + "=" * 60)
+        print("Starte LLM-as-a-Judge Bewertung...")
+        print("=" * 60 + "\n")
+        from evaluation.evaluation_runner import main as run_evaluation
+        run_evaluation(dataset=dataset)
+
     elif choice == "0":
         print("\nAuf Wiedersehen!")
         sys.exit(0)
 
     else:
-        print("\n[X] Ungültige Eingabe. Bitte 0-8 eingeben.")
+        print("\n[X] Ungültige Eingabe. Bitte 0-9 eingeben.")
         sys.exit(1)
 
 

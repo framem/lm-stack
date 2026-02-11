@@ -116,7 +116,7 @@ def discover_models(base_dir):
         models["original"] = {
             "path": original_dir,
             "type": "standard",
-            "label": "Original (Basis-Training)",
+            "label": "Transformer (Basis-Training)",
         }
 
     # Fine-Tuning-Ergebnisse

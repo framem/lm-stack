@@ -8,12 +8,13 @@ Ein erweiterbares Agent-Netzwerk basierend auf [LangGraph](https://langchain-ai.
 graph TD
     User[Benutzer] --> Triage[Orchestrator / Triage]
     Triage -->|Film-Frage| FilmAdvisor[Film-Berater]
-    Triage -->|Mehrere Themen| FilmAdvisor & AgentN[Agent N...]
+    Triage -->|Zeit-Frage| TimeAgent[Time Agent]
+    Triage -->|Mehrere Themen| FilmAdvisor & TimeAgent
     Triage -->|Allgemeine Frage| DirectAnswer[Direkte Antwort]
     FilmAdvisor -->|MCP| MCPServer[NextJS MCP Server]
     MCPServer --> DB[(PostgreSQL)]
     FilmAdvisor --> Orchestrator[Orchestrator / Synthese]
-    AgentN --> Orchestrator
+    TimeAgent --> Orchestrator
     Orchestrator --> Response[Antwort]
     DirectAnswer --> Response
 ```

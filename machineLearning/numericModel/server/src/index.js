@@ -10,7 +10,7 @@ const MODEL_DIR = path.resolve(__dirname, "..", "..", "dist");
 const MODEL_PATH = path.join(MODEL_DIR, "melbourne_tree.onnx");
 const METADATA_PATH = path.join(MODEL_DIR, "melbourne_tree_metadata.json");
 
-let session;
+let inference;
 let metadata;
 
 function loadMetadata() {
@@ -26,7 +26,7 @@ async function prepareModel() {
     throw new Error(`ONNX model not found at ${MODEL_PATH}. Train and export the model first.`);
   }
   metadata = loadMetadata();
-  session = await ort.InferenceSession.create(MODEL_PATH);
+  inference = await ort.InferenceSession.create(MODEL_PATH);
 }
 
 function buildFeatureVector(payload) {
@@ -48,20 +48,20 @@ function buildFeatureVector(payload) {
 }
 
 app.get("/health", (_req, res) => {
-  const ready = Boolean(session && metadata);
+  const ready = Boolean(inference && metadata);
   res.json({ status: ready ? "ok" : "initializing" });
 });
 
 app.post("/predict", async (req, res) => {
   try {
-    if (!session) {
+    if (!inference) {
       throw new Error("Model session not ready yet.");
     }
     const featureVector = buildFeatureVector(req.body);
     const inputTensor = new ort.Tensor("float32", featureVector, [1, featureVector.length]);
     const feeds = { [metadata.input_tensor_name]: inputTensor };
-    const results = await session.run(feeds);
-    const outputName = session.outputNames[0];
+    const results = await inference.run(feeds);
+    const outputName = inference.outputNames[0];
     const prediction = results[outputName].data[0];
 
     res.json({ prediction, features: metadata.features });

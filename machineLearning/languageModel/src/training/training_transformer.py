@@ -19,8 +19,12 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from .training_config import EPOCHS, LOG_INTERVAL, LEARNING_RATE_TRANSFORMER, BATCH_SIZE_TRANSFORMER, SEQ_LENGTH, RANDOM_SEED
-from .training_data import TRAINING_DATA
+from .training_config import (
+    EPOCHS, LOG_INTERVAL, LEARNING_RATE_TRANSFORMER, BATCH_SIZE_TRANSFORMER,
+    SEQ_LENGTH_TRANSFORMER, RANDOM_SEED, EMBED_DIM_TRANSFORMER,
+    NUM_HEADS_TRANSFORMER, NUM_LAYERS_TRANSFORMER,
+)
+from .training_data import TRAINING_DATA, TRAINING_DATA_M, TRAINING_DATA_L
 from torch.utils.data import Dataset, DataLoader
 
 from .model_report import generate_model_report
@@ -159,8 +163,10 @@ class TransformerBlock(nn.Module):
     2. Feed-Forward Network + Residual Connection + LayerNorm
     """
 
-    def __init__(self, embed_dim: int, num_heads: int = 4, ff_dim: int = 256, dropout: float = 0.1):
+    def __init__(self, embed_dim: int, num_heads: int = 4, ff_dim: int = None, dropout: float = 0.1):
         super().__init__()
+        # Standard: 4x embed_dim (wie in GPT/BERT ueblich)
+        ff_dim = ff_dim or 4 * embed_dim
 
         self.attention = SelfAttention(embed_dim, num_heads)
         self.norm1 = nn.LayerNorm(embed_dim)
@@ -559,8 +565,11 @@ def load_transformer_model(load_dir: str = "models/transformer_model"):
 class TextDataset(Dataset):
     def __init__(self, texts, tokenizer, seq_len=5):
         self.data = []
+        eos_id = tokenizer.word_to_idx.get("<EOS>")
         for text in texts:
             tokens = tokenizer.encode(text)
+            if eos_id is not None:
+                tokens.append(eos_id)
             for i in range(len(tokens) - seq_len):
                 self.data.append((tokens[i:i+seq_len], tokens[i+1:i+seq_len+1]))
 
@@ -572,12 +581,20 @@ class TextDataset(Dataset):
         return torch.tensor(inp), torch.tensor(tgt)
 
 
-def main():
+def main(dataset="s"):
+    """Train the Transformer model. dataset='s' for small (22), 'm' for medium (200), 'l' for large (2000)."""
     print("=" * 70)
     print("🚀 TRANSFORMER SPRACHMODELL - Fortgeschrittenes Beispiel")
     print("=" * 70)
 
-    training_texts = TRAINING_DATA
+    datasets = {"s": TRAINING_DATA, "m": TRAINING_DATA_M, "l": TRAINING_DATA_L}
+    training_texts = datasets.get(dataset, TRAINING_DATA)
+    dataset_labels = {
+        "s": "S (22 Sätze)",
+        "m": "M (200 Sätze)",
+        "l": "L (2000 Sätze)"
+    }
+    print(f"\n   Datensatz: {dataset_labels.get(dataset, 'S (22 Sätze)')}")
 
     # Tokenizer
     tokenizer = SimpleTokenizer()
@@ -585,16 +602,16 @@ def main():
     print(f"\n📚 Vokabular: {tokenizer.vocab_size} Wörter")
 
     # Dataset
-    dataset = TextDataset(training_texts, tokenizer, seq_len=SEQ_LENGTH)
+    dataset = TextDataset(training_texts, tokenizer, seq_len=SEQ_LENGTH_TRANSFORMER)
     dataloader = DataLoader(dataset, batch_size=BATCH_SIZE_TRANSFORMER, shuffle=True)
     print(f"📊 Dataset: {len(dataset)} Trainingsbeispiele")
 
     # Modell
     model = MiniGPT(
         vocab_size=tokenizer.vocab_size,
-        embed_dim=64,
-        num_heads=4,
-        num_layers=2
+        embed_dim=EMBED_DIM_TRANSFORMER,
+        num_heads=NUM_HEADS_TRANSFORMER,
+        num_layers=NUM_LAYERS_TRANSFORMER,
     )
 
     # Training

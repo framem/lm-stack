@@ -7,6 +7,7 @@
   "type": "commonjs",
   "scripts": {
     "mcp:stream": "tsx src/mcp-server-stream.ts",
+    "mcp:stream:w-session": "tsx src/mcp-server-stream-w-session.ts",
     "inspect:stream": "npx @modelcontextprotocol/inspector",
     "mcp:stdio": "tsx src/mcp-server-stdio.ts",
     "inspect:stdio": "npx @modelcontextprotocol/inspector npx tsx src/mcp-server-stdio.ts ",

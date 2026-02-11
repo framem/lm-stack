@@ -1,6 +1,6 @@
 import {describe, it, expect, beforeAll, afterAll} from 'vitest'
 import * as http from 'http'
-import {startServer} from '../src/mcp-server-stream'
+import {startServer} from '../src/mcp-server-stream-w-session'
 
 let baseUrl: string
 let close: () => Promise<void>

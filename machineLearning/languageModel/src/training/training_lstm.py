@@ -24,8 +24,11 @@ import os
 from pathlib import Path
 
 from .model_report import generate_model_report
-from .training_config import EPOCHS, LOG_INTERVAL, LEARNING_RATE_LSTM, BATCH_SIZE_LSTM, SEQ_LENGTH, RANDOM_SEED
-from .training_data import TRAINING_DATA
+from .training_config import (
+    EPOCHS, LOG_INTERVAL, LEARNING_RATE_LSTM, BATCH_SIZE_LSTM,
+    SEQ_LENGTH, RANDOM_SEED, EMBEDDING_DIM_LSTM, HIDDEN_DIM_LSTM,
+)
+from .training_data import TRAINING_DATA, TRAINING_DATA_M, TRAINING_DATA_L
 
 # Für reproduzierbare Ergebnisse
 torch.manual_seed(RANDOM_SEED)
@@ -552,12 +555,20 @@ def generate_text(model, tokenizer: Tokenizer, start_text: str,
 # TEIL 6: HAUPTPROGRAMM
 # =============================================================================
 
-def main():
+def main(dataset="s"):
+    """Train the LSTM model. dataset='s' for small (22), 'm' for medium (200), 'l' for large (2000)."""
     print("=" * 60)
     print("🎓 SPRACHMODELL-TRAINING - Didaktisches Beispiel")
     print("=" * 60)
 
-    training_texts = TRAINING_DATA
+    datasets = {"s": TRAINING_DATA, "m": TRAINING_DATA_M, "l": TRAINING_DATA_L}
+    training_texts = datasets.get(dataset, TRAINING_DATA)
+    dataset_labels = {
+        "s": "S (22 Sätze)",
+        "m": "M (200 Sätze)",
+        "l": "L (2000 Sätze)"
+    }
+    print(f"\n   Datensatz: {dataset_labels.get(dataset, 'S (22 Sätze)')}")
 
     # 1. Tokenizer erstellen
     print("\n" + "=" * 60)
@@ -599,8 +610,8 @@ def main():
 
     model = SimpleLanguageModel(
         vocab_size=tokenizer.vocab_size,
-        embedding_dim=32,
-        hidden_dim=64
+        embedding_dim=EMBEDDING_DIM_LSTM,
+        hidden_dim=HIDDEN_DIM_LSTM,
     )
 
     # Parameter zählen
