@@ -25,7 +25,7 @@ def _run_in_thread(fn, capture, result_holder):
         result_holder["done"] = True
 
 
-def run_training(model_type, dataset):
+def run_training(model_type, dataset, epochs):
     """Generator: run training, yield (log, plot, status) updates."""
     if not _training_lock.acquire(blocking=False):
         yield "Ein Training laeuft bereits!", None, "Gesperrt"
@@ -47,7 +47,8 @@ def run_training(model_type, dataset):
         else:
             from training.training_transformer import main as train_fn
 
-        fn = lambda: train_fn(dataset=ds)
+        ep = int(epochs)
+        fn = lambda: train_fn(dataset=ds, epochs=ep)
 
         thread = threading.Thread(
             target=_run_in_thread, args=(fn, capture, result), daemon=True,
@@ -95,7 +96,7 @@ def run_training(model_type, dataset):
         _training_lock.release()
 
 
-def run_finetuning(method):
+def run_finetuning(method, epochs):
     """Generator: run fine-tuning, yield (log, plot, status) updates."""
     if not _training_lock.acquire(blocking=False):
         yield "Ein Training laeuft bereits!", None, "Gesperrt"
@@ -110,7 +111,8 @@ def run_finetuning(method):
         else:
             from training.finetuning_fact_correction import main as ft_fn
 
-        fn = lambda: ft_fn()
+        ep = int(epochs)
+        fn = lambda: ft_fn(epochs=ep)
 
         thread = threading.Thread(
             target=_run_in_thread, args=(fn, capture, result), daemon=True,
@@ -173,6 +175,9 @@ def build_training_tab():
                 value="S (22 Saetze)",
                 label="Datensatz",
             )
+            epochs = gr.Slider(
+                10, 500, value=100, step=10, label="Epochen",
+            )
 
         train_btn = gr.Button("Training starten", variant="primary")
         status = gr.Textbox(label="Status", interactive=False)
@@ -186,8 +191,15 @@ def build_training_tab():
 
         train_btn.click(
             fn=run_training,
-            inputs=[model_type, dataset],
+            inputs=[model_type, dataset, epochs],
             outputs=[log, plot, status],
+        )
+
+        gr.Markdown(
+            "**Cross-Entropy Loss** &nbsp; $\\text{Loss} = -\\ln(P_{\\text{richtig}})$ "
+            "&nbsp;|&nbsp; Baseline (zufaelliges Raten): "
+            "$\\text{Loss}_{\\text{zufall}} = \\ln(\\text{vocab\\_size})$ "
+            "&nbsp;|&nbsp; Alles unter der Baseline = Modell hat gelernt"
         )
 
 
@@ -196,14 +208,20 @@ def build_finetuning_tab():
     with gr.Tab("Fine-Tuning"):
         gr.Markdown("### Modell fine-tunen")
 
-        method = gr.Dropdown(
-            choices=[
-                "Neues Wissen (Full FT + Layer Freezing + LoRA)",
-                "Faktenkorrektur (LoRA V-only vs. alle)",
-            ],
-            value="Neues Wissen (Full FT + Layer Freezing + LoRA)",
-            label="Methode",
-        )
+        with gr.Row():
+            method = gr.Dropdown(
+                choices=[
+                    "Neues Wissen (Full FT + Layer Freezing + LoRA)",
+                    "Faktenkorrektur (LoRA V-only vs. alle)",
+                ],
+                value="Neues Wissen (Full FT + Layer Freezing + LoRA)",
+                label="Methode",
+                scale=3,
+            )
+            epochs = gr.Slider(
+                10, 500, value=50, step=10, label="Epochen",
+                scale=1,
+            )
 
         ft_btn = gr.Button("Fine-Tuning starten", variant="primary")
         status = gr.Textbox(label="Status", interactive=False)
@@ -217,6 +235,6 @@ def build_finetuning_tab():
 
         ft_btn.click(
             fn=run_finetuning,
-            inputs=[method],
+            inputs=[method, epochs],
             outputs=[log, plot, status],
         )

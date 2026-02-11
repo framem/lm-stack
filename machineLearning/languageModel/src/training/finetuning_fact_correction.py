@@ -133,7 +133,7 @@ def fact_correction_finetuning(base_model, tokenizer, data, *,
 # HAUPTPROGRAMM
 # =============================================================================
 
-def main():
+def main(epochs=80):
     print("=" * 70)
     print("FAKTENKORREKTUR MIT LoRA")
     print("Vergleich: LoRA auf V-only vs. LoRA auf alle Projektionen")
@@ -190,7 +190,7 @@ def main():
     # --- Schritt 4: Beide Ansaetze trainieren ---
     print("\n--- SCHRITT 4: LoRA-Training ---")
 
-    EPOCHS = 80
+    EPOCHS = epochs
 
     # Ansatz A: LoRA nur auf V (Faktenkorrektur)
     print("\n" + "=" * 70)

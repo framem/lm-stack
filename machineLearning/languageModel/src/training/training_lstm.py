@@ -555,7 +555,7 @@ def generate_text(model, tokenizer: Tokenizer, start_text: str,
 # TEIL 6: HAUPTPROGRAMM
 # =============================================================================
 
-def main(dataset="s"):
+def main(dataset="s", epochs=EPOCHS):
     """Train the LSTM model. dataset='s' for small (22), 'm' for medium (200), 'l' for large (2000)."""
     print("=" * 60)
     print("🎓 SPRACHMODELL-TRAINING - Didaktisches Beispiel")
@@ -623,7 +623,7 @@ def main(dataset="s"):
     print("SCHRITT 4: TRAINING")
     print("=" * 60)
 
-    losses = train_model(model, dataloader, epochs=EPOCHS, lr=LEARNING_RATE_LSTM)
+    losses = train_model(model, dataloader, epochs=epochs, lr=LEARNING_RATE_LSTM)
 
     # 5. Inferenz mit Logits-Visualisierung
     print("\n" + "=" * 60)

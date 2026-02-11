@@ -895,7 +895,7 @@ def demonstrate_catastrophic_forgetting(original_model, finetuned_model, tokeniz
 # HAUPTPROGRAMM
 # =============================================================================
 
-def main():
+def main(epochs=50):
     print("=" * 70)
     print("FINE-TUNING LERNPROJEKT")
     print("Vortrainiertes Transformer-Modell mit neuem Wissen erweitern")
@@ -935,7 +935,7 @@ def main():
     # --- Schritt 4: Alle drei Ansätze ausführen ---
     print("\n--- SCHRITT 4: Fine-Tuning mit 3 verschiedenen Ansätzen ---")
 
-    EPOCHS = 50
+    EPOCHS = epochs
 
     # Test-Prompts (Mix aus alt und neu)
     test_prompts = ["die katze", "der wind", "die suppe", "der hund"]

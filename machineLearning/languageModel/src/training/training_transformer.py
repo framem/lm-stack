@@ -15,7 +15,10 @@ import json
 import math
 from pathlib import Path
 
+import matplotlib
 import matplotlib.pyplot as plt
+
+matplotlib.rcParams["figure.max_open_warning"] = 0
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -581,7 +584,7 @@ class TextDataset(Dataset):
         return torch.tensor(inp), torch.tensor(tgt)
 
 
-def main(dataset="s"):
+def main(dataset="s", epochs=EPOCHS):
     """Train the Transformer model. dataset='s' for small (22), 'm' for medium (200), 'l' for large (2000)."""
     print("=" * 70)
     print("🚀 TRANSFORMER SPRACHMODELL - Fortgeschrittenes Beispiel")
@@ -622,7 +625,7 @@ def main(dataset="s"):
     optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE_TRANSFORMER)
     criterion = nn.CrossEntropyLoss()
 
-    for epoch in range(EPOCHS):
+    for epoch in range(epochs):
         model.train()
         total_loss = 0
 
@@ -636,7 +639,7 @@ def main(dataset="s"):
             total_loss += loss.item()
 
         if (epoch + 1) % LOG_INTERVAL == 0:
-            print(f"   Epoche {epoch+1:3d}/{EPOCHS} | Loss: {total_loss/len(dataloader):.4f}")
+            print(f"   Epoche {epoch+1:3d}/{epochs} | Loss: {total_loss/len(dataloader):.4f}")
 
     print("✅ Training abgeschlossen!")
 
