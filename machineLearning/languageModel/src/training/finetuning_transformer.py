@@ -21,6 +21,7 @@ Autor: Lernprojekt
 
 import copy
 import json
+import math
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -29,7 +30,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
-from .training_config import RANDOM_SEED
+from .training_config import (
+    RANDOM_SEED, WARMUP_FRACTION, GRAD_CLIP_MAX_NORM,
+    EARLY_STOPPING_PATIENCE,
+)
 from .training_data import FINETUNING_DATA
 from .training_transformer import (
     TextDataset,
@@ -67,6 +71,7 @@ def save_finetuned_model(model, tokenizer, save_dir, label, *,
         "num_heads": len(model.blocks[0].attention.q_proj.weight) // model.embed_dim if model.blocks else 4,
         "num_layers": len(model.blocks),
         "max_len": 50,
+        "weight_tying": getattr(model, 'weight_tying', False),
     }
 
     with open(save_path / "config.json", "w") as f:
@@ -261,6 +266,7 @@ def save_lora_merged(model, tokenizer, save_dir, *,
         "num_heads": len(model.blocks[0].attention.q_proj.weight) // model.embed_dim if model.blocks else 4,
         "num_layers": len(model.blocks),
         "max_len": 50,
+        "weight_tying": getattr(model, 'weight_tying', False),
     }
 
     with open(save_path / "config.json", "w") as f:
@@ -368,8 +374,14 @@ def expand_model_embeddings(model, old_vocab_size, new_vocab_size):
     model.lm_head = new_lm_head
     model.vocab_size = new_vocab_size
 
+    # Re-tie weights if model uses weight tying
+    if getattr(model, 'weight_tying', False):
+        model.lm_head.weight = model.token_embedding.weight
+
     print(f"   Token Embedding: [{old_vocab_size}, {model.embed_dim}] -> [{new_vocab_size}, {model.embed_dim}]")
     print(f"   LM Head:         [{model.embed_dim}, {old_vocab_size}] -> [{model.embed_dim}, {new_vocab_size}]")
+    if getattr(model, 'weight_tying', False):
+        print(f"   Weight Tying:    Wiederhergestellt")
 
 
 def count_parameters(model, only_trainable=False):
@@ -379,18 +391,34 @@ def count_parameters(model, only_trainable=False):
     return sum(p.numel() for p in model.parameters())
 
 
-def train_model(model, dataloader, vocab_size, epochs, lr, label=""):
+def train_model(model, dataloader, vocab_size, epochs, lr, label="",
+                val_dataloader=None):
     """Gemeinsame Trainingsschleife für alle Fine-Tuning-Ansätze."""
-    optimizer = torch.optim.Adam(
-        filter(lambda p: p.requires_grad, model.parameters()),
-        lr=lr
-    )
+    trainable_params = [p for p in model.parameters() if p.requires_grad]
+    optimizer = torch.optim.Adam(trainable_params, lr=lr)
     criterion = nn.CrossEntropyLoss()
 
+    # Cosine annealing with linear warmup
+    total_steps = len(dataloader) * epochs
+    warmup_steps = int(total_steps * WARMUP_FRACTION)
+
+    def lr_lambda(step):
+        if step < warmup_steps:
+            return step / max(warmup_steps, 1)
+        progress = (step - warmup_steps) / max(total_steps - warmup_steps, 1)
+        return 0.5 * (1 + math.cos(math.pi * progress))
+
+    scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda)
+
+    use_early_stopping = val_dataloader is not None and len(val_dataloader) > 0
+    best_val_loss = float('inf')
+    best_state = None
+    patience_counter = 0
+
     losses = []
-    model.train()
 
     for epoch in range(epochs):
+        model.train()
         total_loss = 0
         for inp, tgt in dataloader:
             logits = model(inp)
@@ -398,14 +426,46 @@ def train_model(model, dataloader, vocab_size, epochs, lr, label=""):
 
             optimizer.zero_grad()
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(trainable_params, GRAD_CLIP_MAX_NORM)
             optimizer.step()
+            scheduler.step()
             total_loss += loss.item()
 
         avg_loss = total_loss / len(dataloader)
         losses.append(avg_loss)
 
+        # Validation + Early Stopping
+        val_loss_str = ""
+        if use_early_stopping:
+            model.eval()
+            val_loss = 0
+            with torch.no_grad():
+                for inp, tgt in val_dataloader:
+                    logits = model(inp)
+                    loss = criterion(logits.view(-1, vocab_size), tgt.view(-1))
+                    val_loss += loss.item()
+            avg_val_loss = val_loss / len(val_dataloader)
+            val_loss_str = f" | Val: {avg_val_loss:.4f}"
+
+            if avg_val_loss < best_val_loss:
+                best_val_loss = avg_val_loss
+                best_state = copy.deepcopy(model.state_dict())
+                patience_counter = 0
+            else:
+                patience_counter += 1
+
         if (epoch + 1) % 10 == 0:
-            print(f"   [{label}] Epoche {epoch+1:3d}/{epochs} | Loss: {avg_loss:.4f}")
+            current_lr = scheduler.get_last_lr()[0]
+            print(f"   [{label}] Epoche {epoch+1:3d}/{epochs} | Loss: {avg_loss:.4f}{val_loss_str} | LR: {current_lr:.6f}")
+
+        if use_early_stopping and patience_counter >= EARLY_STOPPING_PATIENCE:
+            print(f"   [{label}] Early Stopping bei Epoche {epoch+1}")
+            break
+
+    # Restore best model weights
+    if best_state is not None:
+        model.load_state_dict(best_state)
+        print(f"   [{label}] Bestes Modell wiederhergestellt (Val Loss: {best_val_loss:.4f})")
 
     return losses
 
@@ -440,7 +500,7 @@ def evaluate_model(model, tokenizer, test_prompts, label=""):
 # ANSATZ 1: FULL FINE-TUNING
 # =============================================================================
 
-def full_finetuning(base_model, tokenizer, new_data, epochs=50):
+def full_finetuning(base_model, tokenizer, new_data, epochs=50, val_data=None):
     """
     FULL FINE-TUNING - Alle Gewichte weitertrainieren
     ==================================================
@@ -494,7 +554,14 @@ def full_finetuning(base_model, tokenizer, new_data, epochs=50):
     dataset = TextDataset(new_data, tokenizer, seq_len=4)
     dataloader = DataLoader(dataset, batch_size=4, shuffle=True)
 
-    losses = train_model(model, dataloader, tokenizer.vocab_size, epochs, FINETUNE_LR, "Full FT")
+    val_loader = None
+    if val_data:
+        val_dataset = TextDataset(val_data, tokenizer, seq_len=4)
+        if len(val_dataset) > 0:
+            val_loader = DataLoader(val_dataset, batch_size=4, shuffle=False)
+
+    losses = train_model(model, dataloader, tokenizer.vocab_size, epochs, FINETUNE_LR, "Full FT",
+                         val_dataloader=val_loader)
 
     return model, losses
 
@@ -503,7 +570,7 @@ def full_finetuning(base_model, tokenizer, new_data, epochs=50):
 # ANSATZ 2: LAYER FREEZING (PARTIAL FINE-TUNING)
 # =============================================================================
 
-def layer_freezing(base_model, tokenizer, new_data, epochs=50):
+def layer_freezing(base_model, tokenizer, new_data, epochs=50, val_data=None):
     """
     LAYER FREEZING - Nur bestimmte Schichten trainieren
     =====================================================
@@ -591,7 +658,14 @@ def layer_freezing(base_model, tokenizer, new_data, epochs=50):
     dataset = TextDataset(new_data, tokenizer, seq_len=4)
     dataloader = DataLoader(dataset, batch_size=4, shuffle=True)
 
-    losses = train_model(model, dataloader, tokenizer.vocab_size, epochs, FINETUNE_LR, "Frozen")
+    val_loader = None
+    if val_data:
+        val_dataset = TextDataset(val_data, tokenizer, seq_len=4)
+        if len(val_dataset) > 0:
+            val_loader = DataLoader(val_dataset, batch_size=4, shuffle=False)
+
+    losses = train_model(model, dataloader, tokenizer.vocab_size, epochs, FINETUNE_LR, "Frozen",
+                         val_dataloader=val_loader)
 
     return model, losses
 
@@ -717,7 +791,7 @@ def apply_lora(model, rank=4, alpha=1.0):
     return lora_layers
 
 
-def lora_finetuning(base_model, tokenizer, new_data, epochs=50, rank=4):
+def lora_finetuning(base_model, tokenizer, new_data, epochs=50, rank=4, val_data=None):
     """
     LoRA FINE-TUNING - Kleine Adapter statt alle Gewichte ändern
     ==============================================================
@@ -772,7 +846,14 @@ def lora_finetuning(base_model, tokenizer, new_data, epochs=50, rank=4):
     dataset = TextDataset(new_data, tokenizer, seq_len=4)
     dataloader = DataLoader(dataset, batch_size=4, shuffle=True)
 
-    losses = train_model(model, dataloader, tokenizer.vocab_size, epochs, FINETUNE_LR, "LoRA")
+    val_loader = None
+    if val_data:
+        val_dataset = TextDataset(val_data, tokenizer, seq_len=4)
+        if len(val_dataset) > 0:
+            val_loader = DataLoader(val_dataset, batch_size=4, shuffle=False)
+
+    losses = train_model(model, dataloader, tokenizer.vocab_size, epochs, FINETUNE_LR, "LoRA",
+                         val_dataloader=val_loader)
 
     return model, losses
 
@@ -937,6 +1018,18 @@ def main(epochs=50):
 
     EPOCHS = epochs
 
+    # Train/Val split for early stopping (shared across all 3 approaches)
+    from .training_config import VALIDATION_SPLIT
+    val_size = max(1, int(len(FINETUNING_DATA) * VALIDATION_SPLIT))
+    if val_size >= len(FINETUNING_DATA):
+        # Too few data points for a split
+        ft_train_data = FINETUNING_DATA
+        ft_val_data = None
+    else:
+        ft_train_data = FINETUNING_DATA[:-val_size]
+        ft_val_data = FINETUNING_DATA[-val_size:]
+        print(f"   Daten-Split: {len(ft_train_data)} Training / {len(ft_val_data)} Validation")
+
     # Test-Prompts (Mix aus alt und neu)
     test_prompts = ["die katze", "der wind", "die suppe", "der hund"]
 
@@ -944,7 +1037,7 @@ def main(epochs=50):
 
     # Ansatz 1: Full Fine-Tuning
     model_full, losses_full = full_finetuning(
-        original_model, tokenizer, FINETUNING_DATA, epochs=EPOCHS
+        original_model, tokenizer, ft_train_data, epochs=EPOCHS, val_data=ft_val_data
     )
     results['full'] = {
         'model': model_full,
@@ -956,7 +1049,7 @@ def main(epochs=50):
 
     # Ansatz 2: Layer Freezing
     model_frozen, losses_frozen = layer_freezing(
-        original_model, tokenizer, FINETUNING_DATA, epochs=EPOCHS
+        original_model, tokenizer, ft_train_data, epochs=EPOCHS, val_data=ft_val_data
     )
     results['frozen'] = {
         'model': model_frozen,
@@ -968,7 +1061,7 @@ def main(epochs=50):
 
     # Ansatz 3: LoRA
     model_lora, losses_lora = lora_finetuning(
-        original_model, tokenizer, FINETUNING_DATA, epochs=EPOCHS, rank=4
+        original_model, tokenizer, ft_train_data, epochs=EPOCHS, rank=4, val_data=ft_val_data
     )
     results['lora'] = {
         'model': model_lora,

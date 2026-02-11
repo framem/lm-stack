@@ -61,14 +61,39 @@ SEQ_LENGTH_TRANSFORMER = 6
 
 # Dimension der Wortvektoren UND der internen Repraesentationen.
 # Bestimmt auch die Head-Dimension: head_dim = embed_dim / num_heads.
-# Beispiel: 128 / 4 Heads = 32 pro Head.
-EMBED_DIM_TRANSFORMER = 256
+# Beispiel: 64 / 4 Heads = 16 pro Head.
+# Angepasst an Dataset L (~2000 Saetze, ~12k Tokens): kleines Modell
+# generalisiert besser als ein ueberparametrisiertes grosses.
+EMBED_DIM_TRANSFORMER = 64
 
 # Wie viele parallele Attention-Koepfe. Jeder Head lernt andere Muster
 # (z.B. ein Head für Subjekt-Verb, ein anderer für Adjektiv-Nomen).
 # head_dim = embed_dim / num_heads — zu viele Heads -> zu wenig Kapazitaet pro Head.
-NUM_HEADS_TRANSFORMER = 8
+NUM_HEADS_TRANSFORMER = 4
 
 # Anzahl gestapelter Transformer-Bloecke. Mehr Layer = tiefere Abstraktion,
 # aber auch mehr Parameter und Risiko für Overfitting bei wenig Daten.
-NUM_LAYERS_TRANSFORMER = 4
+NUM_LAYERS_TRANSFORMER = 2
+
+# =============================================================================
+# TRAINING OPTIMIZATIONS (Transformer + Fine-Tuning)
+# =============================================================================
+
+# Fraction of total training steps used for linear LR warmup.
+# During warmup the LR increases linearly from 0 to the target LR,
+# then follows a cosine decay schedule for the remaining steps.
+WARMUP_FRACTION = 0.1
+
+# Maximum gradient norm for gradient clipping (torch.nn.utils.clip_grad_norm_).
+# Prevents exploding gradients which can destabilize Transformer training.
+GRAD_CLIP_MAX_NORM = 1.0
+
+# =============================================================================
+# EARLY STOPPING
+# =============================================================================
+
+# Fraction of training data held out for validation (0.0 to disable).
+VALIDATION_SPLIT = 0.15
+
+# Stop training after this many epochs without validation loss improvement.
+EARLY_STOPPING_PATIENCE = 20

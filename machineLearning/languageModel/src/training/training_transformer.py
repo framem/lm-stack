@@ -11,6 +11,7 @@ Dieses Script zeigt die Architektur moderner Sprachmodelle wie GPT:
 Autor: Lernprojekt
 """
 
+import copy
 import json
 import math
 from pathlib import Path
@@ -26,6 +27,8 @@ from .training_config import (
     EPOCHS, LOG_INTERVAL, LEARNING_RATE_TRANSFORMER, BATCH_SIZE_TRANSFORMER,
     SEQ_LENGTH_TRANSFORMER, RANDOM_SEED, EMBED_DIM_TRANSFORMER,
     NUM_HEADS_TRANSFORMER, NUM_LAYERS_TRANSFORMER,
+    WARMUP_FRACTION, GRAD_CLIP_MAX_NORM,
+    VALIDATION_SPLIT, EARLY_STOPPING_PATIENCE,
 )
 from .training_data import TRAINING_DATA, TRAINING_DATA_M, TRAINING_DATA_L
 from torch.utils.data import Dataset, DataLoader
@@ -215,11 +218,13 @@ class MiniGPT(nn.Module):
     """
 
     def __init__(self, vocab_size: int, embed_dim: int = 64,
-                 num_heads: int = 4, num_layers: int = 2, max_len: int = 50):
+                 num_heads: int = 4, num_layers: int = 2, max_len: int = 50,
+                 weight_tying: bool = True):
         super().__init__()
 
         self.vocab_size = vocab_size
         self.embed_dim = embed_dim
+        self.weight_tying = weight_tying
 
         # Embeddings
         self.token_embedding = nn.Embedding(vocab_size, embed_dim)
@@ -235,6 +240,11 @@ class MiniGPT(nn.Module):
         self.ln_final = nn.LayerNorm(embed_dim)
         self.lm_head = nn.Linear(embed_dim, vocab_size, bias=False)
 
+        # Weight Tying: Embedding and output layer share the same weight matrix.
+        # Reduces parameters and improves generalization (standard in GPT-2).
+        if weight_tying:
+            self.lm_head.weight = self.token_embedding.weight
+
         # Causal Mask (verhindert "in die Zukunft schauen")
         self.register_buffer(
             "causal_mask",
@@ -246,6 +256,7 @@ class MiniGPT(nn.Module):
         print(f"   - Embedding: {embed_dim}D")
         print(f"   - Attention Heads: {num_heads}")
         print(f"   - Transformer Layers: {num_layers}")
+        print(f"   - Weight Tying: {'Ja' if weight_tying else 'Nein'}")
 
     def forward(self, x):
         """
@@ -514,7 +525,8 @@ def save_transformer_model(model, tokenizer, save_dir: str = "models/transformer
         "embed_dim": model.embed_dim,
         "num_heads": len(model.blocks[0].attention.q_proj.weight) // model.embed_dim if model.blocks else 4,
         "num_layers": len(model.blocks),
-        "max_len": 50
+        "max_len": 50,
+        "weight_tying": getattr(model, 'weight_tying', False),
     }
 
     with open(save_path / "config.json", "w") as f:
@@ -551,7 +563,8 @@ def load_transformer_model(load_dir: str = "models/transformer_model"):
         embed_dim=config["embed_dim"],
         num_heads=config.get("num_heads", 4),
         num_layers=config.get("num_layers", 2),
-        max_len=config.get("max_len", 50)
+        max_len=config.get("max_len", 50),
+        weight_tying=config.get("weight_tying", False),
     )
 
     # Weights laden
@@ -599,15 +612,24 @@ def main(dataset="s", epochs=EPOCHS):
     }
     print(f"\n   Datensatz: {dataset_labels.get(dataset, 'S (22 Sätze)')}")
 
-    # Tokenizer
+    # Tokenizer (build on ALL texts so validation tokens are known)
     tokenizer = SimpleTokenizer()
     tokenizer.build_vocab(training_texts)
     print(f"\n📚 Vokabular: {tokenizer.vocab_size} Wörter")
 
-    # Dataset
-    dataset = TextDataset(training_texts, tokenizer, seq_len=SEQ_LENGTH_TRANSFORMER)
-    dataloader = DataLoader(dataset, batch_size=BATCH_SIZE_TRANSFORMER, shuffle=True)
-    print(f"📊 Dataset: {len(dataset)} Trainingsbeispiele")
+    # Train/Validation Split
+    val_size = max(1, int(len(training_texts) * VALIDATION_SPLIT))
+    train_texts = training_texts[:-val_size]
+    val_texts = training_texts[-val_size:]
+
+    train_dataset = TextDataset(train_texts, tokenizer, seq_len=SEQ_LENGTH_TRANSFORMER)
+    train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE_TRANSFORMER, shuffle=True)
+
+    val_dataset = TextDataset(val_texts, tokenizer, seq_len=SEQ_LENGTH_TRANSFORMER)
+    val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE_TRANSFORMER, shuffle=False)
+
+    use_early_stopping = len(val_dataset) > 0
+    print(f"📊 Training: {len(train_dataset)} Beispiele | Validation: {len(val_dataset)} Beispiele")
 
     # Modell
     model = MiniGPT(
@@ -625,21 +647,79 @@ def main(dataset="s", epochs=EPOCHS):
     optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE_TRANSFORMER)
     criterion = nn.CrossEntropyLoss()
 
+    # Cosine annealing with linear warmup (standard for Transformers)
+    total_steps = len(train_loader) * epochs
+    warmup_steps = int(total_steps * WARMUP_FRACTION)
+
+    def lr_lambda(step):
+        if step < warmup_steps:
+            return step / max(warmup_steps, 1)
+        progress = (step - warmup_steps) / max(total_steps - warmup_steps, 1)
+        return 0.5 * (1 + math.cos(math.pi * progress))
+
+    scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda)
+
+    print(f"\n   Optimizer: Adam (lr={LEARNING_RATE_TRANSFORMER})")
+    print(f"   Scheduler: Cosine Annealing + Warmup ({warmup_steps} Steps)")
+    print(f"   Gradient Clipping: max_norm={GRAD_CLIP_MAX_NORM}")
+    if use_early_stopping:
+        print(f"   Early Stopping: Patience={EARLY_STOPPING_PATIENCE} Epochen")
+
+    best_val_loss = float('inf')
+    best_state = None
+    patience_counter = 0
+
     for epoch in range(epochs):
+        # --- Training ---
         model.train()
         total_loss = 0
 
-        for inp, tgt in dataloader:
+        for inp, tgt in train_loader:
             logits = model(inp)
             loss = criterion(logits.view(-1, tokenizer.vocab_size), tgt.view(-1))
 
             optimizer.zero_grad()
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), GRAD_CLIP_MAX_NORM)
             optimizer.step()
+            scheduler.step()
             total_loss += loss.item()
 
+        avg_train_loss = total_loss / len(train_loader)
+
+        # --- Validation ---
+        val_loss_str = ""
+        if use_early_stopping:
+            model.eval()
+            val_loss = 0
+            with torch.no_grad():
+                for inp, tgt in val_loader:
+                    logits = model(inp)
+                    loss = criterion(logits.view(-1, tokenizer.vocab_size), tgt.view(-1))
+                    val_loss += loss.item()
+            avg_val_loss = val_loss / len(val_loader)
+            val_loss_str = f" | Val: {avg_val_loss:.4f}"
+
+            if avg_val_loss < best_val_loss:
+                best_val_loss = avg_val_loss
+                best_state = copy.deepcopy(model.state_dict())
+                patience_counter = 0
+            else:
+                patience_counter += 1
+
         if (epoch + 1) % LOG_INTERVAL == 0:
-            print(f"   Epoche {epoch+1:3d}/{epochs} | Loss: {total_loss/len(dataloader):.4f}")
+            current_lr = scheduler.get_last_lr()[0]
+            print(f"   Epoche {epoch+1:3d}/{epochs} | Loss: {avg_train_loss:.4f}{val_loss_str} | LR: {current_lr:.6f}")
+
+        # Early stopping check
+        if use_early_stopping and patience_counter >= EARLY_STOPPING_PATIENCE:
+            print(f"\n   Early Stopping bei Epoche {epoch+1} (keine Verbesserung seit {EARLY_STOPPING_PATIENCE} Epochen)")
+            break
+
+    # Restore best model weights
+    if best_state is not None:
+        model.load_state_dict(best_state)
+        print(f"   Bestes Modell wiederhergestellt (Val Loss: {best_val_loss:.4f})")
 
     print("✅ Training abgeschlossen!")
 

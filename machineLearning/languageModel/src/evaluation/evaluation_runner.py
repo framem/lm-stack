@@ -206,7 +206,12 @@ def main(dataset: str = "l"):
             print(f"   Bewerte...")
             score = evaluate_single_output(prompt, generated)
 
-            in_data = generated.lower().strip() in training_set
+            # Strip special tokens before comparing to training data
+            clean = generated.lower().strip()
+            for tok in ("<eos>", "<bos>", "<pad>", "<unk>"):
+                clean = clean.replace(tok, "")
+            clean = " ".join(clean.split())  # collapse whitespace
+            in_data = clean in training_set
 
             output = GeneratedOutput(
                 model_name=model_key,
