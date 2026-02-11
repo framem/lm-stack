@@ -94,10 +94,14 @@ def main():
        - Benötigt Ollama oder LM Studio mit geladenem Modell
        {'   [OK] Ergebnisse vorhanden' if evaluation_results_exist else '   [ ] Noch nicht durchgeführt'}
 
+    === WEB ===
+    10. Weboberflaeche starten (Gradio)
+        - Alle Funktionen im Browser (http://localhost:7860)
+
     0. Beenden
     """)
 
-    choice = input("    Auswahl (0-9): ").strip()
+    choice = input("    Auswahl (0-10): ").strip()
 
     if choice == "1":
         dataset = _ask_dataset()
@@ -183,12 +187,21 @@ def main():
         from evaluation.evaluation_runner import main as run_evaluation
         run_evaluation(dataset=dataset)
 
+    elif choice == "10":
+        print("\n" + "=" * 60)
+        print("Starte Weboberflaeche...")
+        print("=" * 60 + "\n")
+        import gradio as gr
+        from web.app import create_app
+        app = create_app()
+        app.queue().launch(server_port=7860, theme=gr.themes.Soft())
+
     elif choice == "0":
         print("\nAuf Wiedersehen!")
         sys.exit(0)
 
     else:
-        print("\n[X] Ungültige Eingabe. Bitte 0-9 eingeben.")
+        print("\n[X] Ungültige Eingabe. Bitte 0-10 eingeben.")
         sys.exit(1)
 
 
