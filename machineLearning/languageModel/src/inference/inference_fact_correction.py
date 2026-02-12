@@ -25,6 +25,7 @@ from training.training_transformer import (
 )
 from training.finetuning_transformer import apply_lora
 from training.finetuning_fact_correction import apply_lora_v_only
+from inference import get_device, print_device_info
 
 
 # =============================================================================
@@ -104,8 +105,9 @@ def show_top_predictions(models, prompt, top_k=5):
         if not tokens:
             continue
 
+        device = next(model.parameters()).device
         with torch.no_grad():
-            inp = torch.tensor(tokens).unsqueeze(0)
+            inp = torch.tensor(tokens, device=device).unsqueeze(0)
             logits = model(inp)
             probs = F.softmax(logits[0, -1], dim=-1)
             top_probs, top_idx = torch.topk(probs, top_k)
@@ -125,10 +127,12 @@ def generate_text(model, tokenizer, start_text, max_length=6, temperature=0.8):
     if not tokens:
         return start_text
 
+    device = next(model.parameters()).device
+
     for _ in range(max_length):
         with torch.no_grad():
             context = tokens[-10:] if len(tokens) > 10 else tokens
-            inp = torch.tensor(context).unsqueeze(0)
+            inp = torch.tensor(context, device=device).unsqueeze(0)
             logits = model(inp)
             last_logits = logits[0, -1] / temperature
             probs = F.softmax(last_logits, dim=-1)
@@ -263,11 +267,16 @@ def main():
         print("   Bitte erst Faktenkorrektur trainieren (Option 7).")
         return
 
+    # Device bestimmen
+    device = get_device()
+    print_device_info(device)
+
     # --- Modelle laden ---
     models = {}
 
     print("\n   Lade Original-Modell...")
     model_orig, tok_orig = load_transformer_model(str(base_model_dir))
+    model_orig = model_orig.to(device)
     models["Original"] = (model_orig, tok_orig)
 
     v_only_dir = fc_dir / "v_only" / "lora_adapter"
@@ -275,6 +284,7 @@ def main():
         print("\n   Lade V-only Adapter...")
         model_v, tok_v = load_fact_correction_adapter(
             str(base_model_dir), str(v_only_dir), target="v_only")
+        model_v = model_v.to(device)
         models["LoRA V-only"] = (model_v, tok_v)
 
     all_dir = fc_dir / "all" / "lora_adapter"
@@ -282,6 +292,7 @@ def main():
         print("\n   Lade Alle-Projektionen Adapter...")
         model_all, tok_all = load_fact_correction_adapter(
             str(base_model_dir), str(all_dir), target="all")
+        model_all = model_all.to(device)
         models["LoRA Alle (Q,K,V,O)"] = (model_all, tok_all)
 
     print(f"\n   {len(models)} Modell(e) geladen.")

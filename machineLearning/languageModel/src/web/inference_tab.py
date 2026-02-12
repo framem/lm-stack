@@ -5,6 +5,8 @@ from pathlib import Path
 import gradio as gr
 import pandas as pd
 
+from inference import get_device
+
 
 # Lazy-loaded model cache
 _model_cache = {}
@@ -81,6 +83,8 @@ def _load_model(name, info):
         from inference.inference_finetuned import load_model_by_type
         model, tokenizer = load_model_by_type(info, base_dir)
 
+    device = get_device()
+    model = model.to(device)
     _model_cache[name] = (model, tokenizer)
     return model, tokenizer
 

@@ -5,7 +5,6 @@ Optimized for a small Transformer model: focuses on reinforcing
 subject-verb-object patterns with core vocabulary rather than
 maximizing vocabulary diversity. Each core SPO combination appears
 multiple times with variations to strengthen pattern learning.
-All sentences use authentic German characters (ae, oe, ue, ss).
 """
 
 TRAINING_DATA_L = [

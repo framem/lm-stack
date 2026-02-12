@@ -19,6 +19,7 @@ from pathlib import Path
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 from peft import PeftModel
+from inference import device_info_string
 
 
 # =============================================================================
@@ -87,6 +88,7 @@ def load_model_with_adapter(model_name, adapter_dir, quantize=True):
     total_params = sum(p.numel() for p in model.parameters())
     adapter_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"\n   Modell geladen:")
+    print(f"   - Device:            {device_info_string(model.device):>14}")
     print(f"   - Gesamt-Parameter:  {total_params:>14,}")
     print(f"   - Adapter-Parameter: {adapter_params:>14,}")
     print(f"   - Adapter-Anteil:    {adapter_params / total_params * 100:>13.2f}%")

@@ -29,6 +29,7 @@ from training.training_transformer import (
     visualize_attention,
 )
 from training.finetuning_transformer import LoRALinear, apply_lora
+from inference import get_device, print_device_info
 
 
 # =============================================================================
@@ -183,10 +184,12 @@ def generate_text(model, tokenizer, start_text, max_length=10,
     if not tokens:
         return start_text
 
+    device = next(model.parameters()).device
+
     for step in range(max_length):
         with torch.no_grad():
             context = tokens[-10:] if len(tokens) > 10 else tokens
-            inp = torch.tensor(context).unsqueeze(0)
+            inp = torch.tensor(context, device=device).unsqueeze(0)
             logits = model(inp)
             last_logits = logits[0, -1] / temperature
 
@@ -257,8 +260,9 @@ def show_top_predictions(loaded_models, prompt, top_k=5):
         if not tokens:
             continue
 
+        device = next(model.parameters()).device
         with torch.no_grad():
-            inp = torch.tensor(tokens).unsqueeze(0)
+            inp = torch.tensor(tokens, device=device).unsqueeze(0)
             logits = model(inp)
             probs = F.softmax(logits[0, -1], dim=-1)
             top_probs, top_idx = torch.topk(probs, top_k)
@@ -431,6 +435,10 @@ def main():
     for name, info in available.items():
         print(f"   - {name:<20} {info['label']:<25} ({info['path']})")
 
+    # Device bestimmen
+    device = get_device()
+    print_device_info(device)
+
     # Alle Modelle laden
     print("\n   Lade Modelle...")
     loaded_models = {}
@@ -439,6 +447,7 @@ def main():
         try:
             print(f"\n   [{name}] Lade {info['label']}...")
             model, tokenizer = load_model_by_type(info, base_dir)
+            model = model.to(device)
             loaded_models[name] = (model, tokenizer)
         except Exception as e:
             print(f"   [{name}] Fehler beim Laden: {e}")

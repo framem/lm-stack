@@ -19,6 +19,7 @@ from training.training_transformer import (
     MiniGPT, SimpleTokenizer, load_transformer_model,
     analyze_logits_detailed, visualize_attention
 )
+from inference import get_device, print_device_info
 
 
 def generate_text(model, tokenizer, start_text: str,
@@ -39,11 +40,13 @@ def generate_text(model, tokenizer, start_text: str,
     print(f"   Temperature: {temperature}")
     print("-" * 50)
 
+    device = next(model.parameters()).device
+
     for step in range(max_length):
         with torch.no_grad():
             # Maximal letzte 10 Tokens als Kontext
             context = tokens[-10:] if len(tokens) > 10 else tokens
-            inp = torch.tensor(context).unsqueeze(0)
+            inp = torch.tensor(context, device=device).unsqueeze(0)
 
             logits = model(inp)
             last_logits = logits[0, -1] / temperature
@@ -205,6 +208,11 @@ def main():
     # Laden
     print(f"\n📂 Lade Modell aus: {model_dir}")
     model, tokenizer = load_transformer_model(str(model_dir))
+
+    # Device bestimmen und Modell verschieben
+    device = get_device()
+    model = model.to(device)
+    print_device_info(device)
 
     # Modus
     if args.analyze:

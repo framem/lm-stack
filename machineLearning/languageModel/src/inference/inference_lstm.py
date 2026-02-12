@@ -23,6 +23,7 @@ from pathlib import Path
 
 # Importiere die Modell-Klassen
 from training.training_lstm import SimpleLanguageModel, Tokenizer, load_model, visualize_logits
+from inference import get_device, print_device_info
 
 
 def generate_text_interactive(model, tokenizer, start_text: str,
@@ -59,7 +60,8 @@ def generate_text_interactive(model, tokenizer, start_text: str,
     for step in range(max_length):
         # Letzte Tokens als Input (maximal 5 für Kontext)
         context_tokens = tokens[-5:] if len(tokens) > 5 else tokens
-        input_tensor = torch.tensor(context_tokens)
+        device = next(model.parameters()).device
+        input_tensor = torch.tensor(context_tokens, device=device)
 
         with torch.no_grad():
             # Forward Pass
@@ -141,7 +143,8 @@ def analyze_next_word(model, tokenizer, text: str, top_k: int = 5, top_p: float 
         print("❌ Fehler: Text konnte nicht tokenisiert werden.")
         return
 
-    input_tensor = torch.tensor(tokens)
+    device = next(model.parameters()).device
+    input_tensor = torch.tensor(tokens, device=device)
 
     with torch.no_grad():
         logits_all = model(input_tensor.unsqueeze(0))
@@ -385,6 +388,11 @@ Beispiele:
     # Modell laden
     print(f"\n📂 Lade Modell aus: {model_dir}")
     model, tokenizer = load_model(str(model_dir))
+
+    # Device bestimmen und Modell verschieben
+    device = get_device()
+    model = model.to(device)
+    print_device_info(device)
 
     # Modus auswählen
     if args.analyze:
