@@ -16,8 +16,6 @@
 > **Ergebnis:** Ein Verständnis dafür, warum Alignment wirkt, warum es fragil ist und warum
 > zusätzliche Schutzschichten (Guardrails) in Produktivsystemen unverzichtbar sind.
 
-**Autor:** Franz Emmerlich
-
 ## Inhaltsverzeichnis
 
 1. [Die drei Stufen eines LLMs](#sec-stages)

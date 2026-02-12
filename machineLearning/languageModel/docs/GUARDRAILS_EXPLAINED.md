@@ -16,8 +16,6 @@
 > selbst ein vollständig uncensored Modell durch Input- und Output-Filter abgesichert
 > werden kann.
 
-**Autor:** Franz Emmerlich
-
 ## Inhaltsverzeichnis
 
 1. [Warum Guardrails?](#sec-why)

@@ -12,8 +12,6 @@
 > **Ergebnis:** Eine einzelne Kennzahl, die den gesamten Lernfortschritt messbar macht —
 > von der Baseline (zufälliges Raten) bis hin zu präzisen Vorhersagen.
 
-**Autor:** Franz Emmerlich
-
 ## Inhaltsverzeichnis
 
 1. [Was ist der Loss?](#was-ist-der-loss)

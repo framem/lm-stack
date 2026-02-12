@@ -13,8 +13,6 @@
 > **Ergebnis:** Vergleichbare Qualität wie Full Fine-Tuning bei einem Bruchteil des Speicher-
 > und Rechenbedarfs — unser MiniGPT-Adapter ist nur ~8 KB groß, ein Qwen3-Adapter ~18 MB.
 
-**Autor:** Franz Emmerlich
-
 ## Inhaltsverzeichnis
 
 1. [Das Problem](#sec-problem)
