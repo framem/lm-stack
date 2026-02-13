@@ -13,7 +13,7 @@ function RowSkeleton() {
             <Skeleton className="h-6 w-32 mb-2 mx-12 bg-zinc-800" />
             <div className="flex gap-2 px-12">
                 {Array.from({ length: 8 }).map((_, i) => (
-                    <Skeleton key={i} className="flex-shrink-0 w-[160px] aspect-[2/3] rounded-md bg-zinc-800" />
+                    <Skeleton key={i} className="shrink-0 w-40 aspect-2/3 rounded-md bg-zinc-800" />
                 ))}
             </div>
         </div>
