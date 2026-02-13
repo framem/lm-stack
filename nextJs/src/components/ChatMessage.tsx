@@ -7,7 +7,7 @@ import type { Components } from 'react-markdown'
 
 type ChatMessageProps = {
     content: string
-    role: 'user' | 'assistant'
+    role: 'user' | 'assistant' | 'system'
 }
 
 function getInternalPath(href: string): string | null {

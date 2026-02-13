@@ -68,7 +68,7 @@ export default function ChatBot() {
                                 <p className="mt-2 text-xs">z.B. &quot;Zeig mir gute Sci-Fi Filme&quot;</p>
                             </div>
                         )}
-                        {messages.map(message => {
+                        {messages.filter(message => message.role !== 'system').map(message => {
                             const text = getMessageText(message)
                             if (!text) return null
                             return (
