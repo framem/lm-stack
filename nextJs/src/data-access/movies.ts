@@ -46,6 +46,12 @@ export async function getMoviesByGenre(genre: string, take = 20) {
     })
 }
 
+export async function getGenreBySlug(slug: string): Promise<string | null> {
+    const genres = await getAllGenres()
+    const { toGenreSlug } = await import('@/src/lib/slug')
+    return genres.find(g => toGenreSlug(g) === slug) ?? null
+}
+
 export async function getTopRatedMovies(take = 20) {
     return prisma.movie.findMany({
         where: { imdbRating: { not: null } },

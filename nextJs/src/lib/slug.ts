@@ -1,3 +1,10 @@
+export function toGenreSlug(genre: string): string {
+    return genre
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '')
+}
+
 export function toMovieSlug(title: string, id: string): string {
     const nameSlug = title
         .toLowerCase()

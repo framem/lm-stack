@@ -1,8 +1,9 @@
 import Image from 'next/image'
 import { notFound } from 'next/navigation'
+import Link from 'next/link'
 import { Badge } from '@/src/components/ui/badge'
 import { getMovieById, getRecommendedMovies } from '@/src/data-access/movies'
-import { extractIdFromSlug } from '@/src/lib/slug'
+import { extractIdFromSlug, toGenreSlug } from '@/src/lib/slug'
 import GenreRowScroller from '@/src/components/GenreRowScroller'
 
 export default async function MovieDetailPage({
@@ -92,9 +93,11 @@ export default async function MovieDetailPage({
                     {movie.genre && (
                         <div className="flex flex-wrap gap-2">
                             {movie.genre.split(',').map(g => (
-                                <Badge key={g} variant="secondary" className="bg-white/10 border-0 text-zinc-300">
-                                    {g.trim()}
-                                </Badge>
+                                <Link key={g} href={`/genre/${toGenreSlug(g.trim())}`}>
+                                    <Badge variant="secondary" className="bg-white/10 border-0 text-zinc-300 hover:bg-white/20 transition-colors cursor-pointer">
+                                        {g.trim()}
+                                    </Badge>
+                                </Link>
                             ))}
                         </div>
                     )}

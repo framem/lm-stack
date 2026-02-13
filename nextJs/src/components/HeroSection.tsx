@@ -1,6 +1,8 @@
 import Image from 'next/image'
+import Link from 'next/link'
 import { Badge } from '@/src/components/ui/badge'
 import { getFeaturedMovie } from '@/src/data-access/movies'
+import { toGenreSlug } from '@/src/lib/slug'
 
 export default async function HeroSection() {
     const movie = await getFeaturedMovie()
@@ -57,9 +59,11 @@ export default async function HeroSection() {
                 {movie.genre && (
                     <div className="flex flex-wrap gap-2">
                         {movie.genre.split(',').map(g => (
-                            <Badge key={g} variant="secondary" className="bg-white/10 border-0 text-zinc-300">
-                                {g.trim()}
-                            </Badge>
+                            <Link key={g} href={`/genre/${toGenreSlug(g.trim())}`}>
+                                <Badge variant="secondary" className="bg-white/10 border-0 text-zinc-300 hover:bg-white/20 transition-colors cursor-pointer">
+                                    {g.trim()}
+                                </Badge>
+                            </Link>
                         ))}
                     </div>
                 )}

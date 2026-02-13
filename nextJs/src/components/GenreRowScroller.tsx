@@ -49,7 +49,9 @@ export default function GenreRowScroller({ movies }: { movies: Movie[] }) {
                 className="flex gap-2 overflow-x-auto scrollbar-hide px-12 py-2"
             >
                 {movies.map(movie => (
-                    <MovieCard key={movie.id} movie={movie} />
+                    <div key={movie.id} className="flex-shrink-0 w-[160px]">
+                        <MovieCard movie={movie} />
+                    </div>
                 ))}
             </div>
 

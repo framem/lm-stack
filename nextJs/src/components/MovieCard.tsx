@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { Badge } from '@/src/components/ui/badge'
 import { useRef, useState, useEffect } from 'react'
 import type { Movie } from '@/prisma/generated/prisma/client'
-import { toMovieSlug } from '@/src/lib/slug'
+import { toMovieSlug, toGenreSlug } from '@/src/lib/slug'
 
 export default function MovieCard({ movie }: { movie: Movie }) {
     const [isVisible, setIsVisible] = useState(false)
@@ -32,7 +32,7 @@ export default function MovieCard({ movie }: { movie: Movie }) {
         : null
 
     return (
-        <div ref={cardRef} className="group relative flex-shrink-0 w-[160px]">
+        <div ref={cardRef} className="group relative">
             <Link href={`/movie/${toMovieSlug(movie.seriesTitle, movie.id)}`}>
                 <div className="relative aspect-[2/3] rounded-md overflow-hidden bg-zinc-800 transition-transform duration-300 group-hover:scale-105 group-hover:z-10 group-hover:shadow-xl group-hover:shadow-black/50">
                     {posterSrc && isVisible ? (
@@ -40,7 +40,7 @@ export default function MovieCard({ movie }: { movie: Movie }) {
                             src={posterSrc}
                             alt={movie.seriesTitle}
                             fill
-                            sizes="160px"
+                            sizes="(max-width: 640px) 50vw, 160px"
                             className="object-cover"
                         />
                     ) : (
@@ -66,9 +66,15 @@ export default function MovieCard({ movie }: { movie: Movie }) {
                         {movie.genre && (
                             <div className="flex flex-wrap gap-1 mt-1.5">
                                 {movie.genre.split(',').slice(0, 2).map(g => (
-                                    <Badge key={g} variant="secondary" className="text-[10px] px-1.5 py-0 bg-white/10 border-0 text-zinc-300">
-                                        {g.trim()}
-                                    </Badge>
+                                    <Link
+                                        key={g}
+                                        href={`/genre/${toGenreSlug(g.trim())}`}
+                                        onClick={e => e.stopPropagation()}
+                                    >
+                                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-white/10 border-0 text-zinc-300 hover:bg-white/20 transition-colors">
+                                            {g.trim()}
+                                        </Badge>
+                                    </Link>
                                 ))}
                             </div>
                         )}
