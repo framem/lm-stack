@@ -10,8 +10,15 @@ export const dynamic = 'force-dynamic'
 export const maxDuration = 300
 
 export async function GET() {
-    const status = await getEmbeddingStatus()
-    return Response.json(status)
+    try {
+        const status = await getEmbeddingStatus()
+        return Response.json(status)
+    } catch (error) {
+        return Response.json(
+            { error: error instanceof Error ? error.message : 'Failed to fetch embedding status' },
+            { status: 500 },
+        )
+    }
 }
 
 export async function POST() {

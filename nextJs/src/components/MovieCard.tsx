@@ -4,12 +4,17 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { Badge } from '@/src/components/ui/badge'
 import { useRef, useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import type { Movie } from '@/prisma/generated/prisma/client'
 import { toMovieSlug, toGenreSlug } from '@/src/lib/slug'
+import { transformPosterUrl } from '@/src/lib/utils'
 
 export default function MovieCard({ movie }: { movie: Movie }) {
+    const router = useRouter()
     const [isVisible, setIsVisible] = useState(false)
+    const [imgError, setImgError] = useState(false)
     const cardRef = useRef<HTMLDivElement>(null)
+    const movieHref = `/movie/${toMovieSlug(movie.seriesTitle, movie.id)}`
 
     useEffect(() => {
         const el = cardRef.current
@@ -27,21 +32,19 @@ export default function MovieCard({ movie }: { movie: Movie }) {
         return () => observer.disconnect()
     }, [])
 
-    const posterSrc = movie.posterLink
-        ? movie.posterLink.replace(/UX\d+_CR[\d,]+_AL_/, 'UX300_CR0,0,300,444_AL_')
-        : null
+    const posterSrc = transformPosterUrl(movie.posterLink)
 
     return (
-        <div ref={cardRef} className="group relative">
-            <Link href={`/movie/${toMovieSlug(movie.seriesTitle, movie.id)}`}>
+        <div ref={cardRef} className="group relative cursor-pointer" onClick={() => router.push(movieHref)}>
                 <div className="relative aspect-[2/3] rounded-md overflow-hidden bg-zinc-800 transition-transform duration-300 group-hover:scale-105 group-hover:z-10 group-hover:shadow-xl group-hover:shadow-black/50">
-                    {posterSrc && isVisible ? (
+                    {posterSrc && isVisible && !imgError ? (
                         <Image
                             src={posterSrc}
                             alt={movie.seriesTitle}
                             fill
                             sizes="(max-width: 640px) 50vw, 160px"
                             className="object-cover"
+                            onError={() => setImgError(true)}
                         />
                     ) : (
                         <div className="w-full h-full flex items-center justify-center text-zinc-500 text-sm text-center p-2">
@@ -80,7 +83,6 @@ export default function MovieCard({ movie }: { movie: Movie }) {
                         )}
                     </div>
                 </div>
-            </Link>
         </div>
     )
 }

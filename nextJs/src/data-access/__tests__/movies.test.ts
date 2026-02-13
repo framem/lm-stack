@@ -274,7 +274,8 @@ describe('searchMovies', () => {
             expect.any(String),
             '%shawshank%',
             '[0.1,0.2,0.3]',
-            20
+            20,
+            0.7
         )
     })
 
@@ -287,7 +288,8 @@ describe('searchMovies', () => {
             expect.any(String),
             '%test%',
             '[0.1]',
-            5
+            5,
+            0.7
         )
     })
 })

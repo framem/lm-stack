@@ -102,7 +102,30 @@ const tools = {
 }
 
 export async function POST(req: Request) {
-    const { messages: uiMessages } = await req.json()
+    let body: unknown
+    try {
+        body = await req.json()
+    } catch {
+        return new Response(JSON.stringify({ error: 'Invalid JSON body' }), { status: 400 })
+    }
+
+    const { messages: uiMessages } = body as { messages?: unknown }
+
+    if (!Array.isArray(uiMessages) || uiMessages.length === 0) {
+        return new Response(
+            JSON.stringify({ error: 'messages must be a non-empty array' }),
+            { status: 400 },
+        )
+    }
+
+    for (const msg of uiMessages) {
+        if (!msg || typeof msg.role !== 'string' || typeof msg.content !== 'string') {
+            return new Response(
+                JSON.stringify({ error: 'Each message must have a role and content string' }),
+                { status: 400 },
+            )
+        }
+    }
 
     const modelMessages = await convertToModelMessages(uiMessages, { tools })
 

@@ -2,6 +2,9 @@ import { prisma } from '@/src/lib/prisma'
 import { type Movie } from '@/prisma/generated/prisma/client'
 import { createEmbedding } from '@/src/lib/llm'
 
+// Maximum cosine distance for embedding similarity matches
+const EMBEDDING_SIMILARITY_THRESHOLD = 0.7
+
 // Existing functions (kept for MCP compatibility)
 export async function getMovies() {
     return prisma.movie.findMany({
@@ -47,9 +50,18 @@ export async function getMoviesByGenre(genre: string, take = 20) {
 }
 
 export async function getGenreBySlug(slug: string): Promise<string | null> {
-    const genres = await getAllGenres()
-    const { toGenreSlug } = await import('@/src/lib/slug')
-    return genres.find(g => toGenreSlug(g) === slug) ?? null
+    // Query the DB directly instead of fetching all genres and filtering client-side.
+    // The slug logic mirrors toGenreSlug: lowercase, replace non-alnum with hyphens, trim edge hyphens.
+    const result = await prisma.$queryRaw<{ genre: string }[]>`
+        SELECT genre FROM (
+            SELECT DISTINCT TRIM(unnest(string_to_array(genre, ','))) as genre
+            FROM "Movie"
+            WHERE genre IS NOT NULL
+        ) g
+        WHERE TRIM(BOTH '-' FROM regexp_replace(lower(g.genre), '[^a-z0-9]+', '-', 'g')) = ${slug}
+        LIMIT 1
+    `
+    return result.length > 0 ? result[0].genre : null
 }
 
 export async function getTopRatedMovies(take = 20) {
@@ -116,14 +128,15 @@ export async function searchMovies(query: string, take = 20): Promise<Movie[]> {
                 director, star1, star2, star3, star4, "noOfVotes", gross
          FROM "Movie"
          WHERE "seriesTitle" ILIKE $1
-            OR (embedding IS NOT NULL AND (embedding <=> $2::vector) < 0.7)
+            OR (embedding IS NOT NULL AND (embedding <=> $2::vector) < $4)
          ORDER BY
             CASE WHEN "seriesTitle" ILIKE $1 THEN 0 ELSE 1 END,
             CASE WHEN embedding IS NOT NULL THEN (embedding <=> $2::vector) ELSE 2 END
          LIMIT $3`,
         `%${query}%`,
         vectorString,
-        take
+        take,
+        EMBEDDING_SIMILARITY_THRESHOLD
     )
 }
 

@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { Badge } from '@/src/components/ui/badge'
 import { getMovieById, getRecommendedMovies } from '@/src/data-access/movies'
 import { extractIdFromSlug, toGenreSlug } from '@/src/lib/slug'
+import { transformPosterUrl } from '@/src/lib/utils'
 import GenreRowScroller from '@/src/components/GenreRowScroller'
 
 export default async function MovieDetailPage({
@@ -21,9 +22,7 @@ export default async function MovieDetailPage({
 
     if (!movie) notFound()
 
-    const posterSrc = movie.posterLink
-        ? movie.posterLink.replace(/UX\d+_CR[\d,]+_AL_/, 'UX300_CR0,0,300,444_AL_')
-        : null
+    const posterSrc = transformPosterUrl(movie.posterLink)
 
     const stars = [movie.star1, movie.star2, movie.star3, movie.star4].filter(Boolean)
 

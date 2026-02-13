@@ -1,17 +1,16 @@
-import Image from 'next/image'
 import Link from 'next/link'
 import { Badge } from '@/src/components/ui/badge'
 import { getFeaturedMovie } from '@/src/data-access/movies'
 import { toGenreSlug } from '@/src/lib/slug'
+import { transformPosterUrl } from '@/src/lib/utils'
+import FallbackImage from '@/src/components/FallbackImage'
 
 export default async function HeroSection() {
     const movie = await getFeaturedMovie()
 
     if (!movie) return null
 
-    const posterSrc = movie.posterLink
-        ? movie.posterLink.replace(/UX\d+_CR[\d,]+_AL_/, 'UX300_CR0,0,300,444_AL_')
-        : null
+    const posterSrc = transformPosterUrl(movie.posterLink)
 
     return (
         <section className="relative w-full h-[60vh] min-h-[400px] flex items-end mb-8 overflow-hidden">
@@ -22,7 +21,7 @@ export default async function HeroSection() {
             {/* Poster as background */}
             {posterSrc && (
                 <div className="absolute right-0 top-0 h-full w-1/2 opacity-40">
-                    <Image
+                    <FallbackImage
                         src={posterSrc}
                         alt={movie.seriesTitle}
                         fill

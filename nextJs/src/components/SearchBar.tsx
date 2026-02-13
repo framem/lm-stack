@@ -13,20 +13,32 @@ export default function SearchBar() {
     const containerRef = useRef<HTMLDivElement>(null)
     const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+    const abortRef = useRef<AbortController | null>(null)
+
     const search = useCallback(async (q: string) => {
         if (q.trim().length < 2) {
             setResults([])
             setOpen(false)
             return
         }
+        // Cancel any in-flight request
+        abortRef.current?.abort()
+        const controller = new AbortController()
+        abortRef.current = controller
+
         setLoading(true)
         try {
-            const res = await fetch(`/api/search?q=${encodeURIComponent(q.trim())}`)
+            const res = await fetch(`/api/search?q=${encodeURIComponent(q.trim())}`, {
+                signal: controller.signal,
+            })
             if (res.ok) {
                 const data: Movie[] = await res.json()
                 setResults(data)
                 setOpen(true)
             }
+        } catch (e) {
+            if (e instanceof DOMException && e.name === 'AbortError') return
+            throw e
         } finally {
             setLoading(false)
         }
@@ -52,6 +64,14 @@ export default function SearchBar() {
         return () => {
             document.removeEventListener('mousedown', handleClickOutside)
             document.removeEventListener('keydown', handleEsc)
+        }
+    }, [])
+
+    // Cleanup debounce timer and abort in-flight requests on unmount
+    useEffect(() => {
+        return () => {
+            if (debounceRef.current) clearTimeout(debounceRef.current)
+            abortRef.current?.abort()
         }
     }, [])
 

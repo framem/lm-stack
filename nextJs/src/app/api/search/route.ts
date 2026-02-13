@@ -10,6 +10,12 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'Search query is required' }, { status: 400 })
     }
 
-    const movies = await searchMovies(query.trim())
+    const trimmed = query.trim()
+
+    if (trimmed.length > 200) {
+        return NextResponse.json({ error: 'Search query must not exceed 200 characters' }, { status: 400 })
+    }
+
+    const movies = await searchMovies(trimmed)
     return NextResponse.json(movies)
 }
