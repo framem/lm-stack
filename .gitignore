@@ -11,3 +11,6 @@ node_modules
 **/dist
 
 **/.claude
+
+# TypeScript incremental build cache
+*.tsbuildinfo
