@@ -4,7 +4,7 @@ import { Fragment, useState, useMemo, useEffect, useRef } from 'react'
 import { DefaultChatTransport, type UIMessage } from 'ai'
 import { useChat } from '@ai-sdk/react'
 import { z } from 'zod'
-import { BookOpen, FileText, X, Loader2, ChevronDown, CornerDownLeft } from 'lucide-react'
+import { BookOpen, FileText, X, Loader2, ChevronDown, CornerDownLeft, Check } from 'lucide-react'
 import { getSession } from '@/src/actions/chat'
 import { getDocuments } from '@/src/actions/documents'
 
@@ -25,15 +25,15 @@ import {
     PromptInputFooter,
     PromptInputTools,
     PromptInputButton,
-    PromptInputSelect,
-    PromptInputSelectTrigger,
-    PromptInputSelectContent,
-    PromptInputSelectItem,
-    PromptInputSelectValue,
     PromptInputTextarea,
     PromptInputSubmit,
     type PromptInputMessage,
 } from '@/src/components/ai-elements/prompt-input'
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/src/components/ui/popover'
 import {
     Sources,
     SourcesTrigger,
@@ -142,13 +142,15 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
     const [loadingSession, setLoadingSession] = useState(!!sessionId)
     const sessionCreatedRef = useRef(false)
 
-    const [selectedDocumentId, setSelectedDocumentId] = useState(documentId ?? 'all')
-    const selectedDocumentIdRef = useRef(selectedDocumentId)
+    const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>(
+        documentId ? [documentId] : []
+    )
+    const selectedDocumentIdsRef = useRef(selectedDocumentIds)
     const [documents, setDocuments] = useState<{ id: string; title: string }[]>([])
 
     useEffect(() => {
-        selectedDocumentIdRef.current = selectedDocumentId
-    }, [selectedDocumentId])
+        selectedDocumentIdsRef.current = selectedDocumentIds
+    }, [selectedDocumentIds])
 
     useEffect(() => {
         getDocuments().then((docs) =>
@@ -166,7 +168,7 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
         api: '/api/chat',
         body: () => ({
             sessionId: activeSessionIdRef.current,
-            documentId: selectedDocumentIdRef.current === 'all' ? undefined : selectedDocumentIdRef.current,
+            documentIds: selectedDocumentIdsRef.current.length > 0 ? selectedDocumentIdsRef.current : undefined,
         }),
         fetch: async (url, init) => {
             const response = await globalThis.fetch(url as string, init as RequestInit)
@@ -378,20 +380,60 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
                         </PromptInputBody>
                         <PromptInputFooter>
                             <PromptInputTools>
-                                <PromptInputSelect value={selectedDocumentId} onValueChange={setSelectedDocumentId}>
-                                    <PromptInputSelectTrigger>
-                                        <FileText className="size-3.5" />
-                                        <PromptInputSelectValue placeholder="Alle Dokumente" />
-                                    </PromptInputSelectTrigger>
-                                    <PromptInputSelectContent>
-                                        <PromptInputSelectItem value="all">Alle Dokumente</PromptInputSelectItem>
-                                        {documents.map((doc) => (
-                                            <PromptInputSelectItem key={doc.id} value={doc.id}>
-                                                {doc.title}
-                                            </PromptInputSelectItem>
-                                        ))}
-                                    </PromptInputSelectContent>
-                                </PromptInputSelect>
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <button
+                                            type="button"
+                                            className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                                        >
+                                            <FileText className="size-3.5" />
+                                            <span>
+                                                {selectedDocumentIds.length === 0
+                                                    ? 'Alle Dokumente'
+                                                    : selectedDocumentIds.length === 1
+                                                      ? documents.find(d => d.id === selectedDocumentIds[0])?.title ?? '1 Dokument'
+                                                      : `${selectedDocumentIds.length} Dokumente`}
+                                            </span>
+                                            <ChevronDown className="size-3.5 opacity-50" />
+                                        </button>
+                                    </PopoverTrigger>
+                                    <PopoverContent align="start" className="w-64 max-h-72 overflow-y-auto p-1">
+                                        <button
+                                            type="button"
+                                            className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
+                                            onClick={() => setSelectedDocumentIds([])}
+                                        >
+                                            <span className="flex size-4 shrink-0 items-center justify-center rounded-sm border border-primary">
+                                                {selectedDocumentIds.length === 0 && (
+                                                    <Check className="size-3" />
+                                                )}
+                                            </span>
+                                            Alle Dokumente
+                                        </button>
+                                        {documents.map((doc) => {
+                                            const isChecked = selectedDocumentIds.includes(doc.id)
+                                            return (
+                                                <button
+                                                    key={doc.id}
+                                                    type="button"
+                                                    className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
+                                                    onClick={() => {
+                                                        setSelectedDocumentIds(prev =>
+                                                            isChecked
+                                                                ? prev.filter(id => id !== doc.id)
+                                                                : [...prev, doc.id]
+                                                        )
+                                                    }}
+                                                >
+                                                    <span className="flex size-4 shrink-0 items-center justify-center rounded-sm border border-primary">
+                                                        {isChecked && <Check className="size-3" />}
+                                                    </span>
+                                                    <span className="truncate">{doc.title}</span>
+                                                </button>
+                                            )
+                                        })}
+                                    </PopoverContent>
+                                </Popover>
                                 <PromptInputButton
                                     tooltip={{ content: 'Absenden', shortcut: '↵' }}
                                     variant="ghost"
