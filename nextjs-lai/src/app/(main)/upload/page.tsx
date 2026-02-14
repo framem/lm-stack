@@ -10,7 +10,7 @@ export default function UploadPage() {
                     Dokument hochladen
                 </h1>
                 <p className="text-muted-foreground mt-1">
-                    Lade ein Dokument hoch oder fuege Text ein, um es fuer Chat und Quiz zu verarbeiten.
+                    Lade ein Dokument hoch oder füge Text ein, um es für Chat und Quiz zu verarbeiten.
                 </p>
             </div>
             <DocumentUploader />

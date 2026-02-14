@@ -56,9 +56,9 @@ export function DocumentCard({ document, onDelete }: DocumentCardProps) {
         <Card>
             <CardHeader>
                 <Link href={`/documents/${document.id}`} className="hover:underline">
-                    <CardTitle className="flex items-center gap-2">
+                    <CardTitle className="flex items-center gap-2 min-w-0">
                         <Icon className="h-5 w-5 text-primary shrink-0" />
-                        {document.title}
+                        <span className="truncate">{document.title}</span>
                     </CardTitle>
                 </Link>
                 <CardDescription>

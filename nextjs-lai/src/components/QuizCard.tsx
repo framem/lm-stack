@@ -1,8 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { HelpCircle } from 'lucide-react'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/src/components/ui/card'
+import { HelpCircle, Trash2 } from 'lucide-react'
+import { Card, CardHeader, CardTitle, CardDescription, CardAction, CardContent, CardFooter } from '@/src/components/ui/card'
 import { Badge } from '@/src/components/ui/badge'
 import { Button } from '@/src/components/ui/button'
 
@@ -12,9 +12,10 @@ interface QuizCardProps {
     documentTitle: string
     questionCount: number
     createdAt: string
+    onDelete?: (id: string) => void
 }
 
-export function QuizCard({ id, title, documentTitle, questionCount, createdAt }: QuizCardProps) {
+export function QuizCard({ id, title, documentTitle, questionCount, createdAt, onDelete }: QuizCardProps) {
     const formattedDate = new Date(createdAt).toLocaleDateString('de-DE', {
         day: '2-digit',
         month: '2-digit',
@@ -24,11 +25,22 @@ export function QuizCard({ id, title, documentTitle, questionCount, createdAt }:
     return (
         <Card>
             <CardHeader>
-                <div className="flex items-center gap-2">
-                    <HelpCircle className="h-5 w-5 text-primary" />
-                    <CardTitle className="text-lg">{title}</CardTitle>
+                <div className="flex items-center gap-2 min-w-0">
+                    <HelpCircle className="h-5 w-5 text-primary shrink-0" />
+                    <CardTitle className="text-lg truncate">{title}</CardTitle>
                 </div>
-                <CardDescription>{documentTitle}</CardDescription>
+                <CardDescription className="truncate">{documentTitle}</CardDescription>
+                {onDelete && (
+                    <CardAction>
+                        <Button
+                            variant="ghost"
+                            size="icon-xs"
+                            onClick={() => onDelete(id)}
+                        >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                    </CardAction>
+                )}
             </CardHeader>
             <CardContent>
                 <div className="flex items-center gap-2">

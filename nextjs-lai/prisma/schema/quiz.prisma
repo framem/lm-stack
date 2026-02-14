@@ -14,27 +14,32 @@ model QuizQuestion {
   id            String  @id @default(cuid())
   quizId        String
   questionText  String
-  options       Json
-  correctIndex  Int
+  options       Json?
+  correctIndex  Int?
+  correctAnswer String?
   explanation   String?
   sourceChunkId String?
   sourceSnippet String?
   questionIndex Int
+  questionType  String  @default("mc")
 
-  quiz         Quiz          @relation(fields: [quizId], references: [id], onDelete: Cascade)
-  sourceChunk  DocumentChunk? @relation(fields: [sourceChunkId], references: [id], onDelete: SetNull)
-  attempts     QuizAttempt[]
+  quiz        Quiz           @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  sourceChunk DocumentChunk? @relation(fields: [sourceChunkId], references: [id], onDelete: SetNull)
+  attempts    QuizAttempt[]
 
   @@index([quizId])
 }
 
 model QuizAttempt {
-  id            String   @id @default(cuid())
-  questionId    String
-  selectedIndex Int
-  isCorrect     Boolean
-  explanation   String?
-  createdAt     DateTime @default(now())
+  id               String   @id @default(cuid())
+  questionId       String
+  selectedIndex    Int?
+  isCorrect        Boolean
+  explanation      String?
+  freeTextAnswer   String?
+  freeTextScore    Float?
+  freeTextFeedback String?
+  createdAt        DateTime @default(now())
 
   question QuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
 

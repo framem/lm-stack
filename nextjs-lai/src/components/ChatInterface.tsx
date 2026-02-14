@@ -10,6 +10,7 @@ import { ChatMessageBubble } from '@/src/components/ChatMessageBubble'
 interface ChatInterfaceProps {
     sessionId?: string
     documentId?: string
+    onSessionCreated?: (sessionId: string, title: string) => void
 }
 
 interface StoredSource {
@@ -20,6 +21,15 @@ interface StoredSource {
     chunkId: string
     snippet: string
     content: string
+}
+
+// Shape returned by the session API for stored messages
+interface StoredMessage {
+    id: string
+    role: string
+    content: string
+    sources: StoredSource[] | null
+    createdAt: string
 }
 
 const messageMetadataSchema = z.object({
@@ -43,11 +53,24 @@ function getTextContent(message: ChatMessage): string {
         .join('')
 }
 
+// Convert stored DB messages to UIMessage format for useChat initialMessages
+function storedToUIMessages(stored: StoredMessage[]): ChatMessage[] {
+    return stored.map((msg) => ({
+        id: msg.id,
+        role: msg.role as 'user' | 'assistant',
+        parts: [{ type: 'text' as const, text: msg.content }],
+        metadata: msg.sources ? { sources: msg.sources } : undefined,
+    }))
+}
+
 // Full chat interface with message list, input, and source detail panel
-export function ChatInterface({ sessionId, documentId }: ChatInterfaceProps) {
+export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatInterfaceProps) {
     const [activeSessionId, setActiveSessionId] = useState(sessionId)
     const [activeSource, setActiveSource] = useState<StoredSource | null>(null)
+    const [initialMessages, setInitialMessages] = useState<ChatMessage[] | undefined>(undefined)
+    const [loadingSession, setLoadingSession] = useState(!!sessionId)
     const messagesEndRef = useRef<HTMLDivElement>(null)
+    const sessionCreatedRef = useRef(false)
 
     const [input, setInput] = useState('')
     const activeSessionIdRef = useRef(activeSessionId)
@@ -55,6 +78,31 @@ export function ChatInterface({ sessionId, documentId }: ChatInterfaceProps) {
     useEffect(() => {
         activeSessionIdRef.current = activeSessionId
     }, [activeSessionId])
+
+    // Load previous messages when sessionId is provided
+    useEffect(() => {
+        if (!sessionId) {
+            setLoadingSession(false)
+            return
+        }
+
+        async function loadSession() {
+            try {
+                const res = await fetch(`/api/chat/sessions/${sessionId}`)
+                if (res.ok) {
+                    const session = await res.json()
+                    if (session.messages && session.messages.length > 0) {
+                        setInitialMessages(storedToUIMessages(session.messages))
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to load session messages:', err)
+            } finally {
+                setLoadingSession(false)
+            }
+        }
+        loadSession()
+    }, [sessionId])
 
     const transport = useMemo(() => new DefaultChatTransport({
         api: '/api/chat',
@@ -64,12 +112,41 @@ export function ChatInterface({ sessionId, documentId }: ChatInterfaceProps) {
             const newSessionId = response.headers.get('X-Session-Id')
             if (newSessionId && !activeSessionIdRef.current) {
                 setActiveSessionId(newSessionId)
+                // Notify the parent about the new session
+                if (!sessionCreatedRef.current && onSessionCreated) {
+                    sessionCreatedRef.current = true
+                    // Extract the user's first message as title
+                    const bodyStr = (init as RequestInit)?.body
+                    let title = 'Neuer Chat'
+                    if (typeof bodyStr === 'string') {
+                        try {
+                            const parsed = JSON.parse(bodyStr)
+                            const userMsgs = parsed.messages?.filter(
+                                (m: { role: string }) => m.role === 'user'
+                            )
+                            if (userMsgs?.length > 0) {
+                                const parts = userMsgs[0].parts ?? []
+                                const textPart = parts.find(
+                                    (p: { type: string }) => p.type === 'text'
+                                )
+                                if (textPart?.text) {
+                                    title = textPart.text.slice(0, 100)
+                                }
+                            }
+                        } catch { /* ignore parse errors */ }
+                    }
+                    onSessionCreated(newSessionId, title)
+                }
             }
             return response
         },
-    }), [documentId])
+    }), [documentId, onSessionCreated])
 
-    const { messages, sendMessage, status } = useChat<ChatMessage>({ transport, messageMetadataSchema })
+    const { messages, sendMessage, status } = useChat<ChatMessage>({
+        transport,
+        messageMetadataSchema,
+        messages: initialMessages,
+    })
 
     const isLoading = status === 'streaming' || status === 'submitted'
 
@@ -89,6 +166,14 @@ export function ChatInterface({ sessionId, documentId }: ChatInterfaceProps) {
     // Toggle a source in the detail panel
     function handleSourceClick(source: StoredSource) {
         setActiveSource((prev) => prev?.chunkId === source.chunkId ? null : source)
+    }
+
+    if (loadingSession) {
+        return (
+            <div className="flex-1 flex items-center justify-center">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+        )
     }
 
     return (

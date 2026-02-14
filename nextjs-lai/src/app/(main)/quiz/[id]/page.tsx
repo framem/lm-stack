@@ -8,8 +8,9 @@ import { QuizPlayer } from '@/src/components/QuizPlayer'
 interface Question {
     id: string
     questionText: string
-    options: string[]
+    options: string[] | null
     questionIndex: number
+    questionType?: string
 }
 
 interface QuizData {
@@ -21,8 +22,10 @@ interface QuizData {
 
 interface AnswerResult {
     isCorrect: boolean
-    correctIndex: number
+    correctIndex: number | null
     explanation?: string
+    freeTextScore?: number
+    freeTextFeedback?: string
 }
 
 export default function QuizPlayerPage({ params }: { params: Promise<{ id: string }> }) {

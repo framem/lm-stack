@@ -21,6 +21,12 @@ interface Quiz {
     questions: { id: string }[]
 }
 
+const QUESTION_TYPES = [
+    { value: 'mc', label: 'Multiple Choice' },
+    { value: 'freetext', label: 'Freitext' },
+    { value: 'truefalse', label: 'Wahr/Falsch' },
+] as const
+
 export default function QuizPage() {
     const router = useRouter()
     const [documents, setDocuments] = useState<Document[]>([])
@@ -28,6 +34,7 @@ export default function QuizPage() {
     const [loading, setLoading] = useState(true)
     const [generating, setGenerating] = useState<string | null>(null)
     const [questionCount, setQuestionCount] = useState(5)
+    const [questionTypes, setQuestionTypes] = useState<string[]>(['mc'])
 
     useEffect(() => {
         async function load() {
@@ -47,13 +54,21 @@ export default function QuizPage() {
         load()
     }, [])
 
+    function toggleQuestionType(type: string) {
+        setQuestionTypes((prev) =>
+            prev.includes(type)
+                ? prev.filter((t) => t !== type)
+                : [...prev, type]
+        )
+    }
+
     async function handleGenerate(documentId: string) {
         setGenerating(documentId)
         try {
             const response = await fetch('/api/quiz/generate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ documentId, questionCount }),
+                body: JSON.stringify({ documentId, questionCount, questionTypes }),
             })
 
             if (!response.ok) {
@@ -68,6 +83,19 @@ export default function QuizPage() {
             alert(error instanceof Error ? error.message : 'Fehler bei der Quiz-Erstellung')
         } finally {
             setGenerating(null)
+        }
+    }
+
+    async function handleDelete(quizId: string) {
+        if (!confirm('Quiz wirklich löschen?')) return
+
+        try {
+            const response = await fetch(`/api/quiz/${quizId}`, { method: 'DELETE' })
+            if (!response.ok) throw new Error('Löschen fehlgeschlagen')
+            setQuizzes((prev) => prev.filter((q) => q.id !== quizId))
+        } catch (error) {
+            console.error('Quiz delete failed:', error)
+            alert('Quiz konnte nicht gelöscht werden.')
         }
     }
 
@@ -105,17 +133,33 @@ export default function QuizPage() {
                     </Card>
                 ) : (
                     <>
-                        <div className="flex items-center gap-4">
-                            <label className="text-sm text-muted-foreground">Anzahl Fragen:</label>
-                            <select
-                                value={questionCount}
-                                onChange={(e) => setQuestionCount(Number(e.target.value))}
-                                className="border rounded px-2 py-1 text-sm bg-background"
-                            >
-                                {[3, 5, 10, 15, 20].map((n) => (
-                                    <option key={n} value={n}>{n}</option>
+                        <div className="flex items-center gap-6 flex-wrap">
+                            <div className="flex items-center gap-4">
+                                <label className="text-sm text-muted-foreground">Anzahl Fragen:</label>
+                                <select
+                                    value={questionCount}
+                                    onChange={(e) => setQuestionCount(Number(e.target.value))}
+                                    className="border rounded px-2 py-1 text-sm bg-background"
+                                >
+                                    {[3, 5, 10, 15, 20].map((n) => (
+                                        <option key={n} value={n}>{n}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="flex items-center gap-4">
+                                <span className="text-sm text-muted-foreground">Fragetypen:</span>
+                                {QUESTION_TYPES.map((type) => (
+                                    <label key={type.value} className="flex items-center gap-2 text-sm cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={questionTypes.includes(type.value)}
+                                            onChange={() => toggleQuestionType(type.value)}
+                                            className="rounded border-input"
+                                        />
+                                        <span className="text-muted-foreground">{type.label}</span>
+                                    </label>
                                 ))}
-                            </select>
+                            </div>
                         </div>
                         <div className="grid gap-4 sm:grid-cols-2">
                             {documents.map((doc) => (
@@ -127,7 +171,7 @@ export default function QuizPage() {
                                     <CardContent>
                                         <Button
                                             onClick={() => handleGenerate(doc.id)}
-                                            disabled={generating !== null}
+                                            disabled={generating !== null || questionTypes.length === 0}
                                             size="sm"
                                         >
                                             {generating === doc.id && (
@@ -156,6 +200,7 @@ export default function QuizPage() {
                                 documentTitle={quiz.document.title}
                                 questionCount={quiz.questions.length}
                                 createdAt={quiz.createdAt}
+                                onDelete={handleDelete}
                             />
                         ))}
                     </div>

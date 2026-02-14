@@ -155,7 +155,7 @@ export function DocumentUploader() {
                 <CardContent className="space-y-4">
                     <div className="flex items-center gap-3">
                         <Upload className="h-5 w-5 animate-pulse text-primary" />
-                        <span className="font-medium">Verarbeitung laeuft...</span>
+                        <span className="font-medium">Verarbeitung läuft...</span>
                     </div>
                     <Progress value={progressValue} />
                     <p className="text-sm text-muted-foreground">{progressDetail}</p>
@@ -176,7 +176,7 @@ export function DocumentUploader() {
                 </TabsTrigger>
                 <TabsTrigger value="paste">
                     <ClipboardPaste className="h-4 w-4" />
-                    Text einfuegen
+                    Text einfügen
                 </TabsTrigger>
             </TabsList>
 
@@ -251,7 +251,7 @@ export function DocumentUploader() {
                     onChange={(e) => setPasteTitle(e.target.value)}
                 />
                 <Textarea
-                    placeholder="Text hier einfuegen..."
+                    placeholder="Text hier einfügen..."
                     value={pasteText}
                     onChange={(e) => setPasteText(e.target.value)}
                     className="min-h-48"

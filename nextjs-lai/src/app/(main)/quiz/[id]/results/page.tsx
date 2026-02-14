@@ -9,13 +9,18 @@ import { QuizResults } from '@/src/components/QuizResults'
 interface QuestionResult {
     id: string
     questionText: string
-    options: string[]
+    options: string[] | null
     questionIndex: number
-    correctIndex: number
+    correctIndex: number | null
     isCorrect: boolean
-    selectedIndex: number
+    selectedIndex: number | null
     explanation?: string
     sourceSnippet?: string
+    questionType?: string
+    freeTextAnswer?: string
+    freeTextScore?: number
+    freeTextFeedback?: string
+    correctAnswer?: string
 }
 
 interface QuizResultData {
@@ -25,15 +30,20 @@ interface QuizResultData {
     questions: {
         id: string
         questionText: string
-        options: string[]
-        correctIndex: number
+        options: string[] | null
+        correctIndex: number | null
         questionIndex: number
         explanation?: string
         sourceSnippet?: string
+        questionType?: string
+        correctAnswer?: string
         attempts: {
-            selectedIndex: number
+            selectedIndex: number | null
             isCorrect: boolean
             explanation?: string
+            freeTextAnswer?: string
+            freeTextScore?: number
+            freeTextFeedback?: string
         }[]
     }[]
 }
@@ -84,13 +94,18 @@ export default function QuizResultsPage({ params }: { params: Promise<{ id: stri
         return {
             id: q.id,
             questionText: q.questionText,
-            options: q.options as string[],
+            options: q.options,
             questionIndex: q.questionIndex,
             correctIndex: q.correctIndex,
             isCorrect: lastAttempt?.isCorrect ?? false,
-            selectedIndex: lastAttempt?.selectedIndex ?? -1,
+            selectedIndex: lastAttempt?.selectedIndex ?? null,
             explanation: lastAttempt?.explanation ?? q.explanation,
             sourceSnippet: q.sourceSnippet,
+            questionType: q.questionType,
+            correctAnswer: q.correctAnswer,
+            freeTextAnswer: lastAttempt?.freeTextAnswer,
+            freeTextScore: lastAttempt?.freeTextScore ?? undefined,
+            freeTextFeedback: lastAttempt?.freeTextFeedback,
         }
     })
 
