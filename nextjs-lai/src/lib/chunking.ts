@@ -12,14 +12,14 @@ function estimateTokens(text: string): number {
     return Math.ceil(text.length / 4)
 }
 
-const TARGET_TOKENS = 500
-const OVERLAP_TOKENS = 100
+const TARGET_TOKENS = 300
+const OVERLAP_TOKENS = 60
 const TARGET_CHARS = TARGET_TOKENS * 4
 const OVERLAP_CHARS = OVERLAP_TOKENS * 4
 
 /**
  * Split text into overlapping chunks that respect sentence boundaries.
- * Each chunk targets ~500 tokens with ~100 token overlap.
+ * Each chunk targets ~300 tokens with ~60 token overlap (20%).
  */
 export function chunkDocument(doc: ParsedDocument): Chunk[] {
     const { text, pageBreaks } = doc

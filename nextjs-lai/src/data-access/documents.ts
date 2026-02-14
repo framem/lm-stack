@@ -55,6 +55,24 @@ export async function deleteDocument(id: string) {
     return prisma.document.delete({ where: { id } })
 }
 
+// ---- Document listing for refresh ----
+
+export async function getDocumentsWithChunkCount() {
+    return prisma.document.findMany({
+        orderBy: { createdAt: 'desc' },
+        select: {
+            id: true,
+            title: true,
+            fileName: true,
+            _count: { select: { chunks: true } },
+        },
+    })
+}
+
+export async function deleteChunksByDocument(documentId: string) {
+    return prisma.documentChunk.deleteMany({ where: { documentId } })
+}
+
 // ---- Chunk operations ----
 
 export async function createChunks(documentId: string, chunks: Chunk[]) {
