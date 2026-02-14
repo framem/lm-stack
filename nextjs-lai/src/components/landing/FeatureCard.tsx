@@ -22,6 +22,7 @@ interface FeatureCardProps {
   description: string;
   href: string;
   index: number;
+  accent?: "blue" | "orange";
 }
 
 export function FeatureCard({
@@ -30,7 +31,9 @@ export function FeatureCard({
   description,
   href,
   index,
+  accent = "blue",
 }: FeatureCardProps) {
+  const isOrange = accent === "orange";
   return (
     <motion.div
       initial={{ opacity: 0, y: 24 }}
@@ -38,10 +41,10 @@ export function FeatureCard({
       viewport={{ once: true }}
       transition={{ duration: 0.5, delay: index * 0.15 }}
     >
-      <Card className="h-full transition-colors hover:border-primary/20">
+      <Card className={`h-full transition-colors ${isOrange ? "hover:border-orange-400/20" : "hover:border-primary/20"}`}>
         <CardHeader>
-          <div className="mb-2 flex size-10 items-center justify-center rounded-lg bg-primary/10">
-            <Icon className="size-5 text-primary" />
+          <div className={`mb-2 flex size-10 items-center justify-center rounded-lg ${isOrange ? "bg-orange-400/10" : "bg-primary/10"}`}>
+            <Icon className={`size-5 ${isOrange ? "text-orange-400" : "text-primary"}`} />
           </div>
           <CardTitle>{title}</CardTitle>
           <CardDescription>{description}</CardDescription>
