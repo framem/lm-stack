@@ -157,41 +157,6 @@ export default function QuizPage() {
                 </p>
             </div>
 
-            {/* Knowledge progress per document */}
-            {progress.length > 0 && (
-                <section className="space-y-4">
-                    <h2 className="text-lg font-semibold flex items-center gap-2">
-                        <TrendingUp className="h-5 w-5" />
-                        Wissensstand
-                    </h2>
-                    <div className="grid gap-3">
-                        {progress.map((p) => (
-                            <Card key={p.documentId}>
-                                <CardContent className="flex items-center gap-4 py-4">
-                                    <div className="min-w-0 flex-1 space-y-2">
-                                        <div className="flex items-center justify-between gap-2">
-                                            <p className="text-sm font-medium truncate">{p.documentTitle}</p>
-                                            <span className="text-sm font-semibold tabular-nums shrink-0">
-                                                {p.percentage} %
-                                            </span>
-                                        </div>
-                                        <Progress value={p.percentage} />
-                                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                                            <span>
-                                                {Math.round(p.correctScore)}/{p.answeredQuestions} Fragen richtig
-                                            </span>
-                                            {p.lastAttemptAt && (
-                                                <span>· Zuletzt: {formatDate(p.lastAttemptAt)}</span>
-                                            )}
-                                        </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        ))}
-                    </div>
-                </section>
-            )}
-
             {/* Generate new quiz */}
             <section className="space-y-4">
                 <h2 className="text-lg font-semibold">Neues Quiz erstellen</h2>
@@ -264,6 +229,41 @@ export default function QuizPage() {
                     </Card>
                 )}
             </section>
+
+            {/* Knowledge progress per document */}
+            {progress.length > 0 && (
+                <section className="space-y-4">
+                    <h2 className="text-lg font-semibold flex items-center gap-2">
+                        <TrendingUp className="h-5 w-5" />
+                        Wissensstand
+                    </h2>
+                    <div className="grid gap-3">
+                        {progress.map((p) => (
+                            <Card key={p.documentId}>
+                                <CardContent className="flex items-center gap-4 py-4">
+                                    <div className="min-w-0 flex-1 space-y-2">
+                                        <div className="flex items-center justify-between gap-2">
+                                            <p className="text-sm font-medium truncate">{p.documentTitle}</p>
+                                            <span className="text-sm font-semibold tabular-nums shrink-0">
+                                                {p.percentage} %
+                                            </span>
+                                        </div>
+                                        <Progress value={p.percentage} />
+                                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                            <span>
+                                                {Math.round(p.correctScore)}/{p.answeredQuestions} Fragen richtig
+                                            </span>
+                                            {p.lastAttemptAt && (
+                                                <span>· Zuletzt: {formatDate(p.lastAttemptAt)}</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ))}
+                    </div>
+                </section>
+            )}
 
             {/* Existing quizzes */}
             {quizzes.length > 0 && (
