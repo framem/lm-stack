@@ -22,7 +22,7 @@ export async function retrieveContext(
     query: string,
     options: RetrieveOptions = {}
 ): Promise<RetrievedContext[]> {
-    const { topK = 5, documentId, threshold = 0.3 } = options
+    const { topK = 5, documentId, threshold = 0.5 } = options
 
     const embedding = await createEmbedding(query)
 
