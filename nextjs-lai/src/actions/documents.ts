@@ -27,7 +27,7 @@ export async function searchDocuments(query: string) {
 export async function getDocument(id: string) {
     const document = await getDocumentWithChunks(id)
     if (!document) {
-        throw new Error('Dokument nicht gefunden.')
+        throw new Error('Lernmaterial nicht gefunden.')
     }
     return document
 }
@@ -78,7 +78,7 @@ Regeln:
 export async function deleteDocument(id: string) {
     const document = await getDocumentWithChunks(id)
     if (!document) {
-        throw new Error('Dokument nicht gefunden.')
+        throw new Error('Lernmaterial nicht gefunden.')
     }
     await removeDocument(id)
     revalidatePath('/learn/documents')

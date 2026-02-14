@@ -44,7 +44,7 @@ export default function DocumentDetailPage() {
             const data = await getDocument(params.id)
             setDocument(data as unknown as DocumentDetail)
         } catch {
-            setError('Dokument nicht gefunden.')
+            setError('Lernmaterial nicht gefunden.')
         } finally {
             setLoading(false)
         }
@@ -55,7 +55,7 @@ export default function DocumentDetailPage() {
     }, [fetchDocument])
 
     async function handleDelete() {
-        if (!confirm('Dokument wirklich löschen? Alle Abschnitte werden ebenfalls gelöscht.')) return
+        if (!confirm('Lernmaterial wirklich löschen? Alle Abschnitte werden ebenfalls gelöscht.')) return
         setDeleting(true)
         try {
             await deleteDocument(params.id)
@@ -94,7 +94,7 @@ export default function DocumentDetailPage() {
     if (error || !document) {
         return (
             <div className="p-6 max-w-4xl mx-auto text-center space-y-4">
-                <p className="text-destructive">{error || 'Dokument nicht gefunden.'}</p>
+                <p className="text-destructive">{error || 'Lernmaterial nicht gefunden.'}</p>
                 <Button variant="outline" onClick={() => router.push('/learn/documents')}>
                     <ArrowLeft className="h-4 w-4" />
                     Zurück

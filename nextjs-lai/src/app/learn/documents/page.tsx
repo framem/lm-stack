@@ -76,7 +76,7 @@ export default function DocumentsPage() {
     }, [search, loading, fetchDocuments])
 
     async function handleDelete(id: string) {
-        if (!confirm('Dokument wirklich löschen? Alle Abschnitte werden ebenfalls gelöscht.')) return
+        if (!confirm('Lernmaterial wirklich löschen? Alle Abschnitte werden ebenfalls gelöscht.')) return
         try {
             await deleteDocument(id)
             setDocuments((prev) => prev.filter((d) => d.id !== id))
@@ -123,12 +123,12 @@ export default function DocumentsPage() {
                 <div>
                     <h1 className="text-2xl font-bold flex items-center gap-2">
                         <FileText className="h-6 w-6" />
-                        Dokumente
+                        Lernmaterial
                     </h1>
                     <p className="text-muted-foreground mt-1">
                         {totalCount === 0
-                            ? 'Noch keine Dokumente vorhanden.'
-                            : `${totalCount} Dokument${totalCount !== 1 ? 'e' : ''} vorhanden`}
+                            ? 'Noch kein Lernmaterial vorhanden.'
+                            : `${totalCount} Lernmaterial${totalCount !== 1 ? 'ien' : ''} vorhanden`}
                     </p>
                 </div>
                 <Button onClick={() => setUploadOpen(true)}>
@@ -173,15 +173,15 @@ export default function DocumentsPage() {
             ) : search.trim() ? (
                 <div className="text-center py-12 text-muted-foreground">
                     <Search className="h-10 w-10 mx-auto mb-3 opacity-50" />
-                    <p>Keine Dokumente gefunden für &ldquo;{search}&rdquo;</p>
+                    <p>Kein Lernmaterial gefunden für &ldquo;{search}&rdquo;</p>
                 </div>
             ) : totalCount === 0 ? (
                 <div className="text-center py-16 space-y-4">
                     <FolderOpen className="h-16 w-16 mx-auto text-muted-foreground/50" />
                     <div>
-                        <p className="text-lg font-medium">Noch keine Dokumente</p>
+                        <p className="text-lg font-medium">Noch kein Lernmaterial</p>
                         <p className="text-muted-foreground mt-1">
-                            Lade dein erstes Dokument hoch, um loszulegen.
+                            Lade dein erstes Lernmaterial hoch, um loszulegen.
                         </p>
                     </div>
                 </div>
@@ -191,9 +191,9 @@ export default function DocumentsPage() {
             <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
                 <DialogContent className="sm:max-w-lg">
                     <DialogHeader>
-                        <DialogTitle>Dokument anlegen</DialogTitle>
+                        <DialogTitle>Lernmaterial anlegen</DialogTitle>
                         <DialogDescription>
-                            Lade eine Datei hoch oder füge Text ein, um ihn für den Chat zu verarbeiten.
+                            Lade eine Datei hoch oder füge Text ein, um damit zu lernen.
                         </DialogDescription>
                     </DialogHeader>
                     <DocumentUploader onSuccess={handleUploadSuccess} />

@@ -358,7 +358,7 @@ export default function AdminPage() {
                     Admin
                 </h1>
                 <p className="text-muted-foreground mt-1">
-                    Lokale Dokumente importieren
+                    Lokales Lernmaterial importieren
                 </p>
             </div>
 
@@ -415,7 +415,7 @@ export default function AdminPage() {
                             Embeddings aktualisieren
                         </h2>
                         <p className="text-sm text-muted-foreground mt-1">
-                            Dokumente neu chunken und Embeddings regenerieren
+                            Lernmaterial neu chunken und Embeddings regenerieren
                         </p>
                     </div>
 
@@ -478,8 +478,8 @@ export default function AdminPage() {
                                 >
                                     <RefreshCw className="h-4 w-4 mr-2" />
                                     {refreshSelected.size > 0
-                                        ? `${refreshSelected.size} Dokument${refreshSelected.size !== 1 ? 'e' : ''} aktualisieren`
-                                        : 'Dokumente auswählen'}
+                                        ? `${refreshSelected.size} Lernmaterial${refreshSelected.size !== 1 ? 'ien' : ''} aktualisieren`
+                                        : 'Lernmaterial auswählen'}
                                 </Button>
                             </div>
                             <div className="rounded-lg border divide-y">

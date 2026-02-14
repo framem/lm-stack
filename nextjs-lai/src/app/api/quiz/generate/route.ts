@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
         const { documentId, questionCount = 5, questionTypes = ['mc'] } = body
 
         if (!documentId) {
-            return Response.json({ error: 'Dokument-ID ist erforderlich.' }, { status: 400 })
+            return Response.json({ error: 'Lernmaterial-ID ist erforderlich.' }, { status: 400 })
         }
 
         const validTypes = ['mc', 'freetext', 'truefalse']
@@ -43,13 +43,13 @@ export async function POST(request: NextRequest) {
                     // Load document with chunks
                     const document = await getDocumentWithChunks(documentId)
                     if (!document) {
-                        send({ type: 'error', message: 'Dokument nicht gefunden.' })
+                        send({ type: 'error', message: 'Lernmaterial nicht gefunden.' })
                         controller.close()
                         return
                     }
 
                     if (!document.chunks || document.chunks.length === 0) {
-                        send({ type: 'error', message: 'Das Dokument hat keine verarbeiteten Textabschnitte.' })
+                        send({ type: 'error', message: 'Das Lernmaterial hat keine verarbeiteten Textabschnitte.' })
                         controller.close()
                         return
                     }

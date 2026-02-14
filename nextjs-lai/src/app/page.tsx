@@ -43,7 +43,7 @@ const glowPulse = {
 const features = [
   {
     icon: FileText,
-    title: "Dokumente verwalten",
+    title: "Lernmaterial verwalten",
     description:
       "Lade PDFs, DOCX oder Markdown hoch und organisiere deine Lernmaterialien an einem Ort.",
     href: "/learn/documents",
@@ -53,7 +53,7 @@ const features = [
     icon: MessageSquare,
     title: "KI-Chat mit Quellenangaben",
     description:
-      "Stelle Fragen zu deinen Dokumenten und erhalte verifizierte Antworten mit Quellenangaben.",
+      "Stelle Fragen zu deinem Lernmaterial und erhalte verifizierte Antworten mit Quellenangaben.",
     href: "/learn/chat",
     accent: "orange" as const,
   },
@@ -127,7 +127,7 @@ export default function LandingPage() {
               className="mt-5 max-w-lg text-lg leading-relaxed text-muted-foreground"
             >
               LAI kombiniert deine Lernmaterialien mit KI — für Antworten, die
-              auf deinen Dokumenten basieren, und Quizfragen, die dein Wissen
+              auf deinem Lernmaterial basieren, und Quizfragen, die dein Wissen
               wirklich testen.
             </motion.p>
             <motion.div
@@ -211,7 +211,7 @@ export default function LandingPage() {
               So funktioniert LAI
             </h2>
             <p className="mt-2 text-muted-foreground">
-              Von deinem Dokument zum verifizierten Wissen in fünf Schritten.
+              Von deinem Lernmaterial zum verifizierten Wissen in fünf Schritten.
             </p>
           </motion.div>
           <motion.div
@@ -262,7 +262,7 @@ export default function LandingPage() {
             <span className="text-orange-400">lernen</span>?
           </h2>
           <p className="mt-2 text-muted-foreground">
-            Lade deine Dokumente hoch und starte sofort mit dem Lernen.
+            Lade dein Lernmaterial hoch und starte sofort mit dem Lernen.
           </p>
           <Button size="lg" className="mt-8" asChild>
             <Link href="/learn/chat">Jetzt starten</Link>

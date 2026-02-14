@@ -294,7 +294,7 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
                         {messages.length === 0 && (
                             <ConversationEmptyState
                                 title="Lernassistent"
-                                description="Stelle eine Frage zu deinen Dokumenten. Der Assistent antwortet basierend auf den hochgeladenen Inhalten und zitiert die Quellen."
+                                description="Stelle eine Frage zu deinem Lernmaterial. Der Assistent antwortet basierend auf den hochgeladenen Inhalten und zitiert die Quellen."
                                 icon={<BookOpen className="h-12 w-12" />}
                             />
                         )}
@@ -371,7 +371,7 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
                                     {message.role === 'assistant' && message.metadata?.sources && message.metadata.sources.length > 0 && (
                                         <Sources>
                                             <SourcesTrigger count={message.metadata.sources.length}>
-                                                <p className="font-medium">{message.metadata.sources.length} Quellen verwendet</p>
+                                                <p className="font-medium">{message.metadata.sources.length === 1 ? '1 Quelle' : `${message.metadata.sources.length} Quellen`}</p>
                                                 <ChevronDown className="h-4 w-4" />
                                             </SourcesTrigger>
                                             <SourcesContent>
@@ -408,7 +408,7 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
                   <div className="max-w-3xl mx-auto w-full">
                     <PromptInput onSubmit={handleSubmit}>
                         <PromptInputBody>
-                            <PromptInputTextarea placeholder="Stelle eine Frage zu deinen Dokumenten..." />
+                            <PromptInputTextarea placeholder="Stelle eine Frage zu deinem Lernmaterial..." />
                         </PromptInputBody>
                         <PromptInputFooter>
                             <PromptInputTools>
@@ -421,10 +421,10 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
                                             <FileText className="size-3.5" />
                                             <span>
                                                 {selectedDocumentIds.length === 0
-                                                    ? 'Alle Dokumente'
+                                                    ? 'Alles Lernmaterial'
                                                     : selectedDocumentIds.length === 1
-                                                      ? documents.find(d => d.id === selectedDocumentIds[0])?.title ?? '1 Dokument'
-                                                      : `${selectedDocumentIds.length} Dokumente`}
+                                                      ? documents.find(d => d.id === selectedDocumentIds[0])?.title ?? '1 Lernmaterial'
+                                                      : `${selectedDocumentIds.length} Lernmaterialien`}
                                             </span>
                                             <ChevronDown className="size-3.5 opacity-50" />
                                         </button>
@@ -440,7 +440,7 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
                                                     <Check className="size-3" />
                                                 )}
                                             </span>
-                                            Alle Dokumente
+                                            Alles Lernmaterial
                                         </button>
                                         {documents.map((doc) => {
                                             const isChecked = selectedDocumentIds.includes(doc.id)

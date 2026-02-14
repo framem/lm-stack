@@ -128,13 +128,13 @@ describe('generateQuiz server action', () => {
     it('should throw when documentId is missing', async () => {
         const { generateQuiz } = await import('@/src/actions/quiz')
 
-        await expect(generateQuiz('', 5, ['mc'])).rejects.toThrow('Dokument-ID ist erforderlich.')
+        await expect(generateQuiz('', 5, ['mc'])).rejects.toThrow('Lernmaterial-ID ist erforderlich.')
     })
 
     it('should throw when document does not exist', async () => {
         const { generateQuiz } = await import('@/src/actions/quiz')
 
-        await expect(generateQuiz('nonexistent', 5, ['mc'])).rejects.toThrow('Dokument nicht gefunden.')
+        await expect(generateQuiz('nonexistent', 5, ['mc'])).rejects.toThrow('Lernmaterial nicht gefunden.')
     })
 
     it('should generate a quiz for a valid document', async () => {

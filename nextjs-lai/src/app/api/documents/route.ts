@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
 
                 try {
                     // Step 1: Save document
-                    sendProgress('document', 10, 'Dokument wird gespeichert...')
+                    sendProgress('document', 10, 'Lernmaterial wird gespeichert...')
                     const doc = await createDocument({
                         title,
                         fileName,
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
                     const chunks = chunkDocument({ text: textContent, pageBreaks })
 
                     if (chunks.length === 0) {
-                        sendProgress('done', 100, 'Dokument gespeichert (keine Abschnitte erstellt).')
+                        sendProgress('done', 100, 'Lernmaterial gespeichert (keine Abschnitte erstellt).')
                         controller.enqueue(
                             encoder.encode(`data: ${JSON.stringify({ type: 'complete', documentId: doc.id, chunkCount: 0 })}\n\n`)
                         )

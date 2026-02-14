@@ -53,7 +53,7 @@ interface SessionItem {
 // Main navigation items (without Chat — handled separately)
 const navItems = [
     { href: '/learn', label: 'Dashboard', icon: Home },
-    { href: '/learn/documents', label: 'Dokumente', icon: FileText },
+    { href: '/learn/documents', label: 'Lernmaterial', icon: FileText },
     { href: '/learn/quiz', label: 'Quiz', icon: HelpCircle },
 ]
 
