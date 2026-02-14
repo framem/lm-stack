@@ -3,6 +3,7 @@
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/src/components/ui/card'
+import { Button } from '@/src/components/ui/button'
 import { Badge } from '@/src/components/ui/badge'
 import { Progress } from '@/src/components/ui/progress'
 import { CheckCircle2, XCircle } from 'lucide-react'
@@ -28,6 +29,7 @@ interface QuizResultsProps {
     quizTitle: string
     documentTitle: string
     results: QuestionResult[]
+    onRetry?: () => void
 }
 
 const TYPE_LABELS: Record<string, string> = {
@@ -36,7 +38,7 @@ const TYPE_LABELS: Record<string, string> = {
     truefalse: 'Wahr/Falsch',
 }
 
-export function QuizResults({ quizTitle, documentTitle, results }: QuizResultsProps) {
+export function QuizResults({ quizTitle, documentTitle, results, onRetry }: QuizResultsProps) {
     // Scoring: freetext = weighted freeTextScore (0-1), mc/truefalse = binary (0 or 1)
     const totalCount = results.length
     const totalScore = results.reduce((sum, r) => {
@@ -63,6 +65,11 @@ export function QuizResults({ quizTitle, documentTitle, results }: QuizResultsPr
                         </p>
                     </div>
                     <Progress value={percentage} className="h-3" />
+                    {onRetry && (
+                        <Button onClick={onRetry} variant="outline" className="w-full">
+                            Quiz wiederholen
+                        </Button>
+                    )}
                 </CardContent>
             </Card>
 

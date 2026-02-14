@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, use } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Loader2, ArrowLeft } from 'lucide-react'
 import { Button } from '@/src/components/ui/button'
@@ -51,6 +52,7 @@ interface QuizResultData {
 
 export default function QuizResultsPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params)
+    const router = useRouter()
     const [data, setData] = useState<QuizResultData | null>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -122,6 +124,7 @@ export default function QuizResultsPage({ params }: { params: Promise<{ id: stri
                 quizTitle={data.title}
                 documentTitle={data.document.title}
                 results={results}
+                onRetry={() => router.push(`/learn/quiz/${id}`)}
             />
 
             <div className="flex gap-2">

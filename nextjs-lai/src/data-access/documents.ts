@@ -9,6 +9,8 @@ export async function createDocument(data: {
     fileType: string
     fileSize?: number
     content: string
+    subject?: string
+    tags?: string[]
 }) {
     return prisma.document.create({ data })
 }
@@ -20,13 +22,18 @@ export async function getDocuments() {
     })
 }
 
-export async function searchDocuments(query: string) {
+export async function searchDocuments(query: string, subject?: string) {
     return prisma.document.findMany({
         where: {
-            OR: [
-                { title: { contains: query, mode: 'insensitive' } },
-                { fileName: { contains: query, mode: 'insensitive' } },
-                { content: { contains: query, mode: 'insensitive' } },
+            AND: [
+                subject ? { subject } : {},
+                query ? {
+                    OR: [
+                        { title: { contains: query, mode: 'insensitive' } },
+                        { fileName: { contains: query, mode: 'insensitive' } },
+                        { content: { contains: query, mode: 'insensitive' } },
+                    ],
+                } : {},
             ],
         },
         orderBy: { createdAt: 'desc' },
@@ -47,8 +54,18 @@ export async function getDocumentWithChunks(id: string) {
     })
 }
 
-export async function updateDocument(id: string, data: { title?: string }) {
+export async function updateDocument(id: string, data: { title?: string; subject?: string; tags?: string[]; summary?: string }) {
     return prisma.document.update({ where: { id }, data })
+}
+
+export async function getSubjects(): Promise<string[]> {
+    const results = await prisma.document.findMany({
+        where: { subject: { not: null } },
+        select: { subject: true },
+        distinct: ['subject'],
+        orderBy: { subject: 'asc' },
+    })
+    return results.map(r => r.subject).filter((s): s is string => s !== null)
 }
 
 export async function deleteDocument(id: string) {

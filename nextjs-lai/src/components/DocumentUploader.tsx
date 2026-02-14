@@ -31,6 +31,8 @@ export function DocumentUploader({ onSuccess }: DocumentUploaderProps) {
     const [title, setTitle] = useState('')
     const [pasteText, setPasteText] = useState('')
     const [pasteTitle, setPasteTitle] = useState('')
+    const [subject, setSubject] = useState('')
+    const [pasteSubject, setPasteSubject] = useState('')
     const [dragOver, setDragOver] = useState(false)
     const [uploading, setUploading] = useState(false)
     const [progressValue, setProgressValue] = useState(0)
@@ -106,6 +108,7 @@ export function DocumentUploader({ onSuccess }: DocumentUploaderProps) {
         const formData = new FormData()
         formData.append('file', file)
         if (title.trim()) formData.append('title', title.trim())
+        if (subject.trim()) formData.append('subject', subject.trim())
 
         try {
             const response = await fetch('/api/documents', {
@@ -140,6 +143,7 @@ export function DocumentUploader({ onSuccess }: DocumentUploaderProps) {
                 body: JSON.stringify({
                     text: pasteText,
                     title: pasteTitle.trim() || undefined,
+                    subject: pasteSubject.trim() || undefined,
                 }),
             })
 
@@ -193,6 +197,11 @@ export function DocumentUploader({ onSuccess }: DocumentUploaderProps) {
                     placeholder="Titel (optional)"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
+                />
+                <Input
+                    placeholder="Fach (optional, z.B. Spanisch, Mathematik)"
+                    value={subject}
+                    onChange={(e) => setSubject(e.target.value)}
                 />
 
                 <div
@@ -257,6 +266,11 @@ export function DocumentUploader({ onSuccess }: DocumentUploaderProps) {
                     placeholder="Titel (optional)"
                     value={pasteTitle}
                     onChange={(e) => setPasteTitle(e.target.value)}
+                />
+                <Input
+                    placeholder="Fach (optional, z.B. Spanisch, Mathematik)"
+                    value={pasteSubject}
+                    onChange={(e) => setPasteSubject(e.target.value)}
                 />
                 <Textarea
                     placeholder="Text hier einfügen..."

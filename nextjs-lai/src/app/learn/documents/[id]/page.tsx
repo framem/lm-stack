@@ -4,10 +4,13 @@ import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'sonner'
-import { FileText, Trash2, Pencil, ArrowLeft, Check, X, MessageSquare, HelpCircle } from 'lucide-react'
+import { FileText, Trash2, Pencil, ArrowLeft, Check, X, MessageSquare, HelpCircle, Loader2 } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { Button } from '@/src/components/ui/button'
 import { Input } from '@/src/components/ui/input'
 import { Badge } from '@/src/components/ui/badge'
+import { Card, CardContent } from '@/src/components/ui/card'
 import { ChunkViewer } from '@/src/components/ChunkViewer'
 import { Skeleton } from '@/src/components/ui/skeleton'
 import {
@@ -30,6 +33,7 @@ interface DocumentDetail {
     fileType: string
     fileSize: number | null
     content: string
+    summary: string | null
     createdAt: string
     chunks: {
         id: string
@@ -50,11 +54,16 @@ export default function DocumentDetailPage() {
     const [editing, setEditing] = useState(false)
     const [editTitle, setEditTitle] = useState('')
     const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+    const [summaryText, setSummaryText] = useState('')
+    const [generatingSummary, setGeneratingSummary] = useState(false)
 
     const fetchDocument = useCallback(async () => {
         try {
             const data = await getDocument(params.id)
             setDocument(data as unknown as DocumentDetail)
+            if ((data as unknown as DocumentDetail)?.summary) {
+                setSummaryText((data as unknown as DocumentDetail).summary!)
+            }
         } catch {
             setError('Lernmaterial nicht gefunden.')
         } finally {
@@ -72,7 +81,7 @@ export default function DocumentDetailPage() {
             await deleteDocument(params.id)
             router.push('/learn/documents')
         } catch {
-            toast.error('Loeschen fehlgeschlagen.')
+            toast.error('Löschen fehlgeschlagen.')
             setDeleting(false)
             setShowDeleteDialog(false)
         }
@@ -90,6 +99,36 @@ export default function DocumentDetailPage() {
             setEditing(false)
         } catch {
             toast.error('Umbenennen fehlgeschlagen.')
+        }
+    }
+
+    async function handleGenerateSummary() {
+        setGeneratingSummary(true)
+        setSummaryText('')
+        try {
+            const res = await fetch(`/api/documents/${params.id}/summary`, { method: 'POST' })
+            if (!res.ok || !res.body) throw new Error('Fehler')
+            const reader = res.body.getReader()
+            const decoder = new TextDecoder()
+            let buffer = ''
+            while (true) {
+                const { done, value } = await reader.read()
+                if (done) break
+                buffer += decoder.decode(value, { stream: true })
+                const lines = buffer.split('\n\n')
+                buffer = lines.pop() ?? ''
+                for (const line of lines) {
+                    if (!line.startsWith('data: ')) continue
+                    const event = JSON.parse(line.slice(6))
+                    if (event.type === 'delta') {
+                        setSummaryText(prev => prev + event.text)
+                    }
+                }
+            }
+        } catch {
+            toast.error('Zusammenfassung konnte nicht erstellt werden.')
+        } finally {
+            setGeneratingSummary(false)
         }
     }
 
@@ -177,7 +216,7 @@ export default function DocumentDetailPage() {
                     disabled={deleting}
                 >
                     <Trash2 className="h-4 w-4" />
-                    {deleting ? 'Wird geloescht...' : 'Loeschen'}
+                    {deleting ? 'Wird gelöscht...' : 'Löschen'}
                 </Button>
             </div>
 
@@ -197,6 +236,40 @@ export default function DocumentDetailPage() {
                 </Button>
             </div>
 
+            {/* Summary */}
+            <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                    <h2 className="text-lg font-semibold">Zusammenfassung</h2>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleGenerateSummary}
+                        disabled={generatingSummary}
+                    >
+                        {generatingSummary ? (
+                            <><Loader2 className="h-4 w-4 animate-spin" /> Wird erstellt...</>
+                        ) : summaryText ? (
+                            'Neu generieren'
+                        ) : (
+                            'Zusammenfassung erstellen'
+                        )}
+                    </Button>
+                </div>
+                {summaryText ? (
+                    <Card>
+                        <CardContent className="prose prose-sm dark:prose-invert max-w-none p-4">
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                {summaryText}
+                            </ReactMarkdown>
+                        </CardContent>
+                    </Card>
+                ) : !generatingSummary && (
+                    <p className="text-sm text-muted-foreground">
+                        Noch keine Zusammenfassung vorhanden. Klicke auf den Button, um eine KI-generierte Zusammenfassung zu erstellen.
+                    </p>
+                )}
+            </div>
+
             <div>
                 <h2 className="text-lg font-semibold mb-3">Abschnitte</h2>
                 <ChunkViewer chunks={document.chunks} />
@@ -206,15 +279,15 @@ export default function DocumentDetailPage() {
             <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Lernmaterial loeschen?</AlertDialogTitle>
+                        <AlertDialogTitle>Lernmaterial löschen?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Alle Abschnitte und zugehoerige Daten werden ebenfalls geloescht. Diese Aktion kann nicht rueckgaengig gemacht werden.
+                            Alle Abschnitte und zugehoerige Daten werden ebenfalls gelöscht. Diese Aktion kann nicht rueckgaengig gemacht werden.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>Abbrechen</AlertDialogCancel>
                         <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                            Loeschen
+                            Löschen
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

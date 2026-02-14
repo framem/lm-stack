@@ -14,10 +14,15 @@ import {
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json()
-        const { documentId, questionCount = 5, questionTypes = ['mc'] } = body
+        const { documentId, documentIds: rawDocumentIds, questionCount = 5, questionTypes = ['mc'] } = body
 
-        if (!documentId) {
-            return Response.json({ error: 'Lernmaterial-ID ist erforderlich.' }, { status: 400 })
+        // Support both single documentId and multiple documentIds
+        const documentIds: string[] = rawDocumentIds && Array.isArray(rawDocumentIds) && rawDocumentIds.length > 0
+            ? rawDocumentIds
+            : documentId ? [documentId] : []
+
+        if (documentIds.length === 0) {
+            return Response.json({ error: 'Mindestens ein Lernmaterial ist erforderlich.' }, { status: 400 })
         }
 
         const validTypes = ['mc', 'freetext', 'truefalse']
@@ -40,22 +45,26 @@ export async function POST(request: NextRequest) {
                 }
 
                 try {
-                    // Load document with chunks
-                    const document = await getDocumentWithChunks(documentId)
-                    if (!document) {
+                    // Load all documents with chunks
+                    const documents = await Promise.all(
+                        documentIds.map(id => getDocumentWithChunks(id))
+                    )
+                    const validDocs = documents.filter((d): d is NonNullable<typeof d> => d !== null)
+                    if (validDocs.length === 0) {
                         send({ type: 'error', message: 'Lernmaterial nicht gefunden.' })
                         controller.close()
                         return
                     }
 
-                    if (!document.chunks || document.chunks.length === 0) {
-                        send({ type: 'error', message: 'Das Lernmaterial hat keine verarbeiteten Textabschnitte.' })
+                    const allChunks = validDocs.flatMap(d => d.chunks)
+                    if (allChunks.length === 0) {
+                        send({ type: 'error', message: 'Die Lernmaterialien haben keine verarbeiteten Textabschnitte.' })
                         controller.close()
                         return
                     }
 
-                    // Select representative chunks
-                    const selectedChunks = selectRepresentativeChunks(document.chunks, count)
+                    // Select representative chunks from merged set
+                    const selectedChunks = selectRepresentativeChunks(allChunks, count)
                     const contextText = selectedChunks.map((c) => c.content).join('\n\n---\n\n')
 
                     // Distribute questions across types
@@ -125,7 +134,10 @@ export async function POST(request: NextRequest) {
                     }
 
                     // Create quiz in DB
-                    const quiz = await createQuiz(document.title, documentId)
+                    const quizTitle = validDocs.length === 1
+                        ? validDocs[0].title
+                        : `${validDocs.length} Lernmaterialien`
+                    const quiz = await createQuiz(quizTitle, documentIds[0])
 
                     // Save questions with correct indices
                     const questionsToSave = allQuestions.slice(0, count).map((q, i) => ({

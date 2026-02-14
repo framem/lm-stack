@@ -3,6 +3,7 @@ import { AppSidebar } from '@/src/components/Sidebar'
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/src/components/ui/sidebar'
 import { TooltipProvider } from '@/src/components/ui/tooltip'
 import { Separator } from '@/src/components/ui/separator'
+import { Breadcrumbs } from '@/src/components/Breadcrumbs'
 import { checkLLMHealth } from '@/src/lib/health'
 
 export default async function MainLayout({
@@ -20,7 +21,7 @@ export default async function MainLayout({
                     <header className="flex h-12 shrink-0 items-center gap-2 border-b px-4">
                         <SidebarTrigger className="-ml-1" />
                         <Separator orientation="vertical" className="mr-2 h-4" />
-                        <span className="text-sm text-muted-foreground">LAI</span>
+                        <Breadcrumbs />
                     </header>
                     {!llmHealthy && (
                         <div className="flex items-center gap-2 border-b border-orange-500/30 bg-orange-500/10 px-4 py-2.5 text-sm text-orange-400">

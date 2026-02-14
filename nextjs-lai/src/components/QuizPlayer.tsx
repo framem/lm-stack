@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/src/components/ui/card'
 import { RadioGroup, RadioGroupItem } from '@/src/components/ui/radio-group'
 import { Button } from '@/src/components/ui/button'
@@ -53,6 +54,7 @@ export function QuizPlayer({ quizTitle, questions, onComplete }: QuizPlayerProps
     const [result, setResult] = useState<AnswerResult | null>(null)
     const [results, setResults] = useState<Map<string, AnswerResult>>(new Map())
     const [submitting, setSubmitting] = useState(false)
+    const [answerHistory, setAnswerHistory] = useState<Map<number, { selectedIndex: number | null; freeTextAnswer: string; result: AnswerResult | null }>>(new Map())
 
     const currentQuestion = questions[currentIndex]
     const isLastQuestion = currentIndex === questions.length - 1
@@ -85,14 +87,68 @@ export function QuizPlayer({ quizTitle, questions, onComplete }: QuizPlayerProps
     }
 
     function handleNext() {
+        // Save current state to history
+        setAnswerHistory(prev => {
+            const next = new Map(prev)
+            next.set(currentIndex, { selectedIndex, freeTextAnswer, result })
+            return next
+        })
+
         if (isLastQuestion) {
             onComplete(results)
             return
         }
-        setCurrentIndex((i) => i + 1)
+
+        const nextIndex = currentIndex + 1
+        const nextState = answerHistory.get(nextIndex)
+        setCurrentIndex(nextIndex)
+        setSelectedIndex(nextState?.selectedIndex ?? null)
+        setFreeTextAnswer(nextState?.freeTextAnswer ?? '')
+        setResult(nextState?.result ?? null)
+    }
+
+    function handleSkip() {
+        // Save current empty state
+        setAnswerHistory(prev => {
+            const next = new Map(prev)
+            next.set(currentIndex, { selectedIndex: null, freeTextAnswer: '', result: null })
+            return next
+        })
+
+        const skipResult: AnswerResult = {
+            isCorrect: false,
+            correctIndex: null,
+            explanation: 'Frage wurde uebersprungen.',
+        }
+        const newResults = new Map(results)
+        newResults.set(currentQuestion.id, skipResult)
+        setResults(newResults)
+
+        if (isLastQuestion) {
+            onComplete(newResults)
+            return
+        }
+        setCurrentIndex(i => i + 1)
         setSelectedIndex(null)
         setFreeTextAnswer('')
         setResult(null)
+    }
+
+    function handleBack() {
+        if (currentIndex === 0) return
+        // Save current state
+        setAnswerHistory(prev => {
+            const next = new Map(prev)
+            next.set(currentIndex, { selectedIndex, freeTextAnswer, result })
+            return next
+        })
+
+        const prevIndex = currentIndex - 1
+        const prevState = answerHistory.get(prevIndex)
+        setCurrentIndex(prevIndex)
+        setSelectedIndex(prevState?.selectedIndex ?? null)
+        setFreeTextAnswer(prevState?.freeTextAnswer ?? '')
+        setResult(prevState?.result ?? null)
     }
 
     if (!currentQuestion) return null
@@ -107,9 +163,14 @@ export function QuizPlayer({ quizTitle, questions, onComplete }: QuizPlayerProps
             <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm text-muted-foreground">
                     <span>{quizTitle}</span>
-                    <span>Frage {currentIndex + 1} von {questions.length}</span>
                 </div>
                 <Progress value={progress} />
+                <div className="flex items-center justify-between text-sm text-muted-foreground">
+                    <Link href="/learn/quiz" className="hover:text-foreground transition-colors">
+                        &larr; Quiz abbrechen
+                    </Link>
+                    <span>Frage {currentIndex + 1} von {questions.length}</span>
+                </div>
             </div>
 
             <Card>
@@ -223,20 +284,35 @@ export function QuizPlayer({ quizTitle, questions, onComplete }: QuizPlayerProps
                         </div>
                     )}
                 </CardContent>
-                <CardFooter className="gap-2">
-                    {!result ? (
-                        <Button
-                            onClick={handleSubmit}
-                            disabled={!canSubmit || submitting}
-                        >
-                            {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-                            Antwort prüfen
-                        </Button>
-                    ) : (
-                        <Button onClick={handleNext}>
-                            {isLastQuestion ? 'Ergebnisse anzeigen' : 'Nächste Frage'}
-                        </Button>
-                    )}
+                <CardFooter className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        {/* Back button — only when not on first question and no result yet */}
+                        {currentIndex > 0 && !result && (
+                            <Button variant="outline" onClick={handleBack}>
+                                Zurueck
+                            </Button>
+                        )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                        {!result ? (
+                            <>
+                                <Button variant="ghost" onClick={handleSkip}>
+                                    Ueberspringen
+                                </Button>
+                                <Button
+                                    onClick={handleSubmit}
+                                    disabled={!canSubmit || submitting}
+                                >
+                                    {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+                                    Antwort pruefen
+                                </Button>
+                            </>
+                        ) : (
+                            <Button onClick={handleNext}>
+                                {isLastQuestion ? 'Ergebnisse anzeigen' : 'Naechste Frage'}
+                            </Button>
+                        )}
+                    </div>
                 </CardFooter>
             </Card>
         </div>
