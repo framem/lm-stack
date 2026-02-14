@@ -93,7 +93,7 @@ const nodes: FlowNode<WorkflowNodeData>[] = [
       step: 2,
       title: "Analyse",
       icon: Database,
-      description: "Dokumente werden in Wissensbausteine zerlegt",
+      description: "Lernmaterial wird in Wissensbausteine zerlegt",
       hasTarget: true,
       hasSource: true,
     },

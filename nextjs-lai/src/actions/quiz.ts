@@ -84,7 +84,7 @@ export async function generateQuiz(
     questionTypes: string[] = ['mc']
 ) {
     if (!documentId) {
-        throw new Error('Dokument-ID ist erforderlich.')
+        throw new Error('Lernmaterial-ID ist erforderlich.')
     }
 
     const validTypes = ['mc', 'freetext', 'truefalse']
@@ -99,11 +99,11 @@ export async function generateQuiz(
     // Load document with chunks
     const document = await getDocumentWithChunks(documentId)
     if (!document) {
-        throw new Error('Dokument nicht gefunden.')
+        throw new Error('Lernmaterial nicht gefunden.')
     }
 
     if (!document.chunks || document.chunks.length === 0) {
-        throw new Error('Das Dokument hat keine verarbeiteten Textabschnitte.')
+        throw new Error('Das Lernmaterial hat keine verarbeiteten Textabschnitte.')
     }
 
     // Select representative chunks distributed across the document

@@ -33,7 +33,7 @@ export default async function DashboardPage() {
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between pb-2">
                         <CardTitle className="text-sm font-medium text-muted-foreground">
-                            Dokumente
+                            Lernmaterial
                         </CardTitle>
                         <FileText className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
@@ -74,9 +74,9 @@ export default async function DashboardPage() {
                                 <FileText className="h-6 w-6 text-primary" />
                             </div>
                             <div>
-                                <h3 className="font-semibold">Dokumente verwalten</h3>
+                                <h3 className="font-semibold">Lernmaterial verwalten</h3>
                                 <p className="text-sm text-muted-foreground">
-                                    Dokumente hochladen, verwalten und durchsuchen
+                                    Lernmaterial hochladen, verwalten und durchsuchen
                                 </p>
                             </div>
                         </CardContent>
@@ -91,7 +91,7 @@ export default async function DashboardPage() {
                             <div>
                                 <h3 className="font-semibold">Chat starten</h3>
                                 <p className="text-sm text-muted-foreground">
-                                    Fragen zu deinen Dokumenten stellen
+                                    Fragen zu deinem Lernmaterial stellen
                                 </p>
                             </div>
                         </CardContent>

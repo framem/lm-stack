@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
                         const textContent = isNotebook ? extractNotebookText(rawContent) : rawContent
 
                         // Create document
-                        send({ type: 'progress', file: relativePath, step: 'document', detail: 'Dokument wird gespeichert...' })
+                        send({ type: 'progress', file: relativePath, step: 'document', detail: 'Lernmaterial wird gespeichert...' })
                         const title = fileName.replace(/\.(md|ipynb)$/, '').replace(/_/g, ' ')
                         const doc = await createDocument({
                             title,

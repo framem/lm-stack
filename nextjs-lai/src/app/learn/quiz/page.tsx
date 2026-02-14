@@ -210,7 +210,7 @@ export default function QuizPage() {
                     <p className="text-muted-foreground mt-1">
                         {hasQuizzes
                             ? `${quizzes.length} Quiz${quizzes.length !== 1 ? 'ze' : ''} vorhanden`
-                            : 'Erstelle Quizze aus deinen Dokumenten und teste dein Wissen.'}
+                            : 'Erstelle Quizze aus deinem Lernmaterial und teste dein Wissen.'}
                     </p>
                 </div>
                 {hasDocuments && (
@@ -237,10 +237,10 @@ export default function QuizPage() {
                     <div className="text-center py-16 space-y-4">
                         <FileText className="h-16 w-16 mx-auto text-muted-foreground/50" />
                         <div>
-                            <p className="text-lg font-medium">Keine Dokumente vorhanden</p>
+                            <p className="text-lg font-medium">Kein Lernmaterial vorhanden</p>
                             <p className="text-muted-foreground mt-1">
                                 <Link href="/learn/documents" className="text-primary underline underline-offset-4 hover:text-primary/80">
-                                    Lade zuerst ein Dokument hoch
+                                    Lade zuerst Lernmaterial hoch
                                 </Link>
                                 , um Quizze erstellen zu können.
                             </p>
@@ -316,19 +316,19 @@ export default function QuizPage() {
                     <DialogHeader>
                         <DialogTitle>Quiz erstellen</DialogTitle>
                         <DialogDescription>
-                            Wähle ein Dokument und konfiguriere deine Quiz-Einstellungen.
+                            Wähle Lernmaterial aus und konfiguriere deine Quiz-Einstellungen.
                         </DialogDescription>
                     </DialogHeader>
 
                     <div className="space-y-5">
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Dokument</label>
+                            <label className="text-sm font-medium">Lernmaterial</label>
                             <select
                                 value={selectedDocId}
                                 onChange={(e) => setSelectedDocId(e.target.value)}
                                 className="w-full border rounded-md px-3 py-2 text-sm bg-background"
                             >
-                                <option disabled value="">Dokument auswählen…</option>
+                                <option disabled value="">Lernmaterial auswählen…</option>
                                 {documents.map((doc) => (
                                     <option key={doc.id} value={doc.id}>{doc.title}</option>
                                 ))}

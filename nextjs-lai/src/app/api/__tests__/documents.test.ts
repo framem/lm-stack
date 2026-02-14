@@ -78,7 +78,7 @@ describe('getDocument server action', () => {
 
         const { getDocument } = await import('@/src/actions/documents')
 
-        await expect(getDocument('missing')).rejects.toThrow('Dokument nicht gefunden.')
+        await expect(getDocument('missing')).rejects.toThrow('Lernmaterial nicht gefunden.')
     })
 })
 
@@ -99,7 +99,7 @@ describe('deleteDocument server action', () => {
 
         const { deleteDocument } = await import('@/src/actions/documents')
 
-        await expect(deleteDocument('missing')).rejects.toThrow('Dokument nicht gefunden.')
+        await expect(deleteDocument('missing')).rejects.toThrow('Lernmaterial nicht gefunden.')
     })
 })
 

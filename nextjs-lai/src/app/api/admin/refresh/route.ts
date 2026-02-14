@@ -16,7 +16,7 @@ export async function GET() {
         return Response.json({ documents: docs })
     } catch (error) {
         console.error('Refresh list error:', error)
-        return Response.json({ error: 'Dokumente konnten nicht geladen werden.' }, { status: 500 })
+        return Response.json({ error: 'Lernmaterial konnte nicht geladen werden.' }, { status: 500 })
     }
 }
 
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
         const documentIds: string[] = body.documentIds
 
         if (!Array.isArray(documentIds) || documentIds.length === 0) {
-            return Response.json({ error: 'Keine Dokumente ausgewählt.' }, { status: 400 })
+            return Response.json({ error: 'Kein Lernmaterial ausgewählt.' }, { status: 400 })
         }
 
         const encoder = new TextEncoder()
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
                     })
 
                     if (!doc) {
-                        send({ type: 'doc_error', id: docId, error: 'Dokument nicht gefunden' })
+                        send({ type: 'doc_error', id: docId, error: 'Lernmaterial nicht gefunden' })
                         results.push({ id: docId, title: docId, status: 'error', error: 'Nicht gefunden' })
                         continue
                     }

@@ -15,6 +15,7 @@ const ALLOWED_MIME_TYPES = [
     'text/markdown',
 ] as const
 
+// Adjust this value if larger uploads are needed (e.g. 50 * 1024 * 1024 for 50 MB)
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10 MB
 
 /**

@@ -74,8 +74,9 @@ export async function POST(request: NextRequest) {
             messages: await convertToModelMessages(messages),
         })
 
-        // Accumulate text to extract citations at the end
+        // Accumulate text and detect citations incrementally for live source display
         let accumulatedText = ''
+        let lastSourceCount = 0
 
         return result.toUIMessageStreamResponse({
             sendReasoning: true,
@@ -85,9 +86,21 @@ export async function POST(request: NextRequest) {
             messageMetadata: ({ part }) => {
                 if (part.type === 'text-delta') {
                     accumulatedText += part.text
+                    // Strip completed and unclosed <think> blocks before scanning
+                    let textForCitations = accumulatedText.replace(/<think>[\s\S]*?<\/think>/g, '')
+                    const lastOpen = textForCitations.lastIndexOf('<think>')
+                    const lastClose = textForCitations.lastIndexOf('</think>')
+                    if (lastOpen > lastClose) {
+                        textForCitations = textForCitations.slice(0, lastOpen)
+                    }
+                    const citations = extractCitations(textForCitations.trim(), contexts)
+                    if (citations.length > lastSourceCount) {
+                        lastSourceCount = citations.length
+                        return { sources: formatCitationsForStorage(citations) }
+                    }
                 }
                 if (part.type === 'finish') {
-                    // Strip <think> blocks for citation extraction (providers that pass reasoning as text)
+                    // Final extraction for DB persistence
                     const textForCitations = accumulatedText.replace(/<think>[\s\S]*?<\/think>/g, '').trim()
                     const citations = extractCitations(textForCitations, contexts)
                     const sources = formatCitationsForStorage(citations)
