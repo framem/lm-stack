@@ -54,7 +54,7 @@ export default function QuizPlayerPage({ params }: { params: Promise<{ id: strin
     }, [id])
 
     function handleComplete(_results: Map<string, AnswerResult>) {
-        router.push(`/quiz/${id}/results`)
+        router.push(`/learn/quiz/${id}/results`)
     }
 
     if (loading) {

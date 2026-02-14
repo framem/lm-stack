@@ -86,7 +86,7 @@ export function DocumentUploader({ onSuccess }: DocumentUploaderProps) {
                         if (onSuccess && event.documentId) {
                             onSuccess(event.documentId)
                         } else {
-                            router.push(`/documents/${event.documentId}`)
+                            router.push(`/learn/documents/${event.documentId}`)
                         }
                     }, 500)
                 } else if (event.type === 'error') {

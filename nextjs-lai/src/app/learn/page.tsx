@@ -67,7 +67,7 @@ export default async function DashboardPage() {
 
             {/* Quick Actions */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Link href="/documents">
+                <Link href="/learn/documents">
                     <Card className="hover:bg-accent transition-colors cursor-pointer h-full">
                         <CardContent className="flex items-center gap-4 p-6">
                             <div className="p-3 rounded-lg bg-primary/10">
@@ -82,7 +82,7 @@ export default async function DashboardPage() {
                         </CardContent>
                     </Card>
                 </Link>
-                <Link href="/chat">
+                <Link href="/learn/chat">
                     <Card className="hover:bg-accent transition-colors cursor-pointer h-full">
                         <CardContent className="flex items-center gap-4 p-6">
                             <div className="p-3 rounded-lg bg-primary/10">
@@ -97,7 +97,7 @@ export default async function DashboardPage() {
                         </CardContent>
                     </Card>
                 </Link>
-                <Link href="/quiz">
+                <Link href="/learn/quiz">
                     <Card className="hover:bg-accent transition-colors cursor-pointer h-full">
                         <CardContent className="flex items-center gap-4 p-6">
                             <div className="p-3 rounded-lg bg-primary/10">
@@ -122,7 +122,7 @@ export default async function DashboardPage() {
                             <TrendingUp className="h-5 w-5" />
                             Wissensstand
                         </CardTitle>
-                        <Link href="/quiz">
+                        <Link href="/learn/quiz">
                             <Button variant="ghost" size="sm">
                                 Alle anzeigen <ArrowRight className="h-4 w-4 ml-1" />
                             </Button>
@@ -154,7 +154,7 @@ export default async function DashboardPage() {
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between">
                         <CardTitle className="text-lg">Letzte Chat-Sessions</CardTitle>
-                        <Link href="/chat">
+                        <Link href="/learn/chat">
                             <Button variant="ghost" size="sm">
                                 Alle anzeigen <ArrowRight className="h-4 w-4 ml-1" />
                             </Button>
@@ -189,7 +189,7 @@ export default async function DashboardPage() {
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between">
                         <CardTitle className="text-lg">Verfügbare Quizze</CardTitle>
-                        <Link href="/quiz">
+                        <Link href="/learn/quiz">
                             <Button variant="ghost" size="sm">
                                 Alle anzeigen <ArrowRight className="h-4 w-4 ml-1" />
                             </Button>
@@ -208,7 +208,7 @@ export default async function DashboardPage() {
                                         className="flex items-center justify-between text-sm"
                                     >
                                         <Link
-                                            href={`/quiz/${quiz.id}`}
+                                            href={`/learn/quiz/${quiz.id}`}
                                             className="truncate hover:underline"
                                         >
                                             {quiz.title}

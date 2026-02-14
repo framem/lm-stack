@@ -12,7 +12,7 @@ export default function ChatPage() {
     const handleSessionCreated = useCallback(
         (newSessionId: string) => {
             // Update URL silently without triggering a re-render / remount
-            window.history.replaceState(null, '', `/chat?sessionId=${newSessionId}`)
+            window.history.replaceState(null, '', `/learn/chat?sessionId=${newSessionId}`)
             // Notify sidebar to refresh its session list
             window.dispatchEvent(new CustomEvent('session-created'))
         },

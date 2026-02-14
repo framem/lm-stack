@@ -1,11 +1,19 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { HelpCircle, Loader2, FileText, TrendingUp } from 'lucide-react'
+import { HelpCircle, Loader2, FileText, TrendingUp, Plus } from 'lucide-react'
 import { Card, CardContent } from '@/src/components/ui/card'
 import { Button } from '@/src/components/ui/button'
 import { Progress } from '@/src/components/ui/progress'
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+} from '@/src/components/ui/dialog'
 import { QuizCard } from '@/src/components/QuizCard'
 import { getQuizzes, generateQuiz, deleteQuiz, getDocumentProgress } from '@/src/actions/quiz'
 import { getDocuments } from '@/src/actions/documents'
@@ -78,6 +86,7 @@ export default function QuizPage() {
     const [quizzes, setQuizzes] = useState<Quiz[]>([])
     const [progress, setProgress] = useState<DocumentProgressItem[]>([])
     const [loading, setLoading] = useState(true)
+    const [dialogOpen, setDialogOpen] = useState(false)
     const [selectedDocId, setSelectedDocId] = useState(searchParams.get('documentId') ?? '')
     const [generating, setGenerating] = useState(false)
     const [questionCount, setQuestionCount] = useState(5)
@@ -116,7 +125,7 @@ export default function QuizPage() {
         setGenerating(true)
         try {
             const { quizId } = await generateQuiz(selectedDocId, questionCount, questionTypes)
-            router.push(`/quiz/${quizId}`)
+            router.push(`/learn/quiz/${quizId}`)
         } catch (error) {
             console.error('Quiz generation failed:', error)
             alert(error instanceof Error ? error.message : 'Fehler bei der Quiz-Erstellung')
@@ -145,90 +154,60 @@ export default function QuizPage() {
         )
     }
 
+    const hasDocuments = documents.length > 0
+    const hasQuizzes = quizzes.length > 0
+    const isEmpty = !hasQuizzes && progress.length === 0
+
     return (
         <div className="p-6 max-w-4xl mx-auto space-y-8">
-            <div>
-                <h1 className="text-2xl font-bold flex items-center gap-2">
-                    <HelpCircle className="h-6 w-6" />
-                    Quiz
-                </h1>
-                <p className="text-muted-foreground mt-1">
-                    Erstelle Quizze aus deinen Dokumenten und teste dein Wissen.
-                </p>
+            {/* Header */}
+            <div className="flex items-start justify-between">
+                <div>
+                    <h1 className="text-2xl font-bold flex items-center gap-2">
+                        <HelpCircle className="h-6 w-6" />
+                        Quiz
+                    </h1>
+                    <p className="text-muted-foreground mt-1">
+                        {hasQuizzes
+                            ? `${quizzes.length} Quiz${quizzes.length !== 1 ? 'ze' : ''} vorhanden`
+                            : 'Erstelle Quizze aus deinen Dokumenten und teste dein Wissen.'}
+                    </p>
+                </div>
+                {hasDocuments && (
+                    <Button onClick={() => setDialogOpen(true)}>
+                        <Plus className="h-4 w-4" />
+                        Erstellen
+                    </Button>
+                )}
             </div>
 
-            {/* Generate new quiz */}
-            <section className="space-y-4">
-                <h2 className="text-lg font-semibold">Neues Quiz erstellen</h2>
-                {documents.length === 0 ? (
-                    <Card>
-                        <CardContent className="flex flex-col items-center justify-center py-8 text-center">
-                            <FileText className="h-12 w-12 text-muted-foreground mb-4" />
-                            <p className="text-muted-foreground">
-                                Keine Dokumente vorhanden. Lade zuerst ein Dokument hoch.
+            {/* Empty state */}
+            {isEmpty && (
+                hasDocuments ? (
+                    <div className="text-center py-16 space-y-4">
+                        <HelpCircle className="h-16 w-16 mx-auto text-muted-foreground/50" />
+                        <div>
+                            <p className="text-lg font-medium">Noch keine Quizze</p>
+                            <p className="text-muted-foreground mt-1">
+                                Erstelle dein erstes Quiz, um dein Wissen zu testen.
                             </p>
-                        </CardContent>
-                    </Card>
+                        </div>
+                    </div>
                 ) : (
-                    <Card>
-                        <CardContent className="space-y-4 pt-6">
-                            {/* Document select */}
-                            <div className="space-y-1.5">
-                                <label className="text-sm font-medium">Dokument</label>
-                                <select
-                                    value={selectedDocId}
-                                    onChange={(e) => setSelectedDocId(e.target.value)}
-                                    className="w-full border rounded-md px-3 py-2 text-sm bg-background"
-                                >
-                                    <option disabled value="">Dokument auswählen…</option>
-                                    {documents.map((doc) => (
-                                        <option key={doc.id} value={doc.id}>{doc.title}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            {/* Settings row */}
-                            <div className="flex items-center gap-6 flex-wrap">
-                                <div className="flex items-center gap-2">
-                                    <label className="text-sm text-muted-foreground">Anzahl Fragen:</label>
-                                    <select
-                                        value={questionCount}
-                                        onChange={(e) => setQuestionCount(Number(e.target.value))}
-                                        className="border rounded-md px-2 py-1 text-sm bg-background"
-                                    >
-                                        {[3, 5, 10, 15, 20].map((n) => (
-                                            <option key={n} value={n}>{n}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    <span className="text-sm text-muted-foreground">Fragetypen:</span>
-                                    {QUESTION_TYPES.map((type) => (
-                                        <label key={type.value} className="flex items-center gap-1.5 text-sm cursor-pointer">
-                                            <input
-                                                type="checkbox"
-                                                checked={questionTypes.includes(type.value)}
-                                                onChange={() => toggleQuestionType(type.value)}
-                                                className="rounded border-input"
-                                            />
-                                            <span className="text-muted-foreground">{type.label}</span>
-                                        </label>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Generate button */}
-                            <Button
-                                onClick={handleGenerate}
-                                disabled={!selectedDocId || generating || questionTypes.length === 0}
-                            >
-                                {generating && <Loader2 className="h-4 w-4 animate-spin" />}
-                                Quiz generieren
-                            </Button>
-                        </CardContent>
-                    </Card>
-                )}
-            </section>
+                    <div className="text-center py-16 space-y-4">
+                        <FileText className="h-16 w-16 mx-auto text-muted-foreground/50" />
+                        <div>
+                            <p className="text-lg font-medium">Keine Dokumente vorhanden</p>
+                            <p className="text-muted-foreground mt-1">
+                                <Link href="/learn/documents" className="text-primary underline underline-offset-4 hover:text-primary/80">
+                                    Lade zuerst ein Dokument hoch
+                                </Link>
+                                , um Quizze erstellen zu können.
+                            </p>
+                        </div>
+                    </div>
+                )
+            )}
 
             {/* Knowledge progress per document */}
             {progress.length > 0 && (
@@ -266,7 +245,7 @@ export default function QuizPage() {
             )}
 
             {/* Existing quizzes */}
-            {quizzes.length > 0 && (
+            {hasQuizzes && (
                 <section className="space-y-4">
                     <h2 className="text-lg font-semibold">Vorhandene Quizze</h2>
                     <div className="grid gap-4 sm:grid-cols-2">
@@ -290,6 +269,78 @@ export default function QuizPage() {
                     </div>
                 </section>
             )}
+
+            {/* Quiz creation dialog */}
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle>Quiz erstellen</DialogTitle>
+                        <DialogDescription>
+                            Wähle ein Dokument und konfiguriere deine Quiz-Einstellungen.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-5">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Dokument</label>
+                            <select
+                                value={selectedDocId}
+                                onChange={(e) => setSelectedDocId(e.target.value)}
+                                className="w-full border rounded-md px-3 py-2 text-sm bg-background"
+                            >
+                                <option disabled value="">Dokument auswählen…</option>
+                                {documents.map((doc) => (
+                                    <option key={doc.id} value={doc.id}>{doc.title}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Anzahl Fragen</label>
+                            <select
+                                value={questionCount}
+                                onChange={(e) => setQuestionCount(Number(e.target.value))}
+                                className="w-full border rounded-md px-3 py-2 text-sm bg-background"
+                            >
+                                {[3, 5, 10, 15, 20].map((n) => (
+                                    <option key={n} value={n}>{n}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Fragetypen</label>
+                            <div className="space-y-2">
+                                {QUESTION_TYPES.map((type) => (
+                                    <label
+                                        key={type.value}
+                                        className="flex items-center gap-2.5 text-sm cursor-pointer"
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            checked={questionTypes.includes(type.value)}
+                                            onChange={() => toggleQuestionType(type.value)}
+                                            className="rounded border-input"
+                                        />
+                                        <span>{type.label}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="pt-2">
+                        <Button
+                            onClick={handleGenerate}
+                            disabled={!selectedDocId || generating || questionTypes.length === 0}
+                            className="w-full"
+                        >
+                            {generating && <Loader2 className="h-4 w-4 animate-spin" />}
+                            Quiz generieren
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }

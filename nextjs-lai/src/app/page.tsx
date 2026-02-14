@@ -47,7 +47,7 @@ const features = [
     title: "Dokumente verwalten",
     description:
       "Lade PDFs, DOCX oder Markdown hoch und organisiere deine Lernmaterialien an einem Ort.",
-    href: "/documents",
+    href: "/learn/documents",
     accent: "blue" as const,
   },
   {
@@ -55,7 +55,7 @@ const features = [
     title: "KI-Chat mit Quellenangaben",
     description:
       "Stelle Fragen zu deinen Dokumenten und erhalte verifizierte Antworten mit Quellenangaben.",
-    href: "/chat",
+    href: "/learn/chat",
     accent: "orange" as const,
   },
   {
@@ -63,7 +63,7 @@ const features = [
     title: "Quiz & Wissensstand",
     description:
       "Teste dein Wissen mit automatisch generierten Quizfragen und verfolge deinen Fortschritt.",
-    href: "/quiz",
+    href: "/learn/quiz",
     accent: "blue" as const,
   },
 ];
@@ -84,7 +84,7 @@ export default function LandingPage() {
             <span className="text-lg font-bold">LAI</span>
           </Link>
           <Button size="sm" asChild>
-            <Link href="/chat">Jetzt starten</Link>
+            <Link href="/learn/chat">Jetzt starten</Link>
           </Button>
         </div>
       </header>
@@ -136,7 +136,7 @@ export default function LandingPage() {
               className="mt-8 flex flex-wrap items-center gap-3"
             >
               <Button size="lg" asChild>
-                <Link href="/chat">Jetzt starten</Link>
+                <Link href="/learn/chat">Jetzt starten</Link>
               </Button>
               <Button variant="outline" size="lg" asChild>
                 <Link href="#workflow">Mehr erfahren</Link>
@@ -266,7 +266,7 @@ export default function LandingPage() {
             Lade deine Dokumente hoch und starte sofort mit dem Lernen.
           </p>
           <Button size="lg" className="mt-8" asChild>
-            <Link href="/chat">Jetzt starten</Link>
+            <Link href="/learn/chat">Jetzt starten</Link>
           </Button>
         </motion.div>
       </section>

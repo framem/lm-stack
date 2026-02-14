@@ -51,10 +51,10 @@ interface SessionItem {
 
 // Main navigation items (without Chat — handled separately)
 const navItems = [
-    { href: '/', label: 'Dashboard', icon: Home },
-    { href: '/documents', label: 'Dokumente', icon: FileText },
-    { href: '/quiz', label: 'Quiz', icon: HelpCircle },
-    { href: '/admin', label: 'Admin', icon: Settings },
+    { href: '/learn', label: 'Dashboard', icon: Home },
+    { href: '/learn/documents', label: 'Dokumente', icon: FileText },
+    { href: '/learn/quiz', label: 'Quiz', icon: HelpCircle },
+    { href: '/learn/admin', label: 'Admin', icon: Settings },
 ]
 
 export function AppSidebar() {
@@ -69,7 +69,7 @@ export function AppSidebar() {
         setSessions((prev) => prev.filter((s) => s.id !== sessionId))
         // If the user is viewing the deleted session, redirect to a fresh chat
         if (activeSessionId === sessionId) {
-            router.push('/chat')
+            router.push('/learn/chat')
         }
     }
 
@@ -93,7 +93,7 @@ export function AppSidebar() {
         return () => window.removeEventListener('session-created', fetchSessions)
     }, [])
 
-    const isChatActive = pathname.startsWith('/chat')
+    const isChatActive = pathname.startsWith('/learn/chat')
 
     return (
         <SidebarRoot collapsible="icon">
@@ -101,7 +101,7 @@ export function AppSidebar() {
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton size="lg" asChild>
-                            <Link href="/">
+                            <Link href="/learn">
                                 <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                                     <Image src="/images/fox.png" alt="Fox Logo" width={48} height={48} />
                                 </div>
@@ -126,7 +126,7 @@ export function AppSidebar() {
                             {navItems.map((item) => {
                                 const isActive =
                                     pathname === item.href ||
-                                    (item.href !== '/' && pathname.startsWith(item.href))
+                                    (item.href !== '/learn' && pathname.startsWith(item.href))
                                 return (
                                     <SidebarMenuItem key={item.href}>
                                         <SidebarMenuButton
@@ -164,7 +164,7 @@ export function AppSidebar() {
                                         <SidebarMenuSub>
                                             <SidebarMenuSubItem>
                                                 <SidebarMenuSubButton asChild>
-                                                    <Link href="/chat">
+                                                    <Link href="/learn/chat">
                                                         <Plus className="size-3" />
                                                         <span>Neuer Chat</span>
                                                     </Link>
@@ -184,7 +184,7 @@ export function AppSidebar() {
                                                             asChild
                                                             isActive={activeSessionId === session.id}
                                                         >
-                                                            <Link href={`/chat?sessionId=${session.id}`}>
+                                                            <Link href={`/learn/chat?sessionId=${session.id}`}>
                                                                 <span className="truncate pr-5">
                                                                     {session.title || 'Unbenannter Chat'}
                                                                 </span>
