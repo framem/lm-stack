@@ -3,16 +3,17 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from "next/image";
-import { usePathname, useSearchParams } from 'next/navigation'
+import { usePathname, useSearchParams, useRouter } from 'next/navigation'
 import {
-    BookOpen,
     ChevronRight,
+    Ellipsis,
     FileText,
     HelpCircle,
     Home,
     MessageSquare,
     Plus,
     Settings,
+    Trash2,
 } from 'lucide-react'
 import {
     Sidebar as SidebarRoot,
@@ -35,7 +36,13 @@ import {
     CollapsibleContent,
     CollapsibleTrigger,
 } from '@/src/components/ui/collapsible'
-import { getSessions } from '@/src/actions/chat'
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/src/components/ui/dropdown-menu'
+import { getSessions, deleteSession } from '@/src/actions/chat'
 
 interface SessionItem {
     id: string
@@ -53,20 +60,37 @@ const navItems = [
 export function AppSidebar() {
     const pathname = usePathname()
     const searchParams = useSearchParams()
+    const router = useRouter()
     const activeSessionId = searchParams.get('sessionId')
     const [sessions, setSessions] = useState<SessionItem[]>([])
 
+    async function handleDelete(sessionId: string) {
+        await deleteSession(sessionId)
+        setSessions((prev) => prev.filter((s) => s.id !== sessionId))
+        // If the user is viewing the deleted session, redirect to a fresh chat
+        if (activeSessionId === sessionId) {
+            router.push('/chat')
+        }
+    }
+
+    // Fetch sessions on mount and whenever a new session is created
     useEffect(() => {
-        getSessions()
-            .then((data) =>
-                setSessions(
-                    (data as unknown as SessionItem[]).map((s) => ({
-                        id: s.id,
-                        title: s.title,
-                    }))
+        function fetchSessions() {
+            getSessions()
+                .then((data) =>
+                    setSessions(
+                        (data as unknown as SessionItem[]).map((s) => ({
+                            id: s.id,
+                            title: s.title,
+                        }))
+                    )
                 )
-            )
-            .catch(() => {})
+                .catch(() => {})
+        }
+
+        fetchSessions()
+        window.addEventListener('session-created', fetchSessions)
+        return () => window.removeEventListener('session-created', fetchSessions)
     }, [])
 
     const isChatActive = pathname.startsWith('/chat')
@@ -155,17 +179,36 @@ export function AppSidebar() {
                                                 </SidebarMenuSubItem>
                                             ) : (
                                                 sessions.map((session) => (
-                                                    <SidebarMenuSubItem key={session.id}>
+                                                    <SidebarMenuSubItem key={session.id} className="group/session relative">
                                                         <SidebarMenuSubButton
                                                             asChild
                                                             isActive={activeSessionId === session.id}
                                                         >
                                                             <Link href={`/chat?sessionId=${session.id}`}>
-                                                                <span className="truncate">
+                                                                <span className="truncate pr-5">
                                                                     {session.title || 'Unbenannter Chat'}
                                                                 </span>
                                                             </Link>
                                                         </SidebarMenuSubButton>
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild>
+                                                                <button
+                                                                    type="button"
+                                                                    className="absolute right-1 top-1/2 -translate-y-1/2 rounded p-0.5 opacity-0 transition-opacity hover:bg-accent group-hover/session:opacity-100 data-[state=open]:opacity-100"
+                                                                >
+                                                                    <Ellipsis className="size-3.5 text-muted-foreground" />
+                                                                </button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent side="right" align="start">
+                                                                <DropdownMenuItem
+                                                                    variant="destructive"
+                                                                    onClick={() => handleDelete(session.id)}
+                                                                >
+                                                                    <Trash2 />
+                                                                    <span>Löschen</span>
+                                                                </DropdownMenuItem>
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
                                                     </SidebarMenuSubItem>
                                                 ))
                                             )}
