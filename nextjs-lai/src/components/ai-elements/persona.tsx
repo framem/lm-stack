@@ -253,16 +253,22 @@ export const Persona: FC<PersonaProps> = memo(
     const asleepInput = useStateMachineInput(rive, stateMachine, "asleep");
 
     useEffect(() => {
+      // Rive StateMachineInput `.value` is the intended API for controlling
+      // Rive animations — this is external system interaction, not React state mutation.
       if (listeningInput) {
+        // eslint-disable-next-line react-hooks/immutability -- Rive external mutable input
         listeningInput.value = state === "listening";
       }
       if (thinkingInput) {
+        // eslint-disable-next-line react-hooks/immutability -- Rive external mutable input
         thinkingInput.value = state === "thinking";
       }
       if (speakingInput) {
+        // eslint-disable-next-line react-hooks/immutability -- Rive external mutable input
         speakingInput.value = state === "speaking";
       }
       if (asleepInput) {
+        // eslint-disable-next-line react-hooks/immutability -- Rive external mutable input
         asleepInput.value = state === "asleep";
       }
     }, [state, listeningInput, thinkingInput, speakingInput, asleepInput]);

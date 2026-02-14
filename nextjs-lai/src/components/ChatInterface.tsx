@@ -340,7 +340,6 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
                                                         {message.role === 'user' ? (
                                                             <p className="whitespace-pre-wrap">{displayText}</p>
                                                         ) : (
-                                                            // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
                                                             <div onClick={(e) => {
                                                                 const anchor = (e.target as HTMLElement).closest('a')
                                                                 const href = anchor?.getAttribute('href')
@@ -479,7 +478,6 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
             {activeSource && (
                 <>
                     {/* Backdrop for small screens */}
-                    {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
                     <div
                         className="fixed inset-0 z-40 bg-black/40 lg:hidden"
                         onClick={() => setActiveSource(null)}

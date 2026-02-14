@@ -21,7 +21,6 @@ import {
     generateMcQuestions,
     generateFreetextQuestions,
     generateTruefalseQuestions,
-    MAX_CONTEXT_CHARS,
     type QuestionToSave,
 } from '@/src/lib/quiz-generation'
 

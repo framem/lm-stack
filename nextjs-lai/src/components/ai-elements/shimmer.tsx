@@ -24,6 +24,9 @@ const getMotionComponent = (element: keyof JSX.IntrinsicElements) => {
   return component;
 };
 
+// Pre-resolve the default motion component outside any render function
+const DefaultMotionComponent = getMotionComponent("p");
+
 export interface TextShimmerProps {
   children: string;
   as?: ElementType;
@@ -39,9 +42,11 @@ const ShimmerComponent = ({
   duration = 2,
   spread = 2,
 }: TextShimmerProps) => {
-  const MotionComponent = getMotionComponent(
-    Component as keyof JSX.IntrinsicElements
-  );
+  // Resolved from module-level cache; same element always returns the same component instance
+  const MotionComponent =
+    Component === "p"
+      ? DefaultMotionComponent
+      : getMotionComponent(Component as keyof JSX.IntrinsicElements);
 
   const dynamicSpread = useMemo(
     () => (children?.length ?? 0) * spread,
@@ -49,6 +54,7 @@ const ShimmerComponent = ({
   );
 
   return (
+    // eslint-disable-next-line react-hooks/static-components -- motion component is resolved from module-level cache, not created fresh
     <MotionComponent
       animate={{ backgroundPosition: "0% center" }}
       className={cn(

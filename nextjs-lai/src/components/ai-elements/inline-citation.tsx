@@ -164,8 +164,11 @@ export const InlineCitationCarouselIndex = ({
       return;
     }
 
-    setCount(api.scrollSnapList().length);
-    setCurrent(api.selectedScrollSnap() + 1);
+    // Initialize from carousel API via microtask to avoid synchronous setState in effect
+    queueMicrotask(() => {
+      setCount(api.scrollSnapList().length);
+      setCurrent(api.selectedScrollSnap() + 1);
+    });
 
     const handleSelect = () => {
       setCurrent(api.selectedScrollSnap() + 1);

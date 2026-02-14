@@ -7,7 +7,6 @@ import { FileText, MessageSquare, HelpCircle } from "lucide-react";
 
 import { Button } from "@/src/components/ui/button";
 import { Badge } from "@/src/components/ui/badge";
-import { Separator } from "@/src/components/ui/separator";
 import { LaiWorkflow } from "@/src/components/landing/LaiWorkflow";
 import { FeatureCard } from "@/src/components/landing/FeatureCard";
 

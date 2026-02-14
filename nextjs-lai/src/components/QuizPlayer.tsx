@@ -46,7 +46,7 @@ const TYPE_LABELS: Record<string, string> = {
     truefalse: 'Wahr/Falsch',
 }
 
-export function QuizPlayer({ quizId, quizTitle, questions, onComplete }: QuizPlayerProps) {
+export function QuizPlayer({ quizTitle, questions, onComplete }: QuizPlayerProps) {
     const [currentIndex, setCurrentIndex] = useState(0)
     const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
     const [freeTextAnswer, setFreeTextAnswer] = useState('')
