@@ -11,3 +11,4 @@ node_modules
 **/dist
 
 **/.claude
+**/__pycache__
