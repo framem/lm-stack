@@ -6,6 +6,7 @@ import { useChat } from '@ai-sdk/react'
 import { z } from 'zod'
 import { BookOpen, FileText, X, Loader2, ChevronDown, CornerDownLeft } from 'lucide-react'
 import { getSession } from '@/src/actions/chat'
+import { getDocuments } from '@/src/actions/documents'
 
 import {
     Conversation,
@@ -24,6 +25,11 @@ import {
     PromptInputFooter,
     PromptInputTools,
     PromptInputButton,
+    PromptInputSelect,
+    PromptInputSelectTrigger,
+    PromptInputSelectContent,
+    PromptInputSelectItem,
+    PromptInputSelectValue,
     PromptInputTextarea,
     PromptInputSubmit,
     type PromptInputMessage,
@@ -33,6 +39,11 @@ import {
     SourcesTrigger,
     SourcesContent,
 } from '@/src/components/ai-elements/sources'
+import {
+    Reasoning,
+    ReasoningContent,
+    ReasoningTrigger,
+} from '@/src/components/ai-elements/reasoning'
 import { Shimmer } from '@/src/components/ai-elements/shimmer'
 
 interface ChatInterfaceProps {
@@ -88,6 +99,40 @@ function prettifyTitle(raw: string): string {
         .replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
+// Extract <think>...</think> blocks from text, returning reasoning and cleaned text
+function extractThinkBlocks(text: string): { reasoning: string; text: string; isThinking: boolean } {
+    const completed = [...text.matchAll(/<think>([\s\S]*?)<\/think>/g)]
+    const parts = completed.map(m => m[1].trim())
+
+    // Check for unclosed <think> tag (still streaming reasoning)
+    const lastOpen = text.lastIndexOf('<think>')
+    const lastClose = text.lastIndexOf('</think>')
+    const isThinking = lastOpen !== -1 && lastOpen > lastClose
+
+    if (isThinking) {
+        parts.push(text.slice(lastOpen + 7).trim())
+    }
+
+    // Strip think blocks from text
+    let cleaned = text.replace(/<think>[\s\S]*?<\/think>/g, '')
+    if (isThinking) {
+        cleaned = cleaned.slice(0, cleaned.lastIndexOf('<think>'))
+    }
+
+    return { reasoning: parts.filter(Boolean).join('\n\n'), text: cleaned.trim(), isThinking }
+}
+
+// German localization for the Reasoning trigger
+const getGermanThinkingMessage = (isStreaming: boolean, duration?: number) => {
+    if (isStreaming || duration === 0) {
+        return <Shimmer duration={1}>Denkt nach...</Shimmer>
+    }
+    if (duration === undefined) {
+        return <p>Hat kurz nachgedacht</p>
+    }
+    return <p>{duration} Sekunden nachgedacht</p>
+}
+
 // Convert stored DB messages to UIMessage format for useChat initialMessages
 function storedToUIMessages(stored: StoredMessage[]): ChatMessage[] {
     return stored.map((msg) => ({
@@ -105,6 +150,20 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
     const [loadingSession, setLoadingSession] = useState(!!sessionId)
     const sessionCreatedRef = useRef(false)
 
+    const [selectedDocumentId, setSelectedDocumentId] = useState(documentId ?? 'all')
+    const selectedDocumentIdRef = useRef(selectedDocumentId)
+    const [documents, setDocuments] = useState<{ id: string; title: string }[]>([])
+
+    useEffect(() => {
+        selectedDocumentIdRef.current = selectedDocumentId
+    }, [selectedDocumentId])
+
+    useEffect(() => {
+        getDocuments().then((docs) =>
+            setDocuments(docs.map((d) => ({ id: d.id, title: d.title })))
+        ).catch(() => {})
+    }, [])
+
     const activeSessionIdRef = useRef(activeSessionId)
 
     useEffect(() => {
@@ -113,7 +172,10 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
 
     const transport = useMemo(() => new DefaultChatTransport({
         api: '/api/chat',
-        body: () => ({ sessionId: activeSessionIdRef.current, documentId }),
+        body: () => ({
+            sessionId: activeSessionIdRef.current,
+            documentId: selectedDocumentIdRef.current === 'all' ? undefined : selectedDocumentIdRef.current,
+        }),
         fetch: async (url, init) => {
             const response = await globalThis.fetch(url as string, init as RequestInit)
             const newSessionId = response.headers.get('X-Session-Id')
@@ -147,7 +209,7 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
             }
             return response
         },
-    }), [documentId, onSessionCreated])
+    }), [onSessionCreated])
 
     const { messages, sendMessage, status, setMessages, stop } = useChat<ChatMessage>({
         transport,
@@ -211,64 +273,103 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
                             />
                         )}
 
-                        {messages.map((message) => (
-                            <Fragment key={message.id}>
-                                {message.parts.map((part, i) => {
-                                    if (part.type === 'text') {
-                                        return (
-                                            <Message key={i} from={message.role}>
-                                                <MessageContent>
-                                                    {message.role === 'user' ? (
-                                                        <p className="whitespace-pre-wrap">{part.text}</p>
-                                                    ) : (
-                                                        // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
-                                                        <div onClick={(e) => {
-                                                            const anchor = (e.target as HTMLElement).closest('a')
-                                                            const href = anchor?.getAttribute('href')
-                                                            if (!href?.startsWith('#cite-')) return
-                                                            e.preventDefault()
-                                                            const idx = parseInt(href.slice(6))
-                                                            const src = message.metadata?.sources?.find((s) => s.index === idx)
-                                                            if (src) handleSourceClick(src)
-                                                        }}>
-                                                            <MessageResponse linkSafety={{ enabled: false }}>
-                                                                {linkifyCitations(part.text)}
-                                                            </MessageResponse>
-                                                        </div>
-                                                    )}
-                                                </MessageContent>
-                                            </Message>
-                                        )
-                                    }
-                                    return null
-                                })}
+                        {messages.map((message, msgIdx) => {
+                            const isLastMessage = msgIdx === messages.length - 1
 
-                                {message.role === 'assistant' && message.metadata?.sources && message.metadata.sources.length > 0 && (
-                                    <Sources>
-                                        <SourcesTrigger count={message.metadata.sources.length}>
-                                            <p className="font-medium">{message.metadata.sources.length} Quellen verwendet</p>
-                                            <ChevronDown className="h-4 w-4" />
-                                        </SourcesTrigger>
-                                        <SourcesContent>
-                                            {message.metadata.sources.map((src) => (
-                                                <button
-                                                    key={src.chunkId}
-                                                    type="button"
-                                                    className="flex items-center gap-2 text-left cursor-pointer hover:underline"
-                                                    onClick={() => handleSourceClick(src)}
-                                                >
-                                                    <FileText className="h-4 w-4 flex-shrink-0" />
-                                                    <span className="font-medium">{prettifyTitle(src.documentTitle)}</span>
-                                                    {src.pageNumber != null && (
-                                                        <span className="text-muted-foreground">S.{src.pageNumber}</span>
-                                                    )}
-                                                </button>
-                                            ))}
-                                        </SourcesContent>
-                                    </Sources>
-                                )}
-                            </Fragment>
-                        ))}
+                            // Collect reasoning from native parts and <think> blocks in text
+                            let reasoningText = ''
+                            let hasPartialThink = false
+                            if (message.role === 'assistant') {
+                                const chunks: string[] = []
+                                for (const part of message.parts) {
+                                    if (part.type === 'reasoning') {
+                                        chunks.push(part.text)
+                                    } else if (part.type === 'text') {
+                                        const parsed = extractThinkBlocks(part.text)
+                                        if (parsed.reasoning) chunks.push(parsed.reasoning)
+                                        if (parsed.isThinking) hasPartialThink = true
+                                    }
+                                }
+                                reasoningText = chunks.filter(Boolean).join('\n\n')
+                            }
+
+                            const lastPart = message.parts.at(-1)
+                            const isReasoningStreaming = isLastMessage && isLoading && (
+                                lastPart?.type === 'reasoning' || hasPartialThink
+                            )
+
+                            return (
+                                <Fragment key={message.id}>
+                                    {reasoningText && (
+                                        <Reasoning isStreaming={isReasoningStreaming}>
+                                            <ReasoningTrigger getThinkingMessage={getGermanThinkingMessage} />
+                                            <ReasoningContent>{reasoningText}</ReasoningContent>
+                                        </Reasoning>
+                                    )}
+
+                                    {message.parts.map((part, i) => {
+                                        if (part.type === 'reasoning') return null
+                                        if (part.type === 'text') {
+                                            const displayText = message.role === 'assistant'
+                                                ? extractThinkBlocks(part.text).text
+                                                : part.text
+                                            if (!displayText) return null
+
+                                            return (
+                                                <Message key={i} from={message.role}>
+                                                    <MessageContent>
+                                                        {message.role === 'user' ? (
+                                                            <p className="whitespace-pre-wrap">{displayText}</p>
+                                                        ) : (
+                                                            // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
+                                                            <div onClick={(e) => {
+                                                                const anchor = (e.target as HTMLElement).closest('a')
+                                                                const href = anchor?.getAttribute('href')
+                                                                if (!href?.startsWith('#cite-')) return
+                                                                e.preventDefault()
+                                                                const idx = parseInt(href.slice(6))
+                                                                const src = message.metadata?.sources?.find((s) => s.index === idx)
+                                                                if (src) handleSourceClick(src)
+                                                            }}>
+                                                                <MessageResponse linkSafety={{ enabled: false }}>
+                                                                    {linkifyCitations(displayText)}
+                                                                </MessageResponse>
+                                                            </div>
+                                                        )}
+                                                    </MessageContent>
+                                                </Message>
+                                            )
+                                        }
+                                        return null
+                                    })}
+
+                                    {message.role === 'assistant' && message.metadata?.sources && message.metadata.sources.length > 0 && (
+                                        <Sources>
+                                            <SourcesTrigger count={message.metadata.sources.length}>
+                                                <p className="font-medium">{message.metadata.sources.length} Quellen verwendet</p>
+                                                <ChevronDown className="h-4 w-4" />
+                                            </SourcesTrigger>
+                                            <SourcesContent>
+                                                {message.metadata.sources.map((src) => (
+                                                    <button
+                                                        key={src.chunkId}
+                                                        type="button"
+                                                        className="flex items-center gap-2 text-left cursor-pointer hover:underline"
+                                                        onClick={() => handleSourceClick(src)}
+                                                    >
+                                                        <FileText className="h-4 w-4 flex-shrink-0" />
+                                                        <span className="font-medium">{prettifyTitle(src.documentTitle)}</span>
+                                                        {src.pageNumber != null && (
+                                                            <span className="text-muted-foreground">S.{src.pageNumber}</span>
+                                                        )}
+                                                    </button>
+                                                ))}
+                                            </SourcesContent>
+                                        </Sources>
+                                    )}
+                                </Fragment>
+                            )
+                        })}
 
                         {isLoading && messages[messages.length - 1]?.role === 'user' && (
                             <Shimmer>Denke nach...</Shimmer>
@@ -285,6 +386,20 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
                         </PromptInputBody>
                         <PromptInputFooter>
                             <PromptInputTools>
+                                <PromptInputSelect value={selectedDocumentId} onValueChange={setSelectedDocumentId}>
+                                    <PromptInputSelectTrigger>
+                                        <FileText className="size-3.5" />
+                                        <PromptInputSelectValue placeholder="Alle Dokumente" />
+                                    </PromptInputSelectTrigger>
+                                    <PromptInputSelectContent>
+                                        <PromptInputSelectItem value="all">Alle Dokumente</PromptInputSelectItem>
+                                        {documents.map((doc) => (
+                                            <PromptInputSelectItem key={doc.id} value={doc.id}>
+                                                {doc.title}
+                                            </PromptInputSelectItem>
+                                        ))}
+                                    </PromptInputSelectContent>
+                                </PromptInputSelect>
                                 <PromptInputButton
                                     tooltip={{ content: 'Absenden', shortcut: '↵' }}
                                     variant="ghost"

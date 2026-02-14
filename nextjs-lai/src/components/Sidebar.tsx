@@ -12,6 +12,7 @@ import {
     Home,
     MessageSquare,
     Plus,
+    Settings,
 } from 'lucide-react'
 import {
     Sidebar as SidebarRoot,
@@ -46,6 +47,7 @@ const navItems = [
     { href: '/', label: 'Dashboard', icon: Home },
     { href: '/documents', label: 'Dokumente', icon: FileText },
     { href: '/quiz', label: 'Quiz', icon: HelpCircle },
+    { href: '/admin', label: 'Admin', icon: Settings },
 ]
 
 export function AppSidebar() {
