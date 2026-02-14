@@ -13,7 +13,7 @@ export interface RetrievedContext {
 
 interface RetrieveOptions {
     topK?: number
-    documentId?: string
+    documentIds?: string[]
     threshold?: number
 }
 
@@ -22,13 +22,13 @@ export async function retrieveContext(
     query: string,
     options: RetrieveOptions = {}
 ): Promise<RetrievedContext[]> {
-    const { topK = 5, documentId, threshold = 0.5 } = options
+    const { topK = 5, documentIds, threshold = 0.5 } = options
 
     const embedding = await createEmbedding(query)
 
     const chunks = await findSimilarChunks(embedding, {
         topK,
-        documentId,
+        documentIds,
         threshold,
     })
 

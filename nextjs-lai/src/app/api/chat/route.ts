@@ -15,10 +15,10 @@ Kontext:
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json()
-        const { messages, sessionId, documentId } = body as {
+        const { messages, sessionId, documentIds } = body as {
             messages: UIMessage[]
             sessionId?: string
-            documentId?: string
+            documentIds?: string[]
         }
 
         if (!messages || messages.length === 0) {
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
         // Retrieve relevant context via RAG pipeline
         const contexts = await retrieveContext(userQuery, {
             topK: 5,
-            documentId: documentId ?? undefined,
+            documentIds: documentIds && documentIds.length > 0 ? documentIds : undefined,
         })
 
         const contextPrompt = buildContextPrompt(contexts)
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
         if (!activeSessionId) {
             const session = await createSession({
                 title: userQuery.slice(0, 100),
-                documentId: documentId ?? undefined,
+                documentId: documentIds?.length === 1 ? documentIds[0] : undefined,
             })
             activeSessionId = session.id
         }

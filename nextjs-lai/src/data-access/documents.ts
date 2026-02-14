@@ -101,12 +101,12 @@ export interface SimilarChunk {
 
 export async function findSimilarChunks(
     embedding: number[],
-    options: { topK?: number; documentId?: string; threshold?: number } = {}
+    options: { topK?: number; documentIds?: string[]; threshold?: number } = {}
 ): Promise<SimilarChunk[]> {
-    const { topK = 5, documentId, threshold = 0.8 } = options
+    const { topK = 5, documentIds, threshold = 0.8 } = options
     const vectorString = `[${embedding.join(',')}]`
 
-    if (documentId) {
+    if (documentIds && documentIds.length > 0) {
         return prisma.$queryRawUnsafe<SimilarChunk[]>(
             `SELECT c.id, c."documentId", d.title as "documentTitle",
                     c.content, c."chunkIndex", c."pageNumber", c."tokenCount",
@@ -114,14 +114,14 @@ export async function findSimilarChunks(
              FROM "DocumentChunk" c
              JOIN "Document" d ON d.id = c."documentId"
              WHERE c.embedding IS NOT NULL
-               AND c."documentId" = $4
+               AND c."documentId" = ANY($4::text[])
                AND (c.embedding <=> $1::vector) < $3
              ORDER BY c.embedding <=> $1::vector
              LIMIT $2`,
             vectorString,
             topK,
             threshold,
-            documentId
+            documentIds
         )
     }
 
