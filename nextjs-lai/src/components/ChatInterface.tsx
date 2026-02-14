@@ -4,9 +4,16 @@ import { Fragment, useState, useMemo, useEffect, useRef } from 'react'
 import { DefaultChatTransport, type UIMessage } from 'ai'
 import { useChat } from '@ai-sdk/react'
 import { z } from 'zod'
-import { BookOpen, FileText, X, Loader2, ChevronDown, CornerDownLeft, Check } from 'lucide-react'
+import { BookOpen, FileText, Loader2, ChevronDown, CornerDownLeft, Check } from 'lucide-react'
 import { getSession } from '@/src/actions/chat'
 import { getDocuments } from '@/src/actions/documents'
+import {
+    Sheet,
+    SheetContent,
+    SheetHeader,
+    SheetTitle,
+    SheetDescription,
+} from '@/src/components/ui/sheet'
 
 import {
     Conversation,
@@ -283,7 +290,7 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
             {/* Main chat area */}
             <div className="flex-1 flex flex-col min-w-0">
                 <Conversation className="flex-1">
-                    <ConversationContent>
+                    <ConversationContent className="max-w-3xl mx-auto w-full">
                         {messages.length === 0 && (
                             <ConversationEmptyState
                                 title="Lernassistent"
@@ -398,6 +405,7 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
 
                 {/* Input */}
                 <div className="border-t border-border p-4">
+                  <div className="max-w-3xl mx-auto w-full">
                     <PromptInput onSubmit={handleSubmit}>
                         <PromptInputBody>
                             <PromptInputTextarea placeholder="Stelle eine Frage zu deinen Dokumenten..." />
@@ -471,51 +479,38 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
                             <PromptInputSubmit status={status} onStop={stop} />
                         </PromptInputFooter>
                     </PromptInput>
+                  </div>
                 </div>
             </div>
 
-            {/* Source detail panel (right side) — only rendered when a source is selected */}
-            {activeSource && (
-                <>
-                    {/* Backdrop for small screens */}
-                    <div
-                        className="fixed inset-0 z-40 bg-black/40 lg:hidden"
-                        onClick={() => setActiveSource(null)}
-                    />
-                    <aside className="max-lg:fixed max-lg:inset-y-0 max-lg:right-0 max-lg:z-50 w-80 sm:w-96 border-l border-border bg-background text-foreground overflow-y-auto shadow-lg lg:shadow-none">
-                        <div className="p-4">
-                            <div className="flex items-start justify-between gap-2 mb-4">
-                                <div className="flex items-center gap-2 min-w-0">
-                                    <span className="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold">
-                                        {activeSource.index}
-                                    </span>
-                                    <div className="min-w-0">
-                                        <div className="flex items-center gap-1.5">
-                                            <FileText className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                                            <span className="text-sm font-medium truncate">{activeSource.documentTitle}</span>
-                                        </div>
-                                        {activeSource.pageNumber != null && (
-                                            <p className="text-xs text-muted-foreground mt-0.5">Seite {activeSource.pageNumber}</p>
-                                        )}
-                                    </div>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={() => setActiveSource(null)}
-                                    className="flex-shrink-0 p-1 rounded hover:bg-accent transition-colors text-muted-foreground"
-                                >
-                                    <X className="h-4 w-4" />
-                                </button>
-                            </div>
-                            <div className="rounded-lg border border-border bg-muted/50 p-4">
-                                <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                                    {activeSource.content || activeSource.snippet || 'Kein Inhalt verfügbar.'}
-                                </p>
+            {/* Source detail sheet (slides in from right) */}
+            <Sheet open={!!activeSource} onOpenChange={(open) => { if (!open) setActiveSource(null) }}>
+                <SheetContent side="right" className="overflow-y-auto sm:max-w-md">
+                    <SheetHeader>
+                        <div className="flex items-center gap-2">
+                            <span className="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold">
+                                {activeSource?.index}
+                            </span>
+                            <div className="min-w-0">
+                                <SheetTitle className="flex items-center gap-1.5 text-sm">
+                                    <FileText className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                                    <span className="truncate">{activeSource?.documentTitle}</span>
+                                </SheetTitle>
+                                {activeSource?.pageNumber != null && (
+                                    <SheetDescription>Seite {activeSource.pageNumber}</SheetDescription>
+                                )}
                             </div>
                         </div>
-                    </aside>
-                </>
-            )}
+                    </SheetHeader>
+                    <div className="px-4 pb-4">
+                        <div className="rounded-lg border border-border bg-muted/50 p-4">
+                            <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                                {activeSource?.content || activeSource?.snippet || 'Kein Inhalt verfügbar.'}
+                            </p>
+                        </div>
+                    </div>
+                </SheetContent>
+            </Sheet>
         </div>
     )
 }
