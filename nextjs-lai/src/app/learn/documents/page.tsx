@@ -178,13 +178,9 @@ export default function DocumentsPage() {
                     <div>
                         <p className="text-lg font-medium">Noch keine Dokumente</p>
                         <p className="text-muted-foreground mt-1">
-                            Erstelle dein erstes Dokument, um loszulegen.
+                            Lade dein erstes Dokument hoch, um loszulegen.
                         </p>
                     </div>
-                    <Button onClick={() => setUploadOpen(true)} size="lg">
-                        <Plus className="h-4 w-4" />
-                        Dokument anlegen
-                    </Button>
                 </div>
             ) : null}
 

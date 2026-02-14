@@ -30,7 +30,7 @@ export function QuizCard({ id, title, documentId, documentTitle, questionCount, 
                     <CardTitle className="text-lg truncate">{title}</CardTitle>
                 </div>
                 <CardDescription className="truncate">
-                    <Link href={`/documents/${documentId}`} className="hover:underline">
+                    <Link href={`/learn/documents/${documentId}`} className="hover:underline">
                         {documentTitle}
                     </Link>
                 </CardDescription>
@@ -61,10 +61,10 @@ export function QuizCard({ id, title, documentId, documentTitle, questionCount, 
             </CardContent>
             <CardFooter className="gap-2">
                 <Button asChild size="sm">
-                    <Link href={`/quiz/${id}`}>Quiz starten</Link>
+                    <Link href={`/learn/quiz/${id}`}>Quiz starten</Link>
                 </Button>
                 <Button asChild variant="outline" size="sm">
-                    <Link href={`/quiz/${id}/results`}>Ergebnisse</Link>
+                    <Link href={`/learn/quiz/${id}/results`}>Ergebnisse</Link>
                 </Button>
             </CardFooter>
         </Card>

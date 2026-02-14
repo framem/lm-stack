@@ -112,7 +112,7 @@ export default function QuizResultsPage({ params }: { params: Promise<{ id: stri
     return (
         <div className="p-6 max-w-2xl mx-auto space-y-4">
             <Button asChild variant="ghost" size="sm">
-                <Link href="/quiz">
+                <Link href="/learn/quiz">
                     <ArrowLeft className="h-4 w-4" />
                     Zurück zur Übersicht
                 </Link>
@@ -126,10 +126,10 @@ export default function QuizResultsPage({ params }: { params: Promise<{ id: stri
 
             <div className="flex gap-2">
                 <Button asChild>
-                    <Link href={`/quiz/${id}`}>Quiz wiederholen</Link>
+                    <Link href={`/learn/quiz/${id}`}>Quiz wiederholen</Link>
                 </Button>
                 <Button asChild variant="outline">
-                    <Link href="/quiz">Alle Quizze</Link>
+                    <Link href="/learn/quiz">Alle Quizze</Link>
                 </Button>
             </div>
         </div>

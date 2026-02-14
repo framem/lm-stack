@@ -39,8 +39,8 @@ export async function renameDocument(id: string, title: string) {
         throw new Error('Titel darf nicht leer sein.')
     }
     await patchDocument(id, { title: trimmed })
-    revalidatePath('/documents')
-    revalidatePath(`/documents/${id}`)
+    revalidatePath('/learn/documents')
+    revalidatePath(`/learn/documents/${id}`)
 }
 
 // Strip <think>...</think> blocks that some models (e.g. Qwen3) emit
@@ -81,6 +81,6 @@ export async function deleteDocument(id: string) {
         throw new Error('Dokument nicht gefunden.')
     }
     await removeDocument(id)
-    revalidatePath('/documents')
-    revalidatePath('/quiz')
+    revalidatePath('/learn/documents')
+    revalidatePath('/learn/quiz')
 }

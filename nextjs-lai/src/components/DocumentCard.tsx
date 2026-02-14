@@ -139,7 +139,7 @@ export function DocumentCard({ document, onDelete, onRename }: DocumentCardProps
                     ) : (
                         <>
                             <Link
-                                href={`/documents/${document.id}`}
+                                href={`/learn/documents/${document.id}`}
                                 className="group block min-w-0 flex-1"
                             >
                                 <p

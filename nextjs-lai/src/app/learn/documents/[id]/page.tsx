@@ -59,7 +59,7 @@ export default function DocumentDetailPage() {
         setDeleting(true)
         try {
             await deleteDocument(params.id)
-            router.push('/documents')
+            router.push('/learn/documents')
         } catch {
             setError('Löschen fehlgeschlagen.')
             setDeleting(false)
@@ -95,7 +95,7 @@ export default function DocumentDetailPage() {
         return (
             <div className="p-6 max-w-4xl mx-auto text-center space-y-4">
                 <p className="text-destructive">{error || 'Dokument nicht gefunden.'}</p>
-                <Button variant="outline" onClick={() => router.push('/documents')}>
+                <Button variant="outline" onClick={() => router.push('/learn/documents')}>
                     <ArrowLeft className="h-4 w-4" />
                     Zurück
                 </Button>
@@ -172,13 +172,13 @@ export default function DocumentDetailPage() {
             {/* Quick actions */}
             <div className="flex items-center gap-3">
                 <Button asChild>
-                    <Link href={`/chat?documentId=${params.id}`}>
+                    <Link href={`/learn/chat?documentId=${params.id}`}>
                         <MessageSquare className="h-4 w-4" />
                         Chat starten
                     </Link>
                 </Button>
                 <Button asChild variant="outline">
-                    <Link href={`/quiz?documentId=${params.id}`}>
+                    <Link href={`/learn/quiz?documentId=${params.id}`}>
                         <HelpCircle className="h-4 w-4" />
                         Quiz generieren
                     </Link>
