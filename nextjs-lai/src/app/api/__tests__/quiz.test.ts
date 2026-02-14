@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-// Mock dependencies before importing routes
+// Mock dependencies before importing server actions
 vi.mock('@/src/lib/llm', () => ({
     getModel: vi.fn(() => 'mock-model'),
 }))
@@ -39,6 +39,7 @@ vi.mock('@/src/data-access/quiz', () => ({
                         options: ['A', 'B', 'C', 'D'],
                         correctIndex: 0,
                         questionIndex: 0,
+                        questionType: 'mc',
                     },
                 ],
             })
@@ -53,6 +54,17 @@ vi.mock('@/src/data-access/quiz', () => ({
             questions: [{ id: 'q-1' }],
         },
     ])),
+    getQuizResults: vi.fn((id: string) => {
+        if (id === 'quiz-1') {
+            return Promise.resolve({
+                id: 'quiz-1',
+                title: 'Quiz: Test',
+                attempts: [],
+            })
+        }
+        return Promise.resolve(null)
+    }),
+    deleteQuiz: vi.fn(),
     recordAttempt: vi.fn(() => Promise.resolve({ id: 'att-1' })),
 }))
 
@@ -93,111 +105,93 @@ vi.mock('ai', () => ({
     })),
 }))
 
+vi.mock('next/cache', () => ({
+    revalidatePath: vi.fn(),
+}))
+
 beforeEach(() => {
     vi.clearAllMocks()
 })
 
-describe('GET /api/quiz', () => {
+describe('getQuizzes server action', () => {
     it('should return all quizzes', async () => {
-        const { GET } = await import('@/src/app/api/quiz/route')
+        const { getQuizzes } = await import('@/src/actions/quiz')
 
-        const response = await GET()
-        const data = await response.json()
+        const data = await getQuizzes()
 
-        expect(response.status).toBe(200)
         expect(data).toHaveLength(1)
         expect(data[0].id).toBe('quiz-1')
     })
 })
 
-describe('POST /api/quiz/generate', () => {
-    it('should return 400 when documentId is missing', async () => {
-        const { POST } = await import('@/src/app/api/quiz/generate/route')
-        const request = new Request('http://localhost/api/quiz/generate', {
-            method: 'POST',
-            body: JSON.stringify({}),
-            headers: { 'Content-Type': 'application/json' },
-        })
+describe('generateQuiz server action', () => {
+    it('should throw when documentId is missing', async () => {
+        const { generateQuiz } = await import('@/src/actions/quiz')
 
-        const response = await POST(request as any)
-
-        expect(response.status).toBe(400)
-        const data = await response.json()
-        expect(data.error).toBeDefined()
+        await expect(generateQuiz('', 5, ['mc'])).rejects.toThrow('Dokument-ID ist erforderlich.')
     })
 
-    it('should return 404 when document does not exist', async () => {
-        const { POST } = await import('@/src/app/api/quiz/generate/route')
-        const request = new Request('http://localhost/api/quiz/generate', {
-            method: 'POST',
-            body: JSON.stringify({ documentId: 'nonexistent' }),
-            headers: { 'Content-Type': 'application/json' },
-        })
+    it('should throw when document does not exist', async () => {
+        const { generateQuiz } = await import('@/src/actions/quiz')
 
-        const response = await POST(request as any)
-
-        expect(response.status).toBe(404)
+        await expect(generateQuiz('nonexistent', 5, ['mc'])).rejects.toThrow('Dokument nicht gefunden.')
     })
 
     it('should generate a quiz for a valid document', async () => {
-        const { POST } = await import('@/src/app/api/quiz/generate/route')
-        const request = new Request('http://localhost/api/quiz/generate', {
-            method: 'POST',
-            body: JSON.stringify({ documentId: 'doc-1', questionCount: 2 }),
-            headers: { 'Content-Type': 'application/json' },
-        })
+        const { generateQuiz } = await import('@/src/actions/quiz')
 
-        const response = await POST(request as any)
-        const data = await response.json()
+        const result = await generateQuiz('doc-1', 2, ['mc'])
 
-        expect(response.status).toBe(200)
-        expect(data.quizId).toBe('quiz-1')
+        expect(result.quizId).toBe('quiz-1')
     })
 })
 
-describe('GET /api/quiz/[id]', () => {
+describe('getQuiz server action', () => {
     it('should return quiz without correctIndex (cheat protection)', async () => {
-        const { GET } = await import('@/src/app/api/quiz/[id]/route')
-        const request = new Request('http://localhost/api/quiz/quiz-1')
+        const { getQuiz } = await import('@/src/actions/quiz')
 
-        const response = await GET(request as any, {
-            params: Promise.resolve({ id: 'quiz-1' }),
-        })
-        const data = await response.json()
+        const data = await getQuiz('quiz-1')
 
-        expect(response.status).toBe(200)
-        expect(data.id).toBe('quiz-1')
-        expect(data.questions).toHaveLength(1)
+        expect(data).not.toBeNull()
+        expect(data!.id).toBe('quiz-1')
+        expect(data!.questions).toHaveLength(1)
         // Cheat protection: correctIndex must NOT be in the response
-        expect(data.questions[0].correctIndex).toBeUndefined()
-        expect(data.questions[0].questionText).toBeDefined()
-        expect(data.questions[0].options).toBeDefined()
+        expect((data!.questions[0] as Record<string, unknown>).correctIndex).toBeUndefined()
+        expect(data!.questions[0].questionText).toBeDefined()
+        expect(data!.questions[0].options).toBeDefined()
     })
 
-    it('should return 404 for non-existent quiz', async () => {
-        const { GET } = await import('@/src/app/api/quiz/[id]/route')
-        const request = new Request('http://localhost/api/quiz/nonexistent')
+    it('should return null for non-existent quiz', async () => {
+        const { getQuiz } = await import('@/src/actions/quiz')
 
-        const response = await GET(request as any, {
-            params: Promise.resolve({ id: 'nonexistent' }),
-        })
+        const data = await getQuiz('nonexistent')
 
-        expect(response.status).toBe(404)
+        expect(data).toBeNull()
     })
 })
 
-describe('POST /api/quiz/evaluate', () => {
-    it('should return 400 when questionId is missing', async () => {
-        const { POST } = await import('@/src/app/api/quiz/evaluate/route')
-        const request = new Request('http://localhost/api/quiz/evaluate', {
-            method: 'POST',
-            body: JSON.stringify({ selectedIndex: 0 }),
-            headers: { 'Content-Type': 'application/json' },
-        })
+describe('deleteQuiz server action', () => {
+    it('should delete a quiz', async () => {
+        const { deleteQuiz: dbDeleteQuiz } = await import('@/src/data-access/quiz')
+        const { deleteQuiz } = await import('@/src/actions/quiz')
 
-        const response = await POST(request as any)
+        await deleteQuiz('quiz-1')
 
-        expect(response.status).toBe(400)
+        expect(dbDeleteQuiz).toHaveBeenCalledWith('quiz-1')
+    })
+
+    it('should throw for non-existent quiz', async () => {
+        const { deleteQuiz } = await import('@/src/actions/quiz')
+
+        await expect(deleteQuiz('nonexistent')).rejects.toThrow('Quiz nicht gefunden.')
+    })
+})
+
+describe('evaluateAnswer server action', () => {
+    it('should throw when questionId is missing', async () => {
+        const { evaluateAnswer } = await import('@/src/actions/quiz')
+
+        await expect(evaluateAnswer('', 0)).rejects.toThrow('Frage-ID ist erforderlich.')
     })
 
     it('should return correct result for a right answer', async () => {
@@ -206,23 +200,17 @@ describe('POST /api/quiz/evaluate', () => {
             questionText: 'Test question?',
             options: ['A', 'B', 'C', 'D'],
             correctIndex: 0,
+            correctAnswer: null,
             explanation: 'A is correct because...',
             sourceSnippet: 'Source text',
+            questionType: 'mc',
         })
 
-        const { POST } = await import('@/src/app/api/quiz/evaluate/route')
-        const request = new Request('http://localhost/api/quiz/evaluate', {
-            method: 'POST',
-            body: JSON.stringify({ questionId: 'q-1', selectedIndex: 0 }),
-            headers: { 'Content-Type': 'application/json' },
-        })
+        const { evaluateAnswer } = await import('@/src/actions/quiz')
+        const result = await evaluateAnswer('q-1', 0)
 
-        const response = await POST(request as any)
-        const data = await response.json()
-
-        expect(response.status).toBe(200)
-        expect(data.isCorrect).toBe(true)
-        expect(data.correctIndex).toBe(0)
+        expect(result.isCorrect).toBe(true)
+        expect(result.correctIndex).toBe(0)
     })
 
     it('should return explanation for a wrong answer via LLM', async () => {
@@ -231,38 +219,44 @@ describe('POST /api/quiz/evaluate', () => {
             questionText: 'Test question?',
             options: ['A', 'B', 'C', 'D'],
             correctIndex: 0,
+            correctAnswer: null,
             explanation: 'A is correct because...',
             sourceSnippet: 'Source text',
+            questionType: 'mc',
         })
 
-        const { POST } = await import('@/src/app/api/quiz/evaluate/route')
-        const request = new Request('http://localhost/api/quiz/evaluate', {
-            method: 'POST',
-            body: JSON.stringify({ questionId: 'q-1', selectedIndex: 2 }),
-            headers: { 'Content-Type': 'application/json' },
-        })
+        const { evaluateAnswer } = await import('@/src/actions/quiz')
+        const result = await evaluateAnswer('q-1', 2)
 
-        const response = await POST(request as any)
-        const data = await response.json()
-
-        expect(response.status).toBe(200)
-        expect(data.isCorrect).toBe(false)
-        expect(data.correctIndex).toBe(0)
-        expect(data.explanation).toBe('Die gewählte Antwort ist falsch, weil...')
+        expect(result.isCorrect).toBe(false)
+        expect(result.correctIndex).toBe(0)
+        expect(result.explanation).toBe('Die gewählte Antwort ist falsch, weil...')
     })
 
-    it('should return 404 for non-existent question', async () => {
+    it('should throw for non-existent question', async () => {
         mockQuizQuestion.findUnique.mockResolvedValue(null)
 
-        const { POST } = await import('@/src/app/api/quiz/evaluate/route')
-        const request = new Request('http://localhost/api/quiz/evaluate', {
-            method: 'POST',
-            body: JSON.stringify({ questionId: 'nonexistent', selectedIndex: 0 }),
-            headers: { 'Content-Type': 'application/json' },
-        })
+        const { evaluateAnswer } = await import('@/src/actions/quiz')
 
-        const response = await POST(request as any)
+        await expect(evaluateAnswer('nonexistent', 0)).rejects.toThrow('Frage nicht gefunden.')
+    })
+})
 
-        expect(response.status).toBe(404)
+describe('getQuizResults server action', () => {
+    it('should return quiz results', async () => {
+        const { getQuizResults } = await import('@/src/actions/quiz')
+
+        const data = await getQuizResults('quiz-1')
+
+        expect(data).not.toBeNull()
+        expect(data!.id).toBe('quiz-1')
+    })
+
+    it('should return null for non-existent quiz', async () => {
+        const { getQuizResults } = await import('@/src/actions/quiz')
+
+        const data = await getQuizResults('nonexistent')
+
+        expect(data).toBeNull()
     })
 })

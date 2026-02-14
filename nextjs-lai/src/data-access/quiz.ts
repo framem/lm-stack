@@ -53,13 +53,27 @@ export async function getQuizWithQuestions(quizId: string) {
     })
 }
 
-// Get all quizzes
+// Get all quizzes with latest attempt stats
 export async function getQuizzes() {
     return prisma.quiz.findMany({
         orderBy: { createdAt: 'desc' },
         include: {
             document: { select: { id: true, title: true } },
-            questions: { select: { id: true } },
+            questions: {
+                select: {
+                    id: true,
+                    questionType: true,
+                    attempts: {
+                        orderBy: { createdAt: 'desc' as const },
+                        take: 1,
+                        select: {
+                            isCorrect: true,
+                            freeTextScore: true,
+                            createdAt: true,
+                        },
+                    },
+                },
+            },
         },
     })
 }
@@ -101,6 +115,79 @@ export async function recordAttempt(
 // Delete a quiz by ID
 export async function deleteQuiz(id: string) {
     return prisma.quiz.delete({ where: { id } })
+}
+
+// Get knowledge progress per document (aggregated from quiz attempts)
+export async function getDocumentProgress() {
+    const documents = await prisma.document.findMany({
+        where: {
+            quizzes: {
+                some: {
+                    questions: {
+                        some: {
+                            attempts: { some: {} },
+                        },
+                    },
+                },
+            },
+        },
+        select: {
+            id: true,
+            title: true,
+            quizzes: {
+                select: {
+                    questions: {
+                        select: {
+                            id: true,
+                            questionType: true,
+                            attempts: {
+                                orderBy: { createdAt: 'desc' as const },
+                                take: 1,
+                                select: {
+                                    isCorrect: true,
+                                    freeTextScore: true,
+                                    createdAt: true,
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    })
+
+    return documents.map((doc) => {
+        const questions = doc.quizzes.flatMap((q) => q.questions)
+        const answered = questions.filter((q) => q.attempts.length > 0)
+        let totalScore = 0
+        let lastAttemptDate: Date | null = null
+
+        for (const q of answered) {
+            const attempt = q.attempts[0]
+            if (q.questionType === 'freetext') {
+                totalScore += attempt.freeTextScore ?? (attempt.isCorrect ? 1 : 0)
+            } else {
+                totalScore += attempt.isCorrect ? 1 : 0
+            }
+            if (!lastAttemptDate || attempt.createdAt > lastAttemptDate) {
+                lastAttemptDate = attempt.createdAt
+            }
+        }
+
+        const percentage = answered.length > 0
+            ? Math.round((totalScore / answered.length) * 100)
+            : 0
+
+        return {
+            documentId: doc.id,
+            documentTitle: doc.title,
+            totalQuestions: questions.length,
+            answeredQuestions: answered.length,
+            correctScore: totalScore,
+            percentage,
+            lastAttemptAt: lastAttemptDate,
+        }
+    })
 }
 
 // Get results for a quiz (all attempts for its questions)

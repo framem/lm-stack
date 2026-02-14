@@ -2,11 +2,15 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { FileText, Trash2, ArrowLeft } from 'lucide-react'
+import Link from 'next/link'
+import { FileText, Trash2, Pencil, ArrowLeft, Check, X, MessageSquare, HelpCircle } from 'lucide-react'
 import { Button } from '@/src/components/ui/button'
+import { Input } from '@/src/components/ui/input'
 import { Badge } from '@/src/components/ui/badge'
 import { ChunkViewer } from '@/src/components/ChunkViewer'
 import { Skeleton } from '@/src/components/ui/skeleton'
+import { getDocument, deleteDocument, renameDocument } from '@/src/actions/documents'
+import { formatDate } from '@/src/lib/utils'
 
 interface DocumentDetail {
     id: string
@@ -32,22 +36,15 @@ export default function DocumentDetailPage() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState('')
     const [deleting, setDeleting] = useState(false)
+    const [editing, setEditing] = useState(false)
+    const [editTitle, setEditTitle] = useState('')
 
     const fetchDocument = useCallback(async () => {
         try {
-            const res = await fetch(`/api/documents/${params.id}`)
-            if (!res.ok) {
-                if (res.status === 404) {
-                    setError('Dokument nicht gefunden.')
-                } else {
-                    setError('Fehler beim Laden des Dokuments.')
-                }
-                return
-            }
-            const data = await res.json()
-            setDocument(data)
+            const data = await getDocument(params.id)
+            setDocument(data as unknown as DocumentDetail)
         } catch {
-            setError('Verbindungsfehler.')
+            setError('Dokument nicht gefunden.')
         } finally {
             setLoading(false)
         }
@@ -61,16 +58,26 @@ export default function DocumentDetailPage() {
         if (!confirm('Dokument wirklich löschen? Alle Abschnitte werden ebenfalls gelöscht.')) return
         setDeleting(true)
         try {
-            const res = await fetch(`/api/documents/${params.id}`, { method: 'DELETE' })
-            if (res.ok) {
-                router.push('/upload')
-            } else {
-                setError('Löschen fehlgeschlagen.')
-                setDeleting(false)
-            }
+            await deleteDocument(params.id)
+            router.push('/documents')
         } catch {
-            setError('Verbindungsfehler beim Löschen.')
+            setError('Löschen fehlgeschlagen.')
             setDeleting(false)
+        }
+    }
+
+    async function handleRename() {
+        const trimmed = editTitle.trim()
+        if (!trimmed || !document || trimmed === document.title) {
+            setEditing(false)
+            return
+        }
+        try {
+            await renameDocument(params.id, trimmed)
+            setDocument((prev) => prev ? { ...prev, title: trimmed } : prev)
+            setEditing(false)
+        } catch {
+            setError('Umbenennen fehlgeschlagen.')
         }
     }
 
@@ -88,7 +95,7 @@ export default function DocumentDetailPage() {
         return (
             <div className="p-6 max-w-4xl mx-auto text-center space-y-4">
                 <p className="text-destructive">{error || 'Dokument nicht gefunden.'}</p>
-                <Button variant="outline" onClick={() => router.push('/upload')}>
+                <Button variant="outline" onClick={() => router.push('/documents')}>
                     <ArrowLeft className="h-4 w-4" />
                     Zurück
                 </Button>
@@ -109,17 +116,45 @@ export default function DocumentDetailPage() {
                         <ArrowLeft className="h-4 w-4" />
                         Zurück
                     </Button>
-                    <h1 className="text-2xl font-bold flex items-center gap-2">
-                        <FileText className="h-6 w-6" />
-                        {document.title}
-                    </h1>
+                    {editing ? (
+                        <div className="flex items-center gap-2">
+                            <Input
+                                value={editTitle}
+                                onChange={(e) => setEditTitle(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleRename()
+                                    if (e.key === 'Escape') setEditing(false)
+                                }}
+                                autoFocus
+                                className="text-xl font-bold h-10"
+                            />
+                            <Button variant="ghost" size="icon-xs" onClick={handleRename}>
+                                <Check className="h-4 w-4 text-green-600" />
+                            </Button>
+                            <Button variant="ghost" size="icon-xs" onClick={() => setEditing(false)}>
+                                <X className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    ) : (
+                        <h1 className="text-2xl font-bold flex items-center gap-2 max-w-full min-w-0">
+                            <FileText className="h-6 w-6 shrink-0" />
+                            <span className="truncate" title={document.title}>{document.title}</span>
+                            <Button
+                                variant="ghost"
+                                size="icon-xs"
+                                onClick={() => { setEditTitle(document.title); setEditing(true) }}
+                            >
+                                <Pencil className="h-4 w-4" />
+                            </Button>
+                        </h1>
+                    )}
                     <div className="flex items-center gap-2 mt-2">
                         {document.fileName && (
-                            <Badge variant="outline">{document.fileName}</Badge>
+                            <Badge variant="outline" className="max-w-xs truncate" title={document.fileName}>{document.fileName}</Badge>
                         )}
                         <Badge variant="secondary">{document.chunks.length} Abschnitte</Badge>
                         <span className="text-sm text-muted-foreground">
-                            {new Date(document.createdAt).toLocaleDateString('de-DE')}
+                            {formatDate(document.createdAt)}
                         </span>
                     </div>
                 </div>
@@ -131,6 +166,22 @@ export default function DocumentDetailPage() {
                 >
                     <Trash2 className="h-4 w-4" />
                     {deleting ? 'Wird gelöscht...' : 'Löschen'}
+                </Button>
+            </div>
+
+            {/* Quick actions */}
+            <div className="flex items-center gap-3">
+                <Button asChild>
+                    <Link href={`/chat?documentId=${params.id}`}>
+                        <MessageSquare className="h-4 w-4" />
+                        Chat starten
+                    </Link>
+                </Button>
+                <Button asChild variant="outline">
+                    <Link href={`/quiz?documentId=${params.id}`}>
+                        <HelpCircle className="h-4 w-4" />
+                        Quiz generieren
+                    </Link>
                 </Button>
             </div>
 

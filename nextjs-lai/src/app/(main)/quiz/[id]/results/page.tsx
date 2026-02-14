@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Loader2, ArrowLeft } from 'lucide-react'
 import { Button } from '@/src/components/ui/button'
 import { QuizResults } from '@/src/components/QuizResults'
+import { getQuizResults } from '@/src/actions/quiz'
 
 interface QuestionResult {
     id: string
@@ -57,12 +58,11 @@ export default function QuizResultsPage({ params }: { params: Promise<{ id: stri
     useEffect(() => {
         async function loadResults() {
             try {
-                const response = await fetch(`/api/quiz/${id}/results`)
-                if (!response.ok) {
-                    const data = await response.json()
-                    throw new Error(data.error || 'Ergebnisse konnten nicht geladen werden.')
+                const result = await getQuizResults(id)
+                if (!result) {
+                    throw new Error('Ergebnisse konnten nicht geladen werden.')
                 }
-                setData(await response.json())
+                setData(result as QuizResultData)
             } catch (err) {
                 setError(err instanceof Error ? err.message : 'Fehler beim Laden der Ergebnisse.')
             } finally {

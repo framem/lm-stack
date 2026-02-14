@@ -6,6 +6,7 @@ import { useChat } from '@ai-sdk/react'
 import { z } from 'zod'
 import { Send, Loader2, BookOpen, FileText, X } from 'lucide-react'
 import { ChatMessageBubble } from '@/src/components/ChatMessageBubble'
+import { getSession } from '@/src/actions/chat'
 
 interface ChatInterfaceProps {
     sessionId?: string
@@ -67,7 +68,6 @@ function storedToUIMessages(stored: StoredMessage[]): ChatMessage[] {
 export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatInterfaceProps) {
     const [activeSessionId, setActiveSessionId] = useState(sessionId)
     const [activeSource, setActiveSource] = useState<StoredSource | null>(null)
-    const [initialMessages, setInitialMessages] = useState<ChatMessage[] | undefined>(undefined)
     const [loadingSession, setLoadingSession] = useState(!!sessionId)
     const messagesEndRef = useRef<HTMLDivElement>(null)
     const sessionCreatedRef = useRef(false)
@@ -78,31 +78,6 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
     useEffect(() => {
         activeSessionIdRef.current = activeSessionId
     }, [activeSessionId])
-
-    // Load previous messages when sessionId is provided
-    useEffect(() => {
-        if (!sessionId) {
-            setLoadingSession(false)
-            return
-        }
-
-        async function loadSession() {
-            try {
-                const res = await fetch(`/api/chat/sessions/${sessionId}`)
-                if (res.ok) {
-                    const session = await res.json()
-                    if (session.messages && session.messages.length > 0) {
-                        setInitialMessages(storedToUIMessages(session.messages))
-                    }
-                }
-            } catch (err) {
-                console.error('Failed to load session messages:', err)
-            } finally {
-                setLoadingSession(false)
-            }
-        }
-        loadSession()
-    }, [sessionId])
 
     const transport = useMemo(() => new DefaultChatTransport({
         api: '/api/chat',
@@ -142,11 +117,32 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
         },
     }), [documentId, onSessionCreated])
 
-    const { messages, sendMessage, status } = useChat<ChatMessage>({
+    const { messages, sendMessage, status, setMessages } = useChat<ChatMessage>({
         transport,
         messageMetadataSchema,
-        messages: initialMessages,
     })
+
+    // Load previous messages when sessionId is provided
+    useEffect(() => {
+        if (!sessionId) {
+            setLoadingSession(false)
+            return
+        }
+
+        async function loadSession() {
+            try {
+                const session = await getSession(sessionId!)
+                if (session?.messages && session.messages.length > 0) {
+                    setMessages(storedToUIMessages(session.messages as unknown as StoredMessage[]))
+                }
+            } catch (err) {
+                console.error('Failed to load session messages:', err)
+            } finally {
+                setLoadingSession(false)
+            }
+        }
+        loadSession()
+    }, [sessionId, setMessages])
 
     const isLoading = status === 'streaming' || status === 'submitted'
 
@@ -177,7 +173,7 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
     }
 
     return (
-        <div className="flex h-[calc(100vh-4rem)] gap-0">
+        <div className="flex h-full gap-0">
             {/* Main chat area */}
             <div className="flex-1 flex flex-col min-w-0">
                 {/* Messages */}

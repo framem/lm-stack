@@ -113,55 +113,54 @@ describe('POST /api/chat', () => {
     })
 })
 
-describe('GET /api/chat/sessions', () => {
+describe('getSessions server action', () => {
     it('should return all sessions', async () => {
-        const { GET } = await import('@/src/app/api/chat/sessions/route')
+        const { getSessions } = await import('@/src/actions/chat')
 
-        const response = await GET()
-        const data = await response.json()
+        const data = await getSessions()
 
-        expect(response.status).toBe(200)
         expect(data).toHaveLength(1)
         expect(data[0].id).toBe('sess-1')
     })
 })
 
-describe('POST /api/chat/sessions', () => {
+describe('createSession server action', () => {
     it('should create a new session', async () => {
-        const { POST } = await import('@/src/app/api/chat/sessions/route')
-        const request = new Request('http://localhost/api/chat/sessions', {
-            method: 'POST',
-            body: JSON.stringify({ title: 'New Session' }),
-            headers: { 'Content-Type': 'application/json' },
-        })
+        const { createSession } = await import('@/src/actions/chat')
 
-        const response = await POST(request as any)
-        const data = await response.json()
+        const data = await createSession({ title: 'New Session' })
 
-        expect(response.status).toBe(201)
         expect(data.id).toBe('sess-new')
     })
 })
 
-describe('GET /api/chat/sessions/[id]', () => {
+describe('getSession server action', () => {
     it('should return a session with messages', async () => {
-        const { GET } = await import('@/src/app/api/chat/sessions/[id]/route')
-        const request = new Request('http://localhost/api/chat/sessions/sess-1')
+        const { getSession } = await import('@/src/actions/chat')
 
-        const response = await GET(request, { params: Promise.resolve({ id: 'sess-1' }) })
-        const data = await response.json()
+        const data = await getSession('sess-1')
 
-        expect(response.status).toBe(200)
-        expect(data.id).toBe('sess-1')
-        expect(data.messages).toHaveLength(2)
+        expect(data).not.toBeNull()
+        expect(data!.id).toBe('sess-1')
+        expect(data!.messages).toHaveLength(2)
     })
 
-    it('should return 404 for non-existent session', async () => {
-        const { GET } = await import('@/src/app/api/chat/sessions/[id]/route')
-        const request = new Request('http://localhost/api/chat/sessions/nonexistent')
+    it('should return null for non-existent session', async () => {
+        const { getSession } = await import('@/src/actions/chat')
 
-        const response = await GET(request, { params: Promise.resolve({ id: 'nonexistent' }) })
+        const data = await getSession('nonexistent')
 
-        expect(response.status).toBe(404)
+        expect(data).toBeNull()
+    })
+})
+
+describe('deleteSession server action', () => {
+    it('should delete a session', async () => {
+        const { deleteSession: dbDeleteSession } = await import('@/src/data-access/chat')
+        const { deleteSession } = await import('@/src/actions/chat')
+
+        await deleteSession('sess-1')
+
+        expect(dbDeleteSession).toHaveBeenCalledWith('sess-1')
     })
 })

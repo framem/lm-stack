@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { HelpCircle, Trash2 } from 'lucide-react'
+import { formatDate } from '@/src/lib/utils'
 import { Card, CardHeader, CardTitle, CardDescription, CardAction, CardContent, CardFooter } from '@/src/components/ui/card'
 import { Badge } from '@/src/components/ui/badge'
 import { Button } from '@/src/components/ui/button'
@@ -9,18 +10,17 @@ import { Button } from '@/src/components/ui/button'
 interface QuizCardProps {
     id: string
     title: string
+    documentId: string
     documentTitle: string
     questionCount: number
     createdAt: string
+    lastAttemptAt?: string
+    lastAttemptPercent?: number
     onDelete?: (id: string) => void
 }
 
-export function QuizCard({ id, title, documentTitle, questionCount, createdAt, onDelete }: QuizCardProps) {
-    const formattedDate = new Date(createdAt).toLocaleDateString('de-DE', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-    })
+export function QuizCard({ id, title, documentId, documentTitle, questionCount, createdAt, lastAttemptAt, lastAttemptPercent, onDelete }: QuizCardProps) {
+    const formattedDate = formatDate(createdAt)
 
     return (
         <Card>
@@ -29,7 +29,11 @@ export function QuizCard({ id, title, documentTitle, questionCount, createdAt, o
                     <HelpCircle className="h-5 w-5 text-primary shrink-0" />
                     <CardTitle className="text-lg truncate">{title}</CardTitle>
                 </div>
-                <CardDescription className="truncate">{documentTitle}</CardDescription>
+                <CardDescription className="truncate">
+                    <Link href={`/documents/${documentId}`} className="hover:underline">
+                        {documentTitle}
+                    </Link>
+                </CardDescription>
                 {onDelete && (
                     <CardAction>
                         <Button
@@ -42,13 +46,18 @@ export function QuizCard({ id, title, documentTitle, questionCount, createdAt, o
                     </CardAction>
                 )}
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-2">
                 <div className="flex items-center gap-2">
                     <Badge variant="secondary">
                         {questionCount} {questionCount === 1 ? 'Frage' : 'Fragen'}
                     </Badge>
                     <span className="text-xs text-muted-foreground">{formattedDate}</span>
                 </div>
+                <p className="text-xs text-muted-foreground">
+                    {lastAttemptAt != null && lastAttemptPercent != null
+                        ? `Letzter Versuch: ${formatDate(lastAttemptAt)} — ${lastAttemptPercent} %`
+                        : 'Noch kein Versuch'}
+                </p>
             </CardContent>
             <CardFooter className="gap-2">
                 <Button asChild size="sm">

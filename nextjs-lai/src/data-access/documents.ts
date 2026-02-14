@@ -20,6 +20,20 @@ export async function getDocuments() {
     })
 }
 
+export async function searchDocuments(query: string) {
+    return prisma.document.findMany({
+        where: {
+            OR: [
+                { title: { contains: query, mode: 'insensitive' } },
+                { fileName: { contains: query, mode: 'insensitive' } },
+                { content: { contains: query, mode: 'insensitive' } },
+            ],
+        },
+        orderBy: { createdAt: 'desc' },
+        include: { _count: { select: { chunks: true } } },
+    })
+}
+
 export async function getDocumentById(id: string) {
     return prisma.document.findUnique({ where: { id } })
 }
@@ -31,6 +45,10 @@ export async function getDocumentWithChunks(id: string) {
             chunks: { orderBy: { chunkIndex: 'asc' } },
         },
     })
+}
+
+export async function updateDocument(id: string, data: { title?: string }) {
+    return prisma.document.update({ where: { id }, data })
 }
 
 export async function deleteDocument(id: string) {

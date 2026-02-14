@@ -2,22 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { validateFile, parseDocument } from '@/src/lib/document-parser'
 import { chunkDocument } from '@/src/lib/chunking'
 import { createEmbedding } from '@/src/lib/llm'
-import { createDocument, createChunks, getDocuments, saveChunkEmbedding } from '@/src/data-access/documents'
+import { createDocument, createChunks, saveChunkEmbedding } from '@/src/data-access/documents'
 import { prisma } from '@/src/lib/prisma'
-
-// GET /api/documents - List all documents with chunk counts
-export async function GET() {
-    try {
-        const documents = await getDocuments()
-        return NextResponse.json(documents)
-    } catch (error) {
-        console.error('Failed to fetch documents:', error)
-        return NextResponse.json(
-            { error: 'Dokumente konnten nicht geladen werden.' },
-            { status: 500 }
-        )
-    }
-}
 
 // POST /api/documents - Upload file or paste text, process pipeline with SSE progress
 export async function POST(request: NextRequest) {

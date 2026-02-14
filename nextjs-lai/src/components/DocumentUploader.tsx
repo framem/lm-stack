@@ -20,7 +20,11 @@ interface ProgressEvent {
     error?: string
 }
 
-export function DocumentUploader() {
+interface DocumentUploaderProps {
+    onSuccess?: (documentId: string) => void
+}
+
+export function DocumentUploader({ onSuccess }: DocumentUploaderProps) {
     const router = useRouter()
     const fileInputRef = useRef<HTMLInputElement>(null)
     const [file, setFile] = useState<File | null>(null)
@@ -79,7 +83,11 @@ export function DocumentUploader() {
                     setProgressValue(100)
                     setProgressDetail('Fertig!')
                     setTimeout(() => {
-                        router.push(`/documents/${event.documentId}`)
+                        if (onSuccess && event.documentId) {
+                            onSuccess(event.documentId)
+                        } else {
+                            router.push(`/documents/${event.documentId}`)
+                        }
                     }, 500)
                 } else if (event.type === 'error') {
                     setError(event.error || 'Unbekannter Fehler')

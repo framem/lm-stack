@@ -1,11 +1,15 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { HelpCircle, Loader2, FileText } from 'lucide-react'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/src/components/ui/card'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { HelpCircle, Loader2, FileText, TrendingUp } from 'lucide-react'
+import { Card, CardContent } from '@/src/components/ui/card'
 import { Button } from '@/src/components/ui/button'
+import { Progress } from '@/src/components/ui/progress'
 import { QuizCard } from '@/src/components/QuizCard'
+import { getQuizzes, generateQuiz, deleteQuiz, getDocumentProgress } from '@/src/actions/quiz'
+import { getDocuments } from '@/src/actions/documents'
+import { formatDate } from '@/src/lib/utils'
 
 interface Document {
     id: string
@@ -13,12 +17,52 @@ interface Document {
     fileType: string
 }
 
+interface DocumentProgressItem {
+    documentId: string
+    documentTitle: string
+    totalQuestions: number
+    answeredQuestions: number
+    correctScore: number
+    percentage: number
+    lastAttemptAt: string | null
+}
+
 interface Quiz {
     id: string
     title: string
-    createdAt: string
+    createdAt: string | Date
     document: { id: string; title: string }
-    questions: { id: string }[]
+    questions: {
+        id: string
+        questionType: string
+        attempts: {
+            isCorrect: boolean
+            freeTextScore: number | null
+            createdAt: string | Date
+        }[]
+    }[]
+}
+
+// Compute last attempt stats for a quiz
+function getLastAttemptStats(questions: Quiz['questions']) {
+    const answered = questions.filter((q) => q.attempts.length > 0)
+    if (answered.length === 0) return null
+
+    let score = 0
+    let lastDate: Date | null = null
+    for (const q of answered) {
+        const a = q.attempts[0]
+        score += q.questionType === 'freetext'
+            ? (a.freeTextScore ?? (a.isCorrect ? 1 : 0))
+            : (a.isCorrect ? 1 : 0)
+        const d = new Date(a.createdAt)
+        if (!lastDate || d > lastDate) lastDate = d
+    }
+
+    return {
+        percentage: Math.round((score / answered.length) * 100),
+        lastAttemptAt: lastDate!.toISOString(),
+    }
 }
 
 const QUESTION_TYPES = [
@@ -29,22 +73,27 @@ const QUESTION_TYPES = [
 
 export default function QuizPage() {
     const router = useRouter()
+    const searchParams = useSearchParams()
     const [documents, setDocuments] = useState<Document[]>([])
     const [quizzes, setQuizzes] = useState<Quiz[]>([])
+    const [progress, setProgress] = useState<DocumentProgressItem[]>([])
     const [loading, setLoading] = useState(true)
-    const [generating, setGenerating] = useState<string | null>(null)
+    const [selectedDocId, setSelectedDocId] = useState(searchParams.get('documentId') ?? '')
+    const [generating, setGenerating] = useState(false)
     const [questionCount, setQuestionCount] = useState(5)
     const [questionTypes, setQuestionTypes] = useState<string[]>(['mc'])
 
     useEffect(() => {
         async function load() {
             try {
-                const [docsRes, quizzesRes] = await Promise.all([
-                    fetch('/api/documents'),
-                    fetch('/api/quiz'),
+                const [docs, quizList, progressData] = await Promise.all([
+                    getDocuments(),
+                    getQuizzes(),
+                    getDocumentProgress(),
                 ])
-                if (docsRes.ok) setDocuments(await docsRes.json())
-                if (quizzesRes.ok) setQuizzes(await quizzesRes.json())
+                setDocuments(docs as unknown as Document[])
+                setQuizzes(quizList as Quiz[])
+                setProgress(progressData as unknown as DocumentProgressItem[])
             } catch (error) {
                 console.error('Failed to load data:', error)
             } finally {
@@ -62,27 +111,17 @@ export default function QuizPage() {
         )
     }
 
-    async function handleGenerate(documentId: string) {
-        setGenerating(documentId)
+    async function handleGenerate() {
+        if (!selectedDocId) return
+        setGenerating(true)
         try {
-            const response = await fetch('/api/quiz/generate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ documentId, questionCount, questionTypes }),
-            })
-
-            if (!response.ok) {
-                const data = await response.json()
-                throw new Error(data.error || 'Fehler bei der Quiz-Erstellung')
-            }
-
-            const { quizId } = await response.json()
+            const { quizId } = await generateQuiz(selectedDocId, questionCount, questionTypes)
             router.push(`/quiz/${quizId}`)
         } catch (error) {
             console.error('Quiz generation failed:', error)
             alert(error instanceof Error ? error.message : 'Fehler bei der Quiz-Erstellung')
         } finally {
-            setGenerating(null)
+            setGenerating(false)
         }
     }
 
@@ -90,8 +129,7 @@ export default function QuizPage() {
         if (!confirm('Quiz wirklich löschen?')) return
 
         try {
-            const response = await fetch(`/api/quiz/${quizId}`, { method: 'DELETE' })
-            if (!response.ok) throw new Error('Löschen fehlgeschlagen')
+            await deleteQuiz(quizId)
             setQuizzes((prev) => prev.filter((q) => q.id !== quizId))
         } catch (error) {
             console.error('Quiz delete failed:', error)
@@ -119,6 +157,41 @@ export default function QuizPage() {
                 </p>
             </div>
 
+            {/* Knowledge progress per document */}
+            {progress.length > 0 && (
+                <section className="space-y-4">
+                    <h2 className="text-lg font-semibold flex items-center gap-2">
+                        <TrendingUp className="h-5 w-5" />
+                        Wissensstand
+                    </h2>
+                    <div className="grid gap-3">
+                        {progress.map((p) => (
+                            <Card key={p.documentId}>
+                                <CardContent className="flex items-center gap-4 py-4">
+                                    <div className="min-w-0 flex-1 space-y-2">
+                                        <div className="flex items-center justify-between gap-2">
+                                            <p className="text-sm font-medium truncate">{p.documentTitle}</p>
+                                            <span className="text-sm font-semibold tabular-nums shrink-0">
+                                                {p.percentage} %
+                                            </span>
+                                        </div>
+                                        <Progress value={p.percentage} />
+                                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                            <span>
+                                                {Math.round(p.correctScore)}/{p.answeredQuestions} Fragen richtig
+                                            </span>
+                                            {p.lastAttemptAt && (
+                                                <span>· Zuletzt: {formatDate(p.lastAttemptAt)}</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ))}
+                    </div>
+                </section>
+            )}
+
             {/* Generate new quiz */}
             <section className="space-y-4">
                 <h2 className="text-lg font-semibold">Neues Quiz erstellen</h2>
@@ -132,58 +205,63 @@ export default function QuizPage() {
                         </CardContent>
                     </Card>
                 ) : (
-                    <>
-                        <div className="flex items-center gap-6 flex-wrap">
-                            <div className="flex items-center gap-4">
-                                <label className="text-sm text-muted-foreground">Anzahl Fragen:</label>
+                    <Card>
+                        <CardContent className="space-y-4 pt-6">
+                            {/* Document select */}
+                            <div className="space-y-1.5">
+                                <label className="text-sm font-medium">Dokument</label>
                                 <select
-                                    value={questionCount}
-                                    onChange={(e) => setQuestionCount(Number(e.target.value))}
-                                    className="border rounded px-2 py-1 text-sm bg-background"
+                                    value={selectedDocId}
+                                    onChange={(e) => setSelectedDocId(e.target.value)}
+                                    className="w-full border rounded-md px-3 py-2 text-sm bg-background"
                                 >
-                                    {[3, 5, 10, 15, 20].map((n) => (
-                                        <option key={n} value={n}>{n}</option>
+                                    <option disabled value="">Dokument auswählen…</option>
+                                    {documents.map((doc) => (
+                                        <option key={doc.id} value={doc.id}>{doc.title}</option>
                                     ))}
                                 </select>
                             </div>
-                            <div className="flex items-center gap-4">
-                                <span className="text-sm text-muted-foreground">Fragetypen:</span>
-                                {QUESTION_TYPES.map((type) => (
-                                    <label key={type.value} className="flex items-center gap-2 text-sm cursor-pointer">
-                                        <input
-                                            type="checkbox"
-                                            checked={questionTypes.includes(type.value)}
-                                            onChange={() => toggleQuestionType(type.value)}
-                                            className="rounded border-input"
-                                        />
-                                        <span className="text-muted-foreground">{type.label}</span>
-                                    </label>
-                                ))}
+
+                            {/* Settings row */}
+                            <div className="flex items-center gap-6 flex-wrap">
+                                <div className="flex items-center gap-2">
+                                    <label className="text-sm text-muted-foreground">Anzahl Fragen:</label>
+                                    <select
+                                        value={questionCount}
+                                        onChange={(e) => setQuestionCount(Number(e.target.value))}
+                                        className="border rounded-md px-2 py-1 text-sm bg-background"
+                                    >
+                                        {[3, 5, 10, 15, 20].map((n) => (
+                                            <option key={n} value={n}>{n}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <span className="text-sm text-muted-foreground">Fragetypen:</span>
+                                    {QUESTION_TYPES.map((type) => (
+                                        <label key={type.value} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={questionTypes.includes(type.value)}
+                                                onChange={() => toggleQuestionType(type.value)}
+                                                className="rounded border-input"
+                                            />
+                                            <span className="text-muted-foreground">{type.label}</span>
+                                        </label>
+                                    ))}
+                                </div>
                             </div>
-                        </div>
-                        <div className="grid gap-4 sm:grid-cols-2">
-                            {documents.map((doc) => (
-                                <Card key={doc.id}>
-                                    <CardHeader>
-                                        <CardTitle className="text-base">{doc.title}</CardTitle>
-                                        <CardDescription>{doc.fileType}</CardDescription>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <Button
-                                            onClick={() => handleGenerate(doc.id)}
-                                            disabled={generating !== null || questionTypes.length === 0}
-                                            size="sm"
-                                        >
-                                            {generating === doc.id && (
-                                                <Loader2 className="h-4 w-4 animate-spin" />
-                                            )}
-                                            Quiz generieren
-                                        </Button>
-                                    </CardContent>
-                                </Card>
-                            ))}
-                        </div>
-                    </>
+
+                            {/* Generate button */}
+                            <Button
+                                onClick={handleGenerate}
+                                disabled={!selectedDocId || generating || questionTypes.length === 0}
+                            >
+                                {generating && <Loader2 className="h-4 w-4 animate-spin" />}
+                                Quiz generieren
+                            </Button>
+                        </CardContent>
+                    </Card>
                 )}
             </section>
 
@@ -192,17 +270,23 @@ export default function QuizPage() {
                 <section className="space-y-4">
                     <h2 className="text-lg font-semibold">Vorhandene Quizze</h2>
                     <div className="grid gap-4 sm:grid-cols-2">
-                        {quizzes.map((quiz) => (
-                            <QuizCard
-                                key={quiz.id}
-                                id={quiz.id}
-                                title={quiz.title}
-                                documentTitle={quiz.document.title}
-                                questionCount={quiz.questions.length}
-                                createdAt={quiz.createdAt}
-                                onDelete={handleDelete}
-                            />
-                        ))}
+                        {quizzes.map((quiz) => {
+                            const stats = getLastAttemptStats(quiz.questions)
+                            return (
+                                <QuizCard
+                                    key={quiz.id}
+                                    id={quiz.id}
+                                    title={quiz.title}
+                                    documentId={quiz.document.id}
+                                    documentTitle={quiz.document.title}
+                                    questionCount={quiz.questions.length}
+                                    createdAt={String(quiz.createdAt)}
+                                    lastAttemptAt={stats?.lastAttemptAt}
+                                    lastAttemptPercent={stats?.percentage}
+                                    onDelete={handleDelete}
+                                />
+                            )
+                        })}
                     </div>
                 </section>
             )}

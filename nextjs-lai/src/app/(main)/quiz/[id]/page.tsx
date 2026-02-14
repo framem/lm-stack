@@ -4,6 +4,7 @@ import { useState, useEffect, use } from 'react'
 import { useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import { QuizPlayer } from '@/src/components/QuizPlayer'
+import { getQuiz } from '@/src/actions/quiz'
 
 interface Question {
     id: string
@@ -38,13 +39,11 @@ export default function QuizPlayerPage({ params }: { params: Promise<{ id: strin
     useEffect(() => {
         async function loadQuiz() {
             try {
-                const response = await fetch(`/api/quiz/${id}`)
-                if (!response.ok) {
-                    const data = await response.json()
-                    throw new Error(data.error || 'Quiz konnte nicht geladen werden.')
+                const data = await getQuiz(id)
+                if (!data) {
+                    throw new Error('Quiz konnte nicht geladen werden.')
                 }
-                const data = await response.json()
-                setQuiz(data)
+                setQuiz(data as QuizData)
             } catch (err) {
                 setError(err instanceof Error ? err.message : 'Fehler beim Laden des Quiz.')
             } finally {

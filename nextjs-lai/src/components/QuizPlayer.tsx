@@ -8,6 +8,7 @@ import { Badge } from '@/src/components/ui/badge'
 import { Progress } from '@/src/components/ui/progress'
 import { Textarea } from '@/src/components/ui/textarea'
 import { CheckCircle2, XCircle, Loader2 } from 'lucide-react'
+import { evaluateAnswer } from '@/src/actions/quiz'
 
 interface Question {
     id: string
@@ -60,24 +61,11 @@ export function QuizPlayer({ quizId, quizTitle, questions, onComplete }: QuizPla
         setSubmitting(true)
 
         try {
-            const body: Record<string, unknown> = { questionId: currentQuestion.id }
-            if (isFreetext) {
-                body.freeTextAnswer = freeTextAnswer
-            } else {
-                body.selectedIndex = selectedIndex
-            }
-
-            const response = await fetch('/api/quiz/evaluate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body),
-            })
-
-            if (!response.ok) {
-                throw new Error('Auswertung fehlgeschlagen')
-            }
-
-            const data: AnswerResult = await response.json()
+            const data = await evaluateAnswer(
+                currentQuestion.id,
+                isFreetext ? null : selectedIndex,
+                isFreetext ? freeTextAnswer : undefined,
+            ) as AnswerResult
             setResult(data)
 
             const newResults = new Map(results)
@@ -135,7 +123,7 @@ export function QuizPlayer({ quizId, quizTitle, questions, onComplete }: QuizPla
                     {/* MC / True-False: show RadioGroup */}
                     {options && options.length > 0 && (
                         <RadioGroup
-                            value={selectedIndex !== null ? String(selectedIndex) : undefined}
+                            value={selectedIndex !== null ? String(selectedIndex) : ''}
                             onValueChange={(v) => {
                                 if (!result) setSelectedIndex(Number(v))
                             }}

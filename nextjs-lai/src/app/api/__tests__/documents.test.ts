@@ -30,47 +30,80 @@ vi.mock('@/src/lib/chunking', () => ({
     chunkDocument: vi.fn(),
 }))
 
+vi.mock('next/cache', () => ({
+    revalidatePath: vi.fn(),
+}))
+
 import { prisma } from '@/src/lib/prisma'
 import { createEmbedding } from '@/src/lib/llm'
-import { validateFile, parseDocument } from '@/src/lib/document-parser'
 import { chunkDocument } from '@/src/lib/chunking'
 
 const mockPrisma = vi.mocked(prisma)
 const mockCreateEmbedding = vi.mocked(createEmbedding)
-const mockValidateFile = vi.mocked(validateFile)
-const mockParseDocument = vi.mocked(parseDocument)
 const mockChunkDocument = vi.mocked(chunkDocument)
 
 beforeEach(() => {
     vi.clearAllMocks()
 })
 
-describe('GET /api/documents', () => {
+// ── Server Action tests ──
+
+describe('getDocuments server action', () => {
     it('should return list of documents', async () => {
         const docs = [
             { id: '1', title: 'Doc 1', _count: { chunks: 2 } },
         ]
         mockPrisma.document.findMany.mockResolvedValue(docs as never)
 
-        const { GET } = await import('@/src/app/api/documents/route')
-        const response = await GET()
-        const data = await response.json()
+        const { getDocuments } = await import('@/src/actions/documents')
+        const data = await getDocuments()
 
-        expect(response.status).toBe(200)
         expect(data).toEqual(docs)
     })
+})
 
-    it('should return 500 on error', async () => {
-        mockPrisma.document.findMany.mockRejectedValue(new Error('DB error'))
+describe('getDocument server action', () => {
+    it('should return document with chunks', async () => {
+        const doc = { id: '1', title: 'Test', chunks: [{ id: 'c1' }] }
+        mockPrisma.document.findUnique.mockResolvedValue(doc as never)
 
-        const { GET } = await import('@/src/app/api/documents/route')
-        const response = await GET()
-        const data = await response.json()
+        const { getDocument } = await import('@/src/actions/documents')
+        const data = await getDocument('1')
 
-        expect(response.status).toBe(500)
-        expect(data.error).toBeDefined()
+        expect(data).toEqual(doc)
+    })
+
+    it('should throw for missing document', async () => {
+        mockPrisma.document.findUnique.mockResolvedValue(null)
+
+        const { getDocument } = await import('@/src/actions/documents')
+
+        await expect(getDocument('missing')).rejects.toThrow('Dokument nicht gefunden.')
     })
 })
+
+describe('deleteDocument server action', () => {
+    it('should delete document', async () => {
+        const doc = { id: '1', title: 'Test', chunks: [] }
+        mockPrisma.document.findUnique.mockResolvedValue(doc as never)
+        mockPrisma.document.delete.mockResolvedValue(doc as never)
+
+        const { deleteDocument } = await import('@/src/actions/documents')
+
+        await expect(deleteDocument('1')).resolves.toBeUndefined()
+        expect(mockPrisma.document.delete).toHaveBeenCalled()
+    })
+
+    it('should throw when deleting non-existent document', async () => {
+        mockPrisma.document.findUnique.mockResolvedValue(null)
+
+        const { deleteDocument } = await import('@/src/actions/documents')
+
+        await expect(deleteDocument('missing')).rejects.toThrow('Dokument nicht gefunden.')
+    })
+})
+
+// ── API route tests (POST only — SSE upload pipeline) ──
 
 describe('POST /api/documents', () => {
     it('should reject request without file or text', async () => {
@@ -126,64 +159,5 @@ describe('POST /api/documents', () => {
 
         expect(fullText).toContain('"type":"complete"')
         expect(fullText).toContain('"documentId":"doc1"')
-    })
-})
-
-describe('GET /api/documents/[id]', () => {
-    it('should return document with chunks', async () => {
-        const doc = { id: '1', title: 'Test', chunks: [{ id: 'c1' }] }
-        mockPrisma.document.findUnique.mockResolvedValue(doc as never)
-
-        const { GET } = await import('@/src/app/api/documents/[id]/route')
-
-        const request = new Request('http://localhost/api/documents/1')
-        const response = await GET(request as never, { params: Promise.resolve({ id: '1' }) })
-        const data = await response.json()
-
-        expect(response.status).toBe(200)
-        expect(data).toEqual(doc)
-    })
-
-    it('should return 404 for missing document', async () => {
-        mockPrisma.document.findUnique.mockResolvedValue(null)
-
-        const { GET } = await import('@/src/app/api/documents/[id]/route')
-
-        const request = new Request('http://localhost/api/documents/missing')
-        const response = await GET(request as never, { params: Promise.resolve({ id: 'missing' }) })
-        const data = await response.json()
-
-        expect(response.status).toBe(404)
-        expect(data.error).toBeDefined()
-    })
-})
-
-describe('DELETE /api/documents/[id]', () => {
-    it('should delete document and return success', async () => {
-        const doc = { id: '1', title: 'Test', chunks: [] }
-        mockPrisma.document.findUnique.mockResolvedValue(doc as never)
-        mockPrisma.document.delete.mockResolvedValue(doc as never)
-
-        const { DELETE } = await import('@/src/app/api/documents/[id]/route')
-
-        const request = new Request('http://localhost/api/documents/1', { method: 'DELETE' })
-        const response = await DELETE(request as never, { params: Promise.resolve({ id: '1' }) })
-        const data = await response.json()
-
-        expect(response.status).toBe(200)
-        expect(data.success).toBe(true)
-    })
-
-    it('should return 404 when deleting non-existent document', async () => {
-        mockPrisma.document.findUnique.mockResolvedValue(null)
-
-        const { DELETE } = await import('@/src/app/api/documents/[id]/route')
-
-        const request = new Request('http://localhost/api/documents/missing', { method: 'DELETE' })
-        const response = await DELETE(request as never, { params: Promise.resolve({ id: 'missing' }) })
-        const data = await response.json()
-
-        expect(response.status).toBe(404)
-        expect(data.error).toBeDefined()
     })
 })
