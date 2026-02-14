@@ -141,6 +141,9 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
     const [activeSource, setActiveSource] = useState<StoredSource | null>(null)
     const [loadingSession, setLoadingSession] = useState(!!sessionId)
     const sessionCreatedRef = useRef(false)
+    // Track session IDs created during this component's lifetime (to skip reloading)
+    const justCreatedSessionRef = useRef<string | null>(null)
+    const prevSessionIdRef = useRef(sessionId)
 
     const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>(
         documentId ? [documentId] : []
@@ -174,6 +177,7 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
             const response = await globalThis.fetch(url as string, init as RequestInit)
             const newSessionId = response.headers.get('X-Session-Id')
             if (newSessionId && !activeSessionIdRef.current) {
+                justCreatedSessionRef.current = newSessionId
                 setActiveSessionId(newSessionId)
                 // Notify the parent about the new session
                 if (!sessionCreatedRef.current && onSessionCreated) {
@@ -210,27 +214,48 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
         messageMetadataSchema,
     })
 
-    // Load previous messages when sessionId is provided
+    // Handle sessionId prop changes: initial load + sidebar navigation
     useEffect(() => {
-        if (!sessionId) {
+        const prev = prevSessionIdRef.current
+        prevSessionIdRef.current = sessionId
+
+        // Skip when session was just created during this chat (messages already in state)
+        if (sessionId && sessionId === justCreatedSessionRef.current) {
+            justCreatedSessionRef.current = null
             setLoadingSession(false)
             return
         }
 
-        async function loadSession() {
-            try {
-                const session = await getSession(sessionId!)
+        // Skip on initial mount when sessionId hasn't changed
+        if (prev === sessionId && prev !== undefined) return
+
+        // Navigated to a different session or new chat via sidebar
+        if (prev !== sessionId && prev !== undefined) {
+            setActiveSessionId(sessionId)
+            setActiveSource(null)
+            sessionCreatedRef.current = false
+            justCreatedSessionRef.current = null
+        }
+
+        if (!sessionId) {
+            setMessages([])
+            setLoadingSession(false)
+            return
+        }
+
+        setLoadingSession(true)
+        getSession(sessionId)
+            .then((session) => {
                 if (session?.messages && session.messages.length > 0) {
                     setMessages(storedToUIMessages(session.messages as unknown as StoredMessage[]))
+                } else {
+                    setMessages([])
                 }
-            } catch (err) {
-                console.error('Failed to load session messages:', err)
-            } finally {
-                setLoadingSession(false)
-            }
-        }
-        loadSession()
-    }, [sessionId, setMessages])
+            })
+            .catch((err) => console.error('Failed to load session messages:', err))
+            .finally(() => setLoadingSession(false))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [sessionId])
 
     const isLoading = status === 'streaming' || status === 'submitted'
 
