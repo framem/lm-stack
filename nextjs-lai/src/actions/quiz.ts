@@ -226,7 +226,7 @@ async function evaluateSelection(
     let reasoning: string | undefined
 
     if (!isCorrect) {
-        const { text } = await generateText({
+        const { text, reasoning: nativeReasoning } = await generateText({
             model: getModel(),
             prompt: `Der Benutzer hat eine Multiple-Choice-Frage falsch beantwortet.
 
@@ -242,9 +242,13 @@ Erkläre kurz und verständlich:
 2. Warum die korrekte Antwort richtig ist
 3. Zitiere relevante Stellen aus dem Quelltext`,
         })
+        // Native reasoning (models with built-in reasoning) or <think> tag fallback
         const extracted = extractReasoning(text)
         explanation = extracted.text
-        reasoning = extracted.reasoning || undefined
+        const nativeText = nativeReasoning
+            ?.map((r) => r.text)
+            .join('\n\n')
+        reasoning = nativeText || extracted.reasoning || undefined
     } else {
         explanation = question.explanation ?? undefined
     }
