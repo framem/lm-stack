@@ -90,14 +90,6 @@ function linkifyCitations(text: string): string {
     return text.replace(/\[Quelle\s+(\d+)\](?!\()/g, '[Quelle $1](#cite-$1)')
 }
 
-// Transform a filename-derived title into a readable display title
-function prettifyTitle(raw: string): string {
-    return raw
-        .replace(/[-_]+/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim()
-        .replace(/\b\w/g, (c) => c.toUpperCase())
-}
 
 // Extract <think>...</think> blocks from text, returning reasoning and cleaned text
 function extractThinkBlocks(text: string): { reasoning: string; text: string; isThinking: boolean } {
@@ -358,7 +350,7 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
                                                         onClick={() => handleSourceClick(src)}
                                                     >
                                                         <FileText className="h-4 w-4 flex-shrink-0" />
-                                                        <span className="font-medium">{prettifyTitle(src.documentTitle)}</span>
+                                                        <span className="font-medium">{src.documentTitle}</span>
                                                         {src.pageNumber != null && (
                                                             <span className="text-muted-foreground">S.{src.pageNumber}</span>
                                                         )}
@@ -435,7 +427,7 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
                                     <div className="min-w-0">
                                         <div className="flex items-center gap-1.5">
                                             <FileText className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                                            <span className="text-sm font-medium truncate">{prettifyTitle(activeSource.documentTitle)}</span>
+                                            <span className="text-sm font-medium truncate">{activeSource.documentTitle}</span>
                                         </div>
                                         {activeSource.pageNumber != null && (
                                             <p className="text-xs text-muted-foreground mt-0.5">Seite {activeSource.pageNumber}</p>
