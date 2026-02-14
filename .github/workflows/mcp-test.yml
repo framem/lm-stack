@@ -4,9 +4,11 @@ on:
   push:
     paths:
       - 'mcp/**'
+      - '.github/workflows/mcp-test.yml'
   pull_request:
     paths:
       - 'mcp/**'
+      - '.github/workflows/mcp-test.yml'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

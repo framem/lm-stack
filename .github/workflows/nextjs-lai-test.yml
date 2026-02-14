@@ -4,9 +4,11 @@ on:
   push:
     paths:
       - 'nextjs-lai/**'
+      - '.github/workflows/nextjs-lai-test.yml'
   pull_request:
     paths:
       - 'nextjs-lai/**'
+      - '.github/workflows/nextjs-lai-test.yml'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
