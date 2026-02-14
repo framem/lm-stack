@@ -56,7 +56,7 @@ export async function suggestTitle(rawTitle: string): Promise<string> {
     const { text } = await generateText({
         model: getModel(),
         temperature: 0,
-        maxTokens: 120,
+        maxOutputTokens: 120,
         system: `Du bist ein Dokumenttitel-Bereiniger. Du bekommst einen rohen Dokumenttitel (oft aus einem Dateinamen abgeleitet) und gibst einen sauberen, lesbaren Titel zurück.
 
 Regeln:

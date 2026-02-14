@@ -6,7 +6,11 @@ import { formatCitationsForStorage } from '@/src/lib/citations'
 import { addMessage, createSession } from '@/src/data-access/chat'
 
 const SYSTEM_PROMPT_TEMPLATE = `Du bist ein KI-Lernassistent. Beantworte Fragen NUR basierend auf dem folgenden Kontext.
-Zitiere deine Quellen mit [Quelle N] im Text.
+Zitiere deine Quellen IMMER exakt im Format [Quelle N] mit eckigen Klammern, z.B. [Quelle 1], [Quelle 3].
+Regeln für Quellenangaben:
+- IMMER eckige Klammern verwenden: [Quelle 1], NICHT Quelle 1.
+- Jede Quelle einzeln angeben: [Quelle 2] [Quelle 3] [Quelle 4], NICHT [Quelle 2–4] oder Quelle 2–Quelle 4.
+- Keine Bereiche, keine Aufzählungen ohne Klammern.
 Wenn der Kontext keine relevante Information enthält, sage dies ehrlich.
 
 Kontext:
@@ -77,6 +81,7 @@ export async function POST(request: NextRequest) {
         // Accumulate text and detect citations incrementally for live source display
         let accumulatedText = ''
         let lastSourceCount = 0
+        const noContext = contexts.length === 0
 
         return result.toUIMessageStreamResponse({
             sendReasoning: true,
@@ -84,6 +89,11 @@ export async function POST(request: NextRequest) {
                 'X-Session-Id': activeSessionId,
             },
             messageMetadata: ({ part }) => {
+                // Signal empty context on first text chunk
+                if (noContext && part.type === 'text-delta' && accumulatedText === '') {
+                    accumulatedText += part.text
+                    return { sources: [], noContext: true }
+                }
                 if (part.type === 'text-delta') {
                     accumulatedText += part.text
                     // Strip completed and unclosed <think> blocks before scanning

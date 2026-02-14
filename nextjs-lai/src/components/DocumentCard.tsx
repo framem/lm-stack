@@ -44,11 +44,6 @@ function formatFileSize(bytes: number | null) {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-// Display title: replace underscores with spaces for readability
-function displayTitle(title: string) {
-    return title.replace(/_/g, ' ')
-}
-
 // Check if fileName is redundant with title (title derived from fileName)
 function isFileNameRedundant(title: string, fileName: string | null) {
     if (!fileName) return true
@@ -146,7 +141,7 @@ export function DocumentCard({ document, onDelete, onRename }: DocumentCardProps
                                     className="line-clamp-2 font-medium group-hover:underline break-words"
                                     title={document.title}
                                 >
-                                    {displayTitle(document.title)}
+                                    {document.title}
                                 </p>
                             </Link>
 

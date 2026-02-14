@@ -67,20 +67,33 @@ export interface Citation {
     content: string
 }
 
-// Extract citation markers ([Quelle N]) from the LLM response text
+// Extract citation markers ([Quelle N]) from the LLM response text.
+// Also handles common LLM deviations: missing brackets, en-dash ranges, hyphen ranges.
 export function extractCitations(
     text: string,
     contexts: RetrievedContext[]
 ): Citation[] {
-    const pattern = /\[Quelle\s+(\d+)\]/g
     const found = new Set<number>()
-    let match: RegExpExecArray | null
 
-    while ((match = pattern.exec(text)) !== null) {
-        const idx = parseInt(match[1], 10)
-        if (idx >= 1 && idx <= contexts.length) {
-            found.add(idx)
-        }
+    const addIfValid = (n: number) => {
+        if (n >= 1 && n <= contexts.length) found.add(n)
+    }
+
+    // 1. Standard individual markers: [Quelle 1], [Quelle 2]
+    for (const m of text.matchAll(/\[Quelle\s+(\d+)\]/g)) {
+        addIfValid(parseInt(m[1], 10))
+    }
+
+    // 2. Bare markers without brackets: Quelle 1 (but not inside [...])
+    for (const m of text.matchAll(/(?<!\[)Quelle\s+(\d+)(?!\s*\])/g)) {
+        addIfValid(parseInt(m[1], 10))
+    }
+
+    // 3. Ranges with en-dash/hyphen: Quelle 2–Quelle 5, [Quelle 2–5], Quelle 2-5
+    for (const m of text.matchAll(/\[?Quelle\s+(\d+)\s*[–\-]\s*(?:Quelle\s+)?(\d+)\]?/g)) {
+        const start = parseInt(m[1], 10)
+        const end = parseInt(m[2], 10)
+        for (let i = start; i <= end; i++) addIfValid(i)
     }
 
     return Array.from(found)
