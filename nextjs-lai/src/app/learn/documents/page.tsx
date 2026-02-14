@@ -25,7 +25,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/src/components/ui/alert-dialog'
-import { getDocuments, searchDocuments, deleteDocument, renameDocument } from '@/src/actions/documents'
+import { getDocuments, searchDocuments, deleteDocument, renameDocument, getSubjects } from '@/src/actions/documents'
 
 interface DocumentSummary {
     id: string
@@ -34,6 +34,8 @@ interface DocumentSummary {
     fileType: string
     fileSize: number | null
     createdAt: string
+    subject?: string | null
+    tags?: string[]
     _count: { chunks: number }
 }
 
@@ -44,6 +46,8 @@ export default function DocumentsPage() {
     const [searching, setSearching] = useState(false)
     const [uploadOpen, setUploadOpen] = useState(false)
     const [search, setSearch] = useState('')
+    const [subjects, setSubjects] = useState<string[]>([])
+    const [activeSubject, setActiveSubject] = useState<string | null>(null)
     const debounceRef = useRef<ReturnType<typeof setTimeout>>(null)
     const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
 
@@ -55,18 +59,26 @@ export default function DocumentsPage() {
         setLoading(false)
     }, [])
 
+    const fetchSubjects = useCallback(async () => {
+        const data = await getSubjects()
+        setSubjects(data)
+    }, [])
+
     useEffect(() => {
         // Wrap in microtask to avoid synchronous setState in effect body
-        void Promise.resolve().then(() => fetchDocuments())
-    }, [fetchDocuments])
+        void Promise.resolve().then(() => {
+            fetchDocuments()
+            fetchSubjects()
+        })
+    }, [fetchDocuments, fetchSubjects])
 
-    // Debounced server-side search
+    // Debounced server-side search with subject filter
     useEffect(() => {
         if (loading) return
 
         if (debounceRef.current) clearTimeout(debounceRef.current)
 
-        if (!search.trim()) {
+        if (!search.trim() && !activeSubject) {
             // Reset to full list immediately (microtask to avoid synchronous setState)
             void Promise.resolve().then(() => {
                 fetchDocuments()
@@ -77,7 +89,7 @@ export default function DocumentsPage() {
 
         queueMicrotask(() => setSearching(true))
         debounceRef.current = setTimeout(async () => {
-            const results = await searchDocuments(search)
+            const results = await searchDocuments(search, activeSubject ?? undefined)
             setDocuments(results as unknown as DocumentSummary[])
             setSearching(false)
         }, 300)
@@ -85,7 +97,7 @@ export default function DocumentsPage() {
         return () => {
             if (debounceRef.current) clearTimeout(debounceRef.current)
         }
-    }, [search, loading, fetchDocuments])
+    }, [search, activeSubject, loading, fetchDocuments])
 
     function handleDelete(id: string) {
         setDeleteTarget(id)
@@ -98,7 +110,7 @@ export default function DocumentsPage() {
             setDocuments((prev) => prev.filter((d) => d.id !== deleteTarget))
             setTotalCount((prev) => prev - 1)
         } catch {
-            toast.error('Loeschen fehlgeschlagen.')
+            toast.error('Löschen fehlgeschlagen.')
         } finally {
             setDeleteTarget(null)
         }
@@ -118,7 +130,9 @@ export default function DocumentsPage() {
     function handleUploadSuccess() {
         setUploadOpen(false)
         setSearch('')
+        setActiveSubject(null)
         fetchDocuments()
+        fetchSubjects()
     }
 
     if (loading) {
@@ -168,6 +182,33 @@ export default function DocumentsPage() {
                     {searching && (
                         <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground animate-spin" />
                     )}
+                </div>
+            )}
+
+            {/* Subject filter chips */}
+            {subjects.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                    <button
+                        type="button"
+                        onClick={() => setActiveSubject(null)}
+                        className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                            !activeSubject ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-accent'
+                        }`}
+                    >
+                        Alle
+                    </button>
+                    {subjects.map((s) => (
+                        <button
+                            key={s}
+                            type="button"
+                            onClick={() => setActiveSubject(activeSubject === s ? null : s)}
+                            className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                                activeSubject === s ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-accent'
+                            }`}
+                        >
+                            {s}
+                        </button>
+                    ))}
                 </div>
             )}
 
@@ -222,15 +263,15 @@ export default function DocumentsPage() {
             <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Lernmaterial loeschen?</AlertDialogTitle>
+                        <AlertDialogTitle>Lernmaterial löschen?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Alle Abschnitte und zugehoerige Daten werden ebenfalls geloescht. Diese Aktion kann nicht rueckgaengig gemacht werden.
+                            Alle Abschnitte und zugehoerige Daten werden ebenfalls gelöscht. Diese Aktion kann nicht rueckgaengig gemacht werden.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>Abbrechen</AlertDialogCancel>
                         <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                            Loeschen
+                            Löschen
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

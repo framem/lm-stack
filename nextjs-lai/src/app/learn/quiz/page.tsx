@@ -98,7 +98,9 @@ export default function QuizPage() {
     const [progress, setProgress] = useState<DocumentProgressItem[]>([])
     const [loading, setLoading] = useState(true)
     const [dialogOpen, setDialogOpen] = useState(false)
-    const [selectedDocId, setSelectedDocId] = useState(searchParams.get('documentId') ?? '')
+    const [selectedDocIds, setSelectedDocIds] = useState<string[]>(
+        searchParams.get('documentId') ? [searchParams.get('documentId')!] : []
+    )
     const [generating, setGenerating] = useState(false)
     const [generatedCount, setGeneratedCount] = useState(0)
     const [questionCount, setQuestionCount] = useState(5)
@@ -134,7 +136,7 @@ export default function QuizPage() {
     }
 
     async function handleGenerate() {
-        if (!selectedDocId) return
+        if (selectedDocIds.length === 0) return
         setGenerating(true)
         setGeneratedCount(0)
         try {
@@ -142,7 +144,7 @@ export default function QuizPage() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    documentId: selectedDocId,
+                    documentIds: selectedDocIds,
                     questionCount,
                     questionTypes,
                 }),
@@ -197,7 +199,7 @@ export default function QuizPage() {
             setQuizzes((prev) => prev.filter((q) => q.id !== deleteTarget))
         } catch (error) {
             console.error('Quiz delete failed:', error)
-            toast.error('Quiz konnte nicht geloescht werden.')
+            toast.error('Quiz konnte nicht gelöscht werden.')
         } finally {
             setDeleteTarget(null)
         }
@@ -340,16 +342,29 @@ export default function QuizPage() {
                     <div className="space-y-5">
                         <div className="space-y-2">
                             <label className="text-sm font-medium">Lernmaterial</label>
-                            <select
-                                value={selectedDocId}
-                                onChange={(e) => setSelectedDocId(e.target.value)}
-                                className="w-full border rounded-md px-3 py-2 text-sm bg-background"
-                            >
-                                <option disabled value="">Lernmaterial auswählen…</option>
-                                {documents.map((doc) => (
-                                    <option key={doc.id} value={doc.id}>{doc.title}</option>
-                                ))}
-                            </select>
+                            <div className="border rounded-md max-h-48 overflow-y-auto p-2 space-y-1">
+                                {documents.map((doc) => {
+                                    const isChecked = selectedDocIds.includes(doc.id)
+                                    return (
+                                        <label key={doc.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-accent cursor-pointer text-sm">
+                                            <input
+                                                type="checkbox"
+                                                checked={isChecked}
+                                                onChange={() => {
+                                                    setSelectedDocIds(prev =>
+                                                        isChecked ? prev.filter(id => id !== doc.id) : [...prev, doc.id]
+                                                    )
+                                                }}
+                                                className="rounded border-input"
+                                            />
+                                            <span className="truncate">{doc.title}</span>
+                                        </label>
+                                    )
+                                })}
+                            </div>
+                            {selectedDocIds.length > 0 && (
+                                <p className="text-xs text-muted-foreground">{selectedDocIds.length} ausgewaehlt</p>
+                            )}
                         </div>
 
                         <div className="space-y-2">
@@ -389,7 +404,7 @@ export default function QuizPage() {
                     <div className="pt-2">
                         <Button
                             onClick={handleGenerate}
-                            disabled={!selectedDocId || generating || questionTypes.length === 0}
+                            disabled={selectedDocIds.length === 0 || generating || questionTypes.length === 0}
                             className="w-full"
                         >
                             {generating
@@ -409,15 +424,15 @@ export default function QuizPage() {
             <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Quiz loeschen?</AlertDialogTitle>
+                        <AlertDialogTitle>Quiz löschen?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Das Quiz und alle Ergebnisse werden unwiderruflich geloescht.
+                            Das Quiz und alle Ergebnisse werden unwiderruflich gelöscht.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>Abbrechen</AlertDialogCancel>
                         <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                            Loeschen
+                            Löschen
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

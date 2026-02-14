@@ -6,6 +6,7 @@ import {
     getDocumentWithChunks,
     updateDocument as patchDocument,
     deleteDocument as removeDocument,
+    getSubjects as fetchSubjects,
 } from '@/src/data-access/documents'
 import { getModel } from '@/src/lib/llm'
 import { generateText } from 'ai'
@@ -16,11 +17,16 @@ export async function getDocuments() {
     return fetchDocuments()
 }
 
-// Search documents by title, filename, and content
-export async function searchDocuments(query: string) {
+// Search documents by title, filename, and content (optionally filter by subject)
+export async function searchDocuments(query: string, subject?: string) {
     const trimmed = query.trim()
-    if (!trimmed) return fetchDocuments()
-    return queryDocuments(trimmed)
+    if (!trimmed && !subject) return fetchDocuments()
+    return queryDocuments(trimmed, subject)
+}
+
+// Get all unique subjects across documents
+export async function getSubjects() {
+    return fetchSubjects()
 }
 
 // Get a single document with all its chunks
@@ -72,6 +78,13 @@ Regeln:
 
     const cleaned = stripThinkTags(text).replace(/^["']|["']$/g, '')
     return cleaned || trimmed
+}
+
+// Update document metadata (subject, tags)
+export async function updateDocumentMetadata(id: string, data: { subject?: string; tags?: string[] }) {
+    await patchDocument(id, data)
+    revalidatePath('/learn/documents')
+    revalidatePath(`/learn/documents/${id}`)
 }
 
 // Delete a document and cascade to its chunks

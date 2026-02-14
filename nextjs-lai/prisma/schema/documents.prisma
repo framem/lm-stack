@@ -5,6 +5,9 @@ model Document {
   fileType  String
   fileSize  Int?
   content   String
+  subject   String?
+  tags      String[] @default([])
+  summary   String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

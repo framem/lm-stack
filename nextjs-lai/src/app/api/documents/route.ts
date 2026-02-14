@@ -16,6 +16,7 @@ export async function POST(request: NextRequest) {
         let fileSize: number | undefined
         let textContent: string
         let pageBreaks: number[] | undefined
+        let subject: string | undefined
 
         if (contentType.includes('multipart/form-data')) {
             // File upload via FormData
@@ -44,6 +45,8 @@ export async function POST(request: NextRequest) {
             fileSize = file.size
             textContent = parsed.text
             pageBreaks = parsed.pageBreaks
+            const rawSubject = formData.get('subject') as string | null
+            if (rawSubject?.trim()) subject = rawSubject.trim()
         } else {
             // JSON text paste
             const body = await request.json()
@@ -56,6 +59,9 @@ export async function POST(request: NextRequest) {
             title = body.title || 'Eingefügter Text'
             fileType = 'text/plain'
             textContent = body.text
+            if (body.subject && typeof body.subject === 'string' && body.subject.trim()) {
+                subject = body.subject.trim()
+            }
         }
 
         // SSE stream for pipeline progress
@@ -77,6 +83,7 @@ export async function POST(request: NextRequest) {
                         fileType,
                         fileSize,
                         content: textContent,
+                        subject,
                     })
 
                     // Step 2: Chunk the text
