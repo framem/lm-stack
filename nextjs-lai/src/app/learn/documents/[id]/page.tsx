@@ -3,12 +3,23 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { toast } from 'sonner'
 import { FileText, Trash2, Pencil, ArrowLeft, Check, X, MessageSquare, HelpCircle } from 'lucide-react'
 import { Button } from '@/src/components/ui/button'
 import { Input } from '@/src/components/ui/input'
 import { Badge } from '@/src/components/ui/badge'
 import { ChunkViewer } from '@/src/components/ChunkViewer'
 import { Skeleton } from '@/src/components/ui/skeleton'
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/src/components/ui/alert-dialog'
 import { getDocument, deleteDocument, renameDocument } from '@/src/actions/documents'
 import { formatDate } from '@/src/lib/utils'
 
@@ -38,6 +49,7 @@ export default function DocumentDetailPage() {
     const [deleting, setDeleting] = useState(false)
     const [editing, setEditing] = useState(false)
     const [editTitle, setEditTitle] = useState('')
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
     const fetchDocument = useCallback(async () => {
         try {
@@ -55,14 +67,14 @@ export default function DocumentDetailPage() {
     }, [fetchDocument])
 
     async function handleDelete() {
-        if (!confirm('Lernmaterial wirklich löschen? Alle Abschnitte werden ebenfalls gelöscht.')) return
         setDeleting(true)
         try {
             await deleteDocument(params.id)
             router.push('/learn/documents')
         } catch {
-            setError('Löschen fehlgeschlagen.')
+            toast.error('Loeschen fehlgeschlagen.')
             setDeleting(false)
+            setShowDeleteDialog(false)
         }
     }
 
@@ -77,7 +89,7 @@ export default function DocumentDetailPage() {
             setDocument((prev) => prev ? { ...prev, title: trimmed } : prev)
             setEditing(false)
         } catch {
-            setError('Umbenennen fehlgeschlagen.')
+            toast.error('Umbenennen fehlgeschlagen.')
         }
     }
 
@@ -161,11 +173,11 @@ export default function DocumentDetailPage() {
                 <Button
                     variant="destructive"
                     size="sm"
-                    onClick={handleDelete}
+                    onClick={() => setShowDeleteDialog(true)}
                     disabled={deleting}
                 >
                     <Trash2 className="h-4 w-4" />
-                    {deleting ? 'Wird gelöscht...' : 'Löschen'}
+                    {deleting ? 'Wird geloescht...' : 'Loeschen'}
                 </Button>
             </div>
 
@@ -189,6 +201,24 @@ export default function DocumentDetailPage() {
                 <h2 className="text-lg font-semibold mb-3">Abschnitte</h2>
                 <ChunkViewer chunks={document.chunks} />
             </div>
+
+            {/* Delete confirmation */}
+            <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Lernmaterial loeschen?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Alle Abschnitte und zugehoerige Daten werden ebenfalls geloescht. Diese Aktion kann nicht rueckgaengig gemacht werden.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                            Loeschen
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     )
 }

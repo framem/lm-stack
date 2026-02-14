@@ -4,7 +4,7 @@ import { Fragment, useState, useMemo, useEffect, useRef } from 'react'
 import { DefaultChatTransport, type UIMessage } from 'ai'
 import { useChat } from '@ai-sdk/react'
 import { z } from 'zod'
-import { BookOpen, FileText, Loader2, ChevronDown, CornerDownLeft, Check } from 'lucide-react'
+import { BookOpen, FileText, Loader2, ChevronDown, CornerDownLeft, Check, AlertTriangle } from 'lucide-react'
 import { getSession } from '@/src/actions/chat'
 import { getDocuments } from '@/src/actions/documents'
 import {
@@ -88,13 +88,28 @@ const messageMetadataSchema = z.object({
         snippet: z.string(),
         content: z.string(),
     })).optional(),
+    noContext: z.boolean().optional(),
 })
 
 type ChatMessage = UIMessage<z.infer<typeof messageMetadataSchema>>
 
-// Turn [Quelle N] references in assistant text into clickable markdown links
+// Turn [Quelle N] references in assistant text into clickable markdown links.
+// Handles standard [Quelle N], bare Quelle N, and range patterns.
 function linkifyCitations(text: string): string {
-    return text.replace(/\[Quelle\s+(\d+)\](?!\()/g, '[Quelle $1](#cite-$1)')
+    // First expand ranges like "Quelle 2–Quelle 5" or "[Quelle 2–5]" into individual markers
+    let result = text.replace(
+        /\[?Quelle\s+(\d+)\s*[–\-]\s*(?:Quelle\s+)?(\d+)\]?/g,
+        (_, start, end) => {
+            const s = parseInt(start, 10)
+            const e = parseInt(end, 10)
+            return Array.from({ length: e - s + 1 }, (__, i) => `[Quelle ${s + i}]`).join(' ')
+        }
+    )
+    // Then convert [Quelle N] to markdown links
+    result = result.replace(/\[Quelle\s+(\d+)\](?!\()/g, '[Quelle $1](#cite-$1)')
+    // Also catch bare Quelle N (not already inside a link)
+    result = result.replace(/(?<!\[)Quelle\s+(\d+)(?!\s*\]|\))/g, '[Quelle $1](#cite-$1)')
+    return result
 }
 
 
@@ -292,11 +307,30 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
                 <Conversation className="flex-1">
                     <ConversationContent className="max-w-3xl mx-auto w-full">
                         {messages.length === 0 && (
-                            <ConversationEmptyState
-                                title="Lernassistent"
-                                description="Stelle eine Frage zu deinem Lernmaterial. Der Assistent antwortet basierend auf den hochgeladenen Inhalten und zitiert die Quellen."
-                                icon={<BookOpen className="h-12 w-12" />}
-                            />
+                            <div className="flex flex-col items-center justify-center py-16 gap-6">
+                                <ConversationEmptyState
+                                    title="Lernassistent"
+                                    description="Stelle eine Frage zu deinem Lernmaterial. Der Assistent antwortet basierend auf den hochgeladenen Inhalten und zitiert die Quellen."
+                                    icon={<BookOpen className="h-12 w-12" />}
+                                />
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-lg">
+                                    {[
+                                        'Fasse das Dokument zusammen',
+                                        'Erklaere die wichtigsten Konzepte',
+                                        'Erstelle mir eine Uebersicht',
+                                        'Was sind die Kernaussagen?',
+                                    ].map((suggestion) => (
+                                        <button
+                                            key={suggestion}
+                                            type="button"
+                                            className="text-left text-sm px-4 py-3 rounded-lg border border-border bg-background hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+                                            onClick={() => sendMessage({ text: suggestion })}
+                                        >
+                                            {suggestion}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
                         )}
 
                         {messages.map((message, msgIdx) => {
@@ -331,6 +365,13 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
                                             <ReasoningTrigger getThinkingMessage={getGermanThinkingMessage} />
                                             <ReasoningContent>{reasoningText}</ReasoningContent>
                                         </Reasoning>
+                                    )}
+
+                                    {message.role === 'assistant' && message.metadata?.noContext && (
+                                        <div className="flex items-center gap-2 rounded-lg border border-orange-500/30 bg-orange-500/5 px-4 py-2.5 text-sm text-orange-400">
+                                            <AlertTriangle className="h-4 w-4 shrink-0" />
+                                            <span>Keine passenden Quellen gefunden. Versuche eine andere Formulierung oder pruefe, ob relevantes Lernmaterial hochgeladen ist.</span>
+                                        </div>
                                     )}
 
                                     {message.parts.map((part, i) => {
@@ -421,7 +462,7 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
                                             <FileText className="size-3.5" />
                                             <span>
                                                 {selectedDocumentIds.length === 0
-                                                    ? 'Alles Lernmaterial'
+                                                    ? 'Alle Lernmaterialien'
                                                     : selectedDocumentIds.length === 1
                                                       ? documents.find(d => d.id === selectedDocumentIds[0])?.title ?? '1 Lernmaterial'
                                                       : `${selectedDocumentIds.length} Lernmaterialien`}
@@ -440,7 +481,7 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
                                                     <Check className="size-3" />
                                                 )}
                                             </span>
-                                            Alles Lernmaterial
+                                            Alle Lernmaterialien
                                         </button>
                                         {documents.map((doc) => {
                                             const isChecked = selectedDocumentIds.includes(doc.id)

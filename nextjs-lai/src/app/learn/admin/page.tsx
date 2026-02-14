@@ -412,10 +412,10 @@ export default function AdminPage() {
                     <div>
                         <h2 className="text-lg font-semibold flex items-center gap-2">
                             <RefreshCw className="h-5 w-5" />
-                            Embeddings aktualisieren
+                            Lernabschnitte aktualisieren
                         </h2>
                         <p className="text-sm text-muted-foreground mt-1">
-                            Lernmaterial neu chunken und Embeddings regenerieren
+                            Lernabschnitte neu erstellen und aufbereiten
                         </p>
                     </div>
 

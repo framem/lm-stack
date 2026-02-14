@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
                                 type: 'progress',
                                 id: doc.id,
                                 step: 'embedding',
-                                detail: `Embedding ${j + 1}/${savedChunks.length}...`,
+                                detail: `Lernabschnitt ${j + 1}/${savedChunks.length} wird erstellt...`,
                             })
 
                             try {

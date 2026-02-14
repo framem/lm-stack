@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
                     }
 
                     // Step 3: Save chunks to database
-                    sendProgress('saving', 40, `${chunks.length} Abschnitte werden gespeichert...`)
+                    sendProgress('saving', 40, 'Lernabschnitte werden erstellt...')
                     await createChunks(doc.id, chunks)
 
                     // Fetch created chunk IDs for embedding assignment
@@ -104,11 +104,10 @@ export async function POST(request: NextRequest) {
                     })
 
                     // Step 4: Generate embeddings
-                    sendProgress('embedding', 50, 'Embeddings werden erstellt...')
                     for (let i = 0; i < savedChunks.length; i++) {
                         const chunk = savedChunks[i]
                         const progress = 50 + Math.round((i / savedChunks.length) * 45)
-                        sendProgress('embedding', progress, `Embedding ${i + 1}/${savedChunks.length}...`)
+                        sendProgress('embedding', progress, `Lernabschnitt ${i + 1}/${savedChunks.length} wird erstellt...`)
 
                         try {
                             const embedding = await createEmbedding(chunk.content)

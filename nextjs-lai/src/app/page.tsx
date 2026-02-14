@@ -25,7 +25,7 @@ const foxReveal = {
   show: {
     opacity: 1,
     scale: 1,
-    transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] },
+    transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] },
   },
 };
 
@@ -83,7 +83,7 @@ export default function LandingPage() {
             <span className="text-lg font-bold">LAI</span>
           </Link>
           <Button size="sm" asChild>
-            <Link href="/learn/chat">Jetzt starten</Link>
+            <Link href="/learn">Jetzt starten</Link>
           </Button>
         </div>
       </header>
@@ -135,7 +135,7 @@ export default function LandingPage() {
               className="mt-8 flex flex-wrap items-center gap-3"
             >
               <Button size="lg" asChild>
-                <Link href="/learn/chat">Jetzt starten</Link>
+                <Link href="/learn">Jetzt starten</Link>
               </Button>
               <Button variant="outline" size="lg" asChild>
                 <Link href="#workflow">Mehr erfahren</Link>
@@ -265,7 +265,7 @@ export default function LandingPage() {
             Lade dein Lernmaterial hoch und starte sofort mit dem Lernen.
           </p>
           <Button size="lg" className="mt-8" asChild>
-            <Link href="/learn/chat">Jetzt starten</Link>
+            <Link href="/learn">Jetzt starten</Link>
           </Button>
         </motion.div>
       </section>

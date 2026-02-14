@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { FileText, MessageSquare, HelpCircle, ArrowRight, TrendingUp } from 'lucide-react'
+import { FileText, MessageSquare, HelpCircle, ArrowRight, TrendingUp, Upload, Sparkles } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/card'
 import { Button } from '@/src/components/ui/button'
 import { Progress } from '@/src/components/ui/progress'
@@ -18,6 +18,7 @@ export default async function DashboardPage() {
 
     const recentSessions = sessions.slice(0, 5)
     const recentQuizzes = quizzes.slice(0, 5)
+    const isNewUser = documents.length === 0
 
     return (
         <div className="p-8 max-w-6xl mx-auto space-y-8">
@@ -28,7 +29,64 @@ export default async function DashboardPage() {
                 </p>
             </div>
 
-            {/* Stats */}
+            {/* Onboarding for new users */}
+            {isNewUser && (
+                <Card className="border-primary/30 bg-gradient-to-br from-primary/5 via-background to-orange-500/5">
+                    <CardContent className="p-8">
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="p-2.5 rounded-xl bg-primary/10">
+                                <Sparkles className="h-6 w-6 text-primary" />
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-bold">Willkommen bei LAI!</h2>
+                                <p className="text-muted-foreground text-sm">In 3 Schritten zum smarten Lernen</p>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <Link href="/learn/documents">
+                                <div className="flex items-start gap-3 p-4 rounded-lg border bg-background hover:bg-accent transition-colors cursor-pointer">
+                                    <div className="flex items-center justify-center h-8 w-8 rounded-full bg-primary text-primary-foreground text-sm font-bold shrink-0">
+                                        1
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-sm">Lernmaterial hochladen</p>
+                                        <p className="text-xs text-muted-foreground mt-0.5">PDF, DOCX oder Markdown — lade deine Unterlagen hoch.</p>
+                                    </div>
+                                </div>
+                            </Link>
+                            <div className="flex items-start gap-3 p-4 rounded-lg border bg-background opacity-50">
+                                <div className="flex items-center justify-center h-8 w-8 rounded-full bg-muted text-muted-foreground text-sm font-bold shrink-0">
+                                    2
+                                </div>
+                                <div>
+                                    <p className="font-semibold text-sm">Fragen stellen</p>
+                                    <p className="text-xs text-muted-foreground mt-0.5">Chatte mit der KI ueber dein Lernmaterial.</p>
+                                </div>
+                            </div>
+                            <div className="flex items-start gap-3 p-4 rounded-lg border bg-background opacity-50">
+                                <div className="flex items-center justify-center h-8 w-8 rounded-full bg-muted text-muted-foreground text-sm font-bold shrink-0">
+                                    3
+                                </div>
+                                <div>
+                                    <p className="font-semibold text-sm">Wissen testen</p>
+                                    <p className="text-xs text-muted-foreground mt-0.5">Erstelle Quizze und verfolge deinen Fortschritt.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="mt-6 flex justify-center">
+                            <Button size="lg" asChild>
+                                <Link href="/learn/documents">
+                                    <Upload className="h-4 w-4" />
+                                    Erstes Lernmaterial hochladen
+                                </Link>
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* Stats - only show when user has data */}
+            {!isNewUser && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -64,6 +122,7 @@ export default async function DashboardPage() {
                     </CardContent>
                 </Card>
             </div>
+            )}
 
             {/* Quick Actions */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

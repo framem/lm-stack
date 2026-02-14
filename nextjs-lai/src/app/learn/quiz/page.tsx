@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { toast } from 'sonner'
 import { HelpCircle, Loader2, FileText, TrendingUp, Plus } from 'lucide-react'
 import { Card, CardContent } from '@/src/components/ui/card'
 import { Button } from '@/src/components/ui/button'
@@ -14,6 +15,16 @@ import {
     DialogTitle,
     DialogDescription,
 } from '@/src/components/ui/dialog'
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/src/components/ui/alert-dialog'
 import { QuizCard } from '@/src/components/QuizCard'
 import { getQuizzes, deleteQuiz, getDocumentProgress } from '@/src/actions/quiz'
 import { getDocuments } from '@/src/actions/documents'
@@ -92,6 +103,7 @@ export default function QuizPage() {
     const [generatedCount, setGeneratedCount] = useState(0)
     const [questionCount, setQuestionCount] = useState(5)
     const [questionTypes, setQuestionTypes] = useState<string[]>(['mc'])
+    const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
 
     useEffect(() => {
         async function load() {
@@ -168,21 +180,26 @@ export default function QuizPage() {
             }
         } catch (error) {
             console.error('Quiz generation failed:', error)
-            alert(error instanceof Error ? error.message : 'Fehler bei der Quiz-Erstellung')
+            toast.error(error instanceof Error ? error.message : 'Fehler bei der Quiz-Erstellung')
         } finally {
             setGenerating(false)
         }
     }
 
-    async function handleDelete(quizId: string) {
-        if (!confirm('Quiz wirklich löschen?')) return
+    function handleDelete(quizId: string) {
+        setDeleteTarget(quizId)
+    }
 
+    async function confirmDelete() {
+        if (!deleteTarget) return
         try {
-            await deleteQuiz(quizId)
-            setQuizzes((prev) => prev.filter((q) => q.id !== quizId))
+            await deleteQuiz(deleteTarget)
+            setQuizzes((prev) => prev.filter((q) => q.id !== deleteTarget))
         } catch (error) {
             console.error('Quiz delete failed:', error)
-            alert('Quiz konnte nicht gelöscht werden.')
+            toast.error('Quiz konnte nicht geloescht werden.')
+        } finally {
+            setDeleteTarget(null)
         }
     }
 
@@ -387,6 +404,24 @@ export default function QuizPage() {
                     </div>
                 </DialogContent>
             </Dialog>
+
+            {/* Delete confirmation */}
+            <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Quiz loeschen?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Das Quiz und alle Ergebnisse werden unwiderruflich geloescht.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                            Loeschen
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     )
 }

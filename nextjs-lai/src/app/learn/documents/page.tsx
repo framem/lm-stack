@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { FileText, Plus, Search, FolderOpen, Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { DocumentCard } from '@/src/components/DocumentCard'
 import { DocumentUploader } from '@/src/components/DocumentUploader'
 import { Skeleton } from '@/src/components/ui/skeleton'
@@ -14,6 +15,16 @@ import {
     DialogTitle,
     DialogDescription,
 } from '@/src/components/ui/dialog'
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/src/components/ui/alert-dialog'
 import { getDocuments, searchDocuments, deleteDocument, renameDocument } from '@/src/actions/documents'
 
 interface DocumentSummary {
@@ -34,6 +45,7 @@ export default function DocumentsPage() {
     const [uploadOpen, setUploadOpen] = useState(false)
     const [search, setSearch] = useState('')
     const debounceRef = useRef<ReturnType<typeof setTimeout>>(null)
+    const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
 
     const fetchDocuments = useCallback(async () => {
         const data = await getDocuments()
@@ -75,14 +87,20 @@ export default function DocumentsPage() {
         }
     }, [search, loading, fetchDocuments])
 
-    async function handleDelete(id: string) {
-        if (!confirm('Lernmaterial wirklich löschen? Alle Abschnitte werden ebenfalls gelöscht.')) return
+    function handleDelete(id: string) {
+        setDeleteTarget(id)
+    }
+
+    async function confirmDelete() {
+        if (!deleteTarget) return
         try {
-            await deleteDocument(id)
-            setDocuments((prev) => prev.filter((d) => d.id !== id))
+            await deleteDocument(deleteTarget)
+            setDocuments((prev) => prev.filter((d) => d.id !== deleteTarget))
             setTotalCount((prev) => prev - 1)
         } catch {
-            alert('Löschen fehlgeschlagen.')
+            toast.error('Loeschen fehlgeschlagen.')
+        } finally {
+            setDeleteTarget(null)
         }
     }
 
@@ -93,7 +111,7 @@ export default function DocumentsPage() {
                 prev.map((d) => (d.id === id ? { ...d, title: newTitle } : d))
             )
         } catch {
-            alert('Umbenennen fehlgeschlagen.')
+            toast.error('Umbenennen fehlgeschlagen.')
         }
     }
 
@@ -199,6 +217,24 @@ export default function DocumentsPage() {
                     <DocumentUploader onSuccess={handleUploadSuccess} />
                 </DialogContent>
             </Dialog>
+
+            {/* Delete confirmation */}
+            <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Lernmaterial loeschen?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Alle Abschnitte und zugehoerige Daten werden ebenfalls geloescht. Diese Aktion kann nicht rueckgaengig gemacht werden.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                            Loeschen
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     )
 }
