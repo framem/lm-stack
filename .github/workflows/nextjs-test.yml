@@ -4,9 +4,11 @@ on:
   push:
     paths:
       - 'nextJs/**'
+      - '.github/workflows/nextjs-test.yml'
   pull_request:
     paths:
       - 'nextJs/**'
+      - '.github/workflows/nextjs-test.yml'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
