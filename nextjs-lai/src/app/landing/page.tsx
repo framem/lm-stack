@@ -21,6 +21,26 @@ const fadeUp = {
   show: { opacity: 1, y: 0, transition: { duration: 0.5 } },
 };
 
+const foxReveal = {
+  hidden: { opacity: 0, scale: 0.85 },
+  show: {
+    opacity: 1,
+    scale: 1,
+    transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] },
+  },
+};
+
+const glowPulse = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: [0.4, 0.7, 0.4],
+    transition: {
+      opacity: { duration: 4, repeat: Infinity, ease: "easeInOut" },
+      duration: 0.8,
+    },
+  },
+};
+
 const features = [
   {
     icon: FileText,
@@ -28,6 +48,7 @@ const features = [
     description:
       "Lade PDFs, DOCX oder Markdown hoch und organisiere deine Lernmaterialien an einem Ort.",
     href: "/documents",
+    accent: "blue" as const,
   },
   {
     icon: MessageSquare,
@@ -35,6 +56,7 @@ const features = [
     description:
       "Stelle Fragen zu deinen Dokumenten und erhalte verifizierte Antworten mit Quellenangaben.",
     href: "/chat",
+    accent: "orange" as const,
   },
   {
     icon: HelpCircle,
@@ -42,8 +64,9 @@ const features = [
     description:
       "Teste dein Wissen mit automatisch generierten Quizfragen und verfolge deinen Fortschritt.",
     href: "/quiz",
+    accent: "blue" as const,
   },
-] as const;
+];
 
 export default function LandingPage() {
   return (
@@ -67,44 +90,112 @@ export default function LandingPage() {
       </header>
 
       {/* Hero */}
-      <section className="flex min-h-screen items-center justify-center px-6 pt-14">
-        <motion.div
-          className="mx-auto max-w-2xl text-center"
-          variants={heroVariants}
-          initial="hidden"
-          animate="show"
-        >
-          <motion.div variants={fadeUp}>
-            <Badge variant="secondary" className="mb-4">
-              KI-gestütztes Lernen
-            </Badge>
-          </motion.div>
-          <motion.h1
-            variants={fadeUp}
-            className="text-4xl font-bold tracking-tight sm:text-5xl"
-          >
-            Lerne smarter, nicht härter.
-          </motion.h1>
-          <motion.p
-            variants={fadeUp}
-            className="mt-4 text-lg text-muted-foreground"
-          >
-            LAI kombiniert deine Lernmaterialien mit KI — für Antworten, die auf
-            deinen Dokumenten basieren, und Quizfragen, die dein Wissen
-            wirklich testen.
-          </motion.p>
+      <section className="relative flex min-h-screen items-center overflow-hidden px-6 pt-14">
+        {/* Ambient background gradient (top-right bias to sit behind fox) */}
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute -right-32 top-1/4 h-[600px] w-[600px] rounded-full bg-primary/[0.07] blur-[120px]" />
+          <div className="absolute -right-16 top-1/3 h-[400px] w-[400px] rounded-full bg-orange-500/[0.05] blur-[100px]" />
+        </div>
+
+        <div className="relative z-10 mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-12 lg:grid-cols-2 lg:gap-16">
+          {/* Left column — Text content */}
           <motion.div
-            variants={fadeUp}
-            className="mt-8 flex flex-wrap items-center justify-center gap-3"
+            className="flex flex-col items-center text-center lg:items-start lg:text-left"
+            variants={heroVariants}
+            initial="hidden"
+            animate="show"
           >
-            <Button size="lg" asChild>
-              <Link href="/chat">Jetzt starten</Link>
-            </Button>
-            <Button variant="outline" size="lg" asChild>
-              <Link href="#workflow">Mehr erfahren</Link>
-            </Button>
+            <motion.div variants={fadeUp}>
+              <Badge
+                variant="secondary"
+                className="mb-5 border border-orange-400/25 px-3 py-1 text-xs tracking-wide"
+              >
+                KI-gestütztes Lernen
+              </Badge>
+            </motion.div>
+            <motion.h1
+              variants={fadeUp}
+              className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl"
+            >
+              Lerne smarter,
+              <br />
+              <span className="bg-gradient-to-r from-primary via-blue-400 to-orange-400 bg-clip-text text-transparent">
+                nicht härter.
+              </span>
+            </motion.h1>
+            <motion.p
+              variants={fadeUp}
+              className="mt-5 max-w-lg text-lg leading-relaxed text-muted-foreground"
+            >
+              LAI kombiniert deine Lernmaterialien mit KI — für Antworten, die
+              auf deinen Dokumenten basieren, und Quizfragen, die dein Wissen
+              wirklich testen.
+            </motion.p>
+            <motion.div
+              variants={fadeUp}
+              className="mt-8 flex flex-wrap items-center gap-3"
+            >
+              <Button size="lg" asChild>
+                <Link href="/chat">Jetzt starten</Link>
+              </Button>
+              <Button variant="outline" size="lg" asChild>
+                <Link href="#workflow">Mehr erfahren</Link>
+              </Button>
+            </motion.div>
           </motion.div>
-        </motion.div>
+
+          {/* Right column — Fox logo with glow */}
+          <motion.div
+            className="relative flex items-center justify-center"
+            variants={heroVariants}
+            initial="hidden"
+            animate="show"
+          >
+            {/* Layered glow effects */}
+            <motion.div
+              className="absolute h-[420px] w-[420px] rounded-full sm:h-[480px] sm:w-[480px]"
+              variants={glowPulse}
+              style={{
+                background:
+                  "radial-gradient(circle, oklch(0.58 0.19 255 / 0.25) 0%, transparent 70%)",
+              }}
+            />
+            <motion.div
+              className="absolute h-[350px] w-[350px] rounded-full sm:h-[400px] sm:w-[400px]"
+              variants={glowPulse}
+              style={{
+                background:
+                  "radial-gradient(circle, oklch(0.65 0.17 55 / 0.2) 0%, transparent 65%)",
+              }}
+            />
+            {/* Subtle ring */}
+            <motion.div
+              className="absolute h-[380px] w-[380px] rounded-full border border-primary/10 sm:h-[440px] sm:w-[440px]"
+              variants={foxReveal}
+            />
+
+            {/* Fox image */}
+            <motion.div variants={foxReveal} className="relative">
+              <motion.div
+                animate={{ y: [0, -8, 0] }}
+                transition={{
+                  duration: 5,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
+              >
+                <Image
+                  src="/images/fox.png"
+                  alt="LAI — Geometric fox logo"
+                  width={420}
+                  height={420}
+                  priority
+                  className="relative z-10 h-auto w-[300px] drop-shadow-[0_0_40px_oklch(0.58_0.19_255_/_0.3)] sm:w-[380px] lg:w-[420px]"
+                />
+              </motion.div>
+            </motion.div>
+          </motion.div>
+        </div>
       </section>
 
       {/* Workflow */}
@@ -168,7 +259,8 @@ export default function LandingPage() {
           transition={{ duration: 0.5 }}
         >
           <h2 className="text-3xl font-bold tracking-tight">
-            Bereit, smarter zu lernen?
+            Bereit, smarter zu{" "}
+            <span className="text-orange-400">lernen</span>?
           </h2>
           <p className="mt-2 text-muted-foreground">
             Lade deine Dokumente hoch und starte sofort mit dem Lernen.
