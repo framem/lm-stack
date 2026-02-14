@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import Image from "next/image";
+import { usePathname, useSearchParams } from 'next/navigation'
 import {
     BookOpen,
     ChevronRight,
@@ -49,6 +50,8 @@ const navItems = [
 
 export function AppSidebar() {
     const pathname = usePathname()
+    const searchParams = useSearchParams()
+    const activeSessionId = searchParams.get('sessionId')
     const [sessions, setSessions] = useState<SessionItem[]>([])
 
     useEffect(() => {
@@ -74,7 +77,7 @@ export function AppSidebar() {
                         <SidebarMenuButton size="lg" asChild>
                             <Link href="/">
                                 <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                                    <BookOpen className="size-4" />
+                                    <Image src="/images/fox.png" alt="Fox Logo" width={48} height={48} />
                                 </div>
                                 <div className="grid flex-1 text-left text-sm leading-tight">
                                     <span className="truncate font-bold">LAI</span>
@@ -153,9 +156,7 @@ export function AppSidebar() {
                                                     <SidebarMenuSubItem key={session.id}>
                                                         <SidebarMenuSubButton
                                                             asChild
-                                                            isActive={
-                                                                pathname === `/chat/${session.id}`
-                                                            }
+                                                            isActive={activeSessionId === session.id}
                                                         >
                                                             <Link href={`/chat?sessionId=${session.id}`}>
                                                                 <span className="truncate">

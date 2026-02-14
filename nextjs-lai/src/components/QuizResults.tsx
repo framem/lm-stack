@@ -37,19 +37,14 @@ const TYPE_LABELS: Record<string, string> = {
 }
 
 export function QuizResults({ quizTitle, documentTitle, results }: QuizResultsProps) {
-    // Scoring: mc/truefalse = binary, freetext = freeTextScore (0-1)
+    // Scoring: freetext = weighted freeTextScore (0-1), mc/truefalse = binary (0 or 1)
+    const totalCount = results.length
     const totalScore = results.reduce((sum, r) => {
         if (r.questionType === 'freetext') {
             return sum + (r.freeTextScore ?? 0)
         }
         return sum + (r.isCorrect ? 1 : 0)
     }, 0)
-    const correctCount = results.filter((r) =>
-        r.questionType === 'freetext'
-            ? (r.freeTextScore ?? 0) >= 0.5
-            : r.isCorrect
-    ).length
-    const totalCount = results.length
     const percentage = totalCount > 0 ? Math.round((totalScore / totalCount) * 100) : 0
 
     return (
@@ -64,20 +59,10 @@ export function QuizResults({ quizTitle, documentTitle, results }: QuizResultsPr
                     <div className="text-center">
                         <p className="text-4xl font-bold">{percentage}%</p>
                         <p className="text-muted-foreground">
-                            {correctCount} von {totalCount} Fragen richtig
+                            {totalScore % 1 === 0 ? totalScore : totalScore.toFixed(1)} von {totalCount} Punkten erreicht
                         </p>
                     </div>
                     <Progress value={percentage} className="h-3" />
-                    <div className="flex justify-center gap-4 text-sm">
-                        <div className="flex items-center gap-1">
-                            <CheckCircle2 className="h-4 w-4 text-green-600" />
-                            <span>{correctCount} richtig</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                            <XCircle className="h-4 w-4 text-red-600" />
-                            <span>{totalCount - correctCount} falsch</span>
-                        </div>
-                    </div>
                 </CardContent>
             </Card>
 

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { FileText, Plus, Search, Upload, FolderOpen, Loader2 } from 'lucide-react'
+import { FileText, Plus, Search, FolderOpen, Loader2 } from 'lucide-react'
 import { DocumentCard } from '@/src/components/DocumentCard'
 import { DocumentUploader } from '@/src/components/DocumentUploader'
 import { Skeleton } from '@/src/components/ui/skeleton'
@@ -130,7 +130,7 @@ export default function DocumentsPage() {
                 </div>
                 <Button onClick={() => setUploadOpen(true)}>
                     <Plus className="h-4 w-4" />
-                    Hochladen
+                    Anlegen
                 </Button>
             </div>
 
@@ -178,12 +178,12 @@ export default function DocumentsPage() {
                     <div>
                         <p className="text-lg font-medium">Noch keine Dokumente</p>
                         <p className="text-muted-foreground mt-1">
-                            Lade dein erstes Dokument hoch, um loszulegen.
+                            Erstelle dein erstes Dokument, um loszulegen.
                         </p>
                     </div>
                     <Button onClick={() => setUploadOpen(true)} size="lg">
-                        <Upload className="h-4 w-4" />
-                        Dokument hochladen
+                        <Plus className="h-4 w-4" />
+                        Dokument anlegen
                     </Button>
                 </div>
             ) : null}
@@ -192,9 +192,9 @@ export default function DocumentsPage() {
             <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
                 <DialogContent className="sm:max-w-lg">
                     <DialogHeader>
-                        <DialogTitle>Dokument hochladen</DialogTitle>
+                        <DialogTitle>Dokument anlegen</DialogTitle>
                         <DialogDescription>
-                            Lade eine Datei hoch oder füge Text ein, um ihn für Chat und Quiz zu verarbeiten.
+                            Lade eine Datei hoch oder füge Text ein, um ihn für den Chat zu verarbeiten.
                         </DialogDescription>
                     </DialogHeader>
                     <DocumentUploader onSuccess={handleUploadSuccess} />

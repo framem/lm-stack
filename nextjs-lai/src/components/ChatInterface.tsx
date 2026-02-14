@@ -1,12 +1,39 @@
 'use client'
 
-import { useRef, useEffect, useState, useMemo } from 'react'
+import { Fragment, useState, useMemo, useEffect, useRef } from 'react'
 import { DefaultChatTransport, type UIMessage } from 'ai'
 import { useChat } from '@ai-sdk/react'
 import { z } from 'zod'
-import { Send, Loader2, BookOpen, FileText, X } from 'lucide-react'
-import { ChatMessageBubble } from '@/src/components/ChatMessageBubble'
+import { BookOpen, FileText, X, Loader2, ChevronDown, CornerDownLeft } from 'lucide-react'
 import { getSession } from '@/src/actions/chat'
+
+import {
+    Conversation,
+    ConversationContent,
+    ConversationEmptyState,
+    ConversationScrollButton,
+} from '@/src/components/ai-elements/conversation'
+import {
+    Message,
+    MessageContent,
+    MessageResponse,
+} from '@/src/components/ai-elements/message'
+import {
+    PromptInput,
+    PromptInputBody,
+    PromptInputFooter,
+    PromptInputTools,
+    PromptInputButton,
+    PromptInputTextarea,
+    PromptInputSubmit,
+    type PromptInputMessage,
+} from '@/src/components/ai-elements/prompt-input'
+import {
+    Sources,
+    SourcesTrigger,
+    SourcesContent,
+} from '@/src/components/ai-elements/sources'
+import { Shimmer } from '@/src/components/ai-elements/shimmer'
 
 interface ChatInterfaceProps {
     sessionId?: string
@@ -47,11 +74,18 @@ const messageMetadataSchema = z.object({
 
 type ChatMessage = UIMessage<z.infer<typeof messageMetadataSchema>>
 
-function getTextContent(message: ChatMessage): string {
-    return message.parts
-        .filter((p): p is { type: 'text'; text: string } => p.type === 'text')
-        .map((p) => p.text)
-        .join('')
+// Turn [Quelle N] references in assistant text into clickable markdown links
+function linkifyCitations(text: string): string {
+    return text.replace(/\[Quelle\s+(\d+)\](?!\()/g, '[Quelle $1](#cite-$1)')
+}
+
+// Transform a filename-derived title into a readable display title
+function prettifyTitle(raw: string): string {
+    return raw
+        .replace(/[-_]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
 // Convert stored DB messages to UIMessage format for useChat initialMessages
@@ -69,10 +103,8 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
     const [activeSessionId, setActiveSessionId] = useState(sessionId)
     const [activeSource, setActiveSource] = useState<StoredSource | null>(null)
     const [loadingSession, setLoadingSession] = useState(!!sessionId)
-    const messagesEndRef = useRef<HTMLDivElement>(null)
     const sessionCreatedRef = useRef(false)
 
-    const [input, setInput] = useState('')
     const activeSessionIdRef = useRef(activeSessionId)
 
     useEffect(() => {
@@ -117,7 +149,7 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
         },
     }), [documentId, onSessionCreated])
 
-    const { messages, sendMessage, status, setMessages } = useChat<ChatMessage>({
+    const { messages, sendMessage, status, setMessages, stop } = useChat<ChatMessage>({
         transport,
         messageMetadataSchema,
     })
@@ -146,22 +178,15 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
 
     const isLoading = status === 'streaming' || status === 'submitted'
 
-    function handleSubmit(e: React.FormEvent) {
-        e.preventDefault()
-        const trimmed = input.trim()
+    function handleSubmit({ text }: PromptInputMessage) {
+        const trimmed = text.trim()
         if (!trimmed || isLoading) return
         sendMessage({ text: trimmed })
-        setInput('')
     }
-
-    // Auto-scroll to bottom when new messages arrive
-    useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-    }, [messages])
 
     // Toggle a source in the detail panel
     function handleSourceClick(source: StoredSource) {
-        setActiveSource((prev) => prev?.chunkId === source.chunkId ? null : source)
+        setActiveSource(source)
     }
 
     if (loadingSession) {
@@ -176,74 +201,117 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
         <div className="flex h-full gap-0">
             {/* Main chat area */}
             <div className="flex-1 flex flex-col min-w-0">
-                {/* Messages */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                    {messages.length === 0 && (
-                        <div className="flex flex-col items-center justify-center h-full text-center">
-                            <BookOpen className="h-12 w-12 text-muted-foreground mb-4" />
-                            <h2 className="text-lg font-semibold mb-2">Lernassistent</h2>
-                            <p className="text-muted-foreground text-sm max-w-md">
-                                Stelle eine Frage zu deinen Dokumenten. Der Assistent antwortet basierend auf den hochgeladenen Inhalten und zitiert die Quellen.
-                            </p>
-                        </div>
-                    )}
+                <Conversation className="flex-1">
+                    <ConversationContent>
+                        {messages.length === 0 && (
+                            <ConversationEmptyState
+                                title="Lernassistent"
+                                description="Stelle eine Frage zu deinen Dokumenten. Der Assistent antwortet basierend auf den hochgeladenen Inhalten und zitiert die Quellen."
+                                icon={<BookOpen className="h-12 w-12" />}
+                            />
+                        )}
 
-                    {messages.map((message) => (
-                        <ChatMessageBubble
-                            key={message.id}
-                            role={message.role as 'user' | 'assistant'}
-                            content={getTextContent(message)}
-                            sources={message.metadata?.sources}
-                            activeSourceChunkId={activeSource?.chunkId}
-                            onSourceClick={handleSourceClick}
-                        />
-                    ))}
+                        {messages.map((message) => (
+                            <Fragment key={message.id}>
+                                {message.parts.map((part, i) => {
+                                    if (part.type === 'text') {
+                                        return (
+                                            <Message key={i} from={message.role}>
+                                                <MessageContent>
+                                                    {message.role === 'user' ? (
+                                                        <p className="whitespace-pre-wrap">{part.text}</p>
+                                                    ) : (
+                                                        // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
+                                                        <div onClick={(e) => {
+                                                            const anchor = (e.target as HTMLElement).closest('a')
+                                                            const href = anchor?.getAttribute('href')
+                                                            if (!href?.startsWith('#cite-')) return
+                                                            e.preventDefault()
+                                                            const idx = parseInt(href.slice(6))
+                                                            const src = message.metadata?.sources?.find((s) => s.index === idx)
+                                                            if (src) handleSourceClick(src)
+                                                        }}>
+                                                            <MessageResponse linkSafety={{ enabled: false }}>
+                                                                {linkifyCitations(part.text)}
+                                                            </MessageResponse>
+                                                        </div>
+                                                    )}
+                                                </MessageContent>
+                                            </Message>
+                                        )
+                                    }
+                                    return null
+                                })}
 
-                    {isLoading && messages[messages.length - 1]?.role === 'user' && (
-                        <div className="flex gap-3">
-                            <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-                                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                            </div>
-                            <div className="rounded-2xl rounded-tl-sm bg-card border border-border px-4 py-3">
-                                <p className="text-sm text-muted-foreground">Denke nach...</p>
-                            </div>
-                        </div>
-                    )}
+                                {message.role === 'assistant' && message.metadata?.sources && message.metadata.sources.length > 0 && (
+                                    <Sources>
+                                        <SourcesTrigger count={message.metadata.sources.length}>
+                                            <p className="font-medium">{message.metadata.sources.length} Quellen verwendet</p>
+                                            <ChevronDown className="h-4 w-4" />
+                                        </SourcesTrigger>
+                                        <SourcesContent>
+                                            {message.metadata.sources.map((src) => (
+                                                <button
+                                                    key={src.chunkId}
+                                                    type="button"
+                                                    className="flex items-center gap-2 text-left cursor-pointer hover:underline"
+                                                    onClick={() => handleSourceClick(src)}
+                                                >
+                                                    <FileText className="h-4 w-4 flex-shrink-0" />
+                                                    <span className="font-medium">{prettifyTitle(src.documentTitle)}</span>
+                                                    {src.pageNumber != null && (
+                                                        <span className="text-muted-foreground">S.{src.pageNumber}</span>
+                                                    )}
+                                                </button>
+                                            ))}
+                                        </SourcesContent>
+                                    </Sources>
+                                )}
+                            </Fragment>
+                        ))}
 
-                    <div ref={messagesEndRef} />
-                </div>
+                        {isLoading && messages[messages.length - 1]?.role === 'user' && (
+                            <Shimmer>Denke nach...</Shimmer>
+                        )}
+                    </ConversationContent>
+                    <ConversationScrollButton />
+                </Conversation>
 
-                {/* Input area */}
+                {/* Input */}
                 <div className="border-t border-border p-4">
-                    <form onSubmit={handleSubmit} className="flex gap-2">
-                        <input
-                            type="text"
-                            value={input}
-                            onChange={(e) => setInput(e.target.value)}
-                            placeholder="Stelle eine Frage..."
-                            className="flex-1 rounded-lg border border-input bg-background px-4 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                            disabled={isLoading}
-                        />
-                        <button
-                            type="submit"
-                            disabled={isLoading || !input.trim()}
-                            className="rounded-lg bg-primary text-primary-foreground px-4 py-2.5 hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            {isLoading ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                                <Send className="h-4 w-4" />
-                            )}
-                        </button>
-                    </form>
+                    <PromptInput onSubmit={handleSubmit}>
+                        <PromptInputBody>
+                            <PromptInputTextarea placeholder="Stelle eine Frage zu deinen Dokumenten..." />
+                        </PromptInputBody>
+                        <PromptInputFooter>
+                            <PromptInputTools>
+                                <PromptInputButton
+                                    tooltip={{ content: 'Absenden', shortcut: '↵' }}
+                                    variant="ghost"
+                                    disabled
+                                    className="pointer-events-none text-muted-foreground/50"
+                                >
+                                    <CornerDownLeft className="size-3.5" />
+                                    <span className="text-xs">Enter</span>
+                                </PromptInputButton>
+                            </PromptInputTools>
+                            <PromptInputSubmit status={status} onStop={stop} />
+                        </PromptInputFooter>
+                    </PromptInput>
                 </div>
             </div>
 
-            {/* Source detail panel (right side) */}
-            <div className="w-96 border-l border-border bg-card/50 overflow-y-auto hidden lg:block">
-                <div className="p-4">
-                    {activeSource ? (
-                        <>
+            {/* Source detail panel (right side) — only rendered when a source is selected */}
+            {activeSource && (
+                <>
+                    {/* Backdrop for small screens */}
+                    {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
+                    <div
+                        className="fixed inset-0 z-40 bg-black/40 lg:hidden"
+                        onClick={() => setActiveSource(null)}
+                    />
+                    <aside className="max-lg:fixed max-lg:inset-y-0 max-lg:right-0 max-lg:z-50 w-80 sm:w-96 border-l border-border bg-background text-foreground overflow-y-auto shadow-lg lg:shadow-none">
+                        <div className="p-4">
                             <div className="flex items-start justify-between gap-2 mb-4">
                                 <div className="flex items-center gap-2 min-w-0">
                                     <span className="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold">
@@ -252,7 +320,7 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
                                     <div className="min-w-0">
                                         <div className="flex items-center gap-1.5">
                                             <FileText className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                                            <span className="text-sm font-medium truncate">{activeSource.documentTitle}</span>
+                                            <span className="text-sm font-medium truncate">{prettifyTitle(activeSource.documentTitle)}</span>
                                         </div>
                                         {activeSource.pageNumber != null && (
                                             <p className="text-xs text-muted-foreground mt-0.5">Seite {activeSource.pageNumber}</p>
@@ -267,20 +335,15 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
                                     <X className="h-4 w-4" />
                                 </button>
                             </div>
-                            <div className="rounded-lg border border-border bg-background p-4">
-                                <p className="text-sm leading-relaxed whitespace-pre-wrap">{activeSource.content}</p>
+                            <div className="rounded-lg border border-border bg-muted/50 p-4">
+                                <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                                    {activeSource.content || activeSource.snippet || 'Kein Inhalt verfügbar.'}
+                                </p>
                             </div>
-                        </>
-                    ) : (
-                        <div className="flex flex-col items-center justify-center h-32 text-center">
-                            <FileText className="h-8 w-8 text-muted-foreground mb-2" />
-                            <p className="text-xs text-muted-foreground">
-                                Klicke auf eine Quelle, um den vollständigen Textabschnitt zu sehen.
-                            </p>
                         </div>
-                    )}
-                </div>
-            </div>
+                    </aside>
+                </>
+            )}
         </div>
     )
 }

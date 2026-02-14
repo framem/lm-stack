@@ -383,7 +383,7 @@ Erkläre kurz und verständlich:
 
 // Evaluate freetext questions via LLM comparison
 const freetextEvalSchema = z.object({
-    score: z.number().min(0).max(1),
+    correct: z.enum(['yes', 'partly', 'no']),
     feedback: z.string(),
 })
 
@@ -399,24 +399,25 @@ async function evaluateFreetext(
     const { output } = await generateText({
         model: getModel(),
         output: Output.object({ schema: freetextEvalSchema }),
-        prompt: `Bewerte die folgende Freitext-Antwort eines Benutzers auf einer Skala von 0.0 bis 1.0.
+        prompt: `Prüfe ob die Antwort des Benutzers inhaltlich zur richtigen Antwort passt.
 
-Frage: ${question.questionText}
-Musterantwort: ${question.correctAnswer ?? 'Keine Musterantwort verfügbar.'}
-${question.sourceSnippet ? `Quelltext: "${question.sourceSnippet}"` : ''}
+Beispiele:
+Richtig: "€5,00 pro Berichtseite" | Benutzer: "5€ pro Seite" → correct: "yes" (gleicher Betrag, gleiche Bedeutung)
+Richtig: "Berlin" | Benutzer: "berlin" → correct: "yes" (gleiche Stadt)
+Richtig: "3 Monate" | Benutzer: "12 Wochen" → correct: "yes" (gleicher Zeitraum)
+Richtig: "Die Erde kreist um die Sonne" | Benutzer: "Der Mond" → correct: "no" (falsch)
+Richtig: "Vertrag läuft 2 Jahre mit 5% Rabatt" | Benutzer: "2 Jahre" → correct: "partly" (Rabatt fehlt)
 
-Antwort des Benutzers:
-"${freeTextAnswer}"
+Jetzt bewerte:
+Richtige Antwort: "${question.correctAnswer ?? 'Unbekannt'}"
+Antwort des Benutzers: "${freeTextAnswer}"
 
-Bewertungskriterien:
-- 0.0: Völlig falsch oder irrelevant
-- 0.5: Teilweise korrekt, wichtige Aspekte fehlen
-- 1.0: Vollständig korrekt und gut begründet
-
-Antworte mit score (0.0-1.0) und feedback (kurzes konstruktives Feedback auf Deutsch).`,
+correct: "yes", "partly" oder "no"
+feedback: Ein kurzer Satz auf Deutsch.`,
     })
 
-    const freeTextScore = output ? Math.max(0, Math.min(1, output.score)) : 0
+    const scoreMap = { yes: 1.0, partly: 0.5, no: 0.0 } as const
+    const freeTextScore = output ? scoreMap[output.correct] ?? 0 : 0
     const freeTextFeedback = output?.feedback ?? 'Bewertung konnte nicht verarbeitet werden.'
 
     const isCorrect = freeTextScore >= 0.5
