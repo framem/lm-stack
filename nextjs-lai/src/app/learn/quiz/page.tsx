@@ -15,7 +15,7 @@ import {
     DialogDescription,
 } from '@/src/components/ui/dialog'
 import { QuizCard } from '@/src/components/QuizCard'
-import { getQuizzes, generateQuiz, deleteQuiz, getDocumentProgress } from '@/src/actions/quiz'
+import { getQuizzes, deleteQuiz, getDocumentProgress } from '@/src/actions/quiz'
 import { getDocuments } from '@/src/actions/documents'
 import { formatDate } from '@/src/lib/utils'
 
@@ -89,6 +89,7 @@ export default function QuizPage() {
     const [dialogOpen, setDialogOpen] = useState(false)
     const [selectedDocId, setSelectedDocId] = useState(searchParams.get('documentId') ?? '')
     const [generating, setGenerating] = useState(false)
+    const [generatedCount, setGeneratedCount] = useState(0)
     const [questionCount, setQuestionCount] = useState(5)
     const [questionTypes, setQuestionTypes] = useState<string[]>(['mc'])
 
@@ -123,9 +124,48 @@ export default function QuizPage() {
     async function handleGenerate() {
         if (!selectedDocId) return
         setGenerating(true)
+        setGeneratedCount(0)
         try {
-            const { quizId } = await generateQuiz(selectedDocId, questionCount, questionTypes)
-            router.push(`/learn/quiz/${quizId}`)
+            const res = await fetch('/api/quiz/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    documentId: selectedDocId,
+                    questionCount,
+                    questionTypes,
+                }),
+            })
+
+            if (!res.ok || !res.body) {
+                throw new Error('Fehler bei der Quiz-Erstellung')
+            }
+
+            const reader = res.body.getReader()
+            const decoder = new TextDecoder()
+            let buffer = ''
+
+            while (true) {
+                const { done, value } = await reader.read()
+                if (done) break
+
+                buffer += decoder.decode(value, { stream: true })
+                const lines = buffer.split('\n')
+                buffer = lines.pop() ?? ''
+
+                for (const line of lines) {
+                    if (!line.startsWith('data: ')) continue
+                    const event = JSON.parse(line.slice(6))
+
+                    if (event.type === 'progress') {
+                        setGeneratedCount(event.generated)
+                    } else if (event.type === 'complete') {
+                        router.push(`/learn/quiz/${event.quizId}`)
+                        return
+                    } else if (event.type === 'error') {
+                        throw new Error(event.message)
+                    }
+                }
+            }
         } catch (error) {
             console.error('Quiz generation failed:', error)
             alert(error instanceof Error ? error.message : 'Fehler bei der Quiz-Erstellung')
@@ -335,8 +375,14 @@ export default function QuizPage() {
                             disabled={!selectedDocId || generating || questionTypes.length === 0}
                             className="w-full"
                         >
-                            {generating && <Loader2 className="h-4 w-4 animate-spin" />}
-                            Quiz generieren
+                            {generating
+                                ? <>
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    {generatedCount > 0
+                                        ? `${generatedCount} Fragen generiert…`
+                                        : 'Fragen werden generiert…'}
+                                </>
+                                : 'Quiz generieren'}
                         </Button>
                     </div>
                 </DialogContent>
