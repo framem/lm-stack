@@ -15,6 +15,7 @@ export async function POST(request: NextRequest) {
         let fileType: string
         let fileSize: number | undefined
         let textContent: string
+        let pageBreaks: number[] | undefined
 
         if (contentType.includes('multipart/form-data')) {
             // File upload via FormData
@@ -42,6 +43,7 @@ export async function POST(request: NextRequest) {
             fileType = file.type
             fileSize = file.size
             textContent = parsed.text
+            pageBreaks = parsed.pageBreaks
         } else {
             // JSON text paste
             const body = await request.json()
@@ -79,7 +81,7 @@ export async function POST(request: NextRequest) {
 
                     // Step 2: Chunk the text
                     sendProgress('chunking', 30, 'Text wird in Abschnitte unterteilt...')
-                    const chunks = chunkDocument({ text: textContent })
+                    const chunks = chunkDocument({ text: textContent, pageBreaks })
 
                     if (chunks.length === 0) {
                         sendProgress('done', 100, 'Dokument gespeichert (keine Abschnitte erstellt).')

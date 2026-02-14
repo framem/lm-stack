@@ -10,11 +10,26 @@ import {
     CheckCircle2,
     XCircle,
     SkipForward,
+    RefreshCw,
 } from 'lucide-react'
 import { Button } from '@/src/components/ui/button'
 import { Badge } from '@/src/components/ui/badge'
 import { Progress } from '@/src/components/ui/progress'
 import { Skeleton } from '@/src/components/ui/skeleton'
+
+interface RefreshableDoc {
+    id: string
+    title: string
+    fileName: string | null
+    _count: { chunks: number }
+}
+
+interface RefreshResult {
+    id: string
+    title: string
+    status: 'refreshed' | 'error'
+    error?: string
+}
 
 interface ScannedFile {
     relativePath: string
@@ -52,6 +67,15 @@ export default function AdminPage() {
     const [fileProgress, setFileProgress] = useState(0) // 0-100 across all files
     const [results, setResults] = useState<ImportResult[]>([])
 
+    // Refresh state
+    const [refreshDocs, setRefreshDocs] = useState<RefreshableDoc[]>([])
+    const [refreshSelected, setRefreshSelected] = useState<Set<string>>(new Set())
+    const [refreshPhase, setRefreshPhase] = useState<Phase>('idle')
+    const [refreshCurrentDoc, setRefreshCurrentDoc] = useState('')
+    const [refreshDetail, setRefreshDetail] = useState('')
+    const [refreshProgress, setRefreshProgress] = useState(0)
+    const [refreshResults, setRefreshResults] = useState<RefreshResult[]>([])
+
     const fetchFiles = useCallback(async () => {
         try {
             const res = await fetch('/api/admin/scan')
@@ -68,9 +92,21 @@ export default function AdminPage() {
         }
     }, [])
 
+    const fetchRefreshDocs = useCallback(async () => {
+        try {
+            const res = await fetch('/api/admin/refresh')
+            if (!res.ok) return
+            const data = await res.json()
+            setRefreshDocs(data.documents)
+        } catch {
+            // non-critical, ignore
+        }
+    }, [])
+
     useEffect(() => {
         fetchFiles()
-    }, [fetchFiles])
+        fetchRefreshDocs()
+    }, [fetchFiles, fetchRefreshDocs])
 
     const selectableFiles = files.filter(f => !f.alreadyImported)
     const docsFiles = files.filter(f => f.category === 'docs')
@@ -190,6 +226,101 @@ export default function AdminPage() {
         fetchFiles()
     }
 
+    function toggleRefreshDoc(id: string) {
+        setRefreshSelected(prev => {
+            const next = new Set(prev)
+            if (next.has(id)) next.delete(id)
+            else next.add(id)
+            return next
+        })
+    }
+
+    function toggleRefreshAll() {
+        if (refreshSelected.size === refreshDocs.length) {
+            setRefreshSelected(new Set())
+        } else {
+            setRefreshSelected(new Set(refreshDocs.map(d => d.id)))
+        }
+    }
+
+    async function startRefresh() {
+        if (refreshSelected.size === 0) return
+        setRefreshPhase('importing')
+        setRefreshResults([])
+        setRefreshProgress(0)
+        setRefreshCurrentDoc('')
+        setRefreshDetail('')
+
+        try {
+            const res = await fetch('/api/admin/refresh', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ documentIds: Array.from(refreshSelected) }),
+            })
+
+            if (!res.ok || !res.body) {
+                setRefreshPhase('done')
+                setRefreshResults([{ id: '', title: 'batch', status: 'error', error: 'Verbindung fehlgeschlagen' }])
+                return
+            }
+
+            const reader = res.body.getReader()
+            const decoder = new TextDecoder()
+            let buffer = ''
+
+            while (true) {
+                const { done, value } = await reader.read()
+                if (done) break
+
+                buffer += decoder.decode(value, { stream: true })
+                const lines = buffer.split('\n')
+                buffer = lines.pop() || ''
+
+                for (const line of lines) {
+                    if (!line.startsWith('data: ')) continue
+                    try {
+                        const event = JSON.parse(line.slice(6))
+
+                        switch (event.type) {
+                            case 'doc_start':
+                                setRefreshCurrentDoc(event.title)
+                                setRefreshDetail('Wird verarbeitet...')
+                                setRefreshProgress(Math.round((event.index / event.total) * 100))
+                                break
+                            case 'progress':
+                                setRefreshDetail(event.detail || event.step)
+                                break
+                            case 'doc_complete':
+                                setRefreshResults(prev => [...prev, { id: event.id, title: event.title, status: 'refreshed' }])
+                                break
+                            case 'doc_error':
+                                setRefreshResults(prev => [...prev, { id: event.id, title: event.title || event.id, status: 'error', error: event.error }])
+                                break
+                            case 'batch_complete':
+                                setRefreshProgress(100)
+                                setRefreshCurrentDoc('')
+                                setRefreshDetail('')
+                                break
+                        }
+                    } catch {
+                        // ignore malformed SSE lines
+                    }
+                }
+            }
+        } catch (err) {
+            console.error('Refresh stream error:', err)
+        } finally {
+            setRefreshPhase('done')
+        }
+    }
+
+    function resetRefresh() {
+        setRefreshPhase('idle')
+        setRefreshResults([])
+        setRefreshSelected(new Set())
+        fetchRefreshDocs()
+    }
+
     if (loading) {
         return (
             <div className="p-6 max-w-4xl mx-auto space-y-4">
@@ -274,6 +405,108 @@ export default function AdminPage() {
                     </div>
                 </div>
             )}
+
+            {/* ── Refresh section ── */}
+            {refreshDocs.length > 0 && (
+                <div className="space-y-4">
+                    <div>
+                        <h2 className="text-lg font-semibold flex items-center gap-2">
+                            <RefreshCw className="h-5 w-5" />
+                            Embeddings aktualisieren
+                        </h2>
+                        <p className="text-sm text-muted-foreground mt-1">
+                            Dokumente neu chunken und Embeddings regenerieren
+                        </p>
+                    </div>
+
+                    {/* Refresh progress */}
+                    {refreshPhase === 'importing' && (
+                        <div className="rounded-lg border p-4 space-y-3">
+                            <div className="flex items-center gap-2 text-sm font-medium">
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                Aktualisiere...
+                            </div>
+                            <Progress value={refreshProgress} />
+                            {refreshCurrentDoc && (
+                                <p className="text-sm text-muted-foreground truncate">
+                                    {refreshCurrentDoc} — {refreshDetail}
+                                </p>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Refresh results */}
+                    {refreshPhase === 'done' && refreshResults.length > 0 && (
+                        <div className="rounded-lg border p-4 space-y-3">
+                            <div className="flex items-center justify-between">
+                                <p className="text-sm font-medium">Aktualisierung abgeschlossen</p>
+                                <Button variant="outline" size="sm" onClick={resetRefresh}>
+                                    Zurück
+                                </Button>
+                            </div>
+                            <div className="space-y-2">
+                                {refreshResults.map((r) => (
+                                    <div key={r.id} className="flex items-center gap-2 text-sm">
+                                        {r.status === 'refreshed' && <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />}
+                                        {r.status === 'error' && <XCircle className="h-4 w-4 text-destructive shrink-0" />}
+                                        <span className="truncate">{r.title}</span>
+                                        {r.status === 'error' && (
+                                            <Badge variant="destructive" className="text-xs">{r.error}</Badge>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Refresh document list */}
+                    {refreshPhase === 'idle' && (
+                        <>
+                            <div className="flex items-center justify-between">
+                                <button
+                                    onClick={toggleRefreshAll}
+                                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                                >
+                                    {refreshSelected.size === refreshDocs.length && refreshDocs.length > 0
+                                        ? 'Auswahl aufheben'
+                                        : 'Alle auswählen'}
+                                </button>
+                                <Button
+                                    onClick={startRefresh}
+                                    disabled={refreshSelected.size === 0}
+                                    variant="secondary"
+                                >
+                                    <RefreshCw className="h-4 w-4 mr-2" />
+                                    {refreshSelected.size > 0
+                                        ? `${refreshSelected.size} Dokument${refreshSelected.size !== 1 ? 'e' : ''} aktualisieren`
+                                        : 'Dokumente auswählen'}
+                                </Button>
+                            </div>
+                            <div className="rounded-lg border divide-y">
+                                {refreshDocs.map((doc) => (
+                                    <label
+                                        key={doc.id}
+                                        className="flex items-center gap-3 px-4 py-3 hover:bg-muted/50 cursor-pointer transition-colors"
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            className="h-4 w-4 rounded border-border accent-primary"
+                                            checked={refreshSelected.has(doc.id)}
+                                            onChange={() => toggleRefreshDoc(doc.id)}
+                                        />
+                                        <span className="flex-1 text-sm truncate">{doc.title}</span>
+                                        <Badge variant="secondary" className="text-xs font-normal">
+                                            {doc._count.chunks} Chunks
+                                        </Badge>
+                                    </label>
+                                ))}
+                            </div>
+                        </>
+                    )}
+                </div>
+            )}
+
+            <hr className="border-border" />
 
             {/* File list (hidden during import) */}
             {phase === 'idle' && (
