@@ -3,11 +3,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 // Mock dependencies before importing routes
 vi.mock('@/src/lib/llm', () => ({
     getModel: vi.fn(() => 'mock-model'),
-    createEmbedding: vi.fn(() => Promise.resolve(new Array(768).fill(0))),
 }))
 
-vi.mock('@/src/data-access/documents', () => ({
-    findSimilarChunks: vi.fn(() => Promise.resolve([
+vi.mock('@/src/lib/rag', () => ({
+    retrieveContext: vi.fn(() => Promise.resolve([
         {
             id: 'chunk-1',
             content: 'Machine learning is a subset of AI.',
@@ -17,16 +16,13 @@ vi.mock('@/src/data-access/documents', () => ({
             chunkIndex: 0,
             similarity: 0.92,
         },
-        {
-            id: 'chunk-2',
-            content: 'Neural networks consist of layers.',
-            documentId: 'doc-1',
-            documentTitle: 'AI Basics',
-            pageNumber: 7,
-            chunkIndex: 2,
-            similarity: 0.85,
-        },
     ])),
+    buildContextPrompt: vi.fn(() => '[Quelle 1] (Dokument: "AI Basics"):\nMachine learning is a subset of AI.'),
+    extractCitations: vi.fn(() => []),
+}))
+
+vi.mock('@/src/lib/citations', () => ({
+    formatCitationsForStorage: vi.fn(() => []),
 }))
 
 vi.mock('@/src/data-access/chat', () => ({
@@ -59,6 +55,7 @@ const mockStreamTextResult = {
 
 vi.mock('ai', () => ({
     streamText: vi.fn(() => mockStreamTextResult),
+    convertToModelMessages: vi.fn(() => Promise.resolve([{ role: 'user', content: 'What is machine learning?' }])),
 }))
 
 beforeEach(() => {
@@ -86,7 +83,7 @@ describe('POST /api/chat', () => {
         const request = new Request('http://localhost/api/chat', {
             method: 'POST',
             body: JSON.stringify({
-                messages: [{ id: '1', role: 'assistant', content: 'Hello' }],
+                messages: [{ id: '1', role: 'assistant', parts: [{ type: 'text', text: 'Hello' }] }],
             }),
             headers: { 'Content-Type': 'application/json' },
         })
@@ -101,7 +98,7 @@ describe('POST /api/chat', () => {
         const request = new Request('http://localhost/api/chat', {
             method: 'POST',
             body: JSON.stringify({
-                messages: [{ id: '1', role: 'user', content: 'What is machine learning?' }],
+                messages: [{ id: '1', role: 'user', parts: [{ type: 'text', text: 'What is machine learning?' }] }],
             }),
             headers: { 'Content-Type': 'application/json' },
         })

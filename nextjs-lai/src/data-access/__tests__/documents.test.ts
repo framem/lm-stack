@@ -143,18 +143,18 @@ describe('Similarity search', () => {
         expect(result).toEqual(mockChunks)
     })
 
-    it('should find similar chunks with documentId filter', async () => {
+    it('should find similar chunks with documentIds filter', async () => {
         const mockChunks = [{ id: 'c1', content: 'match', documentTitle: 'Doc', similarity: 0.9 }]
         mockPrisma.$queryRawUnsafe.mockResolvedValue(mockChunks as never)
 
-        const result = await findSimilarChunks([0.1, 0.2], { topK: 3, documentId: 'doc1', threshold: 0.5 })
+        const result = await findSimilarChunks([0.1, 0.2], { topK: 3, documentIds: ['doc1'], threshold: 0.5 })
 
         expect(mockPrisma.$queryRawUnsafe).toHaveBeenCalledWith(
-            expect.stringContaining('"documentId" = $4'),
+            expect.stringContaining('ANY($4::text[])'),
             '[0.1,0.2]',
             3,
             0.5,
-            'doc1'
+            ['doc1']
         )
         expect(result).toEqual(mockChunks)
     })

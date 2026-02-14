@@ -81,20 +81,24 @@ describe('addQuestions', () => {
                     questionText: 'What is AI?',
                     options: ['A', 'B', 'C', 'D'],
                     correctIndex: 0,
+                    correctAnswer: undefined,
                     explanation: 'Because...',
                     sourceChunkId: undefined,
                     sourceSnippet: 'AI is...',
                     questionIndex: 0,
+                    questionType: 'mc',
                 },
                 {
                     quizId: 'quiz-1',
                     questionText: 'What is ML?',
                     options: ['X', 'Y', 'Z', 'W'],
                     correctIndex: 2,
+                    correctAnswer: undefined,
                     explanation: 'Because ML...',
                     sourceChunkId: undefined,
                     sourceSnippet: undefined,
                     questionIndex: 1,
+                    questionType: 'mc',
                 },
             ],
         })
@@ -147,7 +151,21 @@ describe('getQuizzes', () => {
             orderBy: { createdAt: 'desc' },
             include: {
                 document: { select: { id: true, title: true } },
-                questions: { select: { id: true } },
+                questions: {
+                    select: {
+                        id: true,
+                        questionType: true,
+                        attempts: {
+                            orderBy: { createdAt: 'desc' },
+                            take: 1,
+                            select: {
+                                isCorrect: true,
+                                freeTextScore: true,
+                                createdAt: true,
+                            },
+                        },
+                    },
+                },
             },
         })
         expect(result).toEqual(quizzes)
