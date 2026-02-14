@@ -28,6 +28,7 @@ import {
     SidebarMenuSub,
     SidebarMenuSubItem,
     SidebarMenuSubButton,
+    SidebarFooter,
     SidebarRail,
     SidebarSeparator,
 } from '@/src/components/ui/sidebar'
@@ -54,7 +55,6 @@ const navItems = [
     { href: '/learn', label: 'Dashboard', icon: Home },
     { href: '/learn/documents', label: 'Dokumente', icon: FileText },
     { href: '/learn/quiz', label: 'Quiz', icon: HelpCircle },
-    { href: '/learn/admin', label: 'Admin', icon: Settings },
 ]
 
 export function AppSidebar() {
@@ -220,6 +220,23 @@ export function AppSidebar() {
                     </SidebarGroupContent>
                 </SidebarGroup>
             </SidebarContent>
+
+            <SidebarFooter>
+                <SidebarMenu>
+                    <SidebarMenuItem>
+                        <SidebarMenuButton
+                            asChild
+                            isActive={pathname === '/learn/admin' || pathname.startsWith('/learn/admin')}
+                            tooltip="Admin"
+                        >
+                            <Link href="/learn/admin">
+                                <Settings />
+                                <span>Admin</span>
+                            </Link>
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
+                </SidebarMenu>
+            </SidebarFooter>
 
             <SidebarRail />
         </SidebarRoot>
