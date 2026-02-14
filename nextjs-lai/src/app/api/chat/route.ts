@@ -78,6 +78,7 @@ export async function POST(request: NextRequest) {
         let accumulatedText = ''
 
         return result.toUIMessageStreamResponse({
+            sendReasoning: true,
             headers: {
                 'X-Session-Id': activeSessionId,
             },
@@ -86,7 +87,9 @@ export async function POST(request: NextRequest) {
                     accumulatedText += part.text
                 }
                 if (part.type === 'finish') {
-                    const citations = extractCitations(accumulatedText, contexts)
+                    // Strip <think> blocks for citation extraction (providers that pass reasoning as text)
+                    const textForCitations = accumulatedText.replace(/<think>[\s\S]*?<\/think>/g, '').trim()
+                    const citations = extractCitations(textForCitations, contexts)
                     const sources = formatCitationsForStorage(citations)
 
                     // Persist the assistant message (fire-and-forget)
