@@ -8,6 +8,11 @@ import { Badge } from '@/src/components/ui/badge'
 import { Progress } from '@/src/components/ui/progress'
 import { Textarea } from '@/src/components/ui/textarea'
 import { CheckCircle2, XCircle, Loader2 } from 'lucide-react'
+import {
+    Reasoning,
+    ReasoningContent,
+    ReasoningTrigger,
+} from '@/src/components/ai-elements/reasoning'
 import { evaluateAnswer } from '@/src/actions/quiz'
 
 interface Question {
@@ -22,6 +27,7 @@ interface AnswerResult {
     isCorrect: boolean
     correctIndex: number | null
     explanation?: string
+    reasoning?: string
     freeTextScore?: number
     freeTextFeedback?: string
     correctAnswer?: string
@@ -193,6 +199,14 @@ export function QuizPlayer({ quizId, quizTitle, questions, onComplete }: QuizPla
                                     <Badge variant="destructive">Falsch</Badge>
                                 )}
                             </div>
+                            {result.reasoning && (
+                                <Reasoning defaultOpen={false}>
+                                    <ReasoningTrigger getThinkingMessage={() => (
+                                        <p>Überlegungen des Modells</p>
+                                    )} />
+                                    <ReasoningContent>{result.reasoning}</ReasoningContent>
+                                </Reasoning>
+                            )}
                             {result.explanation && (
                                 <p className="text-sm text-muted-foreground whitespace-pre-wrap">
                                     {result.explanation}

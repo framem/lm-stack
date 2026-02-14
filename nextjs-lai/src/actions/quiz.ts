@@ -15,6 +15,15 @@ import {
     addQuestions as dbAddQuestions,
     recordAttempt as dbRecordAttempt,
 } from '@/src/data-access/quiz'
+import {
+    selectRepresentativeChunks,
+    distributeQuestions,
+    generateMcQuestions,
+    generateFreetextQuestions,
+    generateTruefalseQuestions,
+    MAX_CONTEXT_CHARS,
+    type QuestionToSave,
+} from '@/src/lib/quiz-generation'
 
 // ── List all quizzes ──
 
@@ -69,145 +78,6 @@ export async function getDocumentProgress() {
 }
 
 // ── Generate quiz from document ──
-
-// Output schemas per question type
-const mcQuestionSchema = z.object({
-    questionText: z.string(),
-    options: z.array(z.string()).length(4),
-    correctIndex: z.number().min(0).max(3),
-    explanation: z.string(),
-    sourceSnippet: z.string(),
-})
-
-const freetextQuestionSchema = z.object({
-    questionText: z.string(),
-    correctAnswer: z.string(),
-    explanation: z.string(),
-    sourceSnippet: z.string(),
-})
-
-const truefalseQuestionSchema = z.object({
-    questionText: z.string(),
-    correctAnswer: z.enum(['wahr', 'falsch']),
-    explanation: z.string(),
-    sourceSnippet: z.string(),
-})
-
-// ~4 chars per token; reserve space for prompt template + output tokens
-const MAX_CONTEXT_CHARS = Number(process.env.QUIZ_MAX_CONTEXT_CHARS) || 6000
-
-// Select representative chunks distributed evenly across the document,
-// respecting MAX_CONTEXT_CHARS to avoid exceeding the LLM context window.
-function selectRepresentativeChunks(
-    chunks: { id: string; content: string; chunkIndex: number }[],
-    count: number
-) {
-    const target = Math.min(chunks.length, count)
-
-    // Try with target count, then progressively reduce if too large
-    for (let n = target; n >= 1; n--) {
-        const step = chunks.length / n
-        const selected = []
-        let totalLen = 0
-        for (let i = 0; i < n; i++) {
-            const idx = Math.floor(i * step)
-            selected.push(chunks[idx])
-            totalLen += chunks[idx].content.length
-        }
-        // Account for separators between chunks
-        totalLen += (n - 1) * 7 // '\n\n---\n\n'.length
-        if (totalLen <= MAX_CONTEXT_CHARS) return selected
-    }
-
-    // Even a single chunk is too large — truncate its content
-    const chunk = chunks[0]
-    return [{ ...chunk, content: chunk.content.slice(0, MAX_CONTEXT_CHARS) }]
-}
-
-// Distribute question count across selected types as evenly as possible
-function distributeQuestions(total: number, types: string[]): Record<string, number> {
-    const base = Math.floor(total / types.length)
-    let remainder = total - base * types.length
-    const distribution: Record<string, number> = {}
-    for (const type of types) {
-        distribution[type] = base + (remainder > 0 ? 1 : 0)
-        if (remainder > 0) remainder--
-    }
-    return distribution
-}
-
-// Generate MC questions via LLM
-async function generateMcQuestions(contextText: string, count: number) {
-    const schema = z.object({ questions: z.array(mcQuestionSchema) })
-    const { output } = await generateText({
-        model: getModel(),
-        output: Output.object({ schema }),
-        prompt: `Erstelle genau ${count} Multiple-Choice-Fragen basierend auf dem folgenden Text.
-Jede Frage soll:
-- Genau 4 Antwortmöglichkeiten haben
-- Eine korrekte Antwort haben (correctIndex: 0-3)
-- Eine Erklärung enthalten, warum die korrekte Antwort richtig ist
-- Ein Zitat aus dem Quelltext enthalten (sourceSnippet)
-
-Antworte ausschließlich mit gültigem JSON.
-
-Text:
-${contextText}`,
-    })
-    return output?.questions ?? []
-}
-
-// Generate freetext questions via LLM
-async function generateFreetextQuestions(contextText: string, count: number) {
-    const schema = z.object({ questions: z.array(freetextQuestionSchema) })
-    const { output } = await generateText({
-        model: getModel(),
-        output: Output.object({ schema }),
-        prompt: `Erstelle genau ${count} Freitext-Fragen basierend auf dem folgenden Text.
-Jede Frage soll:
-- Eine offene Frage sein, die der Benutzer in eigenen Worten beantworten muss
-- Eine Musterantwort haben (correctAnswer), die als Bewertungsgrundlage dient
-- Eine Erklärung enthalten, warum die Musterantwort korrekt ist
-- Ein Zitat aus dem Quelltext enthalten (sourceSnippet)
-
-Antworte ausschließlich mit gültigem JSON.
-
-Text:
-${contextText}`,
-    })
-    return output?.questions ?? []
-}
-
-// Generate true/false questions via LLM
-async function generateTruefalseQuestions(contextText: string, count: number) {
-    const schema = z.object({ questions: z.array(truefalseQuestionSchema) })
-    const { output } = await generateText({
-        model: getModel(),
-        output: Output.object({ schema }),
-        prompt: `Erstelle genau ${count} Wahr-oder-Falsch-Fragen basierend auf dem folgenden Text.
-Jede Frage soll:
-- Eine Aussage sein, die entweder wahr oder falsch ist
-- correctAnswer: "wahr" oder "falsch"
-- Eine Erklärung enthalten, warum die Aussage wahr oder falsch ist
-- Ein Zitat aus dem Quelltext enthalten (sourceSnippet)
-
-Antworte ausschließlich mit gültigem JSON.
-
-Text:
-${contextText}`,
-    })
-    return output?.questions ?? []
-}
-
-interface QuestionToSave {
-    questionText: string
-    options: string[] | null
-    correctIndex: number | null
-    correctAnswer?: string
-    explanation: string
-    sourceSnippet: string
-    questionType: string
-}
 
 export async function generateQuiz(
     documentId: string,
@@ -329,6 +199,14 @@ export async function generateQuiz(
 
 // ── Evaluate a quiz answer ──
 
+// Strip <think>...</think> blocks, returning reasoning and cleaned text
+function extractReasoning(text: string): { reasoning: string; text: string } {
+    const matches = [...text.matchAll(/<think>([\s\S]*?)<\/think>/g)]
+    const reasoning = matches.map(m => m[1].trim()).filter(Boolean).join('\n\n')
+    const cleaned = text.replace(/<think>[\s\S]*?<\/think>/g, '').trim()
+    return { reasoning, text: cleaned }
+}
+
 // Evaluate mc/truefalse questions by comparing selectedIndex to correctIndex
 async function evaluateSelection(
     question: {
@@ -345,6 +223,7 @@ async function evaluateSelection(
     const options = question.options as string[]
     const isCorrect = selectedIndex === question.correctIndex
     let explanation: string | undefined
+    let reasoning: string | undefined
 
     if (!isCorrect) {
         const { text } = await generateText({
@@ -363,7 +242,9 @@ Erkläre kurz und verständlich:
 2. Warum die korrekte Antwort richtig ist
 3. Zitiere relevante Stellen aus dem Quelltext`,
         })
-        explanation = text
+        const extracted = extractReasoning(text)
+        explanation = extracted.text
+        reasoning = extracted.reasoning || undefined
     } else {
         explanation = question.explanation ?? undefined
     }
@@ -377,6 +258,7 @@ Erkläre kurz und verständlich:
         isCorrect,
         correctIndex: question.correctIndex,
         explanation,
+        reasoning,
         attemptId: attempt.id,
     }
 }
@@ -418,7 +300,8 @@ feedback: Ein kurzer Satz auf Deutsch.`,
 
     const scoreMap = { yes: 1.0, partly: 0.5, no: 0.0 } as const
     const freeTextScore = output ? scoreMap[output.correct] ?? 0 : 0
-    const freeTextFeedback = output?.feedback ?? 'Bewertung konnte nicht verarbeitet werden.'
+    const rawFeedback = output?.feedback ?? 'Bewertung konnte nicht verarbeitet werden.'
+    const freeTextFeedback = extractReasoning(rawFeedback).text || rawFeedback
 
     const isCorrect = freeTextScore >= 0.5
 
