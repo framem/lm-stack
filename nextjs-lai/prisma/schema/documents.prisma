@@ -1,0 +1,29 @@
+model Document {
+  id        String   @id @default(cuid())
+  title     String
+  fileName  String?
+  fileType  String
+  fileSize  Int?
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  chunks       DocumentChunk[]
+  chatSessions ChatSession[]
+  quizzes      Quiz[]
+}
+
+model DocumentChunk {
+  id         String @id @default(cuid())
+  documentId String
+  content    String
+  chunkIndex Int
+  pageNumber Int?
+  tokenCount Int?
+  embedding  Unsupported("vector(768)")?
+
+  document      Document       @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  quizQuestions QuizQuestion[]
+
+  @@index([documentId])
+}
