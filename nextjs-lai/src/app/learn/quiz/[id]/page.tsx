@@ -21,14 +21,6 @@ interface QuizData {
     questions: Question[]
 }
 
-interface AnswerResult {
-    isCorrect: boolean
-    correctIndex: number | null
-    explanation?: string
-    freeTextScore?: number
-    freeTextFeedback?: string
-}
-
 export default function QuizPlayerPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params)
     const router = useRouter()
@@ -53,7 +45,7 @@ export default function QuizPlayerPage({ params }: { params: Promise<{ id: strin
         loadQuiz()
     }, [id])
 
-    function handleComplete(_results: Map<string, AnswerResult>) {
+    function handleComplete() {
         router.push(`/learn/quiz/${id}/results`)
     }
 

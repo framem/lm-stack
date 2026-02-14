@@ -74,7 +74,7 @@ describe('POST /api/chat', () => {
             headers: { 'Content-Type': 'application/json' },
         })
 
-        const response = await POST(request as any)
+        const response = await POST(request as Request)
 
         expect(response.status).toBe(400)
         const data = await response.json()
@@ -91,7 +91,7 @@ describe('POST /api/chat', () => {
             headers: { 'Content-Type': 'application/json' },
         })
 
-        const response = await POST(request as any)
+        const response = await POST(request as Request)
 
         expect(response.status).toBe(400)
     })
@@ -106,7 +106,7 @@ describe('POST /api/chat', () => {
             headers: { 'Content-Type': 'application/json' },
         })
 
-        const response = await POST(request as any)
+        const response = await POST(request as Request)
 
         expect(response).toBeDefined()
         expect(mockStreamTextResult.toUIMessageStreamResponse).toHaveBeenCalled()

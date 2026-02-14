@@ -18,7 +18,7 @@ import {
   MinusIcon,
   PlusIcon,
 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export type CommitProps = ComponentProps<typeof Collapsible>;
 
@@ -157,9 +157,16 @@ export const CommitTimestamp = ({
   children,
   ...props
 }: CommitTimestampProps) => {
-  const formatted = relativeTimeFormat.format(
-    Math.round((date.getTime() - Date.now()) / (1000 * 60 * 60 * 24)),
-    "day"
+  // Initialize with lazy initializer to avoid calling Date.now() during render
+  const [now] = useState(() => Date.now());
+
+  const formatted = useMemo(
+    () =>
+      relativeTimeFormat.format(
+        Math.round((date.getTime() - now) / (1000 * 60 * 60 * 24)),
+        "day"
+      ),
+    [date, now]
   );
 
   return (

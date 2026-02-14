@@ -44,7 +44,8 @@ export default function DocumentsPage() {
     }, [])
 
     useEffect(() => {
-        fetchDocuments()
+        // Wrap in microtask to avoid synchronous setState in effect body
+        void Promise.resolve().then(() => fetchDocuments())
     }, [fetchDocuments])
 
     // Debounced server-side search
@@ -54,13 +55,15 @@ export default function DocumentsPage() {
         if (debounceRef.current) clearTimeout(debounceRef.current)
 
         if (!search.trim()) {
-            // Reset to full list immediately
-            fetchDocuments()
-            setSearching(false)
+            // Reset to full list immediately (microtask to avoid synchronous setState)
+            void Promise.resolve().then(() => {
+                fetchDocuments()
+                setSearching(false)
+            })
             return
         }
 
-        setSearching(true)
+        queueMicrotask(() => setSearching(true))
         debounceRef.current = setTimeout(async () => {
             const results = await searchDocuments(search)
             setDocuments(results as unknown as DocumentSummary[])
@@ -94,7 +97,7 @@ export default function DocumentsPage() {
         }
     }
 
-    function handleUploadSuccess(_documentId: string) {
+    function handleUploadSuccess() {
         setUploadOpen(false)
         setSearch('')
         fetchDocuments()
