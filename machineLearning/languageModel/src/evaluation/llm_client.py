@@ -8,6 +8,7 @@ expose an OpenAI-compatible API, so this client works with either.
 Environment variables:
     LLM_PROVIDER_URL  - API base URL (default: http://localhost:1234/v1)
     LLM_MODEL         - Model name  (default: qwen3:8b)
+    LLM_API_KEY       - Optional API key for authentication
 """
 
 import os
@@ -24,7 +25,8 @@ from openai import OpenAI
 def get_llm_client() -> OpenAI:
     """Create an OpenAI client pointing at the local LLM provider."""
     base_url = os.environ.get("LLM_PROVIDER_URL", "http://localhost:1234/v1")
-    return OpenAI(base_url=base_url, api_key="not-needed")
+    api_key = os.environ.get("LLM_API_KEY", "not-needed")
+    return OpenAI(base_url=base_url, api_key=api_key)
 
 
 def get_model_name() -> str:
