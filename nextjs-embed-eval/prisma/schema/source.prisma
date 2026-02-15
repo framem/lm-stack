@@ -1,0 +1,19 @@
+model SourceText {
+  id        String      @id @default(cuid())
+  title     String
+  content   String
+  createdAt DateTime    @default(now())
+  chunks    TextChunk[]
+}
+
+model TextChunk {
+  id           String   @id @default(cuid())
+  sourceTextId String
+  content      String
+  chunkIndex   Int
+  tokenCount   Int
+  sourceText       SourceText       @relation(fields: [sourceTextId], references: [id], onDelete: Cascade)
+  chunkEmbeddings  ChunkEmbedding[]
+  expectedByPhrases TestPhrase[]    @relation("ExpectedChunk")
+  @@index([sourceTextId])
+}

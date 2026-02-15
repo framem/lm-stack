@@ -1,0 +1,37 @@
+model TestPhrase {
+  id              String   @id @default(cuid())
+  phrase          String
+  expectedChunkId String?
+  category        String?
+  createdAt       DateTime @default(now())
+  expectedChunk    TextChunk?        @relation("ExpectedChunk", fields: [expectedChunkId], references: [id], onDelete: SetNull)
+  phraseEmbeddings PhraseEmbedding[]
+  evalResults      EvalResult[]
+}
+
+model EvalRun {
+  id             String   @id @default(cuid())
+  modelId        String
+  createdAt      DateTime @default(now())
+  avgSimilarity  Float?
+  topKAccuracy1  Float?
+  topKAccuracy3  Float?
+  topKAccuracy5  Float?
+  mrrScore       Float?
+  model   EmbeddingModel @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  results EvalResult[]
+  @@index([modelId])
+}
+
+model EvalResult {
+  id                String   @id @default(cuid())
+  runId             String
+  phraseId          String
+  retrievedChunkIds String[]
+  similarities      Float[]
+  expectedChunkRank Int?
+  isHit             Boolean
+  run    EvalRun    @relation(fields: [runId], references: [id], onDelete: Cascade)
+  phrase TestPhrase @relation(fields: [phraseId], references: [id], onDelete: Cascade)
+  @@index([runId])
+}
