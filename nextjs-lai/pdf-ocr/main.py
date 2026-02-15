@@ -1,7 +1,9 @@
 """Main script to convert PDFs to Markdown with OCR and cleanup."""
 import argparse
+import atexit
 import logging
 import shutil
+import signal
 import sys
 from pathlib import Path
 from typing import List, Optional
@@ -22,6 +24,29 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger(__name__)
+
+
+def cleanup_temp_dir():
+    """Clean up temporary directory on exit or interruption."""
+    try:
+        if config.TEMP_DIR.exists():
+            shutil.rmtree(config.TEMP_DIR)
+            logger.info(f"Cleaned up temporary directory: {config.TEMP_DIR}")
+    except Exception as e:
+        logger.error(f"Error cleaning up temp directory: {e}")
+
+
+def signal_handler(signum, frame):
+    """Handle interruption signals (Ctrl+C, etc.)."""
+    logger.info("\nInterruption received, cleaning up...")
+    cleanup_temp_dir()
+    sys.exit(0)
+
+
+# Register cleanup handlers
+atexit.register(cleanup_temp_dir)
+signal.signal(signal.SIGINT, signal_handler)
+signal.signal(signal.SIGTERM, signal_handler)
 
 
 class PDF2MarkdownConverter:
