@@ -3,16 +3,19 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/src/lib/utils'
-import { BarChart3, BookText, Brain, FlaskConical, GitCompare, MessageSquare, Home } from 'lucide-react'
+import { BarChart3, BookText, Brain, FlaskConical, GitCompare, Grid3X3, MessageSquare, Home, BookOpen, Shuffle } from 'lucide-react'
 
 const navItems = [
     { href: '/', label: 'Dashboard', icon: Home },
     { href: '/texts', label: 'Texte', icon: BookText },
     { href: '/models', label: 'Modelle', icon: Brain },
+    { href: '/rerankers', label: 'Reranker', icon: Shuffle },
     { href: '/phrases', label: 'Suchphrasen', icon: MessageSquare },
     { href: '/embed', label: 'Embedding', icon: FlaskConical },
     { href: '/evaluate', label: 'Auswertung', icon: BarChart3 },
     { href: '/compare', label: 'Vergleich', icon: GitCompare },
+    { href: '/grid-search', label: 'Grid-Search', icon: Grid3X3 },
+    { href: '/guide', label: 'Anleitung', icon: BookOpen },
 ]
 
 export function Navigation() {

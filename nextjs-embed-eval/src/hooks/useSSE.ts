@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 
 export interface SSEProgress {
     current: number
@@ -92,6 +92,11 @@ export function useSSE<T = unknown>(): SSEResult<T> {
                 }
             })
     }, [abort])
+
+    // Abort SSE stream on component unmount
+    useEffect(() => {
+        return () => { abortRef.current?.abort() }
+    }, [])
 
     return { data, progress, isRunning, error, start, abort }
 }

@@ -16,6 +16,7 @@ model TestPhrase {
 model EvalRun {
   id             String   @id @default(cuid())
   modelId        String
+  rerankerId     String?
   createdAt      DateTime @default(now())
   avgSimilarity  Float?
   topKAccuracy1  Float?
@@ -28,8 +29,10 @@ model EvalRun {
   chunkStrategy  String?
   totalChunks    Int?
   totalPhrases   Int?
-  model   EmbeddingModel @relation(fields: [modelId], references: [id], onDelete: Cascade)
-  results EvalResult[]
+  matryoshkaDim  Int?
+  model    EmbeddingModel  @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  reranker RerankerModel?  @relation(fields: [rerankerId], references: [id], onDelete: SetNull)
+  results  EvalResult[]
   @@index([modelId])
   @@index([modelId, chunkSize, chunkOverlap])
 }

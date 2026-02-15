@@ -4,6 +4,7 @@ import { prisma } from '@/src/lib/prisma'
 
 export async function createEvalRun(data: {
     modelId: string
+    rerankerId?: string
     avgSimilarity?: number
     topKAccuracy1?: number
     topKAccuracy3?: number
@@ -15,6 +16,7 @@ export async function createEvalRun(data: {
     chunkStrategy?: string
     totalChunks?: number
     totalPhrases?: number
+    matryoshkaDim?: number
 }) {
     return prisma.evalRun.create({ data })
 }
@@ -31,6 +33,7 @@ export async function updateEvalRun(id: string, data: {
     chunkStrategy?: string
     totalChunks?: number
     totalPhrases?: number
+    matryoshkaDim?: number
 }) {
     return prisma.evalRun.update({ where: { id }, data })
 }
@@ -40,6 +43,7 @@ export async function getEvalRuns() {
         orderBy: { createdAt: 'desc' },
         include: {
             model: { select: { name: true, dimensions: true } },
+            reranker: { select: { name: true } },
             _count: { select: { results: true } },
         },
     })
@@ -82,6 +86,7 @@ export async function getLatestEvalRuns(limit: number = 5) {
         take: limit,
         include: {
             model: { select: { name: true, dimensions: true } },
+            reranker: { select: { name: true } },
             _count: { select: { results: true } },
         },
     })
@@ -126,7 +131,7 @@ export async function getComparisonData(modelIds: string[]) {
         orderBy: { createdAt: 'desc' },
         distinct: ['modelId'],
         include: {
-            model: { select: { id: true, name: true, dimensions: true, provider: true } },
+            model: { select: { id: true, name: true, dimensions: true, provider: true, lastEmbedDurationMs: true } },
         },
     })
 }
@@ -139,7 +144,8 @@ export async function getAllEvalRuns(modelIds?: string[]) {
         where: modelIds ? { modelId: { in: modelIds } } : undefined,
         orderBy: { createdAt: 'desc' },
         include: {
-            model: { select: { id: true, name: true, dimensions: true, provider: true } },
+            model: { select: { id: true, name: true, dimensions: true, provider: true, lastEmbedDurationMs: true } },
+            reranker: { select: { name: true } },
             _count: { select: { results: true } },
         },
     })

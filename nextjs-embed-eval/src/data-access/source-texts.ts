@@ -3,7 +3,7 @@ import type { Chunk } from '@/src/lib/chunking'
 
 // ---- SourceText CRUD ----
 
-export async function createSourceText(data: { title: string; content: string; chunkSize?: number; chunkOverlap?: number }) {
+export async function createSourceText(data: { title: string; content: string; chunkSize?: number; chunkOverlap?: number; chunkStrategy?: string }) {
     return prisma.sourceText.create({ data })
 }
 
@@ -27,7 +27,7 @@ export async function getSourceTextWithChunks(id: string) {
     })
 }
 
-export async function updateSourceText(id: string, data: { chunkSize?: number; chunkOverlap?: number }) {
+export async function updateSourceText(id: string, data: { chunkSize?: number; chunkOverlap?: number; chunkStrategy?: string }) {
     return prisma.sourceText.update({ where: { id }, data })
 }
 

@@ -1,12 +1,13 @@
+import { NextRequest } from 'next/server'
 import { getEmbeddingModels, updateModelEmbedDuration } from '@/src/data-access/embedding-models'
 import { getAllChunks } from '@/src/data-access/source-texts'
 import { getTestPhrases } from '@/src/data-access/test-phrases'
-import { saveChunkEmbedding, savePhraseEmbedding } from '@/src/data-access/embeddings'
+import { saveChunkEmbeddingsBatch, savePhraseEmbeddingsBatch } from '@/src/data-access/embeddings'
 import { createEmbeddings, type EmbeddingModelConfig } from '@/src/lib/embedding'
 
 const BATCH_SIZE = 50
 
-export async function GET() {
+export async function GET(request: NextRequest) {
     const models = await getEmbeddingModels()
     if (models.length === 0) {
         return new Response('Keine Modelle registriert', { status: 400 })
@@ -37,6 +38,9 @@ export async function GET() {
 
             try {
                 for (let mi = 0; mi < models.length; mi++) {
+                    // Check if client disconnected
+                    if (request.signal.aborted) break
+
                     const model = models[mi]
                     const phase = `Modell ${mi + 1}/${models.length}: ${model.name}`
 
@@ -52,11 +56,17 @@ export async function GET() {
                     const modelStart = Date.now()
 
                     for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
+                        // Check if client disconnected
+                        if (request.signal.aborted) {
+                            send({ type: 'error', message: 'Abgebrochen' })
+                            break
+                        }
                         const batch = chunks.slice(i, i + BATCH_SIZE)
                         try {
                             const embeddings = await createEmbeddings(batch.map(c => c.content), config, 'document')
-                            await Promise.all(
-                                batch.map((chunk, idx) => saveChunkEmbedding(chunk.id, model.id, embeddings[idx]))
+                            await saveChunkEmbeddingsBatch(
+                                batch.map((chunk, idx) => ({ chunkId: chunk.id, embedding: embeddings[idx] })),
+                                model.id
                             )
                             totalChunksEmbedded += batch.length
                         } catch (err) {
@@ -74,11 +84,17 @@ export async function GET() {
                     }
 
                     for (let i = 0; i < phrases.length; i += BATCH_SIZE) {
+                        // Check if client disconnected
+                        if (request.signal.aborted) {
+                            send({ type: 'error', message: 'Abgebrochen' })
+                            break
+                        }
                         const batch = phrases.slice(i, i + BATCH_SIZE)
                         try {
                             const embeddings = await createEmbeddings(batch.map(p => p.phrase), config, 'query')
-                            await Promise.all(
-                                batch.map((phrase, idx) => savePhraseEmbedding(phrase.id, model.id, embeddings[idx]))
+                            await savePhraseEmbeddingsBatch(
+                                batch.map((phrase, idx) => ({ phraseId: phrase.id, embedding: embeddings[idx] })),
+                                model.id
                             )
                             totalPhrasesEmbedded += batch.length
                         } catch (err) {

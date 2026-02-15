@@ -18,6 +18,29 @@ export async function deleteChunkEmbeddingsByModel(modelId: string) {
     return prisma.chunkEmbedding.deleteMany({ where: { modelId } })
 }
 
+// Batch: delete + createMany in a single transaction (faster than individual upserts)
+export async function saveChunkEmbeddingsBatch(
+    items: Array<{ chunkId: string; embedding: number[] }>,
+    modelId: string
+) {
+    return prisma.$transaction([
+        prisma.chunkEmbedding.deleteMany({
+            where: {
+                modelId,
+                chunkId: { in: items.map(i => i.chunkId) },
+            },
+        }),
+        prisma.chunkEmbedding.createMany({
+            data: items.map(i => ({
+                chunkId: i.chunkId,
+                modelId,
+                embedding: i.embedding,
+                durationMs: 0,
+            })),
+        }),
+    ])
+}
+
 // ---- Phrase Embeddings ----
 
 export async function savePhraseEmbedding(phraseId: string, modelId: string, embedding: number[]) {
@@ -26,6 +49,29 @@ export async function savePhraseEmbedding(phraseId: string, modelId: string, emb
         update: { embedding },
         create: { phraseId, modelId, embedding, durationMs: 0 },
     })
+}
+
+// Batch: delete + createMany in a single transaction (faster than individual upserts)
+export async function savePhraseEmbeddingsBatch(
+    items: Array<{ phraseId: string; embedding: number[] }>,
+    modelId: string
+) {
+    return prisma.$transaction([
+        prisma.phraseEmbedding.deleteMany({
+            where: {
+                modelId,
+                phraseId: { in: items.map(i => i.phraseId) },
+            },
+        }),
+        prisma.phraseEmbedding.createMany({
+            data: items.map(i => ({
+                phraseId: i.phraseId,
+                modelId,
+                embedding: i.embedding,
+                durationMs: 0,
+            })),
+        }),
+    ])
 }
 
 export async function getPhraseEmbeddingCount(modelId: string) {

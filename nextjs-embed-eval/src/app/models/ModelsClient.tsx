@@ -20,6 +20,7 @@ interface EmbeddingModel {
     description: string | null
     queryPrefix: string | null
     documentPrefix: string | null
+    matryoshkaDimensions: string | null
     createdAt: Date
     _count: { chunkEmbeddings: number; evalRuns: number }
 }
@@ -133,6 +134,14 @@ export function ModelsClient({ initialModels }: ModelsClientProps) {
                                     <p className="text-xs text-muted-foreground mt-1">Prefix für Dokument-Chunks (E5: &quot;passage: &quot;, Nomic: &quot;search_document: &quot;)</p>
                                 </div>
                             </div>
+                            <div>
+                                <label className="text-sm font-medium mb-1.5 block">Matryoshka-Dimensionen (optional)</label>
+                                <Input
+                                    name="matryoshkaDimensions"
+                                    placeholder="z.B. 768,512,256,128"
+                                />
+                                <p className="text-xs text-muted-foreground mt-1">Komma-getrennte Dimensionen für Matryoshka-Modelle (z.B. 768,256,128). Leer lassen falls nicht unterstützt.</p>
+                            </div>
                             <Button type="submit" disabled={isPending}>
                                 {isPending ? 'Wird gespeichert...' : 'Modell registrieren'}
                             </Button>
@@ -162,6 +171,9 @@ export function ModelsClient({ initialModels }: ModelsClientProps) {
                             <div className="flex flex-wrap gap-2 mb-3">
                                 <Badge variant="secondary">{model.provider}</Badge>
                                 <Badge variant="outline">{model.dimensions}d</Badge>
+                                {model.matryoshkaDimensions && (
+                                    <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">Matryoshka</Badge>
+                                )}
                             </div>
                             {(model.queryPrefix || model.documentPrefix) && (
                                 <div className="flex flex-wrap gap-1 mb-2">

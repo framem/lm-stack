@@ -2,13 +2,14 @@ export const dynamic = 'force-dynamic'
 
 import { Navigation } from '@/src/components/Navigation'
 import { getTestPhrases } from '@/src/data-access/test-phrases'
-import { getAllChunks } from '@/src/data-access/source-texts'
+import { getAllChunks, getSourceTexts } from '@/src/data-access/source-texts'
 import { PhrasesClient } from './PhrasesClient'
 
 export default async function PhrasesPage() {
-    const [phrases, chunks] = await Promise.all([
+    const [phrases, chunks, sourceTexts] = await Promise.all([
         getTestPhrases(),
         getAllChunks(),
+        getSourceTexts(),
     ])
 
     return (
@@ -21,7 +22,7 @@ export default async function PhrasesPage() {
                         Suchphrasen definieren und erwartete Chunks zuordnen
                     </p>
                 </div>
-                <PhrasesClient initialPhrases={phrases} chunks={chunks} />
+                <PhrasesClient initialPhrases={phrases} chunks={chunks} sourceTexts={sourceTexts} />
             </main>
         </div>
     )

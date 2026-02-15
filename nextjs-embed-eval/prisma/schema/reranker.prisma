@@ -1,0 +1,8 @@
+model RerankerModel {
+  id          String   @id @default(cuid())
+  name        String
+  provider    String   // "lmstudio" | "ollama"
+  providerUrl String
+  createdAt   DateTime @default(now())
+  evalRuns    EvalRun[]
+}

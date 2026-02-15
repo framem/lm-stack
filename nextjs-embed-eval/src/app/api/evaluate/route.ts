@@ -3,7 +3,9 @@ import { getEmbeddingModelById } from '@/src/data-access/embedding-models'
 import { getTestPhrasesWithEmbeddings } from '@/src/data-access/test-phrases'
 import { getPhraseEmbeddingVector } from '@/src/data-access/embeddings'
 import { createEvalRun, updateEvalRun, createEvalResult } from '@/src/data-access/evaluation'
-import { findSimilarChunks } from '@/src/lib/similarity'
+import { getRerankerModelById } from '@/src/data-access/reranker-models'
+import { findSimilarChunks, findSimilarChunksMatryoshka } from '@/src/lib/similarity'
+import { rerank, type RerankerConfig } from '@/src/lib/reranking'
 import { prisma } from '@/src/lib/prisma'
 
 const TOP_K = 5
@@ -14,12 +16,13 @@ const TOP_K = 5
  */
 async function getCurrentChunkConfig() {
     const firstText = await prisma.sourceText.findFirst({
-        select: { chunkSize: true, chunkOverlap: true },
+        select: { chunkSize: true, chunkOverlap: true, chunkStrategy: true },
     })
     const totalChunks = await prisma.textChunk.count()
     return {
         chunkSize: firstText?.chunkSize ?? null,
         chunkOverlap: firstText?.chunkOverlap ?? null,
+        chunkStrategy: firstText?.chunkStrategy ?? 'sentence',
         totalChunks,
     }
 }
@@ -30,9 +33,39 @@ export async function GET(request: NextRequest) {
         return new Response('modelId parameter required', { status: 400 })
     }
 
+    const matryoshkaDimParam = request.nextUrl.searchParams.get('matryoshkaDim')
+    const matryoshkaDim = matryoshkaDimParam ? parseInt(matryoshkaDimParam, 10) : null
+    const rerankerId = request.nextUrl.searchParams.get('rerankerId')
+
     const model = await getEmbeddingModelById(modelId)
     if (!model) {
         return new Response('Modell nicht gefunden', { status: 404 })
+    }
+
+    // Validate matryoshkaDim against model config
+    if (matryoshkaDim != null) {
+        if (!model.matryoshkaDimensions) {
+            return new Response('Modell unterstützt keine Matryoshka-Dimensionen', { status: 400 })
+        }
+        const allowedDims = model.matryoshkaDimensions.split(',').map(d => parseInt(d.trim(), 10))
+        if (!allowedDims.includes(matryoshkaDim)) {
+            return new Response(`Ungültige Matryoshka-Dimension: ${matryoshkaDim}`, { status: 400 })
+        }
+    }
+
+    // Resolve reranker model if provided
+    let rerankerConfig: RerankerConfig | null = null
+    let rerankerModel: Awaited<ReturnType<typeof getRerankerModelById>> = null
+    if (rerankerId) {
+        rerankerModel = await getRerankerModelById(rerankerId)
+        if (!rerankerModel) {
+            return new Response('Reranker-Modell nicht gefunden', { status: 404 })
+        }
+        rerankerConfig = {
+            provider: rerankerModel.provider,
+            providerUrl: rerankerModel.providerUrl,
+            modelName: rerankerModel.name,
+        }
     }
 
     const encoder = new TextEncoder()
@@ -57,11 +90,13 @@ export async function GET(request: NextRequest) {
 
                 const run = await createEvalRun({
                     modelId,
+                    rerankerId: rerankerId ?? undefined,
                     chunkSize: chunkConfig.chunkSize ?? undefined,
                     chunkOverlap: chunkConfig.chunkOverlap ?? undefined,
-                    chunkStrategy: 'sentence',
+                    chunkStrategy: chunkConfig.chunkStrategy,
                     totalChunks: chunkConfig.totalChunks,
                     totalPhrases: phrasesWithExpected.length,
+                    matryoshkaDim: matryoshkaDim ?? undefined,
                 })
                 const total = phrasesWithExpected.length
                 let current = 0
@@ -102,7 +137,18 @@ export async function GET(request: NextRequest) {
                         continue
                     }
 
-                    const similar = await findSimilarChunks(embedding, modelId, TOP_K)
+                    let similar = matryoshkaDim != null
+                        ? await findSimilarChunksMatryoshka(embedding, modelId, matryoshkaDim, TOP_K)
+                        : await findSimilarChunks(embedding, modelId, TOP_K)
+
+                    // Optional cross-encoder reranking step
+                    if (rerankerConfig && similar.length > 0) {
+                        const documents = similar.map(s => s.content)
+                        const rerankResults = await rerank(phrase.phrase, documents, rerankerConfig)
+                        // Re-order similar chunks by reranker score
+                        similar = rerankResults.map(r => similar[r.index])
+                    }
+
                     const retrievedIds = similar.map(s => s.chunkId)
                     const similarities = similar.map(s => Number(s.similarity))
 
@@ -165,6 +211,23 @@ export async function GET(request: NextRequest) {
 
                 await updateEvalRun(run.id, metrics)
 
+                // Category breakdown
+                const categoryMap = new Map<string, { hits1: number; total: number; mrrSum: number }>()
+                for (const d of details) {
+                    const cat = d.category || 'Ohne Kategorie'
+                    const entry = categoryMap.get(cat) || { hits1: 0, total: 0, mrrSum: 0 }
+                    entry.total++
+                    if (d.isHit && d.expectedRank === 1) entry.hits1++
+                    if (d.isHit && d.expectedRank) entry.mrrSum += 1 / d.expectedRank
+                    categoryMap.set(cat, entry)
+                }
+                const categoryBreakdown = Array.from(categoryMap.entries()).map(([category, data]) => ({
+                    category,
+                    total: data.total,
+                    topKAccuracy1: data.hits1 / data.total,
+                    mrrScore: data.mrrSum / data.total,
+                }))
+
                 send({
                     type: 'complete',
                     data: {
@@ -173,7 +236,10 @@ export async function GET(request: NextRequest) {
                         chunkSize: chunkConfig.chunkSize,
                         chunkOverlap: chunkConfig.chunkOverlap,
                         totalPhrases: n,
+                        matryoshkaDim,
+                        categoryBreakdown,
                         details,
+                        rerankerName: rerankerModel?.name ?? null,
                     },
                 })
             } catch (err) {

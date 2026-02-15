@@ -9,7 +9,9 @@ import { ModelSelector } from '@/src/components/ModelSelector'
 import { EmbedProgress } from '@/src/components/EmbedProgress'
 import { QuickEvaluate } from '@/src/components/QuickEvaluate'
 import { useSSE } from '@/src/hooks/useSSE'
-import { FlaskConical, Layers, FileText, MessageSquareQuote, RefreshCw } from 'lucide-react'
+import { InfoTooltip } from '@/src/components/InfoTooltip'
+import { FlaskConical, Layers, FileText, MessageSquareQuote, RefreshCw, ChevronDown, HelpCircle } from 'lucide-react'
+import { STRATEGY_LABELS, type ChunkStrategy } from '@/src/lib/chunking'
 
 function formatDuration(ms: number): string {
     if (ms < 1000) return `${ms} ms`
@@ -58,6 +60,9 @@ export function EmbedClient({ models }: EmbedClientProps) {
     // Chunk config
     const [chunkSize, setChunkSize] = useState(300)
     const [chunkOverlap, setChunkOverlap] = useState(60)
+    const [chunkStrategy, setChunkStrategy] = useState<ChunkStrategy>('sentence')
+    const [semanticModelId, setSemanticModelId] = useState('')
+    const [showHelp, setShowHelp] = useState(false)
 
     const selectedModel = models.find(m => m.id === selectedModelId)
     const maxOverlap = Math.floor(chunkSize / 2)
@@ -77,7 +82,8 @@ export function EmbedClient({ models }: EmbedClientProps) {
         setLastEmbedModelId(selectedModelId || null)
         const overlap = Math.min(chunkOverlap, maxOverlap)
         const modelParam = selectedModelId ? `&modelId=${selectedModelId}` : ''
-        sse.start(`/api/rechunk-embed?chunkSize=${chunkSize}&chunkOverlap=${overlap}${modelParam}`)
+        const semanticParam = chunkStrategy === 'semantic' && semanticModelId ? `&semanticModelId=${semanticModelId}` : ''
+        sse.start(`/api/rechunk-embed?chunkSize=${chunkSize}&chunkOverlap=${overlap}&strategy=${chunkStrategy}${modelParam}${semanticParam}`)
     }
 
     return (
@@ -91,10 +97,11 @@ export function EmbedClient({ models }: EmbedClientProps) {
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-3 gap-4">
                         <div>
                             <label className="text-sm font-medium mb-1.5 block">
                                 Chunk-Größe <span className="text-muted-foreground font-normal">(Tokens)</span>
+                                <InfoTooltip text="Die Ziel-Größe jedes Text-Chunks in Tokens (~4 Zeichen pro Token). Kleinere Chunks = präzisere Suche, aber weniger Kontext. Größere Chunks = mehr Kontext, aber ungenauere Treffer. Typisch: 200–500 Tokens." />
                             </label>
                             <div className="flex items-center gap-3">
                                 <input
@@ -112,6 +119,7 @@ export function EmbedClient({ models }: EmbedClientProps) {
                         <div>
                             <label className="text-sm font-medium mb-1.5 block">
                                 Overlap <span className="text-muted-foreground font-normal">(Tokens)</span>
+                                <InfoTooltip text="Überlappung zwischen aufeinanderfolgenden Chunks in Tokens. Verhindert, dass Informationen an Chunk-Grenzen verloren gehen. Typisch: 10–20% der Chunk-Größe." />
                             </label>
                             <div className="flex items-center gap-3">
                                 <input
@@ -126,7 +134,52 @@ export function EmbedClient({ models }: EmbedClientProps) {
                                 <span className="text-sm font-mono text-right">{Math.min(chunkOverlap, maxOverlap)} <span className="text-muted-foreground">({Math.round(Math.min(chunkOverlap, maxOverlap) / chunkSize * 100)}%)</span></span>
                             </div>
                         </div>
+                        <div>
+                            <label className="text-sm font-medium mb-1.5 block">
+                                Strategie
+                                <InfoTooltip text={
+                                    chunkStrategy === 'sentence'
+                                        ? 'Satzgrenzen: Splittet an Satzgrenzen. Gut für natürliche Texte.'
+                                        : chunkStrategy === 'paragraph'
+                                            ? 'Absatzgrenzen: Splittet an Absätzen. Gut für strukturierte Dokumente.'
+                                            : chunkStrategy === 'semantic'
+                                                ? 'Semantisch: Nutzt Embedding-Ähnlichkeit zwischen Satzgruppen, um Chunk-Grenzen an Themenwechseln zu setzen.'
+                                                : 'Rekursiv: Hierarchisches Splitting (Absätze → Sätze → Wörter). Flexibel für gemischte Inhalte.'
+                                } />
+                            </label>
+                            <select
+                                value={chunkStrategy}
+                                onChange={e => setChunkStrategy(e.target.value as ChunkStrategy)}
+                                className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+                            >
+                                {(Object.entries(STRATEGY_LABELS) as [ChunkStrategy, string][]).map(([key, label]) => (
+                                    <option key={key} value={key}>{label}</option>
+                                ))}
+                            </select>
+                        </div>
                     </div>
+
+                    {chunkStrategy === 'semantic' && (
+                        <div className="rounded-md border border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/30 p-3 space-y-2">
+                            <label className="text-sm font-medium block">
+                                Modell für semantisches Chunking
+                                <InfoTooltip text="Verwendet Embeddings um Chunk-Grenzen an Themenwechseln zu setzen. Benötigt ein Embedding-Modell für die Analyse." />
+                            </label>
+                            <select
+                                value={semanticModelId}
+                                onChange={e => setSemanticModelId(e.target.value)}
+                                className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+                            >
+                                <option value="">Automatisch (erstes verfügbares Modell)</option>
+                                {models.map(m => (
+                                    <option key={m.id} value={m.id}>{m.name} ({m.dimensions}d)</option>
+                                ))}
+                            </select>
+                            <p className="text-xs text-muted-foreground">
+                                Dieses Modell wird nur für die Chunk-Grenz-Analyse verwendet, nicht für die finalen Embeddings.
+                            </p>
+                        </div>
+                    )}
 
                     <div className="flex flex-wrap items-center gap-3">
                         <Button
@@ -140,7 +193,7 @@ export function EmbedClient({ models }: EmbedClientProps) {
                             }
                         </Button>
                         <span className="text-xs text-muted-foreground">
-                            Chunking: {chunkSize} Tokens / {Math.min(chunkOverlap, maxOverlap)} Overlap ({Math.round(Math.min(chunkOverlap, maxOverlap) / chunkSize * 100)}%)
+                            {STRATEGY_LABELS[chunkStrategy]} · {chunkSize}t / {Math.min(chunkOverlap, maxOverlap)}o ({Math.round(Math.min(chunkOverlap, maxOverlap) / chunkSize * 100)}%)
                             {selectedModelId ? ` — ${selectedModel?.name}` : ` — ${models.length} Modelle`}
                         </span>
                     </div>
@@ -149,6 +202,33 @@ export function EmbedClient({ models }: EmbedClientProps) {
                         Alle Texte werden neu gechunkt, dann werden Chunks & Phrasen eingebettet.
                         Bestehende Chunk-Embeddings werden überschrieben.
                     </p>
+
+                    {/* Collapsible help section */}
+                    <button
+                        type="button"
+                        onClick={() => setShowHelp(h => !h)}
+                        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                        <HelpCircle className="h-3.5 w-3.5" />
+                        <span>Hilfe</span>
+                        <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showHelp ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {showHelp && (
+                        <div className="rounded-md border bg-muted/50 p-3 text-xs text-muted-foreground space-y-2">
+                            <p>
+                                <strong>Ablauf:</strong> Alle Texte werden neu in Chunks aufgeteilt,
+                                bestehende Ground-Truth-Zuordnungen werden automatisch aktualisiert,
+                                und dann werden alle Chunks & Suchphrasen eingebettet.
+                            </p>
+                            <p>
+                                <strong>Manuell vs. Grid-Search:</strong> Hier können Sie eine einzelne
+                                Konfiguration testen. Nutzen Sie die <em>Grid-Search</em>-Seite, um
+                                automatisch viele Kombinationen aus Chunk-Größe, Overlap und Strategie
+                                zu vergleichen und die optimale Konfiguration zu finden.
+                            </p>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
 

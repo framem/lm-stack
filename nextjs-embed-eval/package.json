@@ -10,11 +10,11 @@
     "build": "next build",
     "start": "next start -p 3001",
     "lint": "eslint .",
+    "seed:models": "npx tsx prisma/sampleData/seed-embedding-models.ts",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
     "prisma": "npm run prisma:generate && npm run prisma:push",
-    "test": "vitest run",
-    "seed:models": "npx tsx prisma/sampleData/seed-embedding-models.ts"
+    "test": "vitest run"
   },
   "devDependencies": {
     "@types/node": "^24.10.9",

@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { getEmbeddingModelById, updateModelEmbedDuration } from '@/src/data-access/embedding-models'
 import { getAllChunks } from '@/src/data-access/source-texts'
 import { getTestPhrases } from '@/src/data-access/test-phrases'
-import { saveChunkEmbedding, savePhraseEmbedding } from '@/src/data-access/embeddings'
+import { saveChunkEmbeddingsBatch, savePhraseEmbeddingsBatch } from '@/src/data-access/embeddings'
 import { createEmbeddings, type EmbeddingModelConfig } from '@/src/lib/embedding'
 
 const BATCH_SIZE = 50
@@ -55,11 +55,17 @@ export async function GET(request: NextRequest) {
                 const startTime = Date.now()
 
                 for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
+                    // Check if client disconnected
+                    if (request.signal.aborted) {
+                        send({ type: 'error', message: 'Abgebrochen' })
+                        break
+                    }
                     const batch = chunks.slice(i, i + BATCH_SIZE)
                     try {
                         const embeddings = await createEmbeddings(batch.map(c => c.content), config, 'document')
-                        await Promise.all(
-                            batch.map((chunk, idx) => saveChunkEmbedding(chunk.id, modelId, embeddings[idx]))
+                        await saveChunkEmbeddingsBatch(
+                            batch.map((chunk, idx) => ({ chunkId: chunk.id, embedding: embeddings[idx] })),
+                            modelId
                         )
                     } catch (err) {
                         send({ type: 'error', message: `Fehler bei Chunk-Batch ${i + 1}-${i + batch.length}: ${err instanceof Error ? err.message : 'Unbekannt'}` })
@@ -69,11 +75,17 @@ export async function GET(request: NextRequest) {
                 }
 
                 for (let i = 0; i < phrases.length; i += BATCH_SIZE) {
+                    // Check if client disconnected
+                    if (request.signal.aborted) {
+                        send({ type: 'error', message: 'Abgebrochen' })
+                        break
+                    }
                     const batch = phrases.slice(i, i + BATCH_SIZE)
                     try {
                         const embeddings = await createEmbeddings(batch.map(p => p.phrase), config, 'query')
-                        await Promise.all(
-                            batch.map((phrase, idx) => savePhraseEmbedding(phrase.id, modelId, embeddings[idx]))
+                        await savePhraseEmbeddingsBatch(
+                            batch.map((phrase, idx) => ({ phraseId: phrase.id, embedding: embeddings[idx] })),
+                            modelId
                         )
                     } catch (err) {
                         send({ type: 'error', message: `Fehler bei Phrasen-Batch ${i + 1}-${i + batch.length}: ${err instanceof Error ? err.message : 'Unbekannt'}` })

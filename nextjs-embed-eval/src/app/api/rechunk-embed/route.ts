@@ -4,8 +4,9 @@ import { getSourceTexts, deleteChunksBySourceText, createChunks, updateSourceTex
 import { getTestPhrases } from '@/src/data-access/test-phrases'
 import { getAllChunks, getChunksBySourceText } from '@/src/data-access/source-texts'
 import { getPhrasesForRemapping, remapPhraseToChunk } from '@/src/data-access/test-phrases'
-import { saveChunkEmbedding, savePhraseEmbedding } from '@/src/data-access/embeddings'
-import { chunkText, DEFAULT_TARGET_TOKENS, DEFAULT_OVERLAP_TOKENS } from '@/src/lib/chunking'
+import { saveChunkEmbeddingsBatch, savePhraseEmbeddingsBatch } from '@/src/data-access/embeddings'
+import { chunkText, DEFAULT_TARGET_TOKENS, DEFAULT_OVERLAP_TOKENS, type ChunkStrategy } from '@/src/lib/chunking'
+import { chunkTextSemantic } from '@/src/lib/semantic-chunking'
 import { createEmbeddings, type EmbeddingModelConfig } from '@/src/lib/embedding'
 
 const BATCH_SIZE = 50
@@ -61,7 +62,9 @@ function findBestChunkMatch(
 export async function GET(request: NextRequest) {
     const chunkSize = parseInt(request.nextUrl.searchParams.get('chunkSize') || '') || DEFAULT_TARGET_TOKENS
     const chunkOverlap = parseInt(request.nextUrl.searchParams.get('chunkOverlap') || '') || DEFAULT_OVERLAP_TOKENS
+    const strategy = (request.nextUrl.searchParams.get('strategy') || 'sentence') as ChunkStrategy
     const modelId = request.nextUrl.searchParams.get('modelId') // null = all models
+    const semanticModelId = request.nextUrl.searchParams.get('semanticModelId') // model for semantic chunking analysis
 
     const encoder = new TextEncoder()
     const stream = new ReadableStream({
@@ -72,15 +75,56 @@ export async function GET(request: NextRequest) {
 
             try {
                 // --- Phase 1: Re-chunk ---
-                send({ type: 'progress', current: 0, total: 100, phase: `Re-Chunking (${chunkSize} Tokens, ${chunkOverlap} Overlap)`, message: 'Texte laden...' })
+                send({ type: 'progress', current: 0, total: 100, phase: `Re-Chunking (${chunkSize}t / ${chunkOverlap}o / ${strategy})`, message: 'Texte laden...' })
 
                 const sourceTexts = await getSourceTexts()
                 let totalNewChunks = 0
 
+                // For semantic strategy, resolve the embedding model used for chunking analysis
+                let semanticEmbeddingConfig: EmbeddingModelConfig | null = null
+                if (strategy === 'semantic') {
+                    const semModelId = semanticModelId || modelId
+                    let semModel = semModelId ? await getEmbeddingModelById(semModelId) : null
+                    if (!semModel) {
+                        // Fallback: use first available model
+                        const allModels = await getEmbeddingModels()
+                        semModel = allModels[0] ?? null
+                    }
+                    if (!semModel) {
+                        send({ type: 'error', message: 'Kein Modell für semantisches Chunking verfügbar' })
+                        controller.close()
+                        return
+                    }
+                    semanticEmbeddingConfig = {
+                        name: semModel.name,
+                        provider: semModel.provider,
+                        providerUrl: semModel.providerUrl,
+                        dimensions: semModel.dimensions,
+                        queryPrefix: semModel.queryPrefix,
+                        documentPrefix: semModel.documentPrefix,
+                    }
+                    send({ type: 'progress', current: 0, total: 100, phase: `Semantisches Chunking`, message: `Analyse-Modell: ${semModel.name}` })
+                }
+
                 for (const st of sourceTexts) {
+                    // Check if client disconnected
+                    if (request.signal.aborted) {
+                        send({ type: 'error', message: 'Abgebrochen' })
+                        break
+                    }
                     await deleteChunksBySourceText(st.id)
-                    await updateSourceText(st.id, { chunkSize, chunkOverlap })
-                    const newChunks = chunkText({ text: st.content }, { targetTokens: chunkSize, overlapTokens: chunkOverlap })
+                    await updateSourceText(st.id, { chunkSize, chunkOverlap, chunkStrategy: strategy })
+
+                    let newChunks
+                    if (strategy === 'semantic' && semanticEmbeddingConfig) {
+                        newChunks = await chunkTextSemantic(
+                            { text: st.content },
+                            { targetTokens: chunkSize, overlapTokens: chunkOverlap, embeddingConfig: semanticEmbeddingConfig }
+                        )
+                    } else {
+                        newChunks = chunkText({ text: st.content }, { targetTokens: chunkSize, overlapTokens: chunkOverlap, strategy })
+                    }
+
                     if (newChunks.length > 0) {
                         await createChunks(st.id, newChunks)
                     }
@@ -159,6 +203,9 @@ export async function GET(request: NextRequest) {
                 let totalPhrasesEmbedded = 0
 
                 for (let mi = 0; mi < models.length; mi++) {
+                    // Check if client disconnected
+                    if (request.signal.aborted) break
+
                     const model = models[mi]
                     const phase = models.length > 1
                         ? `Embedding Modell ${mi + 1}/${models.length}: ${model.name}`
@@ -176,11 +223,17 @@ export async function GET(request: NextRequest) {
                     const modelStart = Date.now()
 
                     for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
+                        // Check if client disconnected
+                        if (request.signal.aborted) {
+                            send({ type: 'error', message: 'Abgebrochen' })
+                            break
+                        }
                         const batch = chunks.slice(i, i + BATCH_SIZE)
                         try {
                             const embeddings = await createEmbeddings(batch.map(c => c.content), config, 'document')
-                            await Promise.all(
-                                batch.map((chunk, idx) => saveChunkEmbedding(chunk.id, model.id, embeddings[idx]))
+                            await saveChunkEmbeddingsBatch(
+                                batch.map((chunk, idx) => ({ chunkId: chunk.id, embedding: embeddings[idx] })),
+                                model.id
                             )
                             totalChunksEmbedded += batch.length
                         } catch (err) {
@@ -198,11 +251,17 @@ export async function GET(request: NextRequest) {
                     }
 
                     for (let i = 0; i < phrases.length; i += BATCH_SIZE) {
+                        // Check if client disconnected
+                        if (request.signal.aborted) {
+                            send({ type: 'error', message: 'Abgebrochen' })
+                            break
+                        }
                         const batch = phrases.slice(i, i + BATCH_SIZE)
                         try {
                             const embeddings = await createEmbeddings(batch.map(p => p.phrase), config, 'query')
-                            await Promise.all(
-                                batch.map((phrase, idx) => savePhraseEmbedding(phrase.id, model.id, embeddings[idx]))
+                            await savePhraseEmbeddingsBatch(
+                                batch.map((phrase, idx) => ({ phraseId: phrase.id, embedding: embeddings[idx] })),
+                                model.id
                             )
                             totalPhrasesEmbedded += batch.length
                         } catch (err) {

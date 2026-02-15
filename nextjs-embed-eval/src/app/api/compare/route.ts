@@ -39,6 +39,7 @@ export async function GET(request: NextRequest) {
                 chunkStrategy: run.chunkStrategy,
                 totalChunks: run.totalChunks,
                 totalPhrases: run.totalPhrases,
+                lastEmbedDurationMs: run.model.lastEmbedDurationMs,
                 createdAt: run.createdAt,
             })),
         })
@@ -65,6 +66,7 @@ export async function GET(request: NextRequest) {
             chunkStrategy: run.chunkStrategy,
             totalChunks: run.totalChunks,
             totalPhrases: run.totalPhrases,
+            lastEmbedDurationMs: run.model.lastEmbedDurationMs,
             createdAt: run.createdAt,
         })),
     })

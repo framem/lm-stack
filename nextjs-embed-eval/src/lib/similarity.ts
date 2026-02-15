@@ -1,4 +1,5 @@
 import { prisma } from '@/src/lib/prisma'
+import { truncateEmbedding } from '@/src/lib/embedding'
 
 export interface SimilarChunk {
     chunkId: string
@@ -36,6 +37,55 @@ export async function findSimilarChunks(
 }
 
 /**
+ * Find similar chunks using Matryoshka dimension truncation.
+ * Loads all chunk embeddings for the model, truncates to targetDim, and computes
+ * cosine similarity client-side (pgvector cannot truncate stored vectors on the fly).
+ *
+ * NOTE: This loads ALL embeddings for the model into memory. For large corpora
+ * (>10k chunks), consider storing pre-truncated embeddings at target dimensions.
+ */
+export async function findSimilarChunksMatryoshka(
+    queryEmbedding: number[],
+    modelId: string,
+    targetDim: number,
+    topK: number = 5
+): Promise<SimilarChunk[]> {
+    const truncatedQuery = truncateEmbedding(queryEmbedding, targetDim)
+
+    const rows = await prisma.$queryRawUnsafe<Array<{
+        chunkId: string
+        content: string
+        chunkIndex: number
+        sourceTitle: string
+        embedding: number[]
+    }>>(
+        `SELECT ce."chunkId", tc.content, tc."chunkIndex",
+                st.title AS "sourceTitle",
+                ce.embedding
+         FROM "ChunkEmbedding" ce
+         JOIN "TextChunk" tc ON tc.id = ce."chunkId"
+         JOIN "SourceText" st ON st.id = tc."sourceTextId"
+         WHERE ce."modelId" = $1`,
+        modelId
+    )
+
+    // Truncate each chunk embedding and compute cosine similarity
+    const scored = rows.map(row => {
+        const truncatedChunk = truncateEmbedding(row.embedding, targetDim)
+        return {
+            chunkId: row.chunkId,
+            content: row.content,
+            chunkIndex: row.chunkIndex,
+            sourceTitle: row.sourceTitle,
+            similarity: cosineSimilarity(truncatedQuery, truncatedChunk),
+        }
+    })
+
+    scored.sort((a, b) => b.similarity - a.similarity)
+    return scored.slice(0, topK)
+}
+
+/**
  * Compute cosine similarity between two vectors (client-side fallback).
  */
 export function cosineSimilarity(a: number[], b: number[]): number {
@@ -48,5 +98,7 @@ export function cosineSimilarity(a: number[], b: number[]): number {
         normA += a[i] * a[i]
         normB += b[i] * b[i]
     }
-    return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB))
+    const denominator = Math.sqrt(normA) * Math.sqrt(normB)
+    if (denominator === 0) return 0
+    return dotProduct / denominator
 }

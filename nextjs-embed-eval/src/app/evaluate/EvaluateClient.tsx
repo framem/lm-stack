@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/card'
 import { Badge } from '@/src/components/ui/badge'
 import { Button } from '@/src/components/ui/button'
 import { Progress } from '@/src/components/ui/progress'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/src/components/ui/select'
 import { ModelSelector } from '@/src/components/ModelSelector'
 import { MetricCard } from '@/src/components/MetricCard'
 import { useSSE } from '@/src/hooks/useSSE'
@@ -16,6 +17,7 @@ interface Model {
     name: string
     provider: string
     dimensions: number
+    matryoshkaDimensions: string | null
 }
 
 interface RetrievedChunk {
@@ -39,6 +41,13 @@ interface PhraseDetail {
     isHit: boolean
 }
 
+interface CategoryBreakdown {
+    category: string
+    total: number
+    topKAccuracy1: number
+    mrrScore: number
+}
+
 interface EvalRunData {
     runId: string
     avgSimilarity: number
@@ -46,20 +55,39 @@ interface EvalRunData {
     topKAccuracy3: number
     topKAccuracy5: number
     mrrScore: number
+    ndcgScore?: number
+    chunkSize?: number
+    chunkOverlap?: number
     totalPhrases: number
+    matryoshkaDim?: number | null
+    categoryBreakdown?: CategoryBreakdown[]
     details?: PhraseDetail[]
+    rerankerName?: string | null
+}
+
+interface RerankerModel {
+    id: string
+    name: string
+    provider: string
+    providerUrl: string
 }
 
 interface EvalRun {
     id: string
     modelId: string
+    rerankerId: string | null
     createdAt: Date
     avgSimilarity: number | null
     topKAccuracy1: number | null
     topKAccuracy3: number | null
     topKAccuracy5: number | null
     mrrScore: number | null
+    ndcgScore: number | null
+    chunkSize: number | null
+    chunkOverlap: number | null
+    matryoshkaDim: number | null
     model: { name: string; dimensions?: number }
+    reranker: { name: string } | null
     _count: { results: number }
 }
 
@@ -104,11 +132,30 @@ function highlightPhrase(content: string, phrase: string): React.ReactNode {
 
 export function EvaluateClient({ models, initialRuns }: EvaluateClientProps) {
     const [selectedModelId, setSelectedModelId] = useState('')
+    const [selectedRerankerId, setSelectedRerankerId] = useState('')
+    const [selectedMatryoshkaDim, setSelectedMatryoshkaDim] = useState('')
+    const [rerankerModels, setRerankerModels] = useState<RerankerModel[]>([])
     const sse = useSSE<EvalRunData>()
+
+    // Get matryoshka dimensions for the selected model
+    const selectedModel = models.find(m => m.id === selectedModelId)
+    const matryoshkaDims = selectedModel?.matryoshkaDimensions
+        ? selectedModel.matryoshkaDimensions.split(',').map(d => parseInt(d.trim(), 10)).filter(d => !isNaN(d))
+        : []
+
+    useEffect(() => {
+        fetch('/api/reranker-models')
+            .then(r => r.json())
+            .then(setRerankerModels)
+            .catch(() => {})
+    }, [])
 
     function startEvaluation() {
         if (!selectedModelId) return
-        sse.start(`/api/evaluate?modelId=${selectedModelId}`)
+        const params = new URLSearchParams({ modelId: selectedModelId })
+        if (selectedRerankerId && selectedRerankerId !== 'none') params.set('rerankerId', selectedRerankerId)
+        if (selectedMatryoshkaDim && selectedMatryoshkaDim !== 'full') params.set('matryoshkaDim', selectedMatryoshkaDim)
+        sse.start(`/api/evaluate?${params.toString()}`)
     }
 
     const percentage = sse.progress
@@ -134,6 +181,47 @@ export function EvaluateClient({ models, initialRuns }: EvaluateClientProps) {
                             onValueChange={setSelectedModelId}
                         />
                     </div>
+
+                    {rerankerModels.length > 0 && (
+                        <div>
+                            <label className="text-sm font-medium mb-1.5 block">Reranker (optional)</label>
+                            <Select value={selectedRerankerId} onValueChange={setSelectedRerankerId}>
+                                <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Kein Reranker" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="none">Kein Reranker</SelectItem>
+                                    {rerankerModels.map(r => (
+                                        <SelectItem key={r.id} value={r.id}>
+                                            <span className="font-medium">{r.name}</span>
+                                            <span className="ml-2 text-muted-foreground text-xs">({r.provider})</span>
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
+
+                    {matryoshkaDims.length > 0 && (
+                        <div>
+                            <label className="text-sm font-medium mb-1.5 block">Matryoshka-Dimension (optional)</label>
+                            <Select value={selectedMatryoshkaDim} onValueChange={setSelectedMatryoshkaDim}>
+                                <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Volle Dimensionen" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="full">Voll ({selectedModel?.dimensions}d)</SelectItem>
+                                    {matryoshkaDims
+                                        .filter(d => d < (selectedModel?.dimensions ?? Infinity))
+                                        .map(d => (
+                                            <SelectItem key={d} value={String(d)}>{d}d</SelectItem>
+                                        ))
+                                    }
+                                </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground mt-1">Matryoshka-Modelle erlauben Evaluation bei reduzierten Dimensionen.</p>
+                        </div>
+                    )}
 
                     <div className="flex gap-2">
                         <Button
@@ -203,6 +291,13 @@ export function EvaluateClient({ models, initialRuns }: EvaluateClientProps) {
                                 Beispiel: Rang 1 → 1.0, Rang 2 → 0.5, Rang 3 → 0.33, nicht gefunden → 0.
                             </dd>
                         </div>
+                        <div>
+                            <dt className="font-medium">nDCG (Normalized Discounted Cumulative Gain)</dt>
+                            <dd className="text-muted-foreground">
+                                Ranking-Qualitätsmetrik, die höher gerankte Treffer stärker gewichtet.
+                                Berechnung: 1/log₂(rang+1). Ideal bei 1.0 (Treffer auf Rang 1).
+                            </dd>
+                        </div>
                     </dl>
                 </CardContent>
             </Card>
@@ -213,8 +308,34 @@ export function EvaluateClient({ models, initialRuns }: EvaluateClientProps) {
                     <h2 className="text-xl font-semibold flex items-center gap-2">
                         <CheckCircle2 className="h-5 w-5 text-green-500" />
                         Ergebnis ({sse.data.totalPhrases} Phrasen)
+                        {sse.data.chunkSize != null && (
+                            <Badge variant="outline" className="text-xs font-mono font-normal">
+                                {sse.data.chunkSize}t / {sse.data.chunkOverlap ?? 0}o
+                            </Badge>
+                        )}
+                        {sse.data.matryoshkaDim != null && (
+                            <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 text-xs font-normal">
+                                Matryoshka {sse.data.matryoshkaDim}d
+                            </Badge>
+                        )}
+                        {sse.data.rerankerName && (
+                            <Badge variant="secondary" className="text-xs font-normal">
+                                mit Reranker: {sse.data.rerankerName}
+                            </Badge>
+                        )}
                     </h2>
-                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+
+                    {sse.data.totalPhrases < 30 && (
+                        <div className="rounded-md border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 p-3 text-sm text-amber-800 dark:text-amber-200 flex items-start gap-2">
+                            <Info className="h-4 w-4 mt-0.5 shrink-0" />
+                            <span>
+                                Bei weniger als 30 Test-Phrasen sind die Metriken statistisch nicht belastbar.
+                                Für robuste Vergleiche werden mindestens 30–50 Phrasen empfohlen.
+                            </span>
+                        </div>
+                    )}
+
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                         <MetricCard
                             title="Avg. Similarity"
                             value={sse.data.avgSimilarity.toFixed(4)}
@@ -240,7 +361,53 @@ export function EvaluateClient({ models, initialRuns }: EvaluateClientProps) {
                             value={sse.data.mrrScore.toFixed(4)}
                             description="Ø 1/Rang des erwarteten Chunks"
                         />
+                        {sse.data.ndcgScore != null && (
+                            <MetricCard
+                                title="nDCG"
+                                value={sse.data.ndcgScore.toFixed(4)}
+                                description="Ranking-Qualität (positionsgewichtet)"
+                            />
+                        )}
                     </div>
+
+                    {/* Category breakdown */}
+                    {sse.data.categoryBreakdown && sse.data.categoryBreakdown.length > 1 && (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="text-base">Auswertung nach Kategorie</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-sm">
+                                        <thead>
+                                            <tr className="border-b text-left text-muted-foreground">
+                                                <th className="py-2 pr-4">Kategorie</th>
+                                                <th className="py-2 pr-4 text-right">Phrasen</th>
+                                                <th className="py-2 pr-4 text-right">Top-1 Accuracy</th>
+                                                <th className="py-2 text-right">MRR</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {sse.data.categoryBreakdown.map((cat) => (
+                                                <tr key={cat.category} className="border-b last:border-0">
+                                                    <td className="py-2 pr-4">
+                                                        <Badge variant="secondary">{cat.category}</Badge>
+                                                    </td>
+                                                    <td className="py-2 pr-4 text-right font-mono">{cat.total}</td>
+                                                    <td className="py-2 pr-4 text-right font-mono">
+                                                        {(cat.topKAccuracy1 * 100).toFixed(1)}%
+                                                    </td>
+                                                    <td className="py-2 text-right font-mono">
+                                                        {cat.mrrScore.toFixed(4)}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
                 </div>
             )}
 
@@ -358,14 +525,31 @@ export function EvaluateClient({ models, initialRuns }: EvaluateClientProps) {
                                 <div key={run.id} className="flex items-center justify-between border-b pb-3 last:border-0 last:pb-0">
                                     <div className="flex items-center gap-3">
                                         <Badge variant="outline">{run.model.name}</Badge>
+                                        {run.matryoshkaDim != null && (
+                                            <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 text-xs">
+                                                {run.matryoshkaDim}d
+                                            </Badge>
+                                        )}
+                                        {run.reranker && (
+                                            <Badge variant="secondary" className="text-xs">
+                                                Reranker: {run.reranker.name}
+                                            </Badge>
+                                        )}
+                                        {run.chunkSize != null && (
+                                            <span className="text-xs font-mono text-muted-foreground">
+                                                {run.chunkSize}t/{run.chunkOverlap ?? 0}o
+                                            </span>
+                                        )}
                                         <span className="text-sm text-muted-foreground">
                                             {run._count.results} Phrasen
                                         </span>
                                     </div>
                                     <div className="flex items-center gap-4 text-sm">
                                         <span>Top-1: <strong>{run.topKAccuracy1 !== null ? `${(run.topKAccuracy1 * 100).toFixed(0)}%` : '—'}</strong></span>
-                                        <span>Top-3: <strong>{run.topKAccuracy3 !== null ? `${(run.topKAccuracy3 * 100).toFixed(0)}%` : '—'}</strong></span>
                                         <span>MRR: <strong>{run.mrrScore !== null ? run.mrrScore.toFixed(3) : '—'}</strong></span>
+                                        {run.ndcgScore !== null && (
+                                            <span>nDCG: <strong>{run.ndcgScore.toFixed(3)}</strong></span>
+                                        )}
                                         <span className="text-muted-foreground">
                                             {formatDateTime(run.createdAt)}
                                         </span>

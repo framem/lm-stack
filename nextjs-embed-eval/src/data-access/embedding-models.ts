@@ -8,6 +8,7 @@ export async function createEmbeddingModel(data: {
     description?: string
     queryPrefix?: string
     documentPrefix?: string
+    matryoshkaDimensions?: string
 }) {
     return prisma.embeddingModel.create({ data })
 }
@@ -38,6 +39,7 @@ export async function updateEmbeddingModel(id: string, data: {
     description?: string
     queryPrefix?: string | null
     documentPrefix?: string | null
+    matryoshkaDimensions?: string | null
 }) {
     return prisma.embeddingModel.update({ where: { id }, data })
 }

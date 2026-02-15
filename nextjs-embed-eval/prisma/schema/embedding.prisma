@@ -6,8 +6,9 @@ model EmbeddingModel {
   dimensions         Int
   description        String?
   queryPrefix        String?
-  documentPrefix     String?
-  lastEmbedDurationMs Int?
+  documentPrefix        String?
+  matryoshkaDimensions  String?
+  lastEmbedDurationMs   Int?
   lastEmbedAt        DateTime?
   createdAt          DateTime @default(now())
   chunkEmbeddings  ChunkEmbedding[]

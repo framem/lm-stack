@@ -16,6 +16,7 @@ const models = [
         description: 'Nomic Embed Text v1.5 – vielseitiges Embedding-Modell mit 768 Dimensionen',
         queryPrefix: 'search_query: ',
         documentPrefix: 'search_document: ',
+        matryoshkaDimensions: '768,512,256,128',
     },
     {
         name: 'text-embedding-bge-m3',
@@ -25,6 +26,7 @@ const models = [
         description: 'BAAI BGE-M3 – multilinguales Embedding-Modell mit 1024 Dimensionen',
         queryPrefix: null,
         documentPrefix: null,
+        matryoshkaDimensions: null,
     },
     {
         name: 'text-embedding-multilingual-e5-large',
@@ -34,6 +36,7 @@ const models = [
         description: 'Microsoft Multilingual E5 Large – multilinguales Embedding-Modell mit 1024 Dimensionen',
         queryPrefix: 'query: ',
         documentPrefix: 'passage: ',
+        matryoshkaDimensions: null,
     },
 ]
 
@@ -50,6 +53,7 @@ async function main() {
                 description: model.description,
                 queryPrefix: model.queryPrefix,
                 documentPrefix: model.documentPrefix,
+                matryoshkaDimensions: model.matryoshkaDimensions,
             },
             create: model,
         })

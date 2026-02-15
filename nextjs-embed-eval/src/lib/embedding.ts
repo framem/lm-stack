@@ -50,6 +50,23 @@ export async function createEmbeddings(
     return embeddings
 }
 
+/**
+ * Truncate an embedding to the target number of dimensions and L2-normalize the result.
+ * Used for Matryoshka embeddings where a model produces full-size vectors
+ * that can be truncated to smaller sizes while retaining quality.
+ */
+export function truncateEmbedding(embedding: number[], targetDimensions: number): number[] {
+    const truncated = embedding.slice(0, targetDimensions)
+    // L2-normalize: vec[i] / sqrt(sum(vec[j]^2))
+    let norm = 0
+    for (let i = 0; i < truncated.length; i++) {
+        norm += truncated[i] * truncated[i]
+    }
+    norm = Math.sqrt(norm)
+    if (norm === 0) return truncated
+    return truncated.map(v => v / norm)
+}
+
 function getEmbeddingModel(config: EmbeddingModelConfig) {
     switch (config.provider) {
         case 'lmstudio': {
