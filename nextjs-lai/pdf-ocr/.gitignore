@@ -17,9 +17,17 @@ env/
 .venv/
 
 # Output and temporary files
-output/
+pdf-input/*.pdf
+output/*.md
 temp/
 *.log
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+.hypothesis/
 
 # IDE
 .vscode/

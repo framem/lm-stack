@@ -28,5 +28,5 @@ MIN_CONFIDENCE = 30  # Minimum OCR confidence score
 
 # Processing Configuration
 DPI = 300  # DPI for PDF to image conversion
-USE_LLM_VISION = True  # Use LLM vision capabilities for better OCR
+USE_LLM_VISION = True  # Use 3-stage OCR: Tesseract + LLM Vision + LLM Combination
 USE_LLM_CLEANUP = True  # Use LLM for post-processing cleanup

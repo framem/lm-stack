@@ -110,24 +110,100 @@ class OCRProcessor:
             logger.error(f"LLM vision error for {image_path}: {e}")
             return ""
     
+    def combine_ocr_results(self, tesseract_text: str, llm_text: str) -> str:
+        """Use LLM to intelligently combine and validate OCR results from both methods.
+        
+        Args:
+            tesseract_text: Text extracted by Tesseract OCR
+            llm_text: Text extracted by LLM Vision
+            
+        Returns:
+            Combined and validated text
+        """
+        try:
+            # Call LLM to combine and validate both results
+            response = self.llm_client.chat.completions.create(
+                model=self.llm_model,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "Du bist ein Experte für die Validierung und Kombination von OCR-Ergebnissen. "
+                                   "Deine Aufgabe ist es, zwei OCR-Ergebnisse zu vergleichen und das beste kombinierte "
+                                   "Ergebnis zu erstellen."
+                    },
+                    {
+                        "role": "user",
+                        "content": f"""Ich habe zwei OCR-Ergebnisse vom selben Bild:
+
+**Tesseract OCR Ergebnis:**
+{tesseract_text}
+
+**LLM Vision Ergebnis:**
+{llm_text}
+
+Aufgaben:
+1. Vergleiche beide Ergebnisse auf Genauigkeit und Vollständigkeit
+2. Identifiziere Stärken und Schwächen jedes Ergebnisses
+3. Erstelle ein kombiniertes Ergebnis, das:
+   - Die korrekt erkannten Teile beider Methoden nutzt
+   - Lücken eines Ergebnisses mit Informationen aus dem anderen füllt
+   - OCR-Fehler korrigiert (z.B. "1" statt "l", "0" statt "O")
+   - Die beste Formatierung (Absätze, Listen, etc.) beibehält
+   - Keine zusätzlichen Kommentare oder Erklärungen enthält
+
+Gib NUR den kombinierten, korrigierten Text zurück, ohne Meta-Kommentare oder Erklärungen."""
+                    }
+                ],
+                max_tokens=3000,
+                temperature=0.2
+            )
+            
+            combined_text = response.choices[0].message.content.strip()
+            logger.info(f"LLM combined OCR results: {len(combined_text)} chars")
+            return combined_text
+            
+        except Exception as e:
+            logger.error(f"Error combining OCR results with LLM: {e}")
+            # Fallback: return the longer result
+            return llm_text if len(llm_text) > len(tesseract_text) else tesseract_text
+    
     def extract_text(self, image_path: Path) -> str:
-        """Extract text from image using best available method.
+        """Extract text from image combining Tesseract and optionally LLM vision.
         
         Args:
             image_path: Path to image file
             
         Returns:
-            Extracted text
+            Extracted text (combined from both methods if LLM vision is enabled)
         """
-        # Try LLM vision first if enabled
-        if self.use_llm_vision:
-            text = self.extract_text_llm_vision(image_path)
-            if text:
-                return text
-            logger.warning("LLM vision failed, falling back to Tesseract")
+        # Always run Tesseract OCR as baseline
+        tesseract_text = self.extract_text_tesseract(image_path)
         
-        # Fall back to Tesseract
-        return self.extract_text_tesseract(image_path)
+        # If LLM vision is enabled, run it additionally and combine results
+        if self.use_llm_vision:
+            llm_text = self.extract_text_llm_vision(image_path)
+            
+            if llm_text:
+                # If we have both results, use LLM to combine them intelligently
+                if tesseract_text and llm_text:
+                    logger.info(f"Tesseract: {len(tesseract_text)} chars, LLM Vision: {len(llm_text)} chars")
+                    
+                    # Use LLM to validate and combine both results
+                    combined_text = self.combine_ocr_results(tesseract_text, llm_text)
+                    return combined_text
+                elif llm_text:
+                    # Only LLM vision has content
+                    logger.info(f"Using LLM vision result ({len(llm_text)} chars)")
+                    return llm_text
+                elif tesseract_text:
+                    # Only Tesseract has content
+                    logger.info(f"Using Tesseract result ({len(tesseract_text)} chars)")
+                    return tesseract_text
+            else:
+                logger.warning("LLM vision failed, using Tesseract result")
+        
+        # Return Tesseract result (either as fallback or as only method)
+        return tesseract_text
     
     def process_images(self, image_paths: List[Path]) -> List[str]:
         """Process multiple images and extract text.
