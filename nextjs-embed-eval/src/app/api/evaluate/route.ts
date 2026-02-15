@@ -4,8 +4,25 @@ import { getTestPhrasesWithEmbeddings } from '@/src/data-access/test-phrases'
 import { getPhraseEmbeddingVector } from '@/src/data-access/embeddings'
 import { createEvalRun, updateEvalRun, createEvalResult } from '@/src/data-access/evaluation'
 import { findSimilarChunks } from '@/src/lib/similarity'
+import { prisma } from '@/src/lib/prisma'
 
 const TOP_K = 5
+
+/**
+ * Get the current chunking configuration from source texts.
+ * Uses the first source text's config as representative (all should match after re-chunking).
+ */
+async function getCurrentChunkConfig() {
+    const firstText = await prisma.sourceText.findFirst({
+        select: { chunkSize: true, chunkOverlap: true },
+    })
+    const totalChunks = await prisma.textChunk.count()
+    return {
+        chunkSize: firstText?.chunkSize ?? null,
+        chunkOverlap: firstText?.chunkOverlap ?? null,
+        totalChunks,
+    }
+}
 
 export async function GET(request: NextRequest) {
     const modelId = request.nextUrl.searchParams.get('modelId')
@@ -35,7 +52,17 @@ export async function GET(request: NextRequest) {
                     return
                 }
 
-                const run = await createEvalRun({ modelId })
+                // Get current chunk config for this eval run
+                const chunkConfig = await getCurrentChunkConfig()
+
+                const run = await createEvalRun({
+                    modelId,
+                    chunkSize: chunkConfig.chunkSize ?? undefined,
+                    chunkOverlap: chunkConfig.chunkOverlap ?? undefined,
+                    chunkStrategy: 'sentence',
+                    totalChunks: chunkConfig.totalChunks,
+                    totalPhrases: phrasesWithExpected.length,
+                })
                 const total = phrasesWithExpected.length
                 let current = 0
 
@@ -44,6 +71,7 @@ export async function GET(request: NextRequest) {
                 let hits3 = 0
                 let hits5 = 0
                 let totalReciprocalRank = 0
+                let totalNdcg = 0
 
                 const details: Array<{
                     phrase: string
@@ -86,6 +114,8 @@ export async function GET(request: NextRequest) {
                         if (expectedRank <= 3) hits3++
                         if (expectedRank <= 5) hits5++
                         totalReciprocalRank += 1 / expectedRank
+                        // nDCG: DCG / IDCG where IDCG = 1/log2(2) = 1 (single relevant doc)
+                        totalNdcg += 1 / Math.log2(expectedRank + 1)
                     }
 
                     if (similarities.length > 0) {
@@ -130,6 +160,7 @@ export async function GET(request: NextRequest) {
                     topKAccuracy3: hits3 / n,
                     topKAccuracy5: hits5 / n,
                     mrrScore: totalReciprocalRank / n,
+                    ndcgScore: totalNdcg / n,
                 }
 
                 await updateEvalRun(run.id, metrics)
@@ -139,6 +170,8 @@ export async function GET(request: NextRequest) {
                     data: {
                         runId: run.id,
                         ...metrics,
+                        chunkSize: chunkConfig.chunkSize,
+                        chunkOverlap: chunkConfig.chunkOverlap,
                         totalPhrases: n,
                         details,
                     },

@@ -7,25 +7,46 @@ export interface EmbeddingModelConfig {
     provider: string
     providerUrl: string
     dimensions: number
+    queryPrefix?: string | null
+    documentPrefix?: string | null
+}
+
+export type EmbedContext = 'query' | 'document'
+
+/**
+ * Apply the appropriate prefix based on context (query vs. document).
+ * Many models (E5, Nomic, etc.) require different prefixes for queries and documents.
+ */
+function applyPrefix(text: string, config: EmbeddingModelConfig, context: EmbedContext): string {
+    const prefix = context === 'query' ? config.queryPrefix : config.documentPrefix
+    if (prefix) return prefix + text
+    return text
 }
 
 /**
  * Create an embedding for a single text using the specified model config.
- * Model config comes from DB (EmbeddingModel table), not from .env.
  */
-export async function createEmbedding(text: string, config: EmbeddingModelConfig): Promise<number[]> {
+export async function createEmbedding(
+    text: string,
+    config: EmbeddingModelConfig,
+    context: EmbedContext = 'document'
+): Promise<number[]> {
     const model = getEmbeddingModel(config)
-    const { embedding } = await embed({ model, value: text })
+    const { embedding } = await embed({ model, value: applyPrefix(text, config, context) })
     return embedding
 }
 
 /**
  * Create embeddings for multiple texts in batch.
- * Uses embedMany for automatic chunking and parallel processing.
  */
-export async function createEmbeddings(texts: string[], config: EmbeddingModelConfig): Promise<number[][]> {
+export async function createEmbeddings(
+    texts: string[],
+    config: EmbeddingModelConfig,
+    context: EmbedContext = 'document'
+): Promise<number[][]> {
     const model = getEmbeddingModel(config)
-    const { embeddings } = await embedMany({ model, values: texts })
+    const prefixed = texts.map(t => applyPrefix(t, config, context))
+    const { embeddings } = await embedMany({ model, values: prefixed })
     return embeddings
 }
 

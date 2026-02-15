@@ -5,6 +5,8 @@ model EmbeddingModel {
   providerUrl        String
   dimensions         Int
   description        String?
+  queryPrefix        String?
+  documentPrefix     String?
   lastEmbedDurationMs Int?
   lastEmbedAt        DateTime?
   createdAt          DateTime @default(now())

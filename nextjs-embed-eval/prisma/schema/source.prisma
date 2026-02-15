@@ -6,6 +6,7 @@ model SourceText {
   chunkOverlap Int         @default(60)
   createdAt    DateTime    @default(now())
   chunks       TextChunk[]
+  testPhrases  TestPhrase[]
 }
 
 model TextChunk {

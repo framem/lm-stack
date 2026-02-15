@@ -18,6 +18,8 @@ interface EmbeddingModel {
     providerUrl: string
     dimensions: number
     description: string | null
+    queryPrefix: string | null
+    documentPrefix: string | null
     createdAt: Date
     _count: { chunkEmbeddings: number; evalRuns: number }
 }
@@ -113,6 +115,24 @@ export function ModelsClient({ initialModels }: ModelsClientProps) {
                                     rows={2}
                                 />
                             </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-sm font-medium mb-1.5 block">Query-Prefix (optional)</label>
+                                    <Input
+                                        name="queryPrefix"
+                                        placeholder="z.B. search_query: "
+                                    />
+                                    <p className="text-xs text-muted-foreground mt-1">Prefix für Suchanfragen (E5: &quot;query: &quot;, Nomic: &quot;search_query: &quot;)</p>
+                                </div>
+                                <div>
+                                    <label className="text-sm font-medium mb-1.5 block">Document-Prefix (optional)</label>
+                                    <Input
+                                        name="documentPrefix"
+                                        placeholder="z.B. search_document: "
+                                    />
+                                    <p className="text-xs text-muted-foreground mt-1">Prefix für Dokument-Chunks (E5: &quot;passage: &quot;, Nomic: &quot;search_document: &quot;)</p>
+                                </div>
+                            </div>
                             <Button type="submit" disabled={isPending}>
                                 {isPending ? 'Wird gespeichert...' : 'Modell registrieren'}
                             </Button>
@@ -143,6 +163,16 @@ export function ModelsClient({ initialModels }: ModelsClientProps) {
                                 <Badge variant="secondary">{model.provider}</Badge>
                                 <Badge variant="outline">{model.dimensions}d</Badge>
                             </div>
+                            {(model.queryPrefix || model.documentPrefix) && (
+                                <div className="flex flex-wrap gap-1 mb-2">
+                                    {model.queryPrefix && (
+                                        <Badge variant="outline" className="text-xs font-mono">Q: {model.queryPrefix}</Badge>
+                                    )}
+                                    {model.documentPrefix && (
+                                        <Badge variant="outline" className="text-xs font-mono">D: {model.documentPrefix}</Badge>
+                                    )}
+                                </div>
+                            )}
                             {model.description && (
                                 <p className="text-sm text-muted-foreground mb-3">{model.description}</p>
                             )}

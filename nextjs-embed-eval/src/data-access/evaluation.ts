@@ -9,6 +9,12 @@ export async function createEvalRun(data: {
     topKAccuracy3?: number
     topKAccuracy5?: number
     mrrScore?: number
+    ndcgScore?: number
+    chunkSize?: number
+    chunkOverlap?: number
+    chunkStrategy?: string
+    totalChunks?: number
+    totalPhrases?: number
 }) {
     return prisma.evalRun.create({ data })
 }
@@ -19,6 +25,12 @@ export async function updateEvalRun(id: string, data: {
     topKAccuracy3?: number
     topKAccuracy5?: number
     mrrScore?: number
+    ndcgScore?: number
+    chunkSize?: number
+    chunkOverlap?: number
+    chunkStrategy?: string
+    totalChunks?: number
+    totalPhrases?: number
 }) {
     return prisma.evalRun.update({ where: { id }, data })
 }
@@ -105,6 +117,9 @@ export async function getEvalResultsByRun(runId: string) {
 
 // ---- Comparison data ----
 
+/**
+ * Get latest eval run per model (legacy behavior).
+ */
 export async function getComparisonData(modelIds: string[]) {
     return prisma.evalRun.findMany({
         where: { modelId: { in: modelIds } },
@@ -112,6 +127,20 @@ export async function getComparisonData(modelIds: string[]) {
         distinct: ['modelId'],
         include: {
             model: { select: { id: true, name: true, dimensions: true, provider: true } },
+        },
+    })
+}
+
+/**
+ * Get all eval runs (with chunk config) for full history comparison.
+ */
+export async function getAllEvalRuns(modelIds?: string[]) {
+    return prisma.evalRun.findMany({
+        where: modelIds ? { modelId: { in: modelIds } } : undefined,
+        orderBy: { createdAt: 'desc' },
+        include: {
+            model: { select: { id: true, name: true, dimensions: true, provider: true } },
+            _count: { select: { results: true } },
         },
     })
 }

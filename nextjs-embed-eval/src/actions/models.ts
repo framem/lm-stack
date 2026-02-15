@@ -9,6 +9,8 @@ export async function addEmbeddingModel(formData: FormData) {
     const providerUrl = formData.get('providerUrl') as string
     const dimensions = parseInt(formData.get('dimensions') as string, 10)
     const description = formData.get('description') as string | null
+    const queryPrefix = formData.get('queryPrefix') as string | null
+    const documentPrefix = formData.get('documentPrefix') as string | null
 
     if (!name?.trim() || !provider?.trim() || !providerUrl?.trim() || isNaN(dimensions)) {
         return { error: 'Alle Pflichtfelder müssen ausgefüllt sein.' }
@@ -20,6 +22,8 @@ export async function addEmbeddingModel(formData: FormData) {
         providerUrl: providerUrl.trim(),
         dimensions,
         description: description?.trim() || undefined,
+        queryPrefix: queryPrefix?.trim() || undefined,
+        documentPrefix: documentPrefix?.trim() || undefined,
     })
 
     revalidatePath('/models')
@@ -32,6 +36,8 @@ export async function editEmbeddingModel(id: string, formData: FormData) {
     const providerUrl = formData.get('providerUrl') as string
     const dimensions = parseInt(formData.get('dimensions') as string, 10)
     const description = formData.get('description') as string | null
+    const queryPrefix = formData.get('queryPrefix') as string | null
+    const documentPrefix = formData.get('documentPrefix') as string | null
 
     await updateEmbeddingModel(id, {
         name: name?.trim(),
@@ -39,6 +45,8 @@ export async function editEmbeddingModel(id: string, formData: FormData) {
         providerUrl: providerUrl?.trim(),
         dimensions: isNaN(dimensions) ? undefined : dimensions,
         description: description?.trim() || undefined,
+        queryPrefix: queryPrefix?.trim() || null,
+        documentPrefix: documentPrefix?.trim() || null,
     })
 
     revalidatePath('/models')

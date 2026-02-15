@@ -2,12 +2,61 @@ import { NextRequest } from 'next/server'
 import { getEmbeddingModels, getEmbeddingModelById, updateModelEmbedDuration } from '@/src/data-access/embedding-models'
 import { getSourceTexts, deleteChunksBySourceText, createChunks, updateSourceText } from '@/src/data-access/source-texts'
 import { getTestPhrases } from '@/src/data-access/test-phrases'
-import { getAllChunks } from '@/src/data-access/source-texts'
+import { getAllChunks, getChunksBySourceText } from '@/src/data-access/source-texts'
+import { getPhrasesForRemapping, remapPhraseToChunk } from '@/src/data-access/test-phrases'
 import { saveChunkEmbedding, savePhraseEmbedding } from '@/src/data-access/embeddings'
 import { chunkText, DEFAULT_TARGET_TOKENS, DEFAULT_OVERLAP_TOKENS } from '@/src/lib/chunking'
 import { createEmbeddings, type EmbeddingModelConfig } from '@/src/lib/embedding'
 
 const BATCH_SIZE = 50
+
+/**
+ * Find the best matching chunk for a given expected content snippet.
+ * Uses longest common substring overlap ratio.
+ */
+function findBestChunkMatch(
+    expectedContent: string,
+    chunks: Array<{ id: string; content: string }>
+): { chunkId: string; score: number } | null {
+    if (!expectedContent || chunks.length === 0) return null
+
+    const normalizedExpected = expectedContent.toLowerCase().replace(/\s+/g, ' ').trim()
+    let bestId = ''
+    let bestScore = 0
+
+    for (const chunk of chunks) {
+        const normalizedChunk = chunk.content.toLowerCase().replace(/\s+/g, ' ').trim()
+
+        // Check bidirectional containment
+        if (normalizedChunk.includes(normalizedExpected)) {
+            // New chunk fully contains the expected content — perfect match
+            const score = normalizedExpected.length / normalizedChunk.length
+            if (score > bestScore || (score === bestScore && !bestId)) {
+                bestScore = 1.0 // full containment → max score
+                bestId = chunk.id
+            }
+        } else if (normalizedExpected.includes(normalizedChunk)) {
+            // Expected content is larger than new chunk — partial match
+            const score = normalizedChunk.length / normalizedExpected.length
+            if (score > bestScore) {
+                bestScore = score
+                bestId = chunk.id
+            }
+        } else {
+            // Check word overlap as fallback
+            const expectedWords = new Set(normalizedExpected.split(' '))
+            const chunkWords = normalizedChunk.split(' ')
+            const overlap = chunkWords.filter(w => expectedWords.has(w)).length
+            const score = overlap / Math.max(expectedWords.size, chunkWords.length)
+            if (score > bestScore) {
+                bestScore = score
+                bestId = chunk.id
+            }
+        }
+    }
+
+    return bestId ? { chunkId: bestId, score: bestScore } : null
+}
 
 export async function GET(request: NextRequest) {
     const chunkSize = parseInt(request.nextUrl.searchParams.get('chunkSize') || '') || DEFAULT_TARGET_TOKENS
@@ -40,8 +89,47 @@ export async function GET(request: NextRequest) {
 
                 send({ type: 'progress', current: 0, total: 100, phase: `Re-Chunking abgeschlossen`, message: `${totalNewChunks} Chunks erstellt aus ${sourceTexts.length} Texten` })
 
+                // --- Phase 1.5: Auto-remap phrase ground truth ---
+                const phrasesToRemap = await getPhrasesForRemapping()
+                let remapped = 0
+                let remapFailed = 0
+
+                if (phrasesToRemap.length > 0) {
+                    send({ type: 'progress', current: 0, total: 100, phase: 'Phrasen-Mapping aktualisieren', message: `${phrasesToRemap.length} Phrasen werden neu zugeordnet...` })
+
+                    // Group phrases by sourceTextId for efficient chunk loading
+                    const phrasesBySource = new Map<string, typeof phrasesToRemap>()
+                    for (const p of phrasesToRemap) {
+                        const list = phrasesBySource.get(p.sourceTextId!) || []
+                        list.push(p)
+                        phrasesBySource.set(p.sourceTextId!, list)
+                    }
+
+                    for (const [sourceTextId, phrases] of phrasesBySource) {
+                        const newChunks = await getChunksBySourceText(sourceTextId)
+
+                        for (const phrase of phrases) {
+                            const match = findBestChunkMatch(
+                                phrase.expectedContent!,
+                                newChunks.map(c => ({ id: c.id, content: c.content }))
+                            )
+                            if (match && match.score >= 0.3) {
+                                await remapPhraseToChunk(phrase.id, match.chunkId)
+                                remapped++
+                            } else {
+                                remapFailed++
+                            }
+                        }
+                    }
+
+                    const remapMsg = remapFailed > 0
+                        ? `${remapped} Phrasen neu zugeordnet, ${remapFailed} konnten nicht zugeordnet werden`
+                        : `${remapped} Phrasen erfolgreich neu zugeordnet`
+                    send({ type: 'progress', current: 0, total: 100, phase: 'Phrasen-Mapping', message: remapMsg })
+                }
+
                 // --- Phase 2: Embed ---
-                let models: Array<{ id: string; name: string; provider: string; providerUrl: string; dimensions: number }>
+                let models: Array<{ id: string; name: string; provider: string; providerUrl: string; dimensions: number; queryPrefix: string | null; documentPrefix: string | null }>
 
                 if (modelId) {
                     const m = await getEmbeddingModelById(modelId)
@@ -81,6 +169,8 @@ export async function GET(request: NextRequest) {
                         provider: model.provider,
                         providerUrl: model.providerUrl,
                         dimensions: model.dimensions,
+                        queryPrefix: model.queryPrefix,
+                        documentPrefix: model.documentPrefix,
                     }
 
                     const modelStart = Date.now()
@@ -88,7 +178,7 @@ export async function GET(request: NextRequest) {
                     for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
                         const batch = chunks.slice(i, i + BATCH_SIZE)
                         try {
-                            const embeddings = await createEmbeddings(batch.map(c => c.content), config)
+                            const embeddings = await createEmbeddings(batch.map(c => c.content), config, 'document')
                             await Promise.all(
                                 batch.map((chunk, idx) => saveChunkEmbedding(chunk.id, model.id, embeddings[idx]))
                             )
@@ -110,7 +200,7 @@ export async function GET(request: NextRequest) {
                     for (let i = 0; i < phrases.length; i += BATCH_SIZE) {
                         const batch = phrases.slice(i, i + BATCH_SIZE)
                         try {
-                            const embeddings = await createEmbeddings(batch.map(p => p.phrase), config)
+                            const embeddings = await createEmbeddings(batch.map(p => p.phrase), config, 'query')
                             await Promise.all(
                                 batch.map((phrase, idx) => savePhraseEmbedding(phrase.id, model.id, embeddings[idx]))
                             )
@@ -141,6 +231,8 @@ export async function GET(request: NextRequest) {
                         modelsProcessed: models.length,
                         chunksEmbedded: totalChunksEmbedded,
                         phrasesEmbedded: totalPhrasesEmbedded,
+                        phrasesRemapped: remapped,
+                        phrasesRemapFailed: remapFailed,
                         totalDurationMs: Date.now() - globalStart,
                     },
                 })

@@ -34,6 +34,8 @@ export async function GET(request: NextRequest) {
         provider: model.provider,
         providerUrl: model.providerUrl,
         dimensions: model.dimensions,
+        queryPrefix: model.queryPrefix,
+        documentPrefix: model.documentPrefix,
     }
 
     const encoder = new TextEncoder()
@@ -55,7 +57,7 @@ export async function GET(request: NextRequest) {
                 for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
                     const batch = chunks.slice(i, i + BATCH_SIZE)
                     try {
-                        const embeddings = await createEmbeddings(batch.map(c => c.content), config)
+                        const embeddings = await createEmbeddings(batch.map(c => c.content), config, 'document')
                         await Promise.all(
                             batch.map((chunk, idx) => saveChunkEmbedding(chunk.id, modelId, embeddings[idx]))
                         )
@@ -69,7 +71,7 @@ export async function GET(request: NextRequest) {
                 for (let i = 0; i < phrases.length; i += BATCH_SIZE) {
                     const batch = phrases.slice(i, i + BATCH_SIZE)
                     try {
-                        const embeddings = await createEmbeddings(batch.map(p => p.phrase), config)
+                        const embeddings = await createEmbeddings(batch.map(p => p.phrase), config, 'query')
                         await Promise.all(
                             batch.map((phrase, idx) => savePhraseEmbedding(phrase.id, modelId, embeddings[idx]))
                         )

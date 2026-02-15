@@ -2,11 +2,15 @@ model TestPhrase {
   id              String   @id @default(cuid())
   phrase          String
   expectedChunkId String?
+  sourceTextId    String?
+  expectedContent String?
   category        String?
   createdAt       DateTime @default(now())
   expectedChunk    TextChunk?        @relation("ExpectedChunk", fields: [expectedChunkId], references: [id], onDelete: SetNull)
+  sourceText       SourceText?       @relation(fields: [sourceTextId], references: [id], onDelete: SetNull)
   phraseEmbeddings PhraseEmbedding[]
   evalResults      EvalResult[]
+  @@index([sourceTextId])
 }
 
 model EvalRun {
@@ -18,9 +22,16 @@ model EvalRun {
   topKAccuracy3  Float?
   topKAccuracy5  Float?
   mrrScore       Float?
+  ndcgScore      Float?
+  chunkSize      Int?
+  chunkOverlap   Int?
+  chunkStrategy  String?
+  totalChunks    Int?
+  totalPhrases   Int?
   model   EmbeddingModel @relation(fields: [modelId], references: [id], onDelete: Cascade)
   results EvalResult[]
   @@index([modelId])
+  @@index([modelId, chunkSize, chunkOverlap])
 }
 
 model EvalResult {

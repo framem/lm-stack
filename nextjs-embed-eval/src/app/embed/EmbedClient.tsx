@@ -26,10 +26,12 @@ interface Model {
     provider: string
     providerUrl: string
     dimensions: number
+    queryPrefix: string | null
+    documentPrefix: string | null
     chunkEmbeddingCount: number
     phraseEmbeddingCount: number
     lastEmbedDurationMs: number | null
-    lastEmbedAt: string | null
+    lastEmbedAt: Date | string | null
 }
 
 interface EmbedClientProps {

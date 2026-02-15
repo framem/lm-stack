@@ -14,6 +14,8 @@ const models = [
         providerUrl: LLM_PROVIDER_URL,
         dimensions: 768,
         description: 'Nomic Embed Text v1.5 – vielseitiges Embedding-Modell mit 768 Dimensionen',
+        queryPrefix: 'search_query: ',
+        documentPrefix: 'search_document: ',
     },
     {
         name: 'text-embedding-bge-m3',
@@ -21,6 +23,8 @@ const models = [
         providerUrl: LLM_PROVIDER_URL,
         dimensions: 1024,
         description: 'BAAI BGE-M3 – multilinguales Embedding-Modell mit 1024 Dimensionen',
+        queryPrefix: null,
+        documentPrefix: null,
     },
     {
         name: 'text-embedding-multilingual-e5-large',
@@ -28,6 +32,8 @@ const models = [
         providerUrl: LLM_PROVIDER_URL,
         dimensions: 1024,
         description: 'Microsoft Multilingual E5 Large – multilinguales Embedding-Modell mit 1024 Dimensionen',
+        queryPrefix: 'query: ',
+        documentPrefix: 'passage: ',
     },
 ]
 
@@ -42,6 +48,8 @@ async function main() {
                 providerUrl: model.providerUrl,
                 dimensions: model.dimensions,
                 description: model.description,
+                queryPrefix: model.queryPrefix,
+                documentPrefix: model.documentPrefix,
             },
             create: model,
         })

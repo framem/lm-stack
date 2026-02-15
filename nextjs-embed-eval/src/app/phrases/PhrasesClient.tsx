@@ -13,6 +13,7 @@ interface Chunk {
     id: string
     content: string
     chunkIndex: number
+    sourceTextId: string
     sourceText: { title: string }
 }
 

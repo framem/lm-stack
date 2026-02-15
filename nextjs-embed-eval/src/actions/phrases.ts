@@ -8,6 +8,8 @@ export async function addTestPhrase(formData: FormData) {
     const rawExpectedChunkId = formData.get('expectedChunkId') as string | null
     const expectedChunkId = rawExpectedChunkId && rawExpectedChunkId !== 'none' ? rawExpectedChunkId : undefined
     const category = formData.get('category') as string | null
+    const sourceTextId = formData.get('sourceTextId') as string | null
+    const expectedContent = formData.get('expectedContent') as string | null
 
     if (!phrase?.trim()) {
         return { error: 'Suchphrase ist erforderlich.' }
@@ -16,6 +18,8 @@ export async function addTestPhrase(formData: FormData) {
     const testPhrase = await createTestPhrase({
         phrase: phrase.trim(),
         expectedChunkId,
+        sourceTextId: sourceTextId || undefined,
+        expectedContent: expectedContent || undefined,
         category: category?.trim() || undefined,
     })
 
@@ -28,10 +32,14 @@ export async function editTestPhrase(id: string, formData: FormData) {
     const rawExpectedChunkId = formData.get('expectedChunkId') as string | null
     const expectedChunkId = rawExpectedChunkId && rawExpectedChunkId !== 'none' ? rawExpectedChunkId : null
     const category = formData.get('category') as string | null
+    const sourceTextId = formData.get('sourceTextId') as string | null
+    const expectedContent = formData.get('expectedContent') as string | null
 
     await updateTestPhrase(id, {
         phrase: phrase?.trim(),
         expectedChunkId,
+        sourceTextId: sourceTextId || null,
+        expectedContent: expectedContent || null,
         category: category?.trim() || null,
     })
 

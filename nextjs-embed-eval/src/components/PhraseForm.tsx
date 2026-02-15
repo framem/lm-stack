@@ -12,6 +12,7 @@ interface Chunk {
     id: string
     content: string
     chunkIndex: number
+    sourceTextId?: string
     sourceText?: { title: string }
 }
 
@@ -95,6 +96,10 @@ export function PhraseForm({ chunks, onSubmit, initialValues }: PhraseFormProps)
             </CardHeader>
             <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-4">
+                    {/* Hidden fields for re-chunk-safe ground truth */}
+                    <input type="hidden" name="sourceTextId" value={selectedChunk?.sourceTextId || ''} />
+                    <input type="hidden" name="expectedContent" value={selectedChunk?.content || ''} />
+
                     <div>
                         <label className="text-sm font-medium mb-1.5 block">Erwarteter Chunk</label>
                         <Select
