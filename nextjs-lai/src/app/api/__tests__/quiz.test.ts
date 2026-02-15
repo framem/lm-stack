@@ -66,6 +66,7 @@ vi.mock('@/src/data-access/quiz', () => ({
     }),
     deleteQuiz: vi.fn(),
     recordAttempt: vi.fn(() => Promise.resolve({ id: 'att-1' })),
+    upsertQuestionProgress: vi.fn(() => Promise.resolve()),
 }))
 
 const mockQuizQuestion = {
