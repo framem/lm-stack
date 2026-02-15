@@ -10,11 +10,13 @@ export default async function EmbedPage() {
 
     // Get embedding counts per model
     const modelsWithCounts = await Promise.all(
-        models.map(async (model) => ({
-            ...model,
-            chunkEmbeddingCount: await getChunkEmbeddingCount(model.id),
-            phraseEmbeddingCount: await getPhraseEmbeddingCount(model.id),
-        }))
+        models.map(async (model) => {
+            const [chunkEmbeddingCount, phraseEmbeddingCount] = await Promise.all([
+                getChunkEmbeddingCount(model.id),
+                getPhraseEmbeddingCount(model.id),
+            ])
+            return { ...model, chunkEmbeddingCount, phraseEmbeddingCount }
+        })
     )
 
     return (
@@ -24,7 +26,7 @@ export default async function EmbedPage() {
                 <div className="mb-8">
                     <h1 className="text-3xl font-bold">Embedding</h1>
                     <p className="text-muted-foreground mt-1">
-                        Chunks und Testphrasen mit einem Modell einbetten
+                        Chunks und Suchphrasen mit einem Modell einbetten
                     </p>
                 </div>
                 <EmbedClient models={modelsWithCounts} />

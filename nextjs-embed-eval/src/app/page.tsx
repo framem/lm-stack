@@ -49,7 +49,7 @@ export default async function DashboardPage() {
                         icon={<Brain className="h-4 w-4" />}
                     />
                     <MetricCard
-                        title="Testphrasen"
+                        title="Suchphrasen"
                         value={phrases.length}
                         description={`${phrases.filter(p => p.expectedChunkId).length} mit Chunk-Mapping`}
                         icon={<MessageSquare className="h-4 w-4" />}

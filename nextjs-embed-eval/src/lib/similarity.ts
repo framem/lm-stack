@@ -4,6 +4,7 @@ export interface SimilarChunk {
     chunkId: string
     content: string
     chunkIndex: number
+    sourceTitle: string
     similarity: number
 }
 
@@ -20,9 +21,11 @@ export async function findSimilarChunks(
 
     return prisma.$queryRawUnsafe<SimilarChunk[]>(
         `SELECT ce."chunkId", tc.content, tc."chunkIndex",
+                st.title AS "sourceTitle",
                 1 - (ce.embedding::vector <=> $1::vector) AS similarity
          FROM "ChunkEmbedding" ce
          JOIN "TextChunk" tc ON tc.id = ce."chunkId"
+         JOIN "SourceText" st ON st.id = tc."sourceTextId"
          WHERE ce."modelId" = $2
          ORDER BY ce.embedding::vector <=> $1::vector
          LIMIT $3`,

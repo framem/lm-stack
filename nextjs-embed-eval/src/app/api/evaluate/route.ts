@@ -30,12 +30,11 @@ export async function GET(request: NextRequest) {
                 const phrasesWithExpected = phrases.filter(p => p.expectedChunkId)
 
                 if (phrasesWithExpected.length === 0) {
-                    send({ type: 'error', message: 'Keine Testphrasen mit erwartetem Chunk gefunden.' })
+                    send({ type: 'error', message: 'Keine Suchphrasen mit erwartetem Chunk gefunden.' })
                     controller.close()
                     return
                 }
 
-                // Create eval run
                 const run = await createEvalRun({ modelId })
                 const total = phrasesWithExpected.length
                 let current = 0
@@ -45,6 +44,25 @@ export async function GET(request: NextRequest) {
                 let hits3 = 0
                 let hits5 = 0
                 let totalReciprocalRank = 0
+
+                const details: Array<{
+                    phrase: string
+                    category: string | null
+                    expectedChunk: {
+                        chunkIndex: number
+                        content: string
+                        sourceTitle: string
+                    } | null
+                    retrievedChunks: Array<{
+                        chunkIndex: number
+                        content: string
+                        sourceTitle: string
+                        similarity: number
+                        isExpected: boolean
+                    }>
+                    expectedRank: number | null
+                    isHit: boolean
+                }> = []
 
                 for (const phrase of phrasesWithExpected) {
                     current++
@@ -60,7 +78,6 @@ export async function GET(request: NextRequest) {
                     const retrievedIds = similar.map(s => s.chunkId)
                     const similarities = similar.map(s => Number(s.similarity))
 
-                    // Find rank of expected chunk
                     const expectedRank = retrievedIds.indexOf(phrase.expectedChunkId!) + 1
                     const isHit = expectedRank > 0
 
@@ -83,9 +100,29 @@ export async function GET(request: NextRequest) {
                         expectedChunkRank: isHit ? expectedRank : null,
                         isHit,
                     })
+
+                    details.push({
+                        phrase: phrase.phrase,
+                        category: phrase.category,
+                        expectedChunk: phrase.expectedChunk
+                            ? {
+                                chunkIndex: phrase.expectedChunk.chunkIndex,
+                                content: phrase.expectedChunk.content,
+                                sourceTitle: phrase.expectedChunk.sourceText.title,
+                            }
+                            : null,
+                        retrievedChunks: similar.map(s => ({
+                            chunkIndex: s.chunkIndex,
+                            content: s.content,
+                            sourceTitle: s.sourceTitle,
+                            similarity: Number(s.similarity),
+                            isExpected: s.chunkId === phrase.expectedChunkId,
+                        })),
+                        expectedRank: isHit ? expectedRank : null,
+                        isHit,
+                    })
                 }
 
-                // Calculate aggregate metrics
                 const n = phrasesWithExpected.length
                 const metrics = {
                     avgSimilarity: totalSimilarity / n,
@@ -103,6 +140,7 @@ export async function GET(request: NextRequest) {
                         runId: run.id,
                         ...metrics,
                         totalPhrases: n,
+                        details,
                     },
                 })
             } catch (err) {

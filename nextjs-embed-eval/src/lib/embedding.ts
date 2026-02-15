@@ -1,4 +1,4 @@
-import { embed } from 'ai'
+import { embed, embedMany } from 'ai'
 import { createOllama } from 'ai-sdk-ollama'
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 
@@ -21,14 +21,12 @@ export async function createEmbedding(text: string, config: EmbeddingModelConfig
 
 /**
  * Create embeddings for multiple texts in batch.
+ * Uses embedMany for automatic chunking and parallel processing.
  */
 export async function createEmbeddings(texts: string[], config: EmbeddingModelConfig): Promise<number[][]> {
-    const results: number[][] = []
-    for (const text of texts) {
-        const embedding = await createEmbedding(text, config)
-        results.push(embedding)
-    }
-    return results
+    const model = getEmbeddingModel(config)
+    const { embeddings } = await embedMany({ model, values: texts })
+    return embeddings
 }
 
 function getEmbeddingModel(config: EmbeddingModelConfig) {

@@ -9,7 +9,7 @@ const navItems = [
     { href: '/', label: 'Dashboard', icon: Home },
     { href: '/texts', label: 'Texte', icon: BookText },
     { href: '/models', label: 'Modelle', icon: Brain },
-    { href: '/phrases', label: 'Testphrasen', icon: MessageSquare },
+    { href: '/phrases', label: 'Suchphrasen', icon: MessageSquare },
     { href: '/embed', label: 'Embedding', icon: FlaskConical },
     { href: '/evaluate', label: 'Auswertung', icon: BarChart3 },
     { href: '/compare', label: 'Vergleich', icon: GitCompare },

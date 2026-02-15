@@ -1,6 +1,6 @@
 'use client'
 
-import { useTransition } from 'react'
+import React, { useTransition } from 'react'
 import { Card, CardContent } from '@/src/components/ui/card'
 import { Badge } from '@/src/components/ui/badge'
 import { Button } from '@/src/components/ui/button'
@@ -33,6 +33,40 @@ interface PhrasesClientProps {
     chunks: Chunk[]
 }
 
+/**
+ * Highlights occurrences of `phrase` within `content`.
+ * Normalizes whitespace for matching, shows context around the match.
+ */
+function highlightPhrase(content: string, phrase: string): React.ReactNode {
+    if (!phrase) return content.slice(0, 150) + (content.length > 150 ? '...' : '')
+
+    const normalized = content.replace(/\s+/g, ' ')
+    const normalizedPhrase = phrase.replace(/\s+/g, ' ')
+    const idx = normalized.toLowerCase().indexOf(normalizedPhrase.toLowerCase())
+
+    if (idx === -1) {
+        return content.length > 150 ? content.slice(0, 150) + '...' : content
+    }
+
+    const matchEnd = idx + normalizedPhrase.length
+    const ctxBefore = 60
+    const ctxAfter = 60
+    const start = Math.max(0, idx - ctxBefore)
+    const end = Math.min(normalized.length, matchEnd + ctxAfter)
+
+    return (
+        <>
+            {start > 0 && '...'}
+            {normalized.slice(start, idx)}
+            <mark className="bg-yellow-200 dark:bg-yellow-900/60 rounded px-0.5">
+                {normalized.slice(idx, matchEnd)}
+            </mark>
+            {normalized.slice(matchEnd, end)}
+            {end < normalized.length && '...'}
+        </>
+    )
+}
+
 export function PhrasesClient({ initialPhrases, chunks }: PhrasesClientProps) {
     const [isPending, startTransition] = useTransition()
 
@@ -52,7 +86,7 @@ export function PhrasesClient({ initialPhrases, chunks }: PhrasesClientProps) {
             <PhraseForm chunks={chunks} onSubmit={handleSubmit} />
 
             <div className="space-y-3">
-                <h2 className="text-xl font-semibold">Vorhandene Testphrasen ({initialPhrases.length})</h2>
+                <h2 className="text-xl font-semibold">Vorhandene Suchphrasen ({initialPhrases.length})</h2>
 
                 {initialPhrases.map(phrase => (
                     <Card key={phrase.id}>
@@ -75,8 +109,8 @@ export function PhrasesClient({ initialPhrases, chunks }: PhrasesClientProps) {
                                         )}
                                     </div>
                                     {phrase.expectedChunk && (
-                                        <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
-                                            {phrase.expectedChunk.content}
+                                        <p className="text-sm text-muted-foreground mt-2">
+                                            {highlightPhrase(phrase.expectedChunk.content, phrase.phrase)}
                                         </p>
                                     )}
                                 </div>
@@ -96,7 +130,7 @@ export function PhrasesClient({ initialPhrases, chunks }: PhrasesClientProps) {
 
                 {initialPhrases.length === 0 && (
                     <p className="text-center text-muted-foreground py-12">
-                        Noch keine Testphrasen vorhanden. Erstelle eine Phrase mit dem Formular oben.
+                        Noch keine Suchphrasen vorhanden. Erstelle eine Phrase mit dem Formular oben.
                     </p>
                 )}
             </div>

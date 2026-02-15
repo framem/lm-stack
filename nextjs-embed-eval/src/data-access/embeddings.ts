@@ -6,7 +6,7 @@ export async function saveChunkEmbedding(chunkId: string, modelId: string, embed
     return prisma.chunkEmbedding.upsert({
         where: { chunkId_modelId: { chunkId, modelId } },
         update: { embedding },
-        create: { chunkId, modelId, embedding },
+        create: { chunkId, modelId, embedding, durationMs: 0 },
     })
 }
 
@@ -24,7 +24,7 @@ export async function savePhraseEmbedding(phraseId: string, modelId: string, emb
     return prisma.phraseEmbedding.upsert({
         where: { phraseId_modelId: { phraseId, modelId } },
         update: { embedding },
-        create: { phraseId, modelId, embedding },
+        create: { phraseId, modelId, embedding, durationMs: 0 },
     })
 }
 
@@ -35,6 +35,7 @@ export async function getPhraseEmbeddingCount(modelId: string) {
 export async function deletePhraseEmbeddingsByModel(modelId: string) {
     return prisma.phraseEmbedding.deleteMany({ where: { modelId } })
 }
+
 
 // ---- Get embedding vectors for evaluation ----
 

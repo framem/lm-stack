@@ -6,6 +6,8 @@ export interface SSEProgress {
     current: number
     total: number
     message: string
+    elapsedMs?: number
+    phase?: string
 }
 
 export interface SSEResult<T = unknown> {

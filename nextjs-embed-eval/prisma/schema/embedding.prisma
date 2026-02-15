@@ -1,22 +1,25 @@
 model EmbeddingModel {
-  id          String   @id @default(cuid())
-  name        String   @unique
-  provider    String
-  providerUrl String
-  dimensions  Int
-  description String?
-  createdAt   DateTime @default(now())
+  id                 String   @id @default(cuid())
+  name               String   @unique
+  provider           String
+  providerUrl        String
+  dimensions         Int
+  description        String?
+  lastEmbedDurationMs Int?
+  lastEmbedAt        DateTime?
+  createdAt          DateTime @default(now())
   chunkEmbeddings  ChunkEmbedding[]
   phraseEmbeddings PhraseEmbedding[]
   evalRuns         EvalRun[]
 }
 
 model ChunkEmbedding {
-  id        String   @id @default(cuid())
-  chunkId   String
-  modelId   String
-  embedding Float[]
-  createdAt DateTime @default(now())
+  id         String   @id @default(cuid())
+  chunkId    String
+  modelId    String
+  embedding  Float[]
+  durationMs Int
+  createdAt  DateTime @default(now())
   chunk TextChunk      @relation(fields: [chunkId], references: [id], onDelete: Cascade)
   model EmbeddingModel @relation(fields: [modelId], references: [id], onDelete: Cascade)
   @@unique([chunkId, modelId])
@@ -24,11 +27,12 @@ model ChunkEmbedding {
 }
 
 model PhraseEmbedding {
-  id        String   @id @default(cuid())
-  phraseId  String
-  modelId   String
-  embedding Float[]
-  createdAt DateTime @default(now())
+  id         String   @id @default(cuid())
+  phraseId   String
+  modelId    String
+  embedding  Float[]
+  durationMs Int
+  createdAt  DateTime @default(now())
   phrase TestPhrase     @relation(fields: [phraseId], references: [id], onDelete: Cascade)
   model  EmbeddingModel @relation(fields: [modelId], references: [id], onDelete: Cascade)
   @@unique([phraseId, modelId])

@@ -5,16 +5,17 @@ import { revalidatePath } from 'next/cache'
 
 export async function addTestPhrase(formData: FormData) {
     const phrase = formData.get('phrase') as string
-    const expectedChunkId = formData.get('expectedChunkId') as string | null
+    const rawExpectedChunkId = formData.get('expectedChunkId') as string | null
+    const expectedChunkId = rawExpectedChunkId && rawExpectedChunkId !== 'none' ? rawExpectedChunkId : undefined
     const category = formData.get('category') as string | null
 
     if (!phrase?.trim()) {
-        return { error: 'Testphrase ist erforderlich.' }
+        return { error: 'Suchphrase ist erforderlich.' }
     }
 
     const testPhrase = await createTestPhrase({
         phrase: phrase.trim(),
-        expectedChunkId: expectedChunkId || undefined,
+        expectedChunkId,
         category: category?.trim() || undefined,
     })
 
@@ -24,12 +25,13 @@ export async function addTestPhrase(formData: FormData) {
 
 export async function editTestPhrase(id: string, formData: FormData) {
     const phrase = formData.get('phrase') as string
-    const expectedChunkId = formData.get('expectedChunkId') as string | null
+    const rawExpectedChunkId = formData.get('expectedChunkId') as string | null
+    const expectedChunkId = rawExpectedChunkId && rawExpectedChunkId !== 'none' ? rawExpectedChunkId : null
     const category = formData.get('category') as string | null
 
     await updateTestPhrase(id, {
         phrase: phrase?.trim(),
-        expectedChunkId: expectedChunkId || null,
+        expectedChunkId,
         category: category?.trim() || null,
     })
 

@@ -41,3 +41,10 @@ export async function updateEmbeddingModel(id: string, data: {
 export async function deleteEmbeddingModel(id: string) {
     return prisma.embeddingModel.delete({ where: { id } })
 }
+
+export async function updateModelEmbedDuration(id: string, durationMs: number) {
+    return prisma.embeddingModel.update({
+        where: { id },
+        data: { lastEmbedDurationMs: durationMs, lastEmbedAt: new Date() },
+    })
+}

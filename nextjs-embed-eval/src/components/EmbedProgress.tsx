@@ -10,7 +10,16 @@ interface EmbedProgressProps {
     progress: SSEProgress | null
     isRunning: boolean
     error: string | null
-    result: { chunksEmbedded?: number; phrasesEmbedded?: number } | null
+    result: { chunkSize?: number; chunkOverlap?: number; totalChunks?: number; modelsProcessed?: number; chunksEmbedded?: number; phrasesEmbedded?: number; totalDurationMs?: number } | null
+}
+
+function formatDuration(ms: number): string {
+    if (ms < 1000) return `${ms} ms`
+    const seconds = ms / 1000
+    if (seconds < 60) return `${seconds.toFixed(1)} s`
+    const minutes = Math.floor(seconds / 60)
+    const remainingSeconds = Math.round(seconds % 60)
+    return `${minutes} min ${remainingSeconds} s`
 }
 
 export function EmbedProgress({ progress, isRunning, error, result }: EmbedProgressProps) {
@@ -31,10 +40,16 @@ export function EmbedProgress({ progress, isRunning, error, result }: EmbedProgr
             <CardContent className="space-y-3">
                 {isRunning && progress && (
                     <>
+                        {progress.phase && (
+                            <p className="text-sm font-medium">{progress.phase}</p>
+                        )}
                         <Progress value={percentage} />
-                        <p className="text-sm text-muted-foreground">
-                            {progress.message} ({percentage}%)
-                        </p>
+                        <div className="flex items-center justify-between text-sm text-muted-foreground">
+                            <span>{progress.message} ({percentage}%)</span>
+                            {progress.elapsedMs != null && (
+                                <span>{formatDuration(progress.elapsedMs)}</span>
+                            )}
+                        </div>
                     </>
                 )}
 
@@ -46,8 +61,17 @@ export function EmbedProgress({ progress, isRunning, error, result }: EmbedProgr
 
                 {!isRunning && result && (
                     <div className="text-sm space-y-1">
+                        {result.chunkSize != null && (
+                            <p>Chunking: {result.chunkSize} Tokens / {result.chunkOverlap} Overlap → {result.totalChunks} Chunks</p>
+                        )}
+                        {result.modelsProcessed != null && (
+                            <p>{result.modelsProcessed} Modelle verarbeitet</p>
+                        )}
                         <p>{result.chunksEmbedded} Chunks eingebettet</p>
                         <p>{result.phrasesEmbedded} Phrasen eingebettet</p>
+                        {result.totalDurationMs != null && (
+                            <p className="font-medium">Gesamtdauer: {formatDuration(result.totalDurationMs)}</p>
+                        )}
                     </div>
                 )}
             </CardContent>

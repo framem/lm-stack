@@ -55,7 +55,11 @@ export async function deleteTestPhrase(id: string) {
 export async function getTestPhrasesWithEmbeddings(modelId: string) {
     return prisma.testPhrase.findMany({
         include: {
-            expectedChunk: true,
+            expectedChunk: {
+                include: {
+                    sourceText: { select: { title: true } },
+                },
+            },
             phraseEmbeddings: {
                 where: { modelId },
             },

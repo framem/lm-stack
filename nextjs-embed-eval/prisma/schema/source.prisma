@@ -1,9 +1,11 @@
 model SourceText {
-  id        String      @id @default(cuid())
-  title     String
-  content   String
-  createdAt DateTime    @default(now())
-  chunks    TextChunk[]
+  id           String      @id @default(cuid())
+  title        String
+  content      String
+  chunkSize    Int         @default(300)
+  chunkOverlap Int         @default(60)
+  createdAt    DateTime    @default(now())
+  chunks       TextChunk[]
 }
 
 model TextChunk {

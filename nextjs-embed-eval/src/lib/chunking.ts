@@ -3,6 +3,11 @@ export interface ChunkInput {
     pageBreaks?: number[]
 }
 
+export interface ChunkConfig {
+    targetTokens?: number
+    overlapTokens?: number
+}
+
 export interface Chunk {
     content: string
     chunkIndex: number
@@ -10,22 +15,23 @@ export interface Chunk {
     tokenCount: number
 }
 
+export const DEFAULT_TARGET_TOKENS = 300
+export const DEFAULT_OVERLAP_TOKENS = 60
+
 // Approximate token count: ~4 characters per token on average
 function estimateTokens(text: string): number {
     return Math.ceil(text.length / 4)
 }
 
-const TARGET_TOKENS = 300
-const OVERLAP_TOKENS = 60
-const TARGET_CHARS = TARGET_TOKENS * 4
-const OVERLAP_CHARS = OVERLAP_TOKENS * 4
-
 /**
  * Split text into overlapping chunks that respect sentence boundaries.
- * Each chunk targets ~300 tokens with ~60 token overlap (20%).
  */
-export function chunkText(input: ChunkInput): Chunk[] {
+export function chunkText(input: ChunkInput, config?: ChunkConfig): Chunk[] {
     const { text, pageBreaks } = input
+    const targetTokens = config?.targetTokens ?? DEFAULT_TARGET_TOKENS
+    const overlapTokens = config?.overlapTokens ?? DEFAULT_OVERLAP_TOKENS
+    const targetChars = targetTokens * 4
+    const overlapChars = overlapTokens * 4
 
     if (!text.trim()) {
         return []
@@ -41,7 +47,7 @@ export function chunkText(input: ChunkInput): Chunk[] {
     for (let i = 0; i < sentences.length; i++) {
         currentChars += sentences[i].length
 
-        if (currentChars >= TARGET_CHARS || i === sentences.length - 1) {
+        if (currentChars >= targetChars || i === sentences.length - 1) {
             const chunkText = sentences.slice(startIdx, i + 1).join(' ').trim()
 
             if (chunkText.length > 0) {
@@ -57,11 +63,11 @@ export function chunkText(input: ChunkInput): Chunk[] {
             }
 
             // Move start index back to create overlap
-            let overlapChars = 0
+            let overlapCount = 0
             let newStart = i + 1
             for (let j = i; j > startIdx; j--) {
-                overlapChars += sentences[j].length
-                if (overlapChars >= OVERLAP_CHARS) {
+                overlapCount += sentences[j].length
+                if (overlapCount >= overlapChars) {
                     newStart = j
                     break
                 }
