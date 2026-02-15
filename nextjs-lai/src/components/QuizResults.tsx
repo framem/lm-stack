@@ -90,17 +90,17 @@ export function QuizResults({ quizTitle, documentTitle, results, onRetry }: Quiz
                     <Card key={result.id}>
                         <CardHeader>
                             <div className="flex items-start justify-between gap-2">
-                                <div className="flex items-center gap-2 min-w-0">
-                                    <CardTitle className="text-base">
-                                        Frage {i + 1}: {result.questionText}
-                                    </CardTitle>
-                                    {result.questionType && (
-                                        <Badge variant="outline" className="shrink-0">
-                                            {TYPE_LABELS[result.questionType] ?? result.questionType}
-                                        </Badge>
-                                    )}
-                                </div>
+                                <CardTitle className="text-base">
+                                    Frage {i + 1}: {result.questionText}
+                                </CardTitle>
                                 {resultBadge}
+                            </div>
+                            <div className="flex items-center gap-1.5 mt-1">
+                                {result.questionType && (
+                                    <Badge variant="outline" className="text-xs font-normal text-muted-foreground">
+                                        {TYPE_LABELS[result.questionType] ?? result.questionType}
+                                    </Badge>
+                                )}
                             </div>
                         </CardHeader>
                         <CardContent className="space-y-3">

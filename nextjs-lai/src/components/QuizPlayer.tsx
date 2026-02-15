@@ -32,6 +32,7 @@ interface AnswerResult {
     freeTextScore?: number
     freeTextFeedback?: string
     correctAnswer?: string
+    sourceSnippet?: string
 }
 
 interface QuizPlayerProps {
@@ -118,7 +119,7 @@ export function QuizPlayer({ quizTitle, questions, onComplete }: QuizPlayerProps
         const skipResult: AnswerResult = {
             isCorrect: false,
             correctIndex: null,
-            explanation: 'Frage wurde uebersprungen.',
+            explanation: 'Frage wurde übersprungen.',
         }
         const newResults = new Map(results)
         newResults.set(currentQuestion.id, skipResult)
@@ -175,12 +176,12 @@ export function QuizPlayer({ quizTitle, questions, onComplete }: QuizPlayerProps
 
             <Card>
                 <CardHeader>
-                    <div className="flex items-center gap-2">
-                        <CardTitle className="text-lg">
-                            {currentQuestion.questionText}
-                        </CardTitle>
+                    <CardTitle className="text-lg">
+                        {currentQuestion.questionText}
+                    </CardTitle>
+                    <div className="flex items-center gap-1.5 mt-1">
                         {currentQuestion.questionType && (
-                            <Badge variant="outline" className="shrink-0">
+                            <Badge variant="outline" className="text-xs font-normal text-muted-foreground">
                                 {TYPE_LABELS[currentQuestion.questionType] ?? currentQuestion.questionType}
                             </Badge>
                         )}
@@ -281,6 +282,14 @@ export function QuizPlayer({ quizTitle, questions, onComplete }: QuizPlayerProps
                                     </p>
                                 </div>
                             )}
+                            {result.sourceSnippet && (
+                                <div className="pt-2 border-t">
+                                    <p className="text-xs font-medium text-muted-foreground mb-1">Quelle:</p>
+                                    <p className="text-xs text-muted-foreground italic line-clamp-4">
+                                        &ldquo;{result.sourceSnippet}&rdquo;
+                                    </p>
+                                </div>
+                            )}
                         </div>
                     )}
                 </CardContent>
@@ -289,7 +298,7 @@ export function QuizPlayer({ quizTitle, questions, onComplete }: QuizPlayerProps
                         {/* Back button — only when not on first question and no result yet */}
                         {currentIndex > 0 && !result && (
                             <Button variant="outline" onClick={handleBack}>
-                                Zurueck
+                                Zurück
                             </Button>
                         )}
                     </div>
@@ -297,19 +306,19 @@ export function QuizPlayer({ quizTitle, questions, onComplete }: QuizPlayerProps
                         {!result ? (
                             <>
                                 <Button variant="ghost" onClick={handleSkip}>
-                                    Ueberspringen
+                                    Überspringen
                                 </Button>
                                 <Button
                                     onClick={handleSubmit}
                                     disabled={!canSubmit || submitting}
                                 >
                                     {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-                                    Antwort pruefen
+                                    Antwort prüfen
                                 </Button>
                             </>
                         ) : (
                             <Button onClick={handleNext}>
-                                {isLastQuestion ? 'Ergebnisse anzeigen' : 'Naechste Frage'}
+                                {isLastQuestion ? 'Ergebnisse anzeigen' : 'Nächste Frage'}
                             </Button>
                         )}
                     </div>

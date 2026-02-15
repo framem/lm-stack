@@ -14,6 +14,9 @@ import {
     createQuiz as dbCreateQuiz,
     addQuestions as dbAddQuestions,
     recordAttempt as dbRecordAttempt,
+    upsertQuestionProgress,
+    getDueQuestions as dbGetDueQuestions,
+    getDueReviewCount as dbGetDueReviewCount,
 } from '@/src/data-access/quiz'
 import {
     selectRepresentativeChunks,
@@ -91,7 +94,7 @@ export async function generateQuiz(
     const types = (Array.isArray(questionTypes) ? questionTypes : ['mc'])
         .filter((t: string) => validTypes.includes(t))
     if (types.length === 0) {
-        throw new Error('Mindestens ein gueltiger Fragetyp ist erforderlich (mc, freetext, truefalse).')
+        throw new Error('Mindestens ein gültiger Fragetyp ist erforderlich (mc, freetext, truefalse).')
     }
 
     const count = Math.min(Math.max(Number(questionCount), 1), 20)
@@ -172,7 +175,7 @@ export async function generateQuiz(
     await Promise.all(generationTasks)
 
     if (allQuestions.length === 0) {
-        throw new Error('Das LLM konnte keine gueltige Antwort generieren.')
+        throw new Error('Das LLM konnte keine gültige Antwort generieren.')
     }
 
     // Create quiz in DB
@@ -257,11 +260,15 @@ Erkläre kurz und verständlich:
         sanitizedFreeText
     )
 
+    // Update spaced repetition progress
+    await upsertQuestionProgress(question.id, isCorrect)
+
     return {
         isCorrect,
         correctIndex: question.correctIndex,
         explanation,
         reasoning,
+        sourceSnippet: question.sourceSnippet ?? undefined,
         attemptId: attempt.id,
     }
 }
@@ -313,10 +320,14 @@ feedback: Ein kurzer Satz auf Deutsch.`,
         freeTextAnswer, freeTextScore, freeTextFeedback
     )
 
+    // Update spaced repetition progress
+    await upsertQuestionProgress(question.id, isCorrect, freeTextScore)
+
     return {
         isCorrect,
         freeTextScore,
         freeTextFeedback,
+        sourceSnippet: question.sourceSnippet ?? undefined,
         attemptId: attempt.id,
     }
 }
@@ -344,12 +355,12 @@ export async function evaluateAnswer(
     // Validate: mc and truefalse require selectedIndex
     if ((questionType === 'mc' || questionType === 'truefalse') &&
         (selectedIndex === undefined || selectedIndex === null)) {
-        throw new Error('Ausgewaehlter Index ist fuer diesen Fragetyp erforderlich.')
+        throw new Error('Ausgewählter Index ist für diesen Fragetyp erforderlich.')
     }
 
     // Validate: freetext requires freeTextAnswer
     if (questionType === 'freetext' && !freeTextAnswer) {
-        throw new Error('Eine Freitext-Antwort ist fuer diesen Fragetyp erforderlich.')
+        throw new Error('Eine Freitext-Antwort ist für diesen Fragetyp erforderlich.')
     }
 
     // Sanitize free-text answer (prompt injection protection)
@@ -364,4 +375,30 @@ export async function evaluateAnswer(
 
     // MC or truefalse evaluation
     return evaluateSelection(question, selectedIndex!, sanitizedFreeText)
+}
+
+// ── Review queue actions ──
+
+export async function getReviewQuiz() {
+    const dueQuestions = await dbGetDueQuestions(20)
+    if (dueQuestions.length === 0) return null
+
+    // Strip correct answers for cheat protection (same as getQuiz)
+    const sanitized = dueQuestions.map((q) => ({
+        id: q.id,
+        questionText: q.questionText,
+        options: q.options,
+        questionIndex: q.questionIndex,
+        questionType: q.questionType,
+    }))
+
+    return {
+        id: 'review',
+        title: 'Wiederholung',
+        questions: sanitized,
+    }
+}
+
+export async function getDueReviewCount() {
+    return dbGetDueReviewCount()
 }

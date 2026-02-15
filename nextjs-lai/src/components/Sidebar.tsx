@@ -10,9 +10,12 @@ import {
     FileText,
     HelpCircle,
     Home,
+    Layers,
     MessageSquare,
+    Moon,
     Plus,
     Settings,
+    Sun,
     Trash2,
 } from 'lucide-react'
 import {
@@ -43,6 +46,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/src/components/ui/dropdown-menu'
+import { useTheme } from 'next-themes'
 import { getSessions, deleteSession } from '@/src/actions/chat'
 
 interface SessionItem {
@@ -55,12 +59,14 @@ const navItems = [
     { href: '/learn', label: 'Dashboard', icon: Home },
     { href: '/learn/documents', label: 'Lernmaterial', icon: FileText },
     { href: '/learn/quiz', label: 'Quiz', icon: HelpCircle },
+    { href: '/learn/flashcards', label: 'Karteikarten', icon: Layers },
 ]
 
 export function AppSidebar() {
     const pathname = usePathname()
     const searchParams = useSearchParams()
     const router = useRouter()
+    const { theme, setTheme } = useTheme()
     const activeSessionId = searchParams.get('sessionId')
     const [sessions, setSessions] = useState<SessionItem[]>([])
 
@@ -223,6 +229,16 @@ export function AppSidebar() {
 
             <SidebarFooter>
                 <SidebarMenu>
+                    <SidebarMenuItem>
+                        <SidebarMenuButton
+                            tooltip={theme === 'dark' ? 'Hellmodus' : 'Dunkelmodus'}
+                            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                        >
+                            <Sun className="size-4 rotate-0 scale-100 transition-transform dark:-rotate-90 dark:scale-0" />
+                            <Moon className="absolute size-4 rotate-90 scale-0 transition-transform dark:rotate-0 dark:scale-100" />
+                            <span>{theme === 'dark' ? 'Hellmodus' : 'Dunkelmodus'}</span>
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
                     <SidebarMenuItem>
                         <SidebarMenuButton
                             asChild

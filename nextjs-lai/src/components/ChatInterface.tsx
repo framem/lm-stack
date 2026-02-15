@@ -316,8 +316,8 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-lg">
                                     {[
                                         'Fasse das Dokument zusammen',
-                                        'Erklaere die wichtigsten Konzepte',
-                                        'Erstelle mir eine Uebersicht',
+                                        'Erkläre die wichtigsten Konzepte',
+                                        'Erstelle mir eine Übersicht',
                                         'Was sind die Kernaussagen?',
                                     ].map((suggestion) => (
                                         <button
@@ -370,7 +370,7 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
                                     {message.role === 'assistant' && message.metadata?.noContext && (
                                         <div className="flex items-center gap-2 rounded-lg border border-orange-500/30 bg-orange-500/5 px-4 py-2.5 text-sm text-orange-400">
                                             <AlertTriangle className="h-4 w-4 shrink-0" />
-                                            <span>Keine passenden Quellen gefunden. Versuche eine andere Formulierung oder pruefe, ob relevantes Lernmaterial hochgeladen ist.</span>
+                                            <span>Keine passenden Quellen gefunden. Versuche eine andere Formulierung oder prüfe, ob relevantes Lernmaterial hochgeladen ist.</span>
                                         </div>
                                     )}
 
