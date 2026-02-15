@@ -1,20 +1,69 @@
 import Link from 'next/link'
-import { FileText, MessageSquare, HelpCircle, ArrowRight, TrendingUp, Upload, Sparkles } from 'lucide-react'
+import { FileText, MessageSquare, HelpCircle, Layers, ArrowRight, TrendingUp, Upload, Sparkles } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/card'
 import { Button } from '@/src/components/ui/button'
 import { Progress } from '@/src/components/ui/progress'
 import { formatDate } from '@/src/lib/utils'
 import { getDocuments } from '@/src/data-access/documents'
 import { getSessions } from '@/src/data-access/chat'
-import { getQuizzes, getDocumentProgress } from '@/src/data-access/quiz'
+import { getQuizzes, getDocumentProgress, getDueReviewCount } from '@/src/data-access/quiz'
+import { getDueFlashcardCount, getFlashcardCount, getFlashcardDocumentProgress } from '@/src/data-access/flashcards'
+import { LearningProgress } from '@/src/components/LearningProgress'
 
 export default async function DashboardPage() {
-    const [documents, sessions, quizzes, progress] = await Promise.all([
+    const [documents, sessions, quizzes, quizProgress, flashcardProgress, dueQuizReviews, dueFlashcardReviews, totalFlashcards] = await Promise.all([
         getDocuments(),
         getSessions(),
         getQuizzes(),
         getDocumentProgress(),
+        getFlashcardDocumentProgress(),
+        getDueReviewCount(),
+        getDueFlashcardCount(),
+        getFlashcardCount(),
     ])
+
+    // Merge quiz and flashcard progress per document
+    const progressMap = new Map<string, {
+        title: string
+        quizScore: number; quizAnswered: number; quizTotal: number
+        fcScore: number; fcAnswered: number; fcTotal: number
+    }>()
+    for (const p of quizProgress) {
+        progressMap.set(p.documentId, {
+            title: p.documentTitle,
+            quizScore: p.answeredQuestions > 0 ? (p.percentage / 100) * p.answeredQuestions : 0,
+            quizAnswered: p.answeredQuestions,
+            quizTotal: p.totalQuestions,
+            fcScore: 0, fcAnswered: 0, fcTotal: 0,
+        })
+    }
+    for (const p of flashcardProgress) {
+        const existing = progressMap.get(p.documentId)
+        if (existing) {
+            existing.fcScore = (p.percentage / 100) * p.answeredQuestions
+            existing.fcAnswered = p.answeredQuestions
+            existing.fcTotal = p.totalQuestions
+        } else {
+            progressMap.set(p.documentId, {
+                title: p.documentTitle,
+                quizScore: 0, quizAnswered: 0, quizTotal: 0,
+                fcScore: (p.percentage / 100) * p.answeredQuestions,
+                fcAnswered: p.answeredQuestions,
+                fcTotal: p.totalQuestions,
+            })
+        }
+    }
+    const progress = [...progressMap.entries()].map(([documentId, d]) => {
+        const totalAnswered = d.quizAnswered + d.fcAnswered
+        const totalScore = d.quizScore + d.fcScore
+        return {
+            documentId,
+            documentTitle: d.title,
+            percentage: totalAnswered > 0 ? Math.round((totalScore / totalAnswered) * 100) : 0,
+            answeredQuestions: totalAnswered,
+            totalQuestions: d.quizTotal + d.fcTotal,
+        }
+    })
 
     const recentSessions = sessions.slice(0, 5)
     const recentQuizzes = quizzes.slice(0, 5)
@@ -60,7 +109,7 @@ export default async function DashboardPage() {
                                 </div>
                                 <div>
                                     <p className="font-semibold text-sm">Fragen stellen</p>
-                                    <p className="text-xs text-muted-foreground mt-0.5">Chatte mit der KI ueber dein Lernmaterial.</p>
+                                    <p className="text-xs text-muted-foreground mt-0.5">Chatte mit der KI über dein Lernmaterial.</p>
                                 </div>
                             </div>
                             <div className="flex items-start gap-3 p-4 rounded-lg border bg-background opacity-50">
@@ -87,7 +136,7 @@ export default async function DashboardPage() {
 
             {/* Stats - only show when user has data */}
             {!isNewUser && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between pb-2">
                         <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -121,11 +170,22 @@ export default async function DashboardPage() {
                         <div className="text-2xl font-bold">{quizzes.length}</div>
                     </CardContent>
                 </Card>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                        <CardTitle className="text-sm font-medium text-muted-foreground">
+                            Karteikarten
+                        </CardTitle>
+                        <Layers className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{totalFlashcards}</div>
+                    </CardContent>
+                </Card>
             </div>
             )}
 
             {/* Quick Actions */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <Link href="/learn/documents">
                     <Card className="hover:bg-accent transition-colors cursor-pointer h-full">
                         <CardContent className="flex items-center gap-4 p-6">
@@ -171,40 +231,44 @@ export default async function DashboardPage() {
                         </CardContent>
                     </Card>
                 </Link>
+                <Link href="/learn/flashcards">
+                    <Card className="hover:bg-accent transition-colors cursor-pointer h-full">
+                        <CardContent className="flex items-center gap-4 p-6">
+                            <div className="p-3 rounded-lg bg-primary/10">
+                                <Layers className="h-6 w-6 text-primary" />
+                            </div>
+                            <div>
+                                <h3 className="font-semibold">Karteikarten lernen</h3>
+                                <p className="text-sm text-muted-foreground">
+                                    Karteikarten erstellen und wiederholen
+                                </p>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </Link>
             </div>
 
-            {/* Knowledge progress per document */}
-            {progress.length > 0 && (
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between">
-                        <CardTitle className="text-lg flex items-center gap-2">
+            {/* Learning progress dashboard */}
+            {(progress.length > 0 || totalFlashcards > 0) && (
+                <section className="space-y-4">
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-lg font-semibold flex items-center gap-2">
                             <TrendingUp className="h-5 w-5" />
-                            Wissensstand
-                        </CardTitle>
+                            Lernfortschritt
+                        </h2>
                         <Link href="/learn/quiz">
                             <Button variant="ghost" size="sm">
                                 Alle anzeigen <ArrowRight className="h-4 w-4 ml-1" />
                             </Button>
                         </Link>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        {progress.map((p) => (
-                            <div key={p.documentId} className="space-y-1.5">
-                                <div className="flex items-center justify-between gap-2">
-                                    <p className="text-sm font-medium truncate">{p.documentTitle}</p>
-                                    <span className="text-sm font-semibold tabular-nums shrink-0">
-                                        {p.percentage} %
-                                    </span>
-                                </div>
-                                <Progress value={p.percentage} />
-                                <p className="text-xs text-muted-foreground">
-                                    {Math.round(p.correctScore)}/{p.answeredQuestions} Fragen richtig
-                                    {p.lastAttemptAt && ` · Zuletzt: ${formatDate(p.lastAttemptAt)}`}
-                                </p>
-                            </div>
-                        ))}
-                    </CardContent>
-                </Card>
+                    </div>
+                    <LearningProgress
+                        progress={progress}
+                        dueQuizReviews={dueQuizReviews}
+                        dueFlashcardReviews={dueFlashcardReviews}
+                        totalFlashcards={totalFlashcards}
+                    />
+                </section>
             )}
 
             {/* Recent Activity */}

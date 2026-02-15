@@ -1,4 +1,5 @@
 import { prisma } from '@/src/lib/prisma'
+import { sm2, quizQualityFromAnswer } from '@/src/lib/spaced-repetition'
 
 // Types for quiz question creation
 interface CreateQuestionInput {
@@ -187,6 +188,74 @@ export async function getDocumentProgress() {
             percentage,
             lastAttemptAt: lastAttemptDate,
         }
+    })
+}
+
+// Upsert question progress using SM-2 after answering
+export async function upsertQuestionProgress(
+    questionId: string,
+    isCorrect: boolean,
+    freeTextScore?: number | null,
+) {
+    const quality = quizQualityFromAnswer(isCorrect, freeTextScore)
+
+    const existing = await prisma.questionProgress.findUnique({
+        where: { questionId },
+    })
+
+    const result = sm2({
+        quality,
+        easeFactor: existing?.easeFactor ?? 2.5,
+        interval: existing?.interval ?? 1,
+        repetitions: existing?.repetitions ?? 0,
+    })
+
+    return prisma.questionProgress.upsert({
+        where: { questionId },
+        create: {
+            questionId,
+            easeFactor: result.easeFactor,
+            interval: result.interval,
+            repetitions: result.repetitions,
+            nextReviewAt: result.nextReviewAt,
+            lastReviewedAt: new Date(),
+        },
+        update: {
+            easeFactor: result.easeFactor,
+            interval: result.interval,
+            repetitions: result.repetitions,
+            nextReviewAt: result.nextReviewAt,
+            lastReviewedAt: new Date(),
+        },
+    })
+}
+
+// Get questions due for review (nextReviewAt <= now)
+export async function getDueQuestions(limit: number = 20) {
+    return prisma.quizQuestion.findMany({
+        where: {
+            progress: {
+                nextReviewAt: { lte: new Date() },
+            },
+        },
+        include: {
+            quiz: {
+                select: { id: true, title: true, document: { select: { id: true, title: true } } },
+            },
+        },
+        take: limit,
+        orderBy: {
+            progress: { nextReviewAt: 'asc' },
+        },
+    })
+}
+
+// Count of due review questions
+export async function getDueReviewCount() {
+    return prisma.questionProgress.count({
+        where: {
+            nextReviewAt: { lte: new Date() },
+        },
     })
 }
 

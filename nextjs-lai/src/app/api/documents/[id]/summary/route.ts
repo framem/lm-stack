@@ -28,7 +28,7 @@ export async function POST(
 
         const result = streamText({
             model: getModel(),
-            system: `Du bist ein Zusammenfassungs-Assistent. Erstelle eine praegnante, strukturierte Zusammenfassung des folgenden Lernmaterials in 3-5 Absaetzen. Nutze Aufzaehlungspunkte fuer die wichtigsten Konzepte. Antworte auf Deutsch.`,
+            system: `Du bist ein Zusammenfassungs-Assistent. Erstelle eine prägnante, strukturierte Zusammenfassung des folgenden Lernmaterials in 3-5 Absätzen. Nutze Aufzählungspunkte für die wichtigsten Konzepte. Antworte auf Deutsch.`,
             prompt: `Fasse folgendes Lernmaterial zusammen:\n\n${context}`,
         })
 

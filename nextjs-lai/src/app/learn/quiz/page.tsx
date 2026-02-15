@@ -363,7 +363,7 @@ export default function QuizPage() {
                                 })}
                             </div>
                             {selectedDocIds.length > 0 && (
-                                <p className="text-xs text-muted-foreground">{selectedDocIds.length} ausgewaehlt</p>
+                                <p className="text-xs text-muted-foreground">{selectedDocIds.length} ausgewählt</p>
                             )}
                         </div>
 

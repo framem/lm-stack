@@ -1,0 +1,27 @@
+model Flashcard {
+  id         String   @id @default(cuid())
+  documentId String
+  front      String
+  back       String
+  context    String?
+  chunkId    String?
+  createdAt  DateTime @default(now())
+
+  document Document       @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  chunk    DocumentChunk? @relation(fields: [chunkId], references: [id])
+  progress FlashcardProgress?
+}
+
+model FlashcardProgress {
+  id             String    @id @default(cuid())
+  flashcardId    String    @unique
+  easeFactor     Float     @default(2.5)
+  interval       Int       @default(1)
+  repetitions    Int       @default(0)
+  nextReviewAt   DateTime
+  lastReviewedAt DateTime?
+
+  flashcard Flashcard @relation(fields: [flashcardId], references: [id], onDelete: Cascade)
+
+  @@index([nextReviewAt])
+}

@@ -14,6 +14,7 @@ model Document {
   chunks       DocumentChunk[]
   chatSessions ChatSession[]
   quizzes      Quiz[]
+  flashcards   Flashcard[]
 }
 
 model DocumentChunk {
@@ -27,6 +28,7 @@ model DocumentChunk {
 
   document      Document       @relation(fields: [documentId], references: [id], onDelete: Cascade)
   quizQuestions QuizQuestion[]
+  flashcards    Flashcard[]
 
   @@index([documentId])
 }

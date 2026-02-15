@@ -281,7 +281,7 @@ export default function DocumentDetailPage() {
                     <AlertDialogHeader>
                         <AlertDialogTitle>Lernmaterial löschen?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Alle Abschnitte und zugehoerige Daten werden ebenfalls gelöscht. Diese Aktion kann nicht rueckgaengig gemacht werden.
+                            Alle Abschnitte und zugehörige Daten werden ebenfalls gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

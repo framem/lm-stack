@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
             .filter((t: string) => validTypes.includes(t))
         if (types.length === 0) {
             return Response.json(
-                { error: 'Mindestens ein gueltiger Fragetyp ist erforderlich.' },
+                { error: 'Mindestens ein gültiger Fragetyp ist erforderlich.' },
                 { status: 400 },
             )
         }
@@ -128,7 +128,7 @@ export async function POST(request: NextRequest) {
                     }
 
                     if (allQuestions.length === 0) {
-                        send({ type: 'error', message: 'Das LLM konnte keine gueltige Antwort generieren.' })
+                        send({ type: 'error', message: 'Das LLM konnte keine gültige Antwort generieren.' })
                         controller.close()
                         return
                     }
