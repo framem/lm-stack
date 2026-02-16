@@ -105,6 +105,13 @@ const DEFAULT_STRATEGIES = new Set<ChunkStrategy>(['sentence'])
 type SortKey = 'config' | 'chunks' | 'top1' | 'top3' | 'top5' | 'mrr' | 'ndcg' | 'avgSim'
 type SortDir = 'asc' | 'desc'
 
+function SortIcon({ column, sortKey, sortDir }: { column: SortKey; sortKey: SortKey; sortDir: SortDir }) {
+    if (sortKey !== column) return <ArrowUpDown className="h-3 w-3 ml-1 opacity-40" />
+    return sortDir === 'asc'
+        ? <ArrowUp className="h-3 w-3 ml-1" />
+        : <ArrowDown className="h-3 w-3 ml-1" />
+}
+
 function getSortValue(result: GridResult, key: SortKey): number | string {
     switch (key) {
         case 'config': return `${result.config.chunkSize}-${result.config.chunkOverlap}-${result.config.strategy}`
@@ -193,7 +200,6 @@ export function GridSearchClient({ models }: GridSearchClientProps) {
     const [error, setError] = useState<string | null>(null)
     const [results, setResults] = useState<GridResult[]>([])
     const [completeData, setCompleteData] = useState<GridCompleteData | null>(null)
-    const [startTime, setStartTime] = useState<number | null>(null)
     const [elapsed, setElapsed] = useState(0)
     const abortRef = useRef<AbortController | null>(null)
     const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -293,7 +299,6 @@ export function GridSearchClient({ models }: GridSearchClientProps) {
         setExpandedRunIds(new Set())
 
         const now = Date.now()
-        setStartTime(now)
         setElapsed(0)
         timerRef.current = setInterval(() => setElapsed(Date.now() - now), 1000)
 
@@ -414,14 +419,6 @@ export function GridSearchClient({ models }: GridSearchClientProps) {
     const overallPercent = configProgress
         ? Math.round((configProgress.current / configProgress.total) * 100)
         : 0
-
-    // Sort icon
-    function SortIcon({ column }: { column: SortKey }) {
-        if (sortKey !== column) return <ArrowUpDown className="h-3 w-3 ml-1 opacity-40" />
-        return sortDir === 'asc'
-            ? <ArrowUp className="h-3 w-3 ml-1" />
-            : <ArrowDown className="h-3 w-3 ml-1" />
-    }
 
     return (
         <div className="space-y-6">
@@ -701,7 +698,7 @@ export function GridSearchClient({ models }: GridSearchClientProps) {
                                         >
                                             <span className="flex items-center">
                                                 Chunk-Config
-                                                <SortIcon column="config" />
+                                                <SortIcon sortKey={sortKey} sortDir={sortDir} column="config" />
                                             </span>
                                         </TableHead>
                                         <TableHead
@@ -710,7 +707,7 @@ export function GridSearchClient({ models }: GridSearchClientProps) {
                                         >
                                             <span className="flex items-center justify-end">
                                                 #Chunks
-                                                <SortIcon column="chunks" />
+                                                <SortIcon sortKey={sortKey} sortDir={sortDir} column="chunks" />
                                             </span>
                                         </TableHead>
                                         <TableHead
@@ -719,7 +716,7 @@ export function GridSearchClient({ models }: GridSearchClientProps) {
                                         >
                                             <span className="flex items-center justify-end">
                                                 Top-1
-                                                <SortIcon column="top1" />
+                                                <SortIcon sortKey={sortKey} sortDir={sortDir} column="top1" />
                                             </span>
                                         </TableHead>
                                         <TableHead
@@ -728,7 +725,7 @@ export function GridSearchClient({ models }: GridSearchClientProps) {
                                         >
                                             <span className="flex items-center justify-end">
                                                 Top-3
-                                                <SortIcon column="top3" />
+                                                <SortIcon sortKey={sortKey} sortDir={sortDir} column="top3" />
                                             </span>
                                         </TableHead>
                                         <TableHead
@@ -737,7 +734,7 @@ export function GridSearchClient({ models }: GridSearchClientProps) {
                                         >
                                             <span className="flex items-center justify-end">
                                                 Top-5
-                                                <SortIcon column="top5" />
+                                                <SortIcon sortKey={sortKey} sortDir={sortDir} column="top5" />
                                             </span>
                                         </TableHead>
                                         <TableHead
@@ -746,7 +743,7 @@ export function GridSearchClient({ models }: GridSearchClientProps) {
                                         >
                                             <span className="flex items-center justify-end">
                                                 MRR
-                                                <SortIcon column="mrr" />
+                                                <SortIcon sortKey={sortKey} sortDir={sortDir} column="mrr" />
                                             </span>
                                         </TableHead>
                                         <TableHead
@@ -755,7 +752,7 @@ export function GridSearchClient({ models }: GridSearchClientProps) {
                                         >
                                             <span className="flex items-center justify-end">
                                                 nDCG
-                                                <SortIcon column="ndcg" />
+                                                <SortIcon sortKey={sortKey} sortDir={sortDir} column="ndcg" />
                                             </span>
                                         </TableHead>
                                         <TableHead
@@ -764,7 +761,7 @@ export function GridSearchClient({ models }: GridSearchClientProps) {
                                         >
                                             <span className="flex items-center justify-end">
                                                 Avg. Sim.
-                                                <SortIcon column="avgSim" />
+                                                <SortIcon sortKey={sortKey} sortDir={sortDir} column="avgSim" />
                                             </span>
                                         </TableHead>
                                     </TableRow>

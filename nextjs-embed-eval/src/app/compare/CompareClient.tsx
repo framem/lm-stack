@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/card'
 import { Button } from '@/src/components/ui/button'
 import { Badge } from '@/src/components/ui/badge'
@@ -23,7 +23,7 @@ interface CompareClientProps {
 }
 
 export function CompareClient({ models }: CompareClientProps) {
-    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set(models.map(m => m.id)))
     const [runs, setRuns] = useState<ComparisonRun[]>([])
     const [loading, setLoading] = useState(false)
     const [showAllRuns, setShowAllRuns] = useState(false)
@@ -74,13 +74,6 @@ export function CompareClient({ models }: CompareClientProps) {
                 label: r.modelName,
             }))
     }
-
-    // Auto-select all models on mount
-    useEffect(() => {
-        if (models.length > 0 && selectedIds.size === 0) {
-            setSelectedIds(new Set(models.map(m => m.id)))
-        }
-    }, [models, selectedIds.size])
 
     return (
         <div className="space-y-6">

@@ -76,7 +76,6 @@ export function TextsClient({ initialTexts }: TextsClientProps) {
     const [showForm, setShowForm] = useState(false)
     const [expandedId, setExpandedId] = useState<string | null>(null)
     const [rechunkId, setRechunkId] = useState<string | null>(null)
-    const [chunks, setChunks] = useState<Record<string, SourceText['chunks']>>({})
     const [isPending, startTransition] = useTransition()
 
     // Form state for new text
