@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { AlertTriangle } from 'lucide-react'
 import { AppSidebar } from '@/src/components/Sidebar'
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/src/components/ui/sidebar'
@@ -16,7 +17,9 @@ export default async function MainLayout({
     return (
         <TooltipProvider>
             <SidebarProvider>
-                <AppSidebar />
+                <Suspense>
+                    <AppSidebar />
+                </Suspense>
                 <SidebarInset>
                     <header className="flex h-12 shrink-0 items-center gap-2 border-b px-4">
                         <SidebarTrigger className="-ml-1" />
