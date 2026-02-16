@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Image from "next/image";
 import { usePathname, useSearchParams, useRouter } from 'next/navigation'
 import {
+    BarChart3,
     ChevronRight,
     Ellipsis,
     FileText,
@@ -60,6 +61,7 @@ const navItems = [
     { href: '/learn/documents', label: 'Lernmaterial', icon: FileText },
     { href: '/learn/quiz', label: 'Quiz', icon: HelpCircle },
     { href: '/learn/flashcards', label: 'Karteikarten', icon: Layers },
+    { href: '/learn/stats', label: 'Statistiken', icon: BarChart3 },
 ]
 
 export function AppSidebar() {

@@ -10,6 +10,7 @@ import {
     getQuizWithQuestions as dbGetQuizWithQuestions,
     getQuizResults as dbGetQuizResults,
     getDocumentProgress as dbGetDocumentProgress,
+    getQuizzesByDocument as dbGetQuizzesByDocument,
     deleteQuiz as dbDeleteQuiz,
     createQuiz as dbCreateQuiz,
     addQuestions as dbAddQuestions,
@@ -78,6 +79,12 @@ export async function getQuizResults(id: string) {
 
 export async function getDocumentProgress() {
     return dbGetDocumentProgress()
+}
+
+// ── Get quizzes for a specific document ──
+
+export async function getQuizzesByDocument(documentId: string) {
+    return dbGetQuizzesByDocument(documentId)
 }
 
 // ── Generate quiz from document ──

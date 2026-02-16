@@ -36,6 +36,7 @@ interface DocumentSummary {
     createdAt: string
     subject?: string | null
     tags?: string[]
+    summary?: string | null
     _count: { chunks: number }
 }
 

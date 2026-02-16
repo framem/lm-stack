@@ -20,6 +20,7 @@ interface DocumentCardProps {
         createdAt: string
         subject?: string | null
         tags?: string[]
+        summary?: string | null
         _count: { chunks: number }
     }
     onDelete?: (id: string) => void
@@ -173,6 +174,13 @@ export function DocumentCard({ document, onDelete, onRename }: DocumentCardProps
                         </>
                     )}
                 </div>
+
+                {/* Summary snippet */}
+                {!editing && document.summary && (
+                    <p className="pl-12 text-xs text-muted-foreground line-clamp-2">
+                        {document.summary}
+                    </p>
+                )}
 
                 {/* Bottom row: metadata + badges — wraps naturally on mobile */}
                 {!editing && (

@@ -34,6 +34,21 @@ export const truefalseQuestionSchema = z.object({
     sourceSnippet: z.string().describe('Wörtliches Zitat aus dem Quelltext'),
 })
 
+// Detect whether content is a vocabulary list or prose text
+export function detectContentType(text: string): 'vocabulary' | 'prose' {
+    const lines = text.split('\n').filter((l) => l.trim().length > 0)
+    if (lines.length < 3) return 'prose'
+
+    const shortLines = lines.filter((l) => l.trim().length < 80)
+    const vocabPattern = /^.{1,60}\s*[-–—:|=\t]\s*.+/
+    const vocabLines = lines.filter((l) => vocabPattern.test(l.trim()))
+
+    const shortRatio = shortLines.length / lines.length
+    const vocabRatio = vocabLines.length / lines.length
+
+    return shortRatio > 0.6 && vocabRatio > 0.4 ? 'vocabulary' : 'prose'
+}
+
 // ~4 chars per token; reserve space for prompt template + output tokens
 export const MAX_CONTEXT_CHARS = Number(process.env.QUIZ_MAX_CONTEXT_CHARS) || 6000
 

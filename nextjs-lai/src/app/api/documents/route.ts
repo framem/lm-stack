@@ -4,6 +4,7 @@ import { chunkDocument } from '@/src/lib/chunking'
 import { createEmbeddingsBatchWithProgress } from '@/src/lib/llm'
 import { createDocument, createChunks, saveChunkEmbeddingsBatch } from '@/src/data-access/documents'
 import { prisma } from '@/src/lib/prisma'
+import { generateAndSaveSummary } from '@/src/lib/summary'
 
 // POST /api/documents - Upload file or paste text, process pipeline with SSE progress
 export async function POST(request: NextRequest) {
@@ -133,6 +134,9 @@ export async function POST(request: NextRequest) {
                     controller.enqueue(
                         encoder.encode(`data: ${JSON.stringify({ type: 'complete', documentId: doc.id, chunkCount: chunks.length })}\n\n`)
                     )
+
+                    // Fire-and-forget: generate summary in background
+                    generateAndSaveSummary(doc.id).catch(console.error)
                 } catch (error) {
                     console.error('Pipeline error:', error)
                     const message = error instanceof Error ? error.message : 'Unbekannter Fehler'

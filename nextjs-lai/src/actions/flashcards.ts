@@ -4,10 +4,11 @@ import { generateText, Output } from 'ai'
 import { z } from 'zod'
 import { getModel } from '@/src/lib/llm'
 import { getDocumentWithChunks } from '@/src/data-access/documents'
-import { selectRepresentativeChunks } from '@/src/lib/quiz-generation'
+import { selectRepresentativeChunks, detectContentType } from '@/src/lib/quiz-generation'
 import { getQuizQuestionById } from '@/src/data-access/quiz'
 import {
     getFlashcards as dbGetFlashcards,
+    getFlashcardsByDocument as dbGetFlashcardsByDocument,
     getDueFlashcards as dbGetDueFlashcards,
     getDueFlashcardCount as dbGetDueFlashcardCount,
     getFlashcardCount as dbGetFlashcardCount,
@@ -36,6 +37,12 @@ export async function getDueFlashcardCount() {
 
 export async function getFlashcardCount() {
     return dbGetFlashcardCount()
+}
+
+// ── Get flashcards for a specific document ──
+
+export async function getFlashcardsByDocument(documentId: string) {
+    return dbGetFlashcardsByDocument(documentId)
 }
 
 // ── Create flashcard manually ──
@@ -87,11 +94,24 @@ export async function generateFlashcards(documentId: string, count: number = 10)
         .map((c, i) => `[Abschnitt ${i + 1}]\n${c.content}`)
         .join('\n\n---\n\n')
 
-    const { output } = await generateText({
-        model: getModel(),
-        system: 'Du erstellst Karteikarten auf Deutsch basierend auf Lerntexten.',
-        output: Output.array({ element: flashcardElementSchema }),
-        prompt: `Erstelle genau ${clampedCount} Karteikarten aus dem folgenden Text (${selectedChunks.length} Abschnitte).
+    const contentType = detectContentType(contextText)
+    const isVocab = contentType === 'vocabulary'
+
+    const systemPrompt = isVocab
+        ? 'Du erstellst Vokabel-Karteikarten. Erstelle pro Wort oder Phrase genau eine Karteikarte.'
+        : 'Du erstellst Karteikarten auf Deutsch basierend auf Lerntexten.'
+    const userPrompt = isVocab
+        ? `Der folgende Text ist eine Vokabelliste. Erstelle pro Eintrag (Wort, Phrase oder Begriff) genau eine Karteikarte.
+
+Anforderungen:
+- front: Das Wort, die Phrase oder der Begriff
+- back: Die Übersetzung, Definition oder Erklärung
+- sourceSection: Abschnittsnummer (1 bis ${selectedChunks.length})
+- Ignoriere Leerzeilen und Überschriften
+
+Text:
+${contextText}`
+        : `Erstelle genau ${clampedCount} Karteikarten aus dem folgenden Text (${selectedChunks.length} Abschnitte).
 
 Anforderungen:
 - front: Kurze Frage oder Begriff (max. 1 Satz)
@@ -102,7 +122,13 @@ Anforderungen:
 Fokus: Definitionen, Kernkonzepte, Fakten (Zahlen, Daten, Namen), Praxiswissen
 
 Text:
-${contextText}`,
+${contextText}`
+
+    const { output } = await generateText({
+        model: getModel(),
+        system: systemPrompt,
+        output: Output.array({ element: flashcardElementSchema }),
+        prompt: userPrompt,
     })
 
     if (!output || output.length === 0) {

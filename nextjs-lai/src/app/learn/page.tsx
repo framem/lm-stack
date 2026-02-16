@@ -8,6 +8,7 @@ import {getSessions} from '@/src/data-access/chat'
 import {getDocumentProgress, getDueReviewCount, getQuizzes} from '@/src/data-access/quiz'
 import {getDueFlashcardCount, getFlashcardCount, getFlashcardDocumentProgress} from '@/src/data-access/flashcards'
 import {LearningProgress} from '@/src/components/LearningProgress'
+import {TodayLearningWidget} from '@/src/components/TodayLearningWidget'
 
 export default async function DashboardPage() {
     const [documents, sessions, quizzes, quizProgress, flashcardProgress, dueQuizReviews, dueFlashcardReviews, totalFlashcards] = await Promise.all([
@@ -67,6 +68,13 @@ export default async function DashboardPage() {
     const recentSessions = sessions.slice(0, 5)
     const recentQuizzes = quizzes.slice(0, 5)
     const isNewUser = documents.length === 0
+
+    // Find weakest document for the today-learning widget
+    const weakestDocument = progress.length > 0
+        ? progress.reduce((weakest, p) =>
+            p.percentage < weakest.percentage ? p : weakest
+        , progress[0])
+        : undefined
 
     return (
         <div className="p-8 max-w-6xl mx-auto space-y-8">
@@ -131,6 +139,19 @@ export default async function DashboardPage() {
                         </div>
                     </CardContent>
                 </Card>
+            )}
+
+            {/* Today learning widget */}
+            {!isNewUser && (
+                <TodayLearningWidget
+                    dueFlashcards={dueFlashcardReviews}
+                    dueQuizReviews={dueQuizReviews}
+                    weakestDocument={weakestDocument ? {
+                        id: weakestDocument.documentId,
+                        title: weakestDocument.documentTitle,
+                        percentage: weakestDocument.percentage,
+                    } : undefined}
+                />
             )}
 
             {/* Stats - only show when user has data */}

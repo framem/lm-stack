@@ -2,16 +2,19 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { toast } from 'sonner'
-import { FileText, Trash2, Pencil, ArrowLeft, Check, X, MessageSquare, HelpCircle, Loader2 } from 'lucide-react'
+import { FileText, Trash2, Pencil, ArrowLeft, Check, X, Loader2 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { Button } from '@/src/components/ui/button'
 import { Input } from '@/src/components/ui/input'
 import { Badge } from '@/src/components/ui/badge'
 import { Card, CardContent } from '@/src/components/ui/card'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/src/components/ui/tabs'
 import { ChunkViewer } from '@/src/components/ChunkViewer'
+import { ChatInterface } from '@/src/components/ChatInterface'
+import { DocumentQuizzesTab } from '@/src/components/DocumentQuizzesTab'
+import { DocumentFlashcardsTab } from '@/src/components/DocumentFlashcardsTab'
 import { Skeleton } from '@/src/components/ui/skeleton'
 import {
     AlertDialog,
@@ -156,6 +159,7 @@ export default function DocumentDetailPage() {
 
     return (
         <div className="p-6 max-w-4xl mx-auto space-y-6">
+            {/* Header */}
             <div className="flex items-start justify-between">
                 <div>
                     <Button
@@ -220,60 +224,69 @@ export default function DocumentDetailPage() {
                 </Button>
             </div>
 
-            {/* Quick actions */}
-            <div className="flex items-center gap-3">
-                <Button asChild>
-                    <Link href={`/learn/chat?documentId=${params.id}`}>
-                        <MessageSquare className="h-4 w-4" />
-                        Chat starten
-                    </Link>
-                </Button>
-                <Button asChild variant="outline">
-                    <Link href={`/learn/quiz?documentId=${params.id}`}>
-                        <HelpCircle className="h-4 w-4" />
-                        Quiz generieren
-                    </Link>
-                </Button>
-            </div>
+            {/* Tabs */}
+            <Tabs defaultValue="content">
+                <TabsList variant="line">
+                    <TabsTrigger value="content">Inhalt</TabsTrigger>
+                    <TabsTrigger value="chat">Chat</TabsTrigger>
+                    <TabsTrigger value="quizzes">Quizze</TabsTrigger>
+                    <TabsTrigger value="flashcards">Karteikarten</TabsTrigger>
+                </TabsList>
 
-            {/* Summary */}
-            <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                    <h2 className="text-lg font-semibold">Zusammenfassung</h2>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleGenerateSummary}
-                        disabled={generatingSummary}
-                    >
-                        {generatingSummary ? (
-                            <><Loader2 className="h-4 w-4 animate-spin" /> Wird erstellt...</>
-                        ) : summaryText ? (
-                            'Neu generieren'
-                        ) : (
-                            'Zusammenfassung erstellen'
+                <TabsContent value="content" className="space-y-6 mt-4">
+                    {/* Summary */}
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-lg font-semibold">Zusammenfassung</h2>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={handleGenerateSummary}
+                                disabled={generatingSummary}
+                            >
+                                {generatingSummary ? (
+                                    <><Loader2 className="h-4 w-4 animate-spin" /> Wird erstellt...</>
+                                ) : summaryText ? (
+                                    'Neu generieren'
+                                ) : (
+                                    'Zusammenfassung erstellen'
+                                )}
+                            </Button>
+                        </div>
+                        {summaryText ? (
+                            <Card>
+                                <CardContent className="prose prose-sm dark:prose-invert max-w-none p-4">
+                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                        {summaryText}
+                                    </ReactMarkdown>
+                                </CardContent>
+                            </Card>
+                        ) : !generatingSummary && (
+                            <p className="text-sm text-muted-foreground">
+                                Noch keine Zusammenfassung vorhanden. Klicke auf den Button, um eine KI-generierte Zusammenfassung zu erstellen.
+                            </p>
                         )}
-                    </Button>
-                </div>
-                {summaryText ? (
-                    <Card>
-                        <CardContent className="prose prose-sm dark:prose-invert max-w-none p-4">
-                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                {summaryText}
-                            </ReactMarkdown>
-                        </CardContent>
-                    </Card>
-                ) : !generatingSummary && (
-                    <p className="text-sm text-muted-foreground">
-                        Noch keine Zusammenfassung vorhanden. Klicke auf den Button, um eine KI-generierte Zusammenfassung zu erstellen.
-                    </p>
-                )}
-            </div>
+                    </div>
 
-            <div>
-                <h2 className="text-lg font-semibold mb-3">Abschnitte</h2>
-                <ChunkViewer chunks={document.chunks} />
-            </div>
+                    {/* Chunks */}
+                    <div>
+                        <h2 className="text-lg font-semibold mb-3">Abschnitte</h2>
+                        <ChunkViewer chunks={document.chunks} />
+                    </div>
+                </TabsContent>
+
+                <TabsContent value="chat" className="mt-4">
+                    <ChatInterface documentId={params.id} />
+                </TabsContent>
+
+                <TabsContent value="quizzes" className="mt-4">
+                    <DocumentQuizzesTab documentId={params.id} />
+                </TabsContent>
+
+                <TabsContent value="flashcards" className="mt-4">
+                    <DocumentFlashcardsTab documentId={params.id} />
+                </TabsContent>
+            </Tabs>
 
             {/* Delete confirmation */}
             <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

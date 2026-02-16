@@ -3,7 +3,7 @@ import { streamText, Output } from 'ai'
 import { z } from 'zod'
 import { getModel } from '@/src/lib/llm'
 import { getDocumentWithChunks } from '@/src/data-access/documents'
-import { selectRepresentativeChunks } from '@/src/lib/quiz-generation'
+import { selectRepresentativeChunks, detectContentType } from '@/src/lib/quiz-generation'
 import { createFlashcards as dbCreateFlashcards } from '@/src/data-access/flashcards'
 
 const flashcardElementSchema = z.object({
@@ -50,11 +50,24 @@ export async function POST(request: NextRequest) {
                 try {
                     send({ type: 'progress', generated: 0, total: count })
 
-                    const result = streamText({
-                        model: getModel(),
-                        system: 'Du erstellst Karteikarten auf Deutsch basierend auf Lerntexten.',
-                        output: Output.array({ element: flashcardElementSchema }),
-                        prompt: `Erstelle genau ${count} Karteikarten aus dem folgenden Text (${selectedChunks.length} Abschnitte).
+                    const contentType = detectContentType(contextText)
+
+                    const isVocab = contentType === 'vocabulary'
+                    const systemPrompt = isVocab
+                        ? 'Du erstellst Vokabel-Karteikarten. Erstelle pro Wort oder Phrase genau eine Karteikarte.'
+                        : 'Du erstellst Karteikarten auf Deutsch basierend auf Lerntexten.'
+                    const userPrompt = isVocab
+                        ? `Der folgende Text ist eine Vokabelliste. Erstelle pro Eintrag (Wort, Phrase oder Begriff) genau eine Karteikarte.
+
+Anforderungen:
+- front: Das Wort, die Phrase oder der Begriff
+- back: Die Übersetzung, Definition oder Erklärung
+- sourceSection: Abschnittsnummer (1 bis ${selectedChunks.length})
+- Ignoriere Leerzeilen und Überschriften
+
+Text:
+${contextText}`
+                        : `Erstelle genau ${count} Karteikarten aus dem folgenden Text (${selectedChunks.length} Abschnitte).
 
 Anforderungen:
 - front: Kurze Frage oder Begriff (max. 1 Satz)
@@ -65,7 +78,13 @@ Anforderungen:
 Fokus: Definitionen, Kernkonzepte, Fakten (Zahlen, Daten, Namen), Praxiswissen
 
 Text:
-${contextText}`,
+${contextText}`
+
+                    const result = streamText({
+                        model: getModel(),
+                        system: systemPrompt,
+                        output: Output.array({ element: flashcardElementSchema }),
+                        prompt: userPrompt,
                     })
 
                     const cards: z.infer<typeof flashcardElementSchema>[] = []
