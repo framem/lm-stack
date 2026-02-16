@@ -161,7 +161,7 @@ export async function getDueVocabularyFlashcards(limit: number = 20) {
             ],
         },
         include: {
-            document: { select: { id: true, title: true } },
+            document: { select: { id: true, title: true, subject: true } },
             chunk: { select: { id: true, content: true, chunkIndex: true } },
             progress: true,
         },

@@ -65,37 +65,41 @@ export function ExamPlayer({ quizId, quizTitle, questions, timeLimit }: ExamPlay
         const total = questions.length
         let evaluated = 0
 
-        for (const question of questions) {
+        // Evaluate all answers in parallel for speed
+        const tasks = questions.map((question) => {
             const answer = answers.get(question.id)
             const type = question.questionType || 'singleChoice'
 
-            try {
-                if (type === 'freetext') {
-                    await evaluateAnswer(
-                        question.id,
-                        null,
-                        answer?.freeTextAnswer || 'Keine Antwort',
-                    )
-                } else if (type === 'multipleChoice') {
-                    await evaluateAnswer(
-                        question.id,
-                        null,
-                        undefined,
-                        answer?.selectedIndices?.length ? answer.selectedIndices : [0],
-                    )
-                } else {
-                    await evaluateAnswer(
-                        question.id,
-                        answer?.selectedIndex ?? 0,
-                    )
-                }
-            } catch (err) {
-                console.error(`Evaluation failed for question ${question.id}:`, err)
+            let promise: Promise<unknown>
+            if (type === 'freetext') {
+                promise = evaluateAnswer(
+                    question.id,
+                    null,
+                    answer?.freeTextAnswer || 'Keine Antwort',
+                )
+            } else if (type === 'multipleChoice') {
+                promise = evaluateAnswer(
+                    question.id,
+                    null,
+                    undefined,
+                    answer?.selectedIndices?.length ? answer.selectedIndices : [0],
+                )
+            } else {
+                promise = evaluateAnswer(
+                    question.id,
+                    answer?.selectedIndex ?? 0,
+                )
             }
 
-            evaluated++
-            setSubmitProgress({ current: evaluated, total })
-        }
+            return promise
+                .catch((err) => console.error(`Evaluation failed for question ${question.id}:`, err))
+                .finally(() => {
+                    evaluated++
+                    setSubmitProgress({ current: evaluated, total })
+                })
+        })
+
+        await Promise.allSettled(tasks)
 
         router.push(`/learn/quiz/${quizId}/results`)
     }, [answers, questions, quizId, router])

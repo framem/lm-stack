@@ -71,38 +71,31 @@ export async function POST(request: NextRequest) {
                     // Distribute questions across types
                     const distribution = distributeQuestions(count, types)
 
-                    // Build flat generation queue for per-question progress
-                    const queue: string[] = []
-                    for (const type of types) {
-                        for (let i = 0; i < (distribution[type] || 0); i++) {
-                            queue.push(type)
-                        }
-                    }
-
+                    // Generate questions in batches per type (one LLM call per type)
                     const allQuestions: QuestionToSave[] = []
                     send({ type: 'progress', generated: 0, total: count })
 
-                    for (const type of queue) {
-                        let question: QuestionToSave | null = null
+                    for (const type of types) {
+                        const typeCount = distribution[type] || 0
+                        if (typeCount === 0) continue
 
                         if (type === 'singleChoice') {
-                            const qs = await generateSingleChoiceQuestions(contextText, 1)
-                            if (qs[0]) {
-                                const q = qs[0]
-                                question = {
+                            const qs = await generateSingleChoiceQuestions(contextText, typeCount)
+                            for (const q of qs) {
+                                allQuestions.push({
                                     questionText: q.questionText,
                                     options: q.options,
                                     correctIndex: q.correctIndex,
                                     explanation: q.explanation,
                                     sourceSnippet: q.sourceSnippet,
                                     questionType: 'singleChoice',
-                                }
+                                })
+                                send({ type: 'progress', generated: allQuestions.length, total: count })
                             }
                         } else if (type === 'multipleChoice') {
-                            const qs = await generateMultipleChoiceQuestions(contextText, 1)
-                            if (qs[0]) {
-                                const q = qs[0]
-                                question = {
+                            const qs = await generateMultipleChoiceQuestions(contextText, typeCount)
+                            for (const q of qs) {
+                                allQuestions.push({
                                     questionText: q.questionText,
                                     options: q.options,
                                     correctIndex: null,
@@ -110,13 +103,13 @@ export async function POST(request: NextRequest) {
                                     explanation: q.explanation,
                                     sourceSnippet: q.sourceSnippet,
                                     questionType: 'multipleChoice',
-                                }
+                                })
+                                send({ type: 'progress', generated: allQuestions.length, total: count })
                             }
                         } else if (type === 'freetext') {
-                            const qs = await generateFreetextQuestions(contextText, 1)
-                            if (qs[0]) {
-                                const q = qs[0]
-                                question = {
+                            const qs = await generateFreetextQuestions(contextText, typeCount)
+                            for (const q of qs) {
+                                allQuestions.push({
                                     questionText: q.questionText,
                                     options: null,
                                     correctIndex: null,
@@ -124,13 +117,13 @@ export async function POST(request: NextRequest) {
                                     explanation: q.explanation,
                                     sourceSnippet: q.sourceSnippet,
                                     questionType: 'freetext',
-                                }
+                                })
+                                send({ type: 'progress', generated: allQuestions.length, total: count })
                             }
                         } else if (type === 'truefalse') {
-                            const qs = await generateTruefalseQuestions(contextText, 1)
-                            if (qs[0]) {
-                                const q = qs[0]
-                                question = {
+                            const qs = await generateTruefalseQuestions(contextText, typeCount)
+                            for (const q of qs) {
+                                allQuestions.push({
                                     questionText: q.questionText,
                                     options: ['Wahr', 'Falsch'],
                                     correctIndex: q.correctAnswer === 'wahr' ? 0 : 1,
@@ -138,12 +131,10 @@ export async function POST(request: NextRequest) {
                                     explanation: q.explanation,
                                     sourceSnippet: q.sourceSnippet,
                                     questionType: 'truefalse',
-                                }
+                                })
+                                send({ type: 'progress', generated: allQuestions.length, total: count })
                             }
                         }
-
-                        if (question) allQuestions.push(question)
-                        send({ type: 'progress', generated: allQuestions.length, total: count })
                     }
 
                     if (allQuestions.length === 0) {

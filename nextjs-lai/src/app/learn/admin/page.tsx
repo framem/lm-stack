@@ -12,6 +12,8 @@ import {
     XCircle,
     SkipForward,
     RefreshCw,
+    Languages,
+    Trash2,
 } from 'lucide-react'
 import { Button } from '@/src/components/ui/button'
 import { Badge } from '@/src/components/ui/badge'
@@ -77,6 +79,18 @@ interface ImportResult {
     error?: string
 }
 
+interface LanguageSetInfo {
+    id: string
+    title: string
+    subject: string
+    description: string
+    level: string
+    categoryCount: number
+    itemCount: number
+    imported: boolean
+    documentId: string | null
+}
+
 type Phase = 'idle' | 'importing' | 'done'
 
 function formatSize(bytes: number): string {
@@ -100,6 +114,12 @@ export default function AdminPage() {
     const [importSteps, setImportSteps] = useState<PipelineStep[]>([])
     const importStepTimesRef = useRef<Record<string, number>>({})
     const [results, setResults] = useState<ImportResult[]>([])
+
+    // Language sets state
+    const [langSets, setLangSets] = useState<LanguageSetInfo[]>([])
+    const [langSetsLoading, setLangSetsLoading] = useState(true)
+    const [importingSet, setImportingSet] = useState<string | null>(null)
+    const [removingSet, setRemovingSet] = useState<string | null>(null)
 
     // Refresh state
     const [refreshDocs, setRefreshDocs] = useState<RefreshableDoc[]>([])
@@ -128,6 +148,19 @@ export default function AdminPage() {
         }
     }, [])
 
+    const fetchLanguageSets = useCallback(async () => {
+        try {
+            const res = await fetch('/api/admin/languages')
+            if (!res.ok) return
+            const data = await res.json()
+            setLangSets(data.sets)
+        } catch {
+            // non-critical
+        } finally {
+            setLangSetsLoading(false)
+        }
+    }, [])
+
     const fetchRefreshDocs = useCallback(async () => {
         try {
             const res = await fetch('/api/admin/refresh')
@@ -142,7 +175,8 @@ export default function AdminPage() {
     useEffect(() => {
         fetchFiles()
         fetchRefreshDocs()
-    }, [fetchFiles, fetchRefreshDocs])
+        fetchLanguageSets()
+    }, [fetchFiles, fetchRefreshDocs, fetchLanguageSets])
 
     const selectableFiles = files.filter(f => !f.alreadyImported)
     const docsFiles = files.filter(f => f.category === 'docs')
@@ -383,6 +417,51 @@ export default function AdminPage() {
         fetchRefreshDocs()
     }
 
+    async function importLanguageSet(setId: string) {
+        setImportingSet(setId)
+        try {
+            const res = await fetch('/api/admin/languages', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ setId }),
+            })
+            if (res.ok) {
+                const data = await res.json()
+                toast.success(`${data.flashcardCount} Vokabeln importiert!`)
+                fetchLanguageSets()
+            } else {
+                const data = await res.json()
+                toast.error(data.error || 'Import fehlgeschlagen')
+            }
+        } catch {
+            toast.error('Import fehlgeschlagen')
+        } finally {
+            setImportingSet(null)
+        }
+    }
+
+    async function removeLanguageSet(setId: string) {
+        setRemovingSet(setId)
+        try {
+            const res = await fetch('/api/admin/languages', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ setId }),
+            })
+            if (res.ok) {
+                toast.success('Vokabelset entfernt')
+                fetchLanguageSets()
+            } else {
+                const data = await res.json()
+                toast.error(data.error || 'Entfernen fehlgeschlagen')
+            }
+        } catch {
+            toast.error('Entfernen fehlgeschlagen')
+        } finally {
+            setRemovingSet(null)
+        }
+    }
+
     if (loading) {
         return (
             <div className="p-6 max-w-4xl mx-auto space-y-4">
@@ -423,6 +502,84 @@ export default function AdminPage() {
                     Lokales Lernmaterial importieren
                 </p>
             </div>
+
+            {/* ── Language sets section ── */}
+            <div className="space-y-4">
+                <div>
+                    <h2 className="text-lg font-semibold flex items-center gap-2">
+                        <Languages className="h-5 w-5" />
+                        Sprachen
+                    </h2>
+                    <p className="text-sm text-muted-foreground mt-1">
+                        Kuratierte Vokabelsets direkt importieren
+                    </p>
+                </div>
+
+                {langSetsLoading ? (
+                    <div className="grid gap-3 sm:grid-cols-2">
+                        <Skeleton className="h-32 w-full" />
+                        <Skeleton className="h-32 w-full" />
+                    </div>
+                ) : (
+                    <div className="grid gap-3 sm:grid-cols-2">
+                        {langSets.map((set) => (
+                            <div key={set.id} className="rounded-lg border p-4 space-y-3">
+                                <div className="flex items-start justify-between gap-2">
+                                    <div>
+                                        <p className="font-medium">{set.title}</p>
+                                        <p className="text-xs text-muted-foreground mt-0.5">
+                                            {set.description}
+                                        </p>
+                                    </div>
+                                    <Badge variant="outline" className="shrink-0">{set.level}</Badge>
+                                </div>
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                    <span>{set.itemCount} Vokabeln</span>
+                                    <span>·</span>
+                                    <span>{set.categoryCount} Kategorien</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    {set.imported ? (
+                                        <>
+                                            <Badge variant="secondary" className="text-xs">
+                                                <CheckCircle2 className="h-3 w-3 mr-1" />
+                                                Importiert ({set.itemCount})
+                                            </Badge>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => removeLanguageSet(set.id)}
+                                                disabled={removingSet === set.id}
+                                                className="ml-auto"
+                                            >
+                                                {removingSet === set.id ? (
+                                                    <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                                                ) : (
+                                                    <Trash2 className="h-3 w-3 mr-1" />
+                                                )}
+                                                Entfernen
+                                            </Button>
+                                        </>
+                                    ) : (
+                                        <Button
+                                            size="sm"
+                                            onClick={() => importLanguageSet(set.id)}
+                                            disabled={importingSet === set.id}
+                                        >
+                                            {importingSet === set.id && (
+                                                <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                                            )}
+                                            Importieren
+                                        </Button>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            <hr className="border-border" />
 
             {/* Import progress */}
             {phase === 'importing' && (

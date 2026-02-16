@@ -37,8 +37,22 @@ interface VocabCard {
     partOfSpeech?: string | null
     conjugation?: ConjugationData | null
     context?: string | null
-    document?: { id: string; title: string } | null
+    document?: { id: string; title: string; subject?: string | null } | null
     chunk?: { id: string; content: string; chunkIndex: number } | null
+}
+
+// Map document subject to BCP-47 language code for TTS
+const SUBJECT_LANG_MAP: Record<string, string> = {
+    'Englisch': 'en-US',
+    'Spanisch': 'es-ES',
+    'Französisch': 'fr-FR',
+    'Italienisch': 'it-IT',
+    'Portugiesisch': 'pt-PT',
+}
+
+function getTargetLang(card: VocabCard): string {
+    const subject = card.document?.subject
+    return (subject && SUBJECT_LANG_MAP[subject]) || 'de-DE'
 }
 
 interface ReviewResult {
@@ -103,6 +117,11 @@ export function VocabStudyContent() {
     const displayFront = card ? (reversed ? card.back : card.front) : ''
     const displayBack = card ? (reversed ? card.front : card.back) : ''
     const isVerb = card?.partOfSpeech?.toLowerCase().includes('verb') ?? false
+
+    // TTS language: front side = target language, back side = German
+    const targetLang = card ? getTargetLang(card) : 'de-DE'
+    const frontLang = reversed ? 'de-DE' : targetLang
+    const backLang = reversed ? targetLang : 'de-DE'
 
     const handleFlip = useCallback(() => {
         if (!flipped) setFlipped(true)
@@ -275,7 +294,7 @@ export function VocabStudyContent() {
                             )}
                             <div className="flex items-center gap-1">
                                 <p className="text-xl font-semibold">{displayFront}</p>
-                                <TTSButton text={displayFront} />
+                                <TTSButton text={displayFront} lang={frontLang} />
                             </div>
                         </CardContent>
                     </Card>
@@ -349,7 +368,7 @@ export function VocabStudyContent() {
                                     )}
                                     <div className="flex items-center gap-1">
                                         <p className="text-xl font-semibold">{displayFront}</p>
-                                        <TTSButton text={displayFront} />
+                                        <TTSButton text={displayFront} lang={frontLang} />
                                     </div>
                                     {!flipped && (
                                         <p className="text-sm text-muted-foreground mt-6">Klicken zum Umdrehen</p>
@@ -363,14 +382,14 @@ export function VocabStudyContent() {
                                     <p className="text-xs text-muted-foreground mb-3 italic">{displayFront}</p>
                                     <div className="flex items-center gap-1">
                                         <p className="text-lg">{displayBack}</p>
-                                        <TTSButton text={displayBack} />
+                                        <TTSButton text={displayBack} lang={backLang} />
                                     </div>
                                     {card.exampleSentence && (
                                         <div className="flex items-center gap-1 mt-4">
                                             <p className="text-sm text-muted-foreground italic">
                                                 {card.exampleSentence}
                                             </p>
-                                            <TTSButton text={card.exampleSentence} size="sm" className="shrink-0 h-6 w-6" />
+                                            <TTSButton text={card.exampleSentence} lang={targetLang} size="sm" className="shrink-0 h-6 w-6" />
                                         </div>
                                     )}
                                     {isVerb && card.conjugation && (
