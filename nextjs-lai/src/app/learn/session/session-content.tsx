@@ -439,11 +439,17 @@ function QuizItem({
     selectedIndex,
     selectedIndices,
     freeTextAnswer,
+    fillInBlanksAnswers,
+    conjugationAnswers,
+    orderedWords,
     result,
     submitting,
     onSelectIndex,
     onToggleIndex,
     onFreeTextChange,
+    onFillInBlanksChange,
+    onConjugationChange,
+    onOrderedWordsChange,
     onSubmit,
     onNext,
 }: {
@@ -451,6 +457,9 @@ function QuizItem({
     selectedIndex: number | null
     selectedIndices: number[]
     freeTextAnswer: string
+    fillInBlanksAnswers: string[]
+    conjugationAnswers: string[]
+    orderedWords: string[]
     result: {
         isCorrect: boolean
         correctIndex?: number | null
@@ -464,6 +473,9 @@ function QuizItem({
     onSelectIndex: (i: number | null) => void
     onToggleIndex: (i: number) => void
     onFreeTextChange: (v: string) => void
+    onFillInBlanksChange: (v: string[]) => void
+    onConjugationChange: (v: string[]) => void
+    onOrderedWordsChange: (v: string[]) => void
     onSubmit: () => void
     onNext: () => void
 }) {
@@ -472,27 +484,37 @@ function QuizItem({
     const isMulti = type === 'multipleChoice'
     const isFreetext = type === 'freetext'
     const isCloze = type === 'cloze'
+    const isFillInBlanksQ = type === 'fillInBlanks'
+    const isConjugationQ = type === 'conjugation'
+    const isSentenceOrderQ = type === 'sentenceOrder'
     const docTitle = question.quiz?.document?.title || question.quiz?.title
 
     const canSubmit = isFreetext || isCloze
         ? !!freeTextAnswer.trim()
-        : isMulti
-            ? selectedIndices.length > 0
-            : selectedIndex !== null
+        : isFillInBlanksQ
+            ? fillInBlanksAnswers.some((a) => a.trim())
+            : isConjugationQ
+                ? conjugationAnswers.some((a) => a.trim())
+                : isSentenceOrderQ
+                    ? orderedWords.length > 0
+                    : isMulti
+                        ? selectedIndices.length > 0
+                        : selectedIndex !== null
 
-    // Split cloze question text around {{blank}}
+    // Split cloze/fillInBlanks question text around {{blank}}
     const clozeParts = isCloze ? question.questionText.split('{{blank}}') : []
+    const fillInBlanksParts = isFillInBlanksQ ? question.questionText.split('{{blank}}') : []
 
     return (
         <div className="space-y-4">
             <Badge variant="secondary" className="gap-1">
-                {isCloze ? <PenLine className="h-3 w-3" /> : <HelpCircle className="h-3 w-3" />}
-                {isCloze ? 'Lückentext' : 'Quizfrage'}
+                {(isCloze || isFillInBlanksQ) ? <PenLine className="h-3 w-3" /> : <HelpCircle className="h-3 w-3" />}
+                {isCloze ? 'Lückentext' : isFillInBlanksQ ? 'Lückentext (mehrfach)' : isConjugationQ ? 'Konjugation' : isSentenceOrderQ ? 'Satzordnung' : 'Quizfrage'}
             </Badge>
 
             <Card>
                 <CardHeader>
-                    {!isCloze && <CardTitle className="text-lg">{question.questionText}</CardTitle>}
+                    {!isCloze && !isFillInBlanksQ && <CardTitle className="text-lg">{question.questionText}</CardTitle>}
                     <div className="flex items-center gap-1.5 mt-1">
                         {docTitle && (
                             <Badge variant="outline" className="text-xs font-normal text-muted-foreground">
@@ -533,7 +555,7 @@ function QuizItem({
                     )}
 
                     {/* Single choice / truefalse */}
-                    {!isMulti && !isFreetext && options && (
+                    {!isMulti && !isFreetext && !isFillInBlanksQ && !isConjugationQ && !isSentenceOrderQ && options && (
                         <RadioGroup
                             value={selectedIndex !== null ? String(selectedIndex) : ''}
                             onValueChange={(v) => { if (!result) onSelectIndex(Number(v)) }}
@@ -592,6 +614,87 @@ function QuizItem({
                         </div>
                     )}
 
+                    {/* FillInBlanks */}
+                    {isFillInBlanksQ && (
+                        <div className="space-y-2">
+                            <p className="text-lg leading-relaxed">
+                                {fillInBlanksParts.map((part, i) => (
+                                    <span key={i}>
+                                        {part}
+                                        {i < fillInBlanksParts.length - 1 && (
+                                            <input
+                                                type="text"
+                                                value={fillInBlanksAnswers[i] ?? ''}
+                                                onChange={(e) => {
+                                                    if (!result) {
+                                                        const next = [...fillInBlanksAnswers]
+                                                        next[i] = e.target.value
+                                                        onFillInBlanksChange(next)
+                                                    }
+                                                }}
+                                                onKeyDown={(e) => { if (e.key === 'Enter' && !result) onSubmit() }}
+                                                disabled={!!result}
+                                                autoFocus={i === 0}
+                                                className={`inline-block w-40 mx-1 px-2 py-0.5 text-center border-b-2 bg-transparent outline-none text-base ${
+                                                    result
+                                                        ? (result.freeTextScore ?? 0) >= 0.5
+                                                            ? 'border-green-500 text-green-700 dark:text-green-400'
+                                                            : 'border-red-500 text-red-700 dark:text-red-400'
+                                                        : 'border-primary focus:border-primary'
+                                                }`}
+                                                placeholder="___"
+                                                maxLength={100}
+                                            />
+                                        )}
+                                    </span>
+                                ))}
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Conjugation */}
+                    {isConjugationQ && options && (
+                        <div className="grid gap-2">
+                            {(options as string[]).map((person, i) => (
+                                <div key={i} className="flex items-center gap-3">
+                                    <span className="text-sm font-medium w-24 text-right shrink-0">{person}</span>
+                                    <input
+                                        type="text"
+                                        value={conjugationAnswers[i] ?? ''}
+                                        onChange={(e) => {
+                                            if (!result) {
+                                                const next = [...conjugationAnswers]
+                                                next[i] = e.target.value
+                                                onConjugationChange(next)
+                                            }
+                                        }}
+                                        onKeyDown={(e) => { if (e.key === 'Enter' && !result) onSubmit() }}
+                                        disabled={!!result}
+                                        autoFocus={i === 0}
+                                        className={`flex-1 px-3 py-1.5 rounded border text-sm bg-transparent outline-none ${
+                                            result
+                                                ? (result.freeTextScore ?? 0) >= 0.5
+                                                    ? 'border-green-500'
+                                                    : 'border-red-500'
+                                                : 'border-input focus:border-primary'
+                                        }`}
+                                        placeholder="…"
+                                        maxLength={100}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* SentenceOrder */}
+                    {isSentenceOrderQ && options && (
+                        <SortableWordChips
+                            words={orderedWords.length > 0 ? orderedWords : (options as string[])}
+                            onChange={(words) => { if (!result) onOrderedWordsChange(words) }}
+                            disabled={!!result}
+                        />
+                    )}
+
                     {/* Freetext */}
                     {isFreetext && (
                         <div className="space-y-2">
@@ -610,7 +713,7 @@ function QuizItem({
                     {result && (
                         <div className="mt-4 p-3 rounded-lg border bg-muted/50 space-y-2">
                             <div className="flex items-center gap-2">
-                                {(isFreetext || isCloze) ? (
+                                {isFreetextLikeType(type) ? (
                                     <Badge variant="outline">
                                         Bewertung: {Math.round((result.freeTextScore ?? 0) * 100)}%
                                     </Badge>
@@ -620,7 +723,7 @@ function QuizItem({
                                     <Badge variant="destructive">Falsch</Badge>
                                 )}
                             </div>
-                            {isCloze && result.correctAnswer && (
+                            {(isCloze || isFillInBlanksQ || isSentenceOrderQ) && result.correctAnswer && (
                                 <p className="text-sm font-medium">
                                     Richtige Antwort: <span className="text-green-600">{result.correctAnswer}</span>
                                 </p>

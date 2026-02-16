@@ -260,9 +260,12 @@ export function QuizPlayer({ quizTitle, questions, onComplete, subject }: QuizPl
             <Card>
                 <CardHeader>
                     <div className="flex items-start gap-2">
-                        <CardTitle className="text-lg flex-1">
-                            {currentQuestion.questionText}
-                        </CardTitle>
+                        {!isFillInBlanks && (
+                            <CardTitle className="text-lg flex-1">
+                                {currentQuestion.questionText}
+                            </CardTitle>
+                        )}
+                        {isFillInBlanks && <div className="flex-1" />}
                         {ttsText && ttsLang && (
                             <TTSButton text={ttsText} lang={ttsLang} size="sm" className="shrink-0 mt-0.5" />
                         )}
