@@ -3,12 +3,12 @@ name: Next.js Tests
 on:
   push:
     paths:
-      - 'nextJs/**'
-      - '.github/workflows/nextjs-test.yml'
+      - 'nextjs-embed-eval/**'
+      - '.github/workflows/nextjs-embed-eval-test.yml'
   pull_request:
     paths:
-      - 'nextJs/**'
-      - '.github/workflows/nextjs-test.yml'
+      - 'nextjs-embed-eval/**'
+      - '.github/workflows/nextjs-embed-eval-test.yml'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -19,13 +19,13 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: nextJs
+        working-directory: nextjs-embed-eval
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: nextJs/package-lock.json
+          cache-dependency-path: nextjs-embed-eval/package-lock.json
       - run: npm ci
       - run: npm run test
