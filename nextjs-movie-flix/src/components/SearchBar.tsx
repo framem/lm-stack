@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { toMovieSlug } from '@/src/lib/slug'
 import { type Movie } from '@/prisma/generated/prisma/client'
@@ -107,9 +108,11 @@ export default function SearchBar() {
                                 className="flex items-center gap-3 px-4 py-3 hover:bg-zinc-800 transition-colors"
                             >
                                 {movie.posterLink ? (
-                                    <img
+                                    <Image
                                         src={movie.posterLink}
                                         alt={movie.seriesTitle}
+                                        width={40}
+                                        height={56}
                                         className="w-10 h-14 object-cover rounded shrink-0"
                                     />
                                 ) : (

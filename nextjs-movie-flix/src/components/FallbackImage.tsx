@@ -14,5 +14,6 @@ export default function FallbackImage({
         return <>{fallback ?? null}</>
     }
 
+    // eslint-disable-next-line jsx-a11y/alt-text -- alt is provided through spread props
     return <Image {...props} onError={() => setError(true)} />
 }

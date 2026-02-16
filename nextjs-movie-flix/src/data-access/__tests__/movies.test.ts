@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import type { Movie } from '@/prisma/generated/prisma/client'
 
 vi.mock('@/src/lib/prisma', () => ({
     prisma: {
@@ -342,7 +343,7 @@ describe('saveMovieEmbedding', () => {
 
 describe('buildEmbeddingText', () => {
     it('should build text from all movie fields', () => {
-        const result = buildEmbeddingText(mockMovie as any)
+        const result = buildEmbeddingText(mockMovie as Movie)
         expect(result).toBe(
             'The Shawshank Redemption. Drama. Two imprisoned men bond over a number of years.. Director: Frank Darabont. Stars: Tim Robbins, Morgan Freeman, Bob Gunton, William Sadler'
         )
@@ -369,7 +370,7 @@ describe('buildEmbeddingText', () => {
             gross: null,
             embedding: null,
         }
-        const result = buildEmbeddingText(partialMovie as any)
+        const result = buildEmbeddingText(partialMovie as Movie)
         expect(result).toBe('Test Movie')
     })
 
@@ -381,7 +382,7 @@ describe('buildEmbeddingText', () => {
             star3: null,
             star4: null,
         }
-        const result = buildEmbeddingText(movieNoStars as any)
+        const result = buildEmbeddingText(movieNoStars as Movie)
         expect(result).toBe(
             'The Shawshank Redemption. Drama. Two imprisoned men bond over a number of years.. Director: Frank Darabont'
         )
@@ -393,7 +394,7 @@ describe('buildEmbeddingText', () => {
             star3: null,
             star4: null,
         }
-        const result = buildEmbeddingText(movieSomeStars as any)
+        const result = buildEmbeddingText(movieSomeStars as Movie)
         expect(result).toBe(
             'The Shawshank Redemption. Drama. Two imprisoned men bond over a number of years.. Director: Frank Darabont. Stars: Tim Robbins, Morgan Freeman'
         )
