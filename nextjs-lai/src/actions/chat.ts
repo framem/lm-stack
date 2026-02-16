@@ -9,6 +9,9 @@ import {
     getSessionWithMessages as dbGetSessionWithMessages,
     createSession as dbCreateSession,
     deleteSession as dbDeleteSession,
+    searchMessages as dbSearchMessages,
+    toggleBookmark as dbToggleBookmark,
+    getBookmarkedMessages as dbGetBookmarkedMessages,
 } from '@/src/data-access/chat'
 
 // List all chat sessions
@@ -29,6 +32,21 @@ export async function createSession(opts: { title?: string; documentId?: string 
 // Delete a chat session and all its messages
 export async function deleteSession(id: string) {
     await dbDeleteSession(id)
+}
+
+// Search messages across all sessions
+export async function searchMessages(query: string) {
+    return dbSearchMessages(query)
+}
+
+// Toggle bookmark on a message
+export async function toggleBookmark(messageId: string) {
+    return dbToggleBookmark(messageId)
+}
+
+// Get all bookmarked messages
+export async function getBookmarkedMessages() {
+    return dbGetBookmarkedMessages()
 }
 
 // Generate contextual chat suggestions from random document chunks

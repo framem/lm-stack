@@ -4,8 +4,8 @@ import { Fragment, useState, useMemo, useEffect, useRef } from 'react'
 import { DefaultChatTransport, type UIMessage } from 'ai'
 import { useChat } from '@ai-sdk/react'
 import { z } from 'zod'
-import { BookOpen, FileText, Loader2, ChevronDown, CornerDownLeft, Check, AlertTriangle } from 'lucide-react'
-import { getSession, getChatSuggestions } from '@/src/actions/chat'
+import { BookOpen, FileText, Loader2, ChevronDown, CornerDownLeft, Check, AlertTriangle, Bookmark } from 'lucide-react'
+import { getSession, getChatSuggestions, toggleBookmark } from '@/src/actions/chat'
 import { getDocuments, getSubjects } from '@/src/actions/documents'
 import {
     Sheet,
@@ -75,6 +75,7 @@ interface StoredMessage {
     role: string
     content: string
     sources: StoredSource[] | null
+    isBookmarked?: boolean
     createdAt: string
 }
 
@@ -166,6 +167,8 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
     // Track session IDs created during this component's lifetime (to skip reloading)
     const justCreatedSessionRef = useRef<string | null>(null)
     const prevSessionIdRef = useRef(sessionId)
+
+    const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set())
 
     const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>(
         documentId ? [documentId] : []
@@ -296,9 +299,17 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
         getSession(sessionId)
             .then((session) => {
                 if (session?.messages && session.messages.length > 0) {
-                    setMessages(storedToUIMessages(session.messages as unknown as StoredMessage[]))
+                    const msgs = session.messages as unknown as StoredMessage[]
+                    setMessages(storedToUIMessages(msgs))
+                    // Restore bookmark state
+                    const bm = new Set<string>()
+                    for (const m of msgs) {
+                        if (m.isBookmarked) bm.add(m.id)
+                    }
+                    setBookmarkedIds(bm)
                 } else {
                     setMessages([])
+                    setBookmarkedIds(new Set())
                 }
             })
             .catch((err) => console.error('Failed to load session messages:', err))
@@ -312,6 +323,27 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
         const trimmed = text.trim()
         if (!trimmed || isLoading) return
         sendMessage({ text: trimmed })
+    }
+
+    async function handleToggleBookmark(messageId: string) {
+        // Optimistic update
+        setBookmarkedIds((prev) => {
+            const next = new Set(prev)
+            if (next.has(messageId)) next.delete(messageId)
+            else next.add(messageId)
+            return next
+        })
+        try {
+            await toggleBookmark(messageId)
+        } catch {
+            // Revert on error
+            setBookmarkedIds((prev) => {
+                const next = new Set(prev)
+                if (next.has(messageId)) next.delete(messageId)
+                else next.add(messageId)
+                return next
+            })
+        }
     }
 
     // Toggle a source in the detail panel
@@ -382,6 +414,7 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
 
                             return (
                                 <Fragment key={message.id}>
+                                <div className="group">
                                     {reasoningText && (
                                         <Reasoning isStreaming={isReasoningStreaming}>
                                             <ReasoningTrigger getThinkingMessage={getGermanThinkingMessage} />
@@ -431,30 +464,47 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
                                         return null
                                     })}
 
-                                    {message.role === 'assistant' && message.metadata?.sources && message.metadata.sources.length > 0 && (
-                                        <Sources>
-                                            <SourcesTrigger count={message.metadata.sources.length}>
-                                                <p className="font-medium">{message.metadata.sources.length === 1 ? '1 Quelle' : `${message.metadata.sources.length} Quellen`}</p>
-                                                <ChevronDown className="h-4 w-4" />
-                                            </SourcesTrigger>
-                                            <SourcesContent>
-                                                {message.metadata.sources.map((src) => (
-                                                    <button
-                                                        key={src.chunkId}
-                                                        type="button"
-                                                        className="flex items-center gap-2 text-left cursor-pointer hover:underline"
-                                                        onClick={() => handleSourceClick(src)}
-                                                    >
-                                                        <FileText className="h-4 w-4 flex-shrink-0" />
-                                                        <span className="font-medium">{src.documentTitle}</span>
-                                                        {src.pageNumber != null && (
-                                                            <span className="text-muted-foreground">S.{src.pageNumber}</span>
-                                                        )}
-                                                    </button>
-                                                ))}
-                                            </SourcesContent>
-                                        </Sources>
+                                    {message.role === 'assistant' && (
+                                        <div className="flex items-center gap-2">
+                                            {message.metadata?.sources && message.metadata.sources.length > 0 && (
+                                                <Sources>
+                                                    <SourcesTrigger count={message.metadata.sources.length}>
+                                                        <p className="font-medium">{message.metadata.sources.length === 1 ? '1 Quelle' : `${message.metadata.sources.length} Quellen`}</p>
+                                                        <ChevronDown className="h-4 w-4" />
+                                                    </SourcesTrigger>
+                                                    <SourcesContent>
+                                                        {message.metadata.sources.map((src) => (
+                                                            <button
+                                                                key={src.chunkId}
+                                                                type="button"
+                                                                className="flex items-center gap-2 text-left cursor-pointer hover:underline"
+                                                                onClick={() => handleSourceClick(src)}
+                                                            >
+                                                                <FileText className="h-4 w-4 flex-shrink-0" />
+                                                                <span className="font-medium">{src.documentTitle}</span>
+                                                                {src.pageNumber != null && (
+                                                                    <span className="text-muted-foreground">S.{src.pageNumber}</span>
+                                                                )}
+                                                            </button>
+                                                        ))}
+                                                    </SourcesContent>
+                                                </Sources>
+                                            )}
+                                            <button
+                                                type="button"
+                                                onClick={() => handleToggleBookmark(message.id)}
+                                                className={`p-1.5 rounded-md transition-colors hover:bg-accent ${
+                                                    bookmarkedIds.has(message.id)
+                                                        ? 'text-primary'
+                                                        : 'text-muted-foreground opacity-0 group-hover:opacity-100'
+                                                }`}
+                                                title={bookmarkedIds.has(message.id) ? 'Lesezeichen entfernen' : 'Lesezeichen setzen'}
+                                            >
+                                                <Bookmark className={`h-4 w-4 ${bookmarkedIds.has(message.id) ? 'fill-current' : ''}`} />
+                                            </button>
+                                        </div>
                                     )}
+                                </div>
                                 </Fragment>
                             )
                         })}

@@ -9,6 +9,7 @@ model Flashcard {
   isVocabulary     Boolean  @default(false)
   exampleSentence  String?
   partOfSpeech     String?
+  conjugation      Json?
   createdAt        DateTime @default(now())
 
   document       Document       @relation(fields: [documentId], references: [id], onDelete: Cascade)

@@ -110,23 +110,12 @@ export default function DocumentDetailPage() {
         setSummaryText('')
         try {
             const res = await fetch(`/api/documents/${params.id}/summary`, { method: 'POST' })
-            if (!res.ok || !res.body) throw new Error('Fehler')
-            const reader = res.body.getReader()
-            const decoder = new TextDecoder()
-            let buffer = ''
-            while (true) {
-                const { done, value } = await reader.read()
-                if (done) break
-                buffer += decoder.decode(value, { stream: true })
-                const lines = buffer.split('\n\n')
-                buffer = lines.pop() ?? ''
-                for (const line of lines) {
-                    if (!line.startsWith('data: ')) continue
-                    const event = JSON.parse(line.slice(6))
-                    if (event.type === 'delta') {
-                        setSummaryText(prev => prev + event.text)
-                    }
-                }
+            if (!res.ok) throw new Error('Fehler')
+            const data = await res.json()
+            if (data.summary) {
+                setSummaryText(data.summary)
+            } else {
+                throw new Error('Keine Zusammenfassung erhalten')
             }
         } catch {
             toast.error('Zusammenfassung konnte nicht erstellt werden.')

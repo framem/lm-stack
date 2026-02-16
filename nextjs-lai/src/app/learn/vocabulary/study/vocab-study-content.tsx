@@ -18,8 +18,16 @@ import { Card, CardContent } from '@/src/components/ui/card'
 import { Badge } from '@/src/components/ui/badge'
 import { Progress } from '@/src/components/ui/progress'
 import { VocabTypeInput } from '@/src/components/VocabTypeInput'
+import { TTSButton } from '@/src/components/TTSButton'
+import { ConjugationTable } from '@/src/components/ConjugationTable'
 import { reviewFlashcard } from '@/src/actions/flashcards'
 import { getDueVocabularyFlashcards, getVocabularyFlashcards } from '@/src/actions/flashcards'
+
+interface ConjugationData {
+    present?: Record<string, string>
+    past?: Record<string, string>
+    perfect?: Record<string, string>
+}
 
 interface VocabCard {
     id: string
@@ -27,6 +35,7 @@ interface VocabCard {
     back: string
     exampleSentence?: string | null
     partOfSpeech?: string | null
+    conjugation?: ConjugationData | null
     context?: string | null
     document?: { id: string; title: string } | null
     chunk?: { id: string; content: string; chunkIndex: number } | null
@@ -93,6 +102,7 @@ export function VocabStudyContent() {
     // In reversed mode, swap front and back
     const displayFront = card ? (reversed ? card.back : card.front) : ''
     const displayBack = card ? (reversed ? card.front : card.back) : ''
+    const isVerb = card?.partOfSpeech?.toLowerCase().includes('verb') ?? false
 
     const handleFlip = useCallback(() => {
         if (!flipped) setFlipped(true)
@@ -263,7 +273,10 @@ export function VocabStudyContent() {
                             {card.partOfSpeech && (
                                 <Badge variant="secondary" className="mb-2">{card.partOfSpeech}</Badge>
                             )}
-                            <p className="text-xl font-semibold">{displayFront}</p>
+                            <div className="flex items-center gap-1">
+                                <p className="text-xl font-semibold">{displayFront}</p>
+                                <TTSButton text={displayFront} />
+                            </div>
                         </CardContent>
                     </Card>
 
@@ -334,7 +347,10 @@ export function VocabStudyContent() {
                                     {card.partOfSpeech && (
                                         <Badge variant="secondary" className="mb-2">{card.partOfSpeech}</Badge>
                                     )}
-                                    <p className="text-xl font-semibold">{displayFront}</p>
+                                    <div className="flex items-center gap-1">
+                                        <p className="text-xl font-semibold">{displayFront}</p>
+                                        <TTSButton text={displayFront} />
+                                    </div>
                                     {!flipped && (
                                         <p className="text-sm text-muted-foreground mt-6">Klicken zum Umdrehen</p>
                                     )}
@@ -345,11 +361,20 @@ export function VocabStudyContent() {
                             <Card className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)] min-h-[240px]">
                                 <CardContent className="flex flex-col items-center justify-center min-h-[240px] p-8 text-center">
                                     <p className="text-xs text-muted-foreground mb-3 italic">{displayFront}</p>
-                                    <p className="text-lg">{displayBack}</p>
+                                    <div className="flex items-center gap-1">
+                                        <p className="text-lg">{displayBack}</p>
+                                        <TTSButton text={displayBack} />
+                                    </div>
                                     {card.exampleSentence && (
-                                        <p className="text-sm text-muted-foreground mt-4 italic">
-                                            {card.exampleSentence}
-                                        </p>
+                                        <div className="flex items-center gap-1 mt-4">
+                                            <p className="text-sm text-muted-foreground italic">
+                                                {card.exampleSentence}
+                                            </p>
+                                            <TTSButton text={card.exampleSentence} size="sm" className="shrink-0 h-6 w-6" />
+                                        </div>
+                                    )}
+                                    {isVerb && card.conjugation && (
+                                        <ConjugationTable conjugation={card.conjugation} />
                                     )}
                                     {card.context && (
                                         <p className="text-xs text-muted-foreground mt-3 border-t pt-3">

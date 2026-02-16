@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useEffect, use } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import { QuizPlayer } from '@/src/components/QuizPlayer'
+import { ExamPlayer } from '@/src/components/ExamPlayer'
 import { getQuiz } from '@/src/actions/quiz'
 
 interface Question {
@@ -24,6 +25,9 @@ interface QuizData {
 export default function QuizPlayerPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params)
     const router = useRouter()
+    const searchParams = useSearchParams()
+    const isExamMode = searchParams.get('mode') === 'exam'
+    const timeLimit = Number(searchParams.get('timeLimit')) || 30
     const [quiz, setQuiz] = useState<QuizData | null>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -62,6 +66,17 @@ export default function QuizPlayerPage({ params }: { params: Promise<{ id: strin
             <div className="p-6 max-w-2xl mx-auto">
                 <p className="text-destructive">{error || 'Quiz nicht gefunden.'}</p>
             </div>
+        )
+    }
+
+    if (isExamMode) {
+        return (
+            <ExamPlayer
+                quizId={quiz.id}
+                quizTitle={quiz.title}
+                questions={quiz.questions}
+                timeLimit={timeLimit}
+            />
         )
     }
 

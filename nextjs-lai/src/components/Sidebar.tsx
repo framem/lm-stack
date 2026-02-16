@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useState, useSyncExternalStore } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import Image from "next/image";
 import { usePathname, useSearchParams, useRouter } from 'next/navigation'
 import {
     BarChart3,
+    Bookmark,
     ChevronRight,
     Ellipsis,
     FileText,
@@ -19,9 +20,11 @@ import {
     Moon,
     Plus,
     Route,
+    Search,
     Settings,
     Sun,
     Trash2,
+    X,
 } from 'lucide-react'
 import {
     Sidebar as SidebarRoot,
@@ -52,7 +55,8 @@ import {
     DropdownMenuTrigger,
 } from '@/src/components/ui/dropdown-menu'
 import { useTheme } from 'next-themes'
-import { getSessions, deleteSession } from '@/src/actions/chat'
+import { Input } from '@/src/components/ui/input'
+import { getSessions, deleteSession, searchMessages, getBookmarkedMessages } from '@/src/actions/chat'
 
 interface SessionItem {
     id: string
@@ -80,6 +84,20 @@ export function AppSidebar() {
     const mounted = useSyncExternalStore(() => () => {}, () => true, () => false)
     const activeSessionId = searchParams.get('sessionId')
     const [sessions, setSessions] = useState<SessionItem[]>([])
+    const [chatView, setChatView] = useState<'sessions' | 'search' | 'bookmarks'>('sessions')
+    const [searchQuery, setSearchQuery] = useState('')
+    const [searchResults, setSearchResults] = useState<{
+        id: string
+        sessionId: string
+        sessionTitle: string | null
+        headline: string
+    }[]>([])
+    const [bookmarks, setBookmarks] = useState<{
+        id: string
+        content: string
+        session: { id: string; title: string | null }
+    }[]>([])
+    const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
     async function handleDelete(sessionId: string) {
         await deleteSession(sessionId)
@@ -90,6 +108,32 @@ export function AppSidebar() {
         }
     }
 
+
+    function handleSearchChange(query: string) {
+        setSearchQuery(query)
+        if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current)
+        if (!query.trim()) {
+            setSearchResults([])
+            return
+        }
+        searchTimeoutRef.current = setTimeout(async () => {
+            try {
+                const results = await searchMessages(query)
+                setSearchResults(results as typeof searchResults)
+            } catch {
+                setSearchResults([])
+            }
+        }, 300)
+    }
+
+    async function loadBookmarks() {
+        try {
+            const bm = await getBookmarkedMessages()
+            setBookmarks(bm as typeof bookmarks)
+        } catch {
+            setBookmarks([])
+        }
+    }
 
     // Fetch sessions on mount and whenever a new session is created
     useEffect(() => {
@@ -180,55 +224,174 @@ export function AppSidebar() {
                                     </CollapsibleTrigger>
                                     <CollapsibleContent>
                                         <SidebarMenuSub>
+                                            {/* Action row: New chat + Search + Bookmarks */}
                                             <SidebarMenuSubItem>
-                                                <SidebarMenuSubButton asChild>
-                                                    <Link href="/learn/chat">
-                                                        <Plus className="size-3" />
-                                                        <span>Neuer Chat</span>
-                                                    </Link>
-                                                </SidebarMenuSubButton>
+                                                <div className="flex items-center gap-1 px-1 py-1">
+                                                    <SidebarMenuSubButton asChild className="flex-1">
+                                                        <Link href="/learn/chat">
+                                                            <Plus className="size-3" />
+                                                            <span>Neuer Chat</span>
+                                                        </Link>
+                                                    </SidebarMenuSubButton>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setChatView(chatView === 'search' ? 'sessions' : 'search')
+                                                            setSearchQuery('')
+                                                            setSearchResults([])
+                                                        }}
+                                                        className={`rounded p-1 transition-colors hover:bg-accent ${chatView === 'search' ? 'text-primary' : 'text-muted-foreground'}`}
+                                                        title="Chat durchsuchen"
+                                                    >
+                                                        <Search className="size-3.5" />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            if (chatView === 'bookmarks') {
+                                                                setChatView('sessions')
+                                                            } else {
+                                                                setChatView('bookmarks')
+                                                                loadBookmarks()
+                                                            }
+                                                        }}
+                                                        className={`rounded p-1 transition-colors hover:bg-accent ${chatView === 'bookmarks' ? 'text-primary' : 'text-muted-foreground'}`}
+                                                        title="Lesezeichen"
+                                                    >
+                                                        <Bookmark className="size-3.5" />
+                                                    </button>
+                                                </div>
                                             </SidebarMenuSubItem>
-                                            <SidebarSeparator className="mx-0" />
-                                            {sessions.length === 0 ? (
+
+                                            {/* Search input */}
+                                            {chatView === 'search' && (
                                                 <SidebarMenuSubItem>
-                                                    <span className="px-2 py-1.5 text-xs text-muted-foreground">
-                                                        Keine Sitzungen
-                                                    </span>
-                                                </SidebarMenuSubItem>
-                                            ) : (
-                                                sessions.map((session) => (
-                                                    <SidebarMenuSubItem key={session.id} className="group/session relative">
-                                                        <SidebarMenuSubButton
-                                                            asChild
-                                                            isActive={activeSessionId === session.id}
-                                                        >
-                                                            <Link href={`/learn/chat?sessionId=${session.id}`}>
-                                                                <span className="truncate pr-5">
-                                                                    {session.title || 'Unbenannter Chat'}
-                                                                </span>
-                                                            </Link>
-                                                        </SidebarMenuSubButton>
-                                                        <DropdownMenu>
-                                                            <DropdownMenuTrigger asChild>
+                                                    <div className="px-2 pb-1.5">
+                                                        <div className="relative">
+                                                            <Search className="absolute left-2 top-1/2 -translate-y-1/2 size-3 text-muted-foreground" />
+                                                            <Input
+                                                                value={searchQuery}
+                                                                onChange={(e) => handleSearchChange(e.target.value)}
+                                                                placeholder="Nachrichten suchen..."
+                                                                className="h-7 pl-7 pr-7 text-xs"
+                                                                autoFocus
+                                                            />
+                                                            {searchQuery && (
                                                                 <button
                                                                     type="button"
-                                                                    className="absolute right-1 top-1/2 -translate-y-1/2 rounded p-0.5 opacity-0 transition-opacity hover:bg-accent group-hover/session:opacity-100 data-[state=open]:opacity-100"
+                                                                    onClick={() => { setSearchQuery(''); setSearchResults([]) }}
+                                                                    className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                                                                 >
-                                                                    <Ellipsis className="size-3.5 text-muted-foreground" />
+                                                                    <X className="size-3" />
                                                                 </button>
-                                                            </DropdownMenuTrigger>
-                                                            <DropdownMenuContent side="right" align="start">
-                                                                <DropdownMenuItem
-                                                                    variant="destructive"
-                                                                    onClick={() => handleDelete(session.id)}
-                                                                >
-                                                                    <Trash2 />
-                                                                    <span>Löschen</span>
-                                                                </DropdownMenuItem>
-                                                            </DropdownMenuContent>
-                                                        </DropdownMenu>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </SidebarMenuSubItem>
+                                            )}
+
+                                            <SidebarSeparator className="mx-0" />
+
+                                            {/* Search results */}
+                                            {chatView === 'search' && (
+                                                searchResults.length === 0 ? (
+                                                    <SidebarMenuSubItem>
+                                                        <span className="px-2 py-1.5 text-xs text-muted-foreground">
+                                                            {searchQuery ? 'Keine Treffer' : 'Suchbegriff eingeben...'}
+                                                        </span>
                                                     </SidebarMenuSubItem>
-                                                ))
+                                                ) : (
+                                                    searchResults.map((r) => (
+                                                        <SidebarMenuSubItem key={r.id}>
+                                                            <SidebarMenuSubButton asChild>
+                                                                <Link href={`/learn/chat?sessionId=${r.sessionId}`}>
+                                                                    <div className="min-w-0">
+                                                                        <p className="text-xs font-medium truncate">
+                                                                            {r.sessionTitle || 'Unbenannter Chat'}
+                                                                        </p>
+                                                                        <p
+                                                                            className="text-xs text-muted-foreground truncate [&_mark]:bg-primary/20 [&_mark]:text-foreground [&_mark]:rounded-sm"
+                                                                            dangerouslySetInnerHTML={{ __html: r.headline }}
+                                                                        />
+                                                                    </div>
+                                                                </Link>
+                                                            </SidebarMenuSubButton>
+                                                        </SidebarMenuSubItem>
+                                                    ))
+                                                )
+                                            )}
+
+                                            {/* Bookmarks view */}
+                                            {chatView === 'bookmarks' && (
+                                                bookmarks.length === 0 ? (
+                                                    <SidebarMenuSubItem>
+                                                        <span className="px-2 py-1.5 text-xs text-muted-foreground">
+                                                            Keine Lesezeichen
+                                                        </span>
+                                                    </SidebarMenuSubItem>
+                                                ) : (
+                                                    bookmarks.map((bm) => (
+                                                        <SidebarMenuSubItem key={bm.id}>
+                                                            <SidebarMenuSubButton asChild>
+                                                                <Link href={`/learn/chat?sessionId=${bm.session.id}`}>
+                                                                    <div className="min-w-0">
+                                                                        <p className="text-xs font-medium truncate">
+                                                                            {bm.session.title || 'Unbenannter Chat'}
+                                                                        </p>
+                                                                        <p className="text-xs text-muted-foreground truncate">
+                                                                            {bm.content.slice(0, 80)}{bm.content.length > 80 ? '…' : ''}
+                                                                        </p>
+                                                                    </div>
+                                                                </Link>
+                                                            </SidebarMenuSubButton>
+                                                        </SidebarMenuSubItem>
+                                                    ))
+                                                )
+                                            )}
+
+                                            {/* Session list (default view) */}
+                                            {chatView === 'sessions' && (
+                                                sessions.length === 0 ? (
+                                                    <SidebarMenuSubItem>
+                                                        <span className="px-2 py-1.5 text-xs text-muted-foreground">
+                                                            Keine Sitzungen
+                                                        </span>
+                                                    </SidebarMenuSubItem>
+                                                ) : (
+                                                    sessions.map((session) => (
+                                                        <SidebarMenuSubItem key={session.id} className="group/session relative">
+                                                            <SidebarMenuSubButton
+                                                                asChild
+                                                                isActive={activeSessionId === session.id}
+                                                            >
+                                                                <Link href={`/learn/chat?sessionId=${session.id}`}>
+                                                                    <span className="truncate pr-5">
+                                                                        {session.title || 'Unbenannter Chat'}
+                                                                    </span>
+                                                                </Link>
+                                                            </SidebarMenuSubButton>
+                                                            <DropdownMenu>
+                                                                <DropdownMenuTrigger asChild>
+                                                                    <button
+                                                                        type="button"
+                                                                        className="absolute right-1 top-1/2 -translate-y-1/2 rounded p-0.5 opacity-0 transition-opacity hover:bg-accent group-hover/session:opacity-100 data-[state=open]:opacity-100"
+                                                                    >
+                                                                        <Ellipsis className="size-3.5 text-muted-foreground" />
+                                                                    </button>
+                                                                </DropdownMenuTrigger>
+                                                                <DropdownMenuContent side="right" align="start">
+                                                                    <DropdownMenuItem
+                                                                        variant="destructive"
+                                                                        onClick={() => handleDelete(session.id)}
+                                                                    >
+                                                                        <Trash2 />
+                                                                        <span>Löschen</span>
+                                                                    </DropdownMenuItem>
+                                                                </DropdownMenuContent>
+                                                            </DropdownMenu>
+                                                        </SidebarMenuSubItem>
+                                                    ))
+                                                )
                                             )}
                                         </SidebarMenuSub>
                                     </CollapsibleContent>

@@ -57,3 +57,62 @@ export async function deleteSession(id: string) {
         where: { id },
     })
 }
+
+// Full-text search across chat messages using PostgreSQL tsvector
+export async function searchMessages(query: string) {
+    if (!query.trim()) return []
+
+    const results = await prisma.$queryRaw<
+        {
+            id: string
+            sessionId: string
+            role: string
+            content: string
+            createdAt: Date
+            sessionTitle: string | null
+            headline: string
+        }[]
+    >`
+        SELECT
+            m.id,
+            m."sessionId",
+            m.role,
+            m.content,
+            m."createdAt",
+            s.title AS "sessionTitle",
+            ts_headline('german', m.content, plainto_tsquery('german', ${query}),
+                'StartSel=<mark>, StopSel=</mark>, MaxWords=35, MinWords=15') AS headline
+        FROM "ChatMessage" m
+        JOIN "ChatSession" s ON s.id = m."sessionId"
+        WHERE to_tsvector('german', m.content) @@ plainto_tsquery('german', ${query})
+        ORDER BY m."createdAt" DESC
+        LIMIT 30
+    `
+
+    return results
+}
+
+// Toggle bookmark on a message
+export async function toggleBookmark(messageId: string) {
+    const message = await prisma.chatMessage.findUnique({
+        where: { id: messageId },
+        select: { isBookmarked: true },
+    })
+    if (!message) throw new Error('Nachricht nicht gefunden.')
+
+    return prisma.chatMessage.update({
+        where: { id: messageId },
+        data: { isBookmarked: !message.isBookmarked },
+    })
+}
+
+// Get all bookmarked messages
+export async function getBookmarkedMessages() {
+    return prisma.chatMessage.findMany({
+        where: { isBookmarked: true },
+        include: {
+            session: { select: { id: true, title: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+    })
+}

@@ -81,6 +81,12 @@ const flashcardElementSchema = z.object({
     sourceSection: z.number().describe('Abschnittsnummer (1-basiert)'),
 })
 
+const conjugationSchema = z.object({
+    present: z.record(z.string(), z.string()).optional().describe('Präsens-Konjugation: ich/du/er/wir/ihr/sie'),
+    past: z.record(z.string(), z.string()).optional().describe('Präteritum-Konjugation: ich/du/er/wir/ihr/sie'),
+    perfect: z.record(z.string(), z.string()).optional().describe('Perfekt-Konjugation: ich/du/er/wir/ihr/sie'),
+})
+
 const vocabFlashcardElementSchema = z.object({
     front: z.string().describe('Das Wort, die Phrase oder der Begriff'),
     back: z.string().describe('Die Übersetzung, Definition oder Erklärung'),
@@ -88,6 +94,7 @@ const vocabFlashcardElementSchema = z.object({
     sourceSection: z.number().describe('Abschnittsnummer (1-basiert)'),
     exampleSentence: z.string().optional().describe('Ein Beispielsatz mit dem Wort'),
     partOfSpeech: z.string().optional().describe('Wortart: Verb, Nomen, Adjektiv, Adverb, etc.'),
+    conjugation: conjugationSchema.optional().describe('Konjugationstabelle, nur bei Verben'),
 })
 
 export async function generateFlashcards(documentId: string, count: number = 10) {
@@ -111,7 +118,7 @@ export async function generateFlashcards(documentId: string, count: number = 10)
     const isVocab = contentType === 'vocabulary'
 
     const systemPrompt = isVocab
-        ? 'Du erstellst Vokabel-Karteikarten. Erstelle pro Wort oder Phrase genau eine Karteikarte. Gib wenn möglich einen Beispielsatz und die Wortart an.'
+        ? 'Du erstellst Vokabel-Karteikarten. Erstelle pro Wort oder Phrase genau eine Karteikarte. Gib wenn möglich einen Beispielsatz und die Wortart an. Falls das Wort ein Verb ist, gib die Konjugation an.'
         : 'Du erstellst Karteikarten auf Deutsch basierend auf Lerntexten.'
     const userPrompt = isVocab
         ? `Der folgende Text ist eine Vokabelliste. Erstelle pro Eintrag (Wort, Phrase oder Begriff) genau eine Karteikarte.
@@ -121,6 +128,7 @@ Anforderungen:
 - back: Die Übersetzung, Definition oder Erklärung
 - exampleSentence: Ein Beispielsatz, der das Wort verwendet (optional)
 - partOfSpeech: Wortart (Verb, Nomen, Adjektiv, etc.) (optional)
+- conjugation: Falls das Wort ein Verb ist, gib die Konjugation an (Präsens, Präteritum, Perfekt) mit den Pronomen ich/du/er/wir/ihr/sie. Bei Nicht-Verben weglassen.
 - sourceSection: Abschnittsnummer (1 bis ${selectedChunks.length})
 - Ignoriere Leerzeilen und Überschriften
 
@@ -162,6 +170,7 @@ ${contextText}`
                 isVocabulary: true,
                 exampleSentence: card.exampleSentence || undefined,
                 partOfSpeech: card.partOfSpeech || undefined,
+                conjugation: card.conjugation || undefined,
             }
         })
 

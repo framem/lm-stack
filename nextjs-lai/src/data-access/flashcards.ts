@@ -11,6 +11,7 @@ interface CreateFlashcardInput {
     isVocabulary?: boolean
     exampleSentence?: string
     partOfSpeech?: string
+    conjugation?: Record<string, Record<string, string>>
 }
 
 // Create a single flashcard

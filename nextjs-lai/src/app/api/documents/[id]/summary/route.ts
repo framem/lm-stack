@@ -1,9 +1,18 @@
 import { NextRequest } from 'next/server'
-import { streamText } from 'ai'
+import { generateText, Output } from 'ai'
+import { z } from 'zod'
 import { getModel } from '@/src/lib/llm'
 import { getDocumentWithChunks, updateDocument } from '@/src/data-access/documents'
 
-// POST /api/documents/[id]/summary - Generate a streaming summary for a document
+const summarySchema = z.object({
+    summary: z
+        .string()
+        .describe(
+            'Prägnante, strukturierte Zusammenfassung in 3-5 Absätzen mit Aufzählungspunkten für die wichtigsten Konzepte, auf Deutsch, in Markdown formatiert.'
+        ),
+})
+
+// POST /api/documents/[id]/summary - Generate summary for a document
 export async function POST(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
@@ -26,42 +35,19 @@ export async function POST(
             .slice(0, 10)
         const context = contextChunks.map(c => c.content).join('\n\n')
 
-        const result = streamText({
+        const { output } = await generateText({
             model: getModel(),
+            output: Output.object({ schema: summarySchema }),
             system: `Du bist ein Zusammenfassungs-Assistent. Erstelle eine prägnante, strukturierte Zusammenfassung des folgenden Lernmaterials in 3-5 Absätzen. Nutze Aufzählungspunkte für die wichtigsten Konzepte. Antworte auf Deutsch.`,
             prompt: `Fasse folgendes Lernmaterial zusammen:\n\n${context}`,
         })
 
-        // Accumulate the full text for DB storage
-        let fullText = ''
-        const encoder = new TextEncoder()
-        const stream = new ReadableStream({
-            async start(controller) {
-                try {
-                    for await (const chunk of result.textStream) {
-                        fullText += chunk
-                        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'delta', text: chunk })}\n\n`))
-                    }
+        if (output?.summary) {
+            await updateDocument(id, { summary: output.summary })
+            return Response.json({ summary: output.summary })
+        }
 
-                    // Save summary to document
-                    await updateDocument(id, { summary: fullText })
-                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'complete', summary: fullText })}\n\n`))
-                } catch (error) {
-                    const msg = error instanceof Error ? error.message : 'Unbekannter Fehler'
-                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', message: msg })}\n\n`))
-                } finally {
-                    controller.close()
-                }
-            }
-        })
-
-        return new Response(stream, {
-            headers: {
-                'Content-Type': 'text/event-stream',
-                'Cache-Control': 'no-cache',
-                Connection: 'keep-alive',
-            },
-        })
+        return Response.json({ error: 'Zusammenfassung konnte nicht erstellt werden.' }, { status: 500 })
     } catch (error) {
         console.error('Summary generation error:', error)
         return Response.json({ error: 'Zusammenfassung fehlgeschlagen.' }, { status: 500 })

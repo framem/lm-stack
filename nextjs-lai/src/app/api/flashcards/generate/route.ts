@@ -13,6 +13,20 @@ const flashcardElementSchema = z.object({
     sourceSection: z.number().describe('Abschnittsnummer (1-basiert)'),
 })
 
+const vocabFlashcardElementSchema = z.object({
+    front: z.string().describe('Das Wort, die Phrase oder der Begriff'),
+    back: z.string().describe('Die Übersetzung, Definition oder Erklärung'),
+    context: z.string().optional().describe('Optionales Zitat aus dem Quelltext'),
+    sourceSection: z.number().describe('Abschnittsnummer (1-basiert)'),
+    exampleSentence: z.string().optional().describe('Ein Beispielsatz mit dem Wort'),
+    partOfSpeech: z.string().optional().describe('Wortart: Verb, Nomen, Adjektiv, Adverb, etc.'),
+    conjugation: z.object({
+        present: z.record(z.string(), z.string()).optional(),
+        past: z.record(z.string(), z.string()).optional(),
+        perfect: z.record(z.string(), z.string()).optional(),
+    }).optional().describe('Konjugationstabelle, nur bei Verben'),
+})
+
 // POST /api/flashcards/generate - Generate flashcards with SSE progress
 export async function POST(request: NextRequest) {
     try {
@@ -54,7 +68,7 @@ export async function POST(request: NextRequest) {
 
                     const isVocab = contentType === 'vocabulary'
                     const systemPrompt = isVocab
-                        ? 'Du erstellst Vokabel-Karteikarten. Erstelle pro Wort oder Phrase genau eine Karteikarte.'
+                        ? 'Du erstellst Vokabel-Karteikarten. Erstelle pro Wort oder Phrase genau eine Karteikarte. Gib wenn möglich einen Beispielsatz und die Wortart an. Falls das Wort ein Verb ist, gib die Konjugation an.'
                         : 'Du erstellst Karteikarten auf Deutsch basierend auf Lerntexten.'
                     const userPrompt = isVocab
                         ? `Der folgende Text ist eine Vokabelliste. Erstelle pro Eintrag (Wort, Phrase oder Begriff) genau eine Karteikarte.
@@ -62,6 +76,9 @@ export async function POST(request: NextRequest) {
 Anforderungen:
 - front: Das Wort, die Phrase oder der Begriff
 - back: Die Übersetzung, Definition oder Erklärung
+- exampleSentence: Ein Beispielsatz, der das Wort verwendet (optional)
+- partOfSpeech: Wortart (Verb, Nomen, Adjektiv, etc.) (optional)
+- conjugation: Falls das Wort ein Verb ist, gib die Konjugation an (Präsens, Präteritum, Perfekt) mit den Pronomen ich/du/er/wir/ihr/sie. Bei Nicht-Verben weglassen.
 - sourceSection: Abschnittsnummer (1 bis ${selectedChunks.length})
 - Ignoriere Leerzeilen und Überschriften
 
@@ -80,14 +97,16 @@ Fokus: Definitionen, Kernkonzepte, Fakten (Zahlen, Daten, Namen), Praxiswissen
 Text:
 ${contextText}`
 
+                    const elementSchema = isVocab ? vocabFlashcardElementSchema : flashcardElementSchema
                     const result = streamText({
                         model: getModel(),
                         system: systemPrompt,
-                        output: Output.array({ element: flashcardElementSchema }),
+                        output: Output.array({ element: elementSchema }),
                         prompt: userPrompt,
                     })
 
-                    const cards: z.infer<typeof flashcardElementSchema>[] = []
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const cards: any[] = []
 
                     for await (const element of result.elementStream) {
                         cards.push(element)
@@ -112,6 +131,12 @@ ${contextText}`
                             back: card.back,
                             context: card.context || undefined,
                             chunkId: selectedChunks[idx].id,
+                            ...(isVocab ? {
+                                isVocabulary: true,
+                                exampleSentence: card.exampleSentence || undefined,
+                                partOfSpeech: card.partOfSpeech || undefined,
+                                conjugation: card.conjugation || undefined,
+                            } : {}),
                         }
                     })
 

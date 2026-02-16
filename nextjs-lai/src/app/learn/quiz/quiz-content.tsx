@@ -16,6 +16,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/src/components/ui/select'
+import { Switch } from '@/src/components/ui/switch'
 import {
     Dialog,
     DialogContent,
@@ -117,6 +118,8 @@ export function QuizContent() {
     const [generatedCount, setGeneratedCount] = useState(0)
     const [questionCount, setQuestionCount] = useState(5)
     const [questionTypes, setQuestionTypes] = useState<string[]>(['singleChoice', 'multipleChoice', 'freetext', 'truefalse'])
+    const [examMode, setExamMode] = useState(false)
+    const [examTimeLimit, setExamTimeLimit] = useState(30)
     const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
 
     useEffect(() => {
@@ -193,7 +196,10 @@ export function QuizContent() {
                     if (event.type === 'progress') {
                         setGeneratedCount(event.generated)
                     } else if (event.type === 'complete') {
-                        router.push(`/learn/quiz/${event.quizId}`)
+                        const url = examMode
+                            ? `/learn/quiz/${event.quizId}?mode=exam&timeLimit=${examTimeLimit}`
+                            : `/learn/quiz/${event.quizId}`
+                        router.push(url)
                         return
                     } else if (event.type === 'error') {
                         throw new Error(event.message)
@@ -459,6 +465,32 @@ export function QuizContent() {
                             <p className="text-xs text-muted-foreground">
                                 Pro ausgewähltem Fragetyp wird mindestens eine Frage erstellt. Die Fragen werden möglichst gleichmäßig auf alle Typen verteilt.
                             </p>
+                        </div>
+
+                        {/* Exam mode */}
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                                <label className="text-sm font-medium">Prüfungsmodus</label>
+                                <Switch checked={examMode} onCheckedChange={setExamMode} />
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                                Alle Fragen auf einer Seite mit Countdown-Timer. Antworten werden erst nach Abgabe ausgewertet.
+                            </p>
+                            {examMode && (
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium">Zeitlimit</label>
+                                    <Select value={String(examTimeLimit)} onValueChange={(v) => setExamTimeLimit(Number(v))}>
+                                        <SelectTrigger className="w-full">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {[10, 15, 20, 30, 45, 60].map((n) => (
+                                                <SelectItem key={n} value={String(n)}>{n} Minuten</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            )}
                         </div>
                     </div>
 
