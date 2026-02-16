@@ -3,12 +3,21 @@
 import Image from "next/image";
 import Link from "next/link";
 import { motion } from "motion/react";
-import { FileText, MessageSquare, HelpCircle } from "lucide-react";
+import {
+  FileText,
+  MessageSquare,
+  HelpCircle,
+  Layers,
+  TrendingUp,
+  ShieldCheck,
+} from "lucide-react";
 
 import { Button } from "@/src/components/ui/button";
 import { Badge } from "@/src/components/ui/badge";
 import { LaiWorkflow } from "@/src/components/landing/LaiWorkflow";
 import { FeatureCard } from "@/src/components/landing/FeatureCard";
+import { UseCases } from "@/src/components/landing/UseCases";
+import { FAQ } from "@/src/components/landing/FAQ";
 
 const heroVariants = {
   hidden: {},
@@ -32,7 +41,7 @@ const foxReveal = {
 const glowPulse = {
   hidden: { opacity: 0 },
   show: {
-    opacity: [0.4, 0.7, 0.4],
+    opacity: [0.25, 0.45, 0.25],
     transition: {
       opacity: { duration: 4, repeat: Infinity, ease: "easeInOut" },
       duration: 0.8,
@@ -42,28 +51,52 @@ const glowPulse = {
 
 const features = [
   {
-    icon: FileText,
-    title: "Lernmaterial verwalten",
-    description:
-      "Lade PDFs, DOCX oder Markdown hoch und organisiere deine Lernmaterialien an einem Ort.",
-    href: "/learn/documents",
-    accent: "blue" as const,
-  },
-  {
     icon: MessageSquare,
     title: "KI-Chat mit Quellenangaben",
     description:
-      "Stelle Fragen zu deinem Lernmaterial und erhalte verifizierte Antworten mit Quellenangaben.",
+      "Frag die KI wie einen Tutor — sie antwortet NUR basierend auf deinen Unterlagen und zeigt dir die exakte Stelle im Dokument.",
     href: "/learn/chat",
     accent: "orange" as const,
   },
   {
     icon: HelpCircle,
-    title: "Quiz & Wissensstand",
+    title: "Quiz-Generator",
     description:
-      "Teste dein Wissen mit automatisch generierten Quizfragen und verfolge deinen Fortschritt.",
+      "LAI erstellt automatisch Quizfragen aus deinen Unterlagen. Sieh auf einen Blick, welche Themen sitzen — und wo du nochmal ran musst.",
     href: "/learn/quiz",
     accent: "blue" as const,
+  },
+  {
+    icon: Layers,
+    title: "Karteikarten & Spaced Repetition",
+    description:
+      "KI-generierte Karteikarten, die sich deinem Lernstand anpassen. Nie wieder stundenlang Karten tippen.",
+    href: "/learn/flashcards",
+    accent: "orange" as const,
+  },
+  {
+    icon: FileText,
+    title: "Dein Material, dein Wissen",
+    description:
+      "Lade Skripte, Folien oder Notizen hoch (PDF, DOCX, Markdown) — LAI extrahiert automatisch die wichtigsten Konzepte.",
+    href: "/learn/documents",
+    accent: "blue" as const,
+  },
+  {
+    icon: TrendingUp,
+    title: "Fortschritt & Lernanalyse",
+    description:
+      "Sieh auf einen Blick, wo du stehst — mit Streaks, Wissensstand-Tracking und Empfehlungen für deine nächsten Schritte.",
+    href: "/learn/stats",
+    accent: "blue" as const,
+  },
+  {
+    icon: ShieldCheck,
+    title: "Deine Daten bleiben bei dir",
+    description:
+      "LAI läuft 100% lokal auf deinem Gerät. Keine Cloud, kein Tracking, keine Datensammlung. Deine Skripte bleiben privat.",
+    href: "#faq",
+    accent: "orange" as const,
   },
 ];
 
@@ -83,14 +116,14 @@ export default function LandingPage() {
             <span className="text-lg font-bold">LAI</span>
           </Link>
           <Button size="sm" asChild>
-            <Link href="/learn">Jetzt starten</Link>
+            <Link href="/learn">Kostenlos ausprobieren</Link>
           </Button>
         </div>
       </header>
 
       {/* Hero */}
       <section className="relative flex min-h-screen items-center overflow-hidden px-6 pt-14">
-        {/* Ambient background gradient (top-right bias to sit behind fox) */}
+        {/* Ambient background gradient */}
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute -right-32 top-1/4 h-[600px] w-[600px] rounded-full bg-primary/[0.07] blur-[120px]" />
           <div className="absolute -right-16 top-1/3 h-[400px] w-[400px] rounded-full bg-orange-500/[0.05] blur-[100px]" />
@@ -109,74 +142,79 @@ export default function LandingPage() {
                 variant="secondary"
                 className="mb-5 border border-orange-400/25 px-3 py-1 text-xs tracking-wide"
               >
-                KI-gestütztes Lernen
+                100% lokal · Kein Cloud-Upload · Kostenlos
               </Badge>
             </motion.div>
             <motion.h1
               variants={fadeUp}
               className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl"
             >
-              Lerne smarter,
+              Von deinen Skripten
               <br />
               <span className="bg-gradient-to-r from-primary via-blue-400 to-orange-400 bg-clip-text text-transparent">
-                nicht härter.
+                zu Karteikarten in 2 Minuten.
               </span>
             </motion.h1>
             <motion.p
               variants={fadeUp}
               className="mt-5 max-w-lg text-lg leading-relaxed text-muted-foreground"
             >
-              LAI kombiniert deine Lernmaterialien mit KI — für Antworten, die
-              auf deinem Lernmaterial basieren, und Quizfragen, die dein Wissen
-              wirklich testen.
+              Lade PDFs hoch, stelle Fragen und teste dein Wissen —
+              ohne manuelles Zusammenfassen. Die KI antwortet nur aus deinen Unterlagen.
             </motion.p>
             <motion.div
               variants={fadeUp}
               className="mt-8 flex flex-wrap items-center gap-3"
             >
               <Button size="lg" asChild>
-                <Link href="/learn">Jetzt starten</Link>
+                <Link href="/learn">Kostenlos ausprobieren</Link>
               </Button>
               <Button variant="outline" size="lg" asChild>
-                <Link href="#workflow">Mehr erfahren</Link>
+                <Link href="#workflow">So funktioniert&apos;s</Link>
               </Button>
             </motion.div>
+            <motion.p
+              variants={fadeUp}
+              className="mt-3 text-xs text-muted-foreground"
+            >
+              Keine Registrierung · Keine Kreditkarte · 2 Min Setup
+            </motion.p>
           </motion.div>
 
-          {/* Right column — Fox logo with glow */}
+          {/* Right column — Fox logo with glow (reduced size) */}
           <motion.div
             className="relative flex items-center justify-center"
             variants={heroVariants}
             initial="hidden"
             animate="show"
           >
-            {/* Layered glow effects */}
+            {/* Layered glow effects (reduced opacity) */}
             <motion.div
-              className="absolute h-[420px] w-[420px] rounded-full sm:h-[480px] sm:w-[480px]"
+              className="absolute h-[340px] w-[340px] rounded-full sm:h-[380px] sm:w-[380px]"
               variants={glowPulse}
               style={{
                 background:
-                  "radial-gradient(circle, oklch(0.58 0.19 255 / 0.25) 0%, transparent 70%)",
+                  "radial-gradient(circle, oklch(0.58 0.19 255 / 0.12) 0%, transparent 70%)",
               }}
             />
             <motion.div
-              className="absolute h-[350px] w-[350px] rounded-full sm:h-[400px] sm:w-[400px]"
+              className="absolute h-[280px] w-[280px] rounded-full sm:h-[320px] sm:w-[320px]"
               variants={glowPulse}
               style={{
                 background:
-                  "radial-gradient(circle, oklch(0.65 0.17 55 / 0.2) 0%, transparent 65%)",
+                  "radial-gradient(circle, oklch(0.65 0.17 55 / 0.1) 0%, transparent 65%)",
               }}
             />
             {/* Subtle ring */}
             <motion.div
-              className="absolute h-[380px] w-[380px] rounded-full border border-primary/10 sm:h-[440px] sm:w-[440px]"
+              className="absolute h-[310px] w-[310px] rounded-full border border-primary/10 sm:h-[360px] sm:w-[360px]"
               variants={foxReveal}
             />
 
             {/* Fox image */}
             <motion.div variants={foxReveal} className="relative">
               <motion.div
-                animate={{ y: [0, -8, 0] }}
+                animate={{ y: [0, -4, 0] }}
                 transition={{
                   duration: 5,
                   repeat: Infinity,
@@ -186,14 +224,37 @@ export default function LandingPage() {
                 <Image
                   src="/images/fox.png"
                   alt="LAI — Geometric fox logo"
-                  width={420}
-                  height={420}
+                  width={300}
+                  height={300}
                   priority
-                  className="relative z-10 h-auto w-[300px] drop-shadow-[0_0_40px_oklch(0.58_0.19_255_/_0.3)] sm:w-[380px] lg:w-[420px]"
+                  className="relative z-10 h-auto w-[220px] drop-shadow-[0_0_40px_oklch(0.58_0.19_255_/_0.3)] sm:w-[280px] lg:w-[300px]"
                 />
               </motion.div>
             </motion.div>
           </motion.div>
+        </div>
+      </section>
+
+      {/* Use Cases */}
+      <section className="px-6 py-24">
+        <div className="mx-auto max-w-5xl">
+          <motion.div
+            className="text-center"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+          >
+            <h2 className="text-3xl font-bold tracking-tight">
+              Gebaut für Studierende
+            </h2>
+            <p className="mt-2 text-muted-foreground">
+              Egal ob Medizin, Jura oder Informatik — LAI arbeitet mit deinem Material.
+            </p>
+          </motion.div>
+          <div className="mt-12">
+            <UseCases />
+          </div>
         </div>
       </section>
 
@@ -208,10 +269,10 @@ export default function LandingPage() {
             transition={{ duration: 0.5 }}
           >
             <h2 className="text-3xl font-bold tracking-tight">
-              So funktioniert LAI
+              So einfach geht&apos;s
             </h2>
             <p className="mt-2 text-muted-foreground">
-              Von deinem Lernmaterial zum verifizierten Wissen in fünf Schritten.
+              Von deinem Lernmaterial zum verifizierten Wissen in vier Schritten.
             </p>
           </motion.div>
           <motion.div
@@ -239,11 +300,34 @@ export default function LandingPage() {
             <h2 className="text-3xl font-bold tracking-tight">
               Alles, was du zum Lernen brauchst
             </h2>
+            <p className="mt-2 text-muted-foreground">
+              Kein Wechsel zwischen fünf Apps — alles an einem Ort.
+            </p>
           </motion.div>
-          <div className="mt-12 grid gap-6 md:grid-cols-3">
+          <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {features.map((feature, index) => (
               <FeatureCard key={feature.title} index={index} {...feature} />
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section id="faq" className="px-6 py-24">
+        <div className="mx-auto max-w-3xl">
+          <motion.div
+            className="text-center"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+          >
+            <h2 className="text-3xl font-bold tracking-tight">
+              Häufige Fragen
+            </h2>
+          </motion.div>
+          <div className="mt-12">
+            <FAQ />
           </div>
         </div>
       </section>
@@ -258,14 +342,14 @@ export default function LandingPage() {
           transition={{ duration: 0.5 }}
         >
           <h2 className="text-3xl font-bold tracking-tight">
-            Bereit, smarter zu{" "}
-            <span className="text-orange-400">lernen</span>?
+            Probier es aus — in 2 Minuten{" "}
+            <span className="text-orange-400">startklar</span>.
           </h2>
           <p className="mt-2 text-muted-foreground">
-            Lade dein Lernmaterial hoch und starte sofort mit dem Lernen.
+            Keine Registrierung, kein Abo, keine Kreditkarte. Einfach loslegen.
           </p>
           <Button size="lg" className="mt-8" asChild>
-            <Link href="/learn">Jetzt starten</Link>
+            <Link href="/learn">Kostenlos ausprobieren</Link>
           </Button>
         </motion.div>
       </section>
@@ -273,7 +357,7 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="border-t px-6 py-8">
         <div className="mx-auto flex max-w-5xl items-center justify-between text-sm text-muted-foreground">
-          <span>LAI — Lernplattform mit KI</span>
+          <span>LAI — KI-Lernplattform · 100% lokal · 100% privat · 100% kostenlos</span>
           <span>2026</span>
         </div>
       </footer>
