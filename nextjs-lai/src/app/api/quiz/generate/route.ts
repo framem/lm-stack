@@ -8,6 +8,7 @@ import {
     generateMultipleChoiceQuestions,
     generateFreetextQuestions,
     generateTruefalseQuestions,
+    generateClozeQuestions,
     type QuestionToSave,
 } from '@/src/lib/quiz-generation'
 
@@ -26,7 +27,7 @@ export async function POST(request: NextRequest) {
             return Response.json({ error: 'Mindestens ein Lernmaterial ist erforderlich.' }, { status: 400 })
         }
 
-        const validTypes = ['singleChoice', 'multipleChoice', 'freetext', 'truefalse']
+        const validTypes = ['singleChoice', 'multipleChoice', 'freetext', 'truefalse', 'cloze']
         const types = (Array.isArray(questionTypes) ? questionTypes : ['singleChoice'])
             .filter((t: string) => validTypes.includes(t))
         if (types.length === 0) {
@@ -131,6 +132,20 @@ export async function POST(request: NextRequest) {
                                     explanation: q.explanation,
                                     sourceSnippet: q.sourceSnippet,
                                     questionType: 'truefalse',
+                                })
+                                send({ type: 'progress', generated: allQuestions.length, total: count })
+                            }
+                        } else if (type === 'cloze') {
+                            const qs = await generateClozeQuestions(contextText, typeCount)
+                            for (const q of qs) {
+                                allQuestions.push({
+                                    questionText: q.questionText,
+                                    options: null,
+                                    correctIndex: null,
+                                    correctAnswer: q.correctAnswer,
+                                    explanation: q.explanation,
+                                    sourceSnippet: q.sourceSnippet,
+                                    questionType: 'cloze',
                                 })
                                 send({ type: 'progress', generated: allQuestions.length, total: count })
                             }

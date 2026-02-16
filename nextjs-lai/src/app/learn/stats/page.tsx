@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { BarChart3 } from 'lucide-react'
 import { getDailyActivity, getKnowledgeTrend, getSubjectDistribution } from '@/src/data-access/stats'
 import { StatsCharts } from '@/src/components/StatsCharts'

@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import Link from 'next/link'
 import {ArrowRight, FileText, HelpCircle, Layers, MessageSquare, Sparkles, TrendingUp, Upload} from 'lucide-react'
 import {Card, CardContent, CardHeader, CardTitle} from '@/src/components/ui/card'

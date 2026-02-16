@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import Link from 'next/link'
 import {
     Route,
@@ -153,6 +155,19 @@ export default async function LearningPathsPage() {
                             {profile.prioritizedDocuments.map((doc, index) => {
                                 const isWeak = doc.avgScore < 50 && doc.totalAttempts > 0
 
+                                // Determine best action per document
+                                const docAction = doc.totalAttempts === 0 && doc.quizCount > 0
+                                    ? actionLabels.quiz
+                                    : doc.totalAttempts === 0 && doc.flashcardCount > 0
+                                        ? actionLabels.flashcards
+                                        : doc.dueItems > 0 && doc.flashcardCount > 0
+                                            ? actionLabels.flashcards
+                                            : doc.dueItems > 0
+                                                ? actionLabels.review
+                                                : isWeak && doc.quizCount > 0
+                                                    ? actionLabels.quiz
+                                                    : actionLabels.read
+
                                 return (
                                     <Card key={doc.documentId} className={isWeak ? 'border-orange-500/30' : ''}>
                                         <CardContent className="p-4">
@@ -196,9 +211,10 @@ export default async function LearningPathsPage() {
                                                             {doc.avgScore}%
                                                         </p>
                                                     </div>
-                                                    <Button variant="ghost" size="sm" asChild>
-                                                        <Link href={`/learn/documents/${doc.documentId}`}>
-                                                            <ArrowRight className="h-4 w-4" />
+                                                    <Button variant="outline" size="sm" asChild>
+                                                        <Link href={docAction.href(doc.documentId)}>
+                                                            <docAction.icon className="h-4 w-4" />
+                                                            <span className="hidden lg:inline">{docAction.label}</span>
                                                         </Link>
                                                     </Button>
                                                 </div>

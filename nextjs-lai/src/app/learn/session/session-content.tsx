@@ -10,6 +10,7 @@ import {
     Layers,
     ArrowRight,
     GraduationCap,
+    PenLine,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/src/components/ui/card'
 import { Button } from '@/src/components/ui/button'
@@ -85,6 +86,7 @@ export function SessionContent() {
         explanation?: string
         freeTextScore?: number
         freeTextFeedback?: string
+        correctAnswer?: string
     } | null>(null)
 
     useEffect(() => {
@@ -148,17 +150,18 @@ export function SessionContent() {
         const type = q.questionType || 'singleChoice'
         const isMulti = type === 'multipleChoice'
         const isFreetext = type === 'freetext'
+        const isCloze = type === 'cloze'
 
         if (isMulti && selectedIndices.length === 0) return
-        if (!isMulti && !isFreetext && selectedIndex === null) return
-        if (isFreetext && !freeTextAnswer.trim()) return
+        if (!isMulti && !isFreetext && !isCloze && selectedIndex === null) return
+        if ((isFreetext || isCloze) && !freeTextAnswer.trim()) return
 
         setSubmitting(true)
         try {
             const result = await evaluateAnswer(
                 currentItem.id,
-                isFreetext || isMulti ? null : selectedIndex,
-                isFreetext ? freeTextAnswer : undefined,
+                isFreetext || isCloze || isMulti ? null : selectedIndex,
+                (isFreetext || isCloze) ? freeTextAnswer : undefined,
                 isMulti ? selectedIndices : undefined,
             ) as typeof quizResult
 
@@ -427,6 +430,7 @@ function QuizItem({
         explanation?: string
         freeTextScore?: number
         freeTextFeedback?: string
+        correctAnswer?: string
     } | null
     submitting: boolean
     onSelectIndex: (i: number | null) => void
@@ -439,24 +443,28 @@ function QuizItem({
     const type = question.questionType || 'singleChoice'
     const isMulti = type === 'multipleChoice'
     const isFreetext = type === 'freetext'
+    const isCloze = type === 'cloze'
     const docTitle = question.quiz?.document?.title || question.quiz?.title
 
-    const canSubmit = isFreetext
+    const canSubmit = isFreetext || isCloze
         ? !!freeTextAnswer.trim()
         : isMulti
             ? selectedIndices.length > 0
             : selectedIndex !== null
 
+    // Split cloze question text around {{blank}}
+    const clozeParts = isCloze ? question.questionText.split('{{blank}}') : []
+
     return (
         <div className="space-y-4">
             <Badge variant="secondary" className="gap-1">
-                <HelpCircle className="h-3 w-3" />
-                Quizfrage
+                {isCloze ? <PenLine className="h-3 w-3" /> : <HelpCircle className="h-3 w-3" />}
+                {isCloze ? 'Lückentext' : 'Quizfrage'}
             </Badge>
 
             <Card>
                 <CardHeader>
-                    <CardTitle className="text-lg">{question.questionText}</CardTitle>
+                    {!isCloze && <CardTitle className="text-lg">{question.questionText}</CardTitle>}
                     <div className="flex items-center gap-1.5 mt-1">
                         {docTitle && (
                             <Badge variant="outline" className="text-xs font-normal text-muted-foreground">
@@ -524,6 +532,38 @@ function QuizItem({
                         </RadioGroup>
                     )}
 
+                    {/* Cloze */}
+                    {isCloze && (
+                        <div className="space-y-2">
+                            <p className="text-lg leading-relaxed">
+                                {clozeParts.map((part, i) => (
+                                    <span key={i}>
+                                        {part}
+                                        {i < clozeParts.length - 1 && (
+                                            <input
+                                                type="text"
+                                                value={freeTextAnswer}
+                                                onChange={(e) => { if (!result) onFreeTextChange(e.target.value) }}
+                                                onKeyDown={(e) => { if (e.key === 'Enter' && !result) onSubmit() }}
+                                                disabled={!!result}
+                                                autoFocus
+                                                className={`inline-block w-40 mx-1 px-2 py-0.5 text-center border-b-2 bg-transparent outline-none text-base ${
+                                                    result
+                                                        ? result.isCorrect || (result.freeTextScore ?? 0) >= 0.5
+                                                            ? 'border-green-500 text-green-700 dark:text-green-400'
+                                                            : 'border-red-500 text-red-700 dark:text-red-400'
+                                                        : 'border-primary focus:border-primary'
+                                                }`}
+                                                placeholder="___"
+                                                maxLength={100}
+                                            />
+                                        )}
+                                    </span>
+                                ))}
+                            </p>
+                        </div>
+                    )}
+
                     {/* Freetext */}
                     {isFreetext && (
                         <div className="space-y-2">
@@ -542,7 +582,7 @@ function QuizItem({
                     {result && (
                         <div className="mt-4 p-3 rounded-lg border bg-muted/50 space-y-2">
                             <div className="flex items-center gap-2">
-                                {isFreetext ? (
+                                {(isFreetext || isCloze) ? (
                                     <Badge variant="outline">
                                         Bewertung: {Math.round((result.freeTextScore ?? 0) * 100)}%
                                     </Badge>
@@ -552,6 +592,11 @@ function QuizItem({
                                     <Badge variant="destructive">Falsch</Badge>
                                 )}
                             </div>
+                            {isCloze && result.correctAnswer && (
+                                <p className="text-sm font-medium">
+                                    Richtige Antwort: <span className="text-green-600">{result.correctAnswer}</span>
+                                </p>
+                            )}
                             {result.explanation && (
                                 <p className="text-sm text-muted-foreground">{result.explanation}</p>
                             )}

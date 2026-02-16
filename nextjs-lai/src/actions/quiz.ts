@@ -26,8 +26,10 @@ import {
     generateMultipleChoiceQuestions,
     generateFreetextQuestions,
     generateTruefalseQuestions,
+    generateClozeQuestions,
     type QuestionToSave,
 } from '@/src/lib/quiz-generation'
+import { normalizedLevenshtein } from '@/src/lib/string-similarity'
 import { recordActivity } from '@/src/data-access/user-stats'
 
 // ── List all quizzes ──
@@ -99,7 +101,7 @@ export async function generateQuiz(
         throw new Error('Lernmaterial-ID ist erforderlich.')
     }
 
-    const validTypes = ['singleChoice', 'multipleChoice', 'freetext', 'truefalse']
+    const validTypes = ['singleChoice', 'multipleChoice', 'freetext', 'truefalse', 'cloze']
     const types = (Array.isArray(questionTypes) ? questionTypes : ['singleChoice'])
         .filter((t: string) => validTypes.includes(t))
     if (types.length === 0) {
@@ -193,6 +195,24 @@ export async function generateQuiz(
                         explanation: q.explanation,
                         sourceSnippet: q.sourceSnippet,
                         questionType: 'truefalse',
+                    })
+                }
+            })
+        )
+    }
+
+    if (distribution['cloze']) {
+        generationTasks.push(
+            generateClozeQuestions(contextText, distribution['cloze']).then((qs) => {
+                for (const q of qs) {
+                    allQuestions.push({
+                        questionText: q.questionText,
+                        options: null,
+                        correctIndex: null,
+                        correctAnswer: q.correctAnswer,
+                        explanation: q.explanation,
+                        sourceSnippet: q.sourceSnippet,
+                        questionType: 'cloze',
                     })
                 }
             })
@@ -408,6 +428,40 @@ Antwort des Benutzers: "${freeTextAnswer}"`,
     }
 }
 
+// Evaluate cloze questions: fast path via Levenshtein, slow path via LLM
+async function evaluateCloze(
+    question: {
+        id: string
+        questionText: string
+        correctAnswer: string | null
+        sourceSnippet: string | null
+    },
+    freeTextAnswer: string,
+) {
+    const correct = question.correctAnswer ?? ''
+    const similarity = normalizedLevenshtein(freeTextAnswer, correct)
+
+    // Fast path: close enough string match
+    if (similarity >= 0.85) {
+        const attempt = await dbRecordAttempt(
+            question.id, null, true, undefined,
+            freeTextAnswer, 1.0, 'Richtig!'
+        )
+        await upsertQuestionProgress(question.id, true, 1.0)
+        return {
+            isCorrect: true,
+            freeTextScore: 1.0,
+            freeTextFeedback: 'Richtig!',
+            correctAnswer: correct,
+            sourceSnippet: question.sourceSnippet ?? undefined,
+            attemptId: attempt.id,
+        }
+    }
+
+    // Slow path: fall back to LLM semantic comparison
+    return evaluateFreetext(question, freeTextAnswer)
+}
+
 export async function evaluateAnswer(
     questionId: string,
     selectedIndex?: number | null,
@@ -441,8 +495,8 @@ export async function evaluateAnswer(
         throw new Error('Mindestens eine Auswahl ist für diesen Fragetyp erforderlich.')
     }
 
-    // Validate: freetext requires freeTextAnswer
-    if (questionType === 'freetext' && !freeTextAnswer) {
+    // Validate: freetext/cloze requires freeTextAnswer
+    if ((questionType === 'freetext' || questionType === 'cloze') && !freeTextAnswer) {
         throw new Error('Eine Freitext-Antwort ist für diesen Fragetyp erforderlich.')
     }
 
@@ -453,7 +507,9 @@ export async function evaluateAnswer(
 
     // Evaluate based on question type
     let evalResult
-    if (questionType === 'freetext') {
+    if (questionType === 'cloze') {
+        evalResult = await evaluateCloze(question, sanitizedFreeText!)
+    } else if (questionType === 'freetext') {
         evalResult = await evaluateFreetext(question, sanitizedFreeText!)
     } else if (questionType === 'multipleChoice') {
         evalResult = await evaluateMultipleChoiceSelection(question, selectedIndices!)

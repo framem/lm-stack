@@ -39,6 +39,7 @@ const TYPE_LABELS: Record<string, string> = {
     multipleChoice: 'Multiple Choice',
     freetext: 'Freitext',
     truefalse: 'Wahr/Falsch',
+    cloze: 'Lückentext',
 }
 
 export function ExamPlayer({ quizId, quizTitle, questions, timeLimit }: ExamPlayerProps) {
@@ -71,7 +72,7 @@ export function ExamPlayer({ quizId, quizTitle, questions, timeLimit }: ExamPlay
             const type = question.questionType || 'singleChoice'
 
             let promise: Promise<unknown>
-            if (type === 'freetext') {
+            if (type === 'freetext' || type === 'cloze') {
                 promise = evaluateAnswer(
                     question.id,
                     null,
@@ -108,7 +109,7 @@ export function ExamPlayer({ quizId, quizTitle, questions, timeLimit }: ExamPlay
         const a = answers.get(q.id)
         if (!a) return false
         const type = q.questionType || 'singleChoice'
-        if (type === 'freetext') return !!a.freeTextAnswer?.trim()
+        if (type === 'freetext' || type === 'cloze') return !!a.freeTextAnswer?.trim()
         if (type === 'multipleChoice') return (a.selectedIndices?.length ?? 0) > 0
         return a.selectedIndex !== null && a.selectedIndex !== undefined
     }).length
@@ -148,8 +149,10 @@ export function ExamPlayer({ quizId, quizTitle, questions, timeLimit }: ExamPlay
                         const answer = answers.get(question.id) || {}
                         const type = question.questionType || 'singleChoice'
                         const isFreetext = type === 'freetext'
+                        const isCloze = type === 'cloze'
                         const isMultipleChoice = type === 'multipleChoice'
                         const options = question.options
+                        const clozeParts = isCloze ? question.questionText.split('{{blank}}') : []
 
                         return (
                             <Card key={question.id} id={`q-${qIdx}`}>
@@ -164,9 +167,11 @@ export function ExamPlayer({ quizId, quizTitle, questions, timeLimit }: ExamPlay
                                             </Badge>
                                         )}
                                     </div>
-                                    <CardTitle className="text-base mt-2">
-                                        {question.questionText}
-                                    </CardTitle>
+                                    {!isCloze && (
+                                        <CardTitle className="text-base mt-2">
+                                            {question.questionText}
+                                        </CardTitle>
+                                    )}
                                 </CardHeader>
                                 <CardContent>
                                     {/* Multiple Choice: Checkboxes */}
@@ -197,7 +202,7 @@ export function ExamPlayer({ quizId, quizTitle, questions, timeLimit }: ExamPlay
                                     )}
 
                                     {/* Single Choice / True-False: RadioGroup */}
-                                    {!isMultipleChoice && !isFreetext && options && options.length > 0 && (
+                                    {!isMultipleChoice && !isFreetext && !isCloze && options && options.length > 0 && (
                                         <RadioGroup
                                             value={answer.selectedIndex !== null && answer.selectedIndex !== undefined ? String(answer.selectedIndex) : ''}
                                             onValueChange={(v) => updateAnswer(question.id, { selectedIndex: Number(v) })}
@@ -212,6 +217,29 @@ export function ExamPlayer({ quizId, quizTitle, questions, timeLimit }: ExamPlay
                                                 </label>
                                             ))}
                                         </RadioGroup>
+                                    )}
+
+                                    {/* Cloze */}
+                                    {isCloze && (
+                                        <div className="space-y-2">
+                                            <p className="text-base leading-relaxed">
+                                                {clozeParts.map((part, i) => (
+                                                    <span key={i}>
+                                                        {part}
+                                                        {i < clozeParts.length - 1 && (
+                                                            <input
+                                                                type="text"
+                                                                value={answer.freeTextAnswer || ''}
+                                                                onChange={(e) => updateAnswer(question.id, { freeTextAnswer: e.target.value })}
+                                                                className="inline-block w-40 mx-1 px-2 py-0.5 text-center border-b-2 border-primary bg-transparent outline-none text-base focus:border-primary"
+                                                                placeholder="___"
+                                                                maxLength={100}
+                                                            />
+                                                        )}
+                                                    </span>
+                                                ))}
+                                            </p>
+                                        </div>
                                     )}
 
                                     {/* Freetext */}

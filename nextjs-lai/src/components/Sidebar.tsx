@@ -56,17 +56,18 @@ import {
 } from '@/src/components/ui/dropdown-menu'
 import { useTheme } from 'next-themes'
 import { Input } from '@/src/components/ui/input'
+import { Progress } from '@/src/components/ui/progress'
 import { getSessions, deleteSession, searchMessages, getBookmarkedMessages } from '@/src/actions/chat'
+import { getSubjectOverview } from '@/src/actions/subjects'
 
 interface SessionItem {
     id: string
     title: string | null
 }
 
-// Main navigation items (without Chat — handled separately)
+// Main navigation items (without Chat and Fächer — handled separately)
 const navItems = [
     { href: '/learn', label: 'Dashboard', icon: Home },
-    { href: '/learn/subjects', label: 'Fächer', icon: FolderOpen },
     { href: '/learn/documents', label: 'Lernmaterial', icon: FileText },
     { href: '/learn/quiz', label: 'Quiz', icon: HelpCircle },
     { href: '/learn/flashcards', label: 'Karteikarten', icon: Layers },
@@ -76,6 +77,12 @@ const navItems = [
     { href: '/learn/stats', label: 'Statistiken', icon: BarChart3 },
 ]
 
+interface SubjectItem {
+    subject: string
+    avgProgress: number
+    dueReviews: number
+}
+
 export function AppSidebar() {
     const pathname = usePathname()
     const searchParams = useSearchParams()
@@ -83,6 +90,7 @@ export function AppSidebar() {
     const { resolvedTheme, setTheme } = useTheme()
     const mounted = useSyncExternalStore(() => () => {}, () => true, () => false)
     const activeSessionId = searchParams.get('sessionId')
+    const [subjects, setSubjects] = useState<SubjectItem[]>([])
     const [sessions, setSessions] = useState<SessionItem[]>([])
     const [chatView, setChatView] = useState<'sessions' | 'search' | 'bookmarks'>('sessions')
     const [searchQuery, setSearchQuery] = useState('')
@@ -135,6 +143,15 @@ export function AppSidebar() {
         }
     }
 
+    // Fetch subjects for the sidebar
+    useEffect(() => {
+        getSubjectOverview()
+            .then((data) => setSubjects(
+                data.map((s) => ({ subject: s.subject, avgProgress: s.avgProgress, dueReviews: s.dueReviews }))
+            ))
+            .catch(() => {})
+    }, [])
+
     // Fetch sessions on mount and whenever a new session is created
     useEffect(() => {
         function fetchSessions() {
@@ -155,6 +172,7 @@ export function AppSidebar() {
         return () => window.removeEventListener('session-created', fetchSessions)
     }, [])
 
+    const isSubjectsActive = pathname.startsWith('/learn/subjects')
     const isChatActive = pathname.startsWith('/learn/chat')
 
     return (
@@ -204,6 +222,65 @@ export function AppSidebar() {
                                     </SidebarMenuItem>
                                 )
                             })}
+
+                            {/* Fächer with collapsible subject list */}
+                            <Collapsible
+                                asChild
+                                defaultOpen
+                                className="group/collapsible"
+                            >
+                                <SidebarMenuItem>
+                                    <CollapsibleTrigger asChild>
+                                        <SidebarMenuButton
+                                            isActive={isSubjectsActive}
+                                            tooltip="Fächer"
+                                        >
+                                            <FolderOpen />
+                                            <span>Fächer</span>
+                                            <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                                        </SidebarMenuButton>
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent>
+                                        <SidebarMenuSub>
+                                            {subjects.length === 0 ? (
+                                                <SidebarMenuSubItem>
+                                                    <span className="px-2 py-1.5 text-xs text-muted-foreground">
+                                                        Keine Fächer
+                                                    </span>
+                                                </SidebarMenuSubItem>
+                                            ) : (
+                                                subjects.map((s) => (
+                                                    <SidebarMenuSubItem key={s.subject}>
+                                                        <SidebarMenuSubButton
+                                                            asChild
+                                                            isActive={pathname === `/learn/subjects/${encodeURIComponent(s.subject)}`}
+                                                        >
+                                                            <Link href={`/learn/subjects/${encodeURIComponent(s.subject)}`}>
+                                                                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                                                                    <div className="flex items-center justify-between">
+                                                                        <span className="truncate text-sm">{s.subject}</span>
+                                                                        <span className="ml-2 shrink-0 text-[10px] tabular-nums text-muted-foreground">
+                                                                            {s.avgProgress}%
+                                                                        </span>
+                                                                    </div>
+                                                                    <Progress value={s.avgProgress} className="h-1" />
+                                                                </div>
+                                                            </Link>
+                                                        </SidebarMenuSubButton>
+                                                    </SidebarMenuSubItem>
+                                                ))
+                                            )}
+                                            <SidebarMenuSubItem>
+                                                <SidebarMenuSubButton asChild>
+                                                    <Link href="/learn/subjects" className="text-muted-foreground">
+                                                        <span>Alle Fächer</span>
+                                                    </Link>
+                                                </SidebarMenuSubButton>
+                                            </SidebarMenuSubItem>
+                                        </SidebarMenuSub>
+                                    </CollapsibleContent>
+                                </SidebarMenuItem>
+                            </Collapsible>
 
                             {/* Chat with collapsible session list */}
                             <Collapsible

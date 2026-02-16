@@ -81,7 +81,7 @@ function getLastAttemptStats(questions: Quiz['questions']) {
     let lastDate: Date | null = null
     for (const q of answered) {
         const a = q.attempts[0]
-        score += q.questionType === 'freetext'
+        score += (q.questionType === 'freetext' || q.questionType === 'cloze')
             ? (a.freeTextScore ?? (a.isCorrect ? 1 : 0))
             : (a.isCorrect ? 1 : 0)
         const d = new Date(a.createdAt)
@@ -99,6 +99,7 @@ const QUESTION_TYPES = [
     { value: 'multipleChoice', label: 'Multiple Choice' },
     { value: 'freetext', label: 'Freitext' },
     { value: 'truefalse', label: 'Wahr/Falsch' },
+    { value: 'cloze', label: 'Lückentext' },
 ] as const
 
 export function QuizContent() {
@@ -117,7 +118,7 @@ export function QuizContent() {
     const [generating, setGenerating] = useState(false)
     const [generatedCount, setGeneratedCount] = useState(0)
     const [questionCount, setQuestionCount] = useState(5)
-    const [questionTypes, setQuestionTypes] = useState<string[]>(['singleChoice', 'multipleChoice', 'freetext', 'truefalse'])
+    const [questionTypes, setQuestionTypes] = useState<string[]>(['singleChoice', 'multipleChoice', 'freetext', 'truefalse', 'cloze'])
     const [examMode, setExamMode] = useState(false)
     const [examTimeLimit, setExamTimeLimit] = useState(30)
     const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
@@ -223,6 +224,7 @@ export function QuizContent() {
         try {
             await deleteQuiz(deleteTarget)
             setQuizzes((prev) => prev.filter((q) => q.id !== deleteTarget))
+            toast.success('Quiz gelöscht')
         } catch (error) {
             console.error('Quiz delete failed:', error)
             toast.error('Quiz konnte nicht gelöscht werden.')

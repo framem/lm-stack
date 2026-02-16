@@ -49,6 +49,7 @@ const TYPE_LABELS: Record<string, string> = {
     multipleChoice: 'Multiple Choice',
     freetext: 'Freitext',
     truefalse: 'Wahr/Falsch',
+    cloze: 'Lückentext',
 }
 
 export function QuizPlayer({ quizTitle, questions, onComplete }: QuizPlayerProps) {
@@ -65,21 +66,22 @@ export function QuizPlayer({ quizTitle, questions, onComplete }: QuizPlayerProps
     const isLastQuestion = currentIndex === questions.length - 1
     const progress = ((currentIndex + (result ? 1 : 0)) / questions.length) * 100
     const isFreetext = currentQuestion?.questionType === 'freetext'
+    const isCloze = currentQuestion?.questionType === 'cloze'
     const isMultipleChoice = currentQuestion?.questionType === 'multipleChoice'
 
     async function handleSubmit() {
         if (!currentQuestion) return
         if (isMultipleChoice && selectedIndices.length === 0) return
-        if (!isMultipleChoice && !isFreetext && selectedIndex === null) return
-        if (isFreetext && !freeTextAnswer.trim()) return
+        if (!isMultipleChoice && !isFreetext && !isCloze && selectedIndex === null) return
+        if ((isFreetext || isCloze) && !freeTextAnswer.trim()) return
 
         setSubmitting(true)
 
         try {
             const data = await evaluateAnswer(
                 currentQuestion.id,
-                isFreetext || isMultipleChoice ? null : selectedIndex,
-                isFreetext ? freeTextAnswer : undefined,
+                isFreetext || isCloze || isMultipleChoice ? null : selectedIndex,
+                (isFreetext || isCloze) ? freeTextAnswer : undefined,
                 isMultipleChoice ? selectedIndices : undefined,
             ) as AnswerResult
             setResult(data)
@@ -165,11 +167,14 @@ export function QuizPlayer({ quizTitle, questions, onComplete }: QuizPlayerProps
     if (!currentQuestion) return null
 
     const options = currentQuestion.options
-    const canSubmit = isFreetext
+    const canSubmit = (isFreetext || isCloze)
         ? !!freeTextAnswer.trim()
         : isMultipleChoice
             ? selectedIndices.length > 0
             : selectedIndex !== null
+
+    // Split cloze question text around {{blank}}
+    const clozeParts = isCloze ? currentQuestion.questionText.split('{{blank}}') : []
 
     return (
         <div className="space-y-6">
@@ -245,7 +250,7 @@ export function QuizPlayer({ quizTitle, questions, onComplete }: QuizPlayerProps
                     )}
 
                     {/* MC / True-False: show RadioGroup */}
-                    {!isMultipleChoice && options && options.length > 0 && (
+                    {!isMultipleChoice && !isCloze && options && options.length > 0 && (
                         <RadioGroup
                             value={selectedIndex !== null ? String(selectedIndex) : ''}
                             onValueChange={(v) => {
@@ -282,6 +287,42 @@ export function QuizPlayer({ quizTitle, questions, onComplete }: QuizPlayerProps
                         </RadioGroup>
                     )}
 
+                    {/* Cloze: inline input in sentence */}
+                    {isCloze && (
+                        <div className="space-y-2">
+                            <p className="text-lg leading-relaxed">
+                                {clozeParts.map((part, i) => (
+                                    <span key={i}>
+                                        {part}
+                                        {i < clozeParts.length - 1 && (
+                                            <input
+                                                type="text"
+                                                value={freeTextAnswer}
+                                                onChange={(e) => {
+                                                    if (!result) setFreeTextAnswer(e.target.value)
+                                                }}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter' && !result && canSubmit) handleSubmit()
+                                                }}
+                                                disabled={!!result}
+                                                autoFocus
+                                                className={`inline-block w-40 mx-1 px-2 py-0.5 text-center border-b-2 bg-transparent outline-none text-base ${
+                                                    result
+                                                        ? result.isCorrect || (result.freeTextScore ?? 0) >= 0.5
+                                                            ? 'border-green-500 text-green-700 dark:text-green-400'
+                                                            : 'border-red-500 text-red-700 dark:text-red-400'
+                                                        : 'border-primary focus:border-primary'
+                                                }`}
+                                                placeholder="___"
+                                                maxLength={100}
+                                            />
+                                        )}
+                                    </span>
+                                ))}
+                            </p>
+                        </div>
+                    )}
+
                     {/* Freetext: show only Textarea */}
                     {isFreetext && (
                         <div className="space-y-2">
@@ -307,7 +348,7 @@ export function QuizPlayer({ quizTitle, questions, onComplete }: QuizPlayerProps
                     {result && (
                         <div className="mt-4 p-4 rounded-lg border bg-muted/50 space-y-3">
                             <div className="flex items-center gap-2">
-                                {isFreetext ? (
+                                {(isFreetext || isCloze) ? (
                                     <Badge variant="outline">
                                         Bewertung: {Math.round((result.freeTextScore ?? 0) * 100)}%
                                     </Badge>
@@ -317,6 +358,11 @@ export function QuizPlayer({ quizTitle, questions, onComplete }: QuizPlayerProps
                                     <Badge variant="destructive">Falsch</Badge>
                                 )}
                             </div>
+                            {isCloze && result.correctAnswer && (
+                                <p className="text-sm font-medium">
+                                    Richtige Antwort: <span className="text-green-600">{result.correctAnswer}</span>
+                                </p>
+                            )}
                             {result.reasoning && (
                                 <Reasoning defaultOpen={false}>
                                     <ReasoningTrigger getThinkingMessage={() => (

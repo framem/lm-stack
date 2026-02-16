@@ -130,8 +130,8 @@ export default function QuizResultsPage({ params }: { params: Promise<{ id: stri
     for (const q of data.questions) {
         const lastAttempt = q.attempts[0]
         if (!lastAttempt) continue
-        const isFreetext = q.questionType === 'freetext'
-        const isIncorrect = isFreetext
+        const isFreetextLike = q.questionType === 'freetext' || q.questionType === 'cloze'
+        const isIncorrect = isFreetextLike
             ? (lastAttempt.freeTextScore ?? 0) < 0.5
             : !lastAttempt.isCorrect
         if (!isIncorrect) continue

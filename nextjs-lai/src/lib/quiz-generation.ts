@@ -34,6 +34,13 @@ export const truefalseQuestionSchema = z.object({
     sourceSnippet: z.string().describe('Wörtliches Zitat aus dem Quelltext'),
 })
 
+export const clozeQuestionSchema = z.object({
+    questionText: z.string().describe('Ein Satz aus dem Lerntext, in dem genau ein Schlüsselbegriff durch {{blank}} ersetzt wurde'),
+    correctAnswer: z.string().describe('Das fehlende Wort bzw. der fehlende kurze Ausdruck'),
+    explanation: z.string().describe('Erklärung warum dieses Wort an diese Stelle gehört'),
+    sourceSnippet: z.string().describe('Wörtliches Zitat aus dem Quelltext'),
+})
+
 // Detect whether content is a vocabulary list or prose text
 export function detectContentType(text: string): 'vocabulary' | 'prose' {
     const lines = text.split('\n').filter((l) => l.trim().length > 0)
@@ -176,6 +183,27 @@ Anforderungen:
 - Erstelle ungefähr gleich viele wahre und falsche Aussagen
 - Falsche Aussagen sollen plausibel klingen (z.B. ein Detail leicht verändern)
 - sourceSnippet: Ein wörtliches Zitat aus dem Text, das die Bewertung begründet
+
+Text:
+${contextText}`,
+    })
+    return output ?? []
+}
+
+export async function generateClozeQuestions(contextText: string, count: number) {
+    const { output } = await generateText({
+        model: getModel(),
+        system: 'Du erstellst Lückentext-Aufgaben auf Deutsch basierend auf Lerntexten.',
+        output: Output.array({ element: clozeQuestionSchema }),
+        prompt: `Erstelle genau ${count} Lückentext-Aufgaben basierend auf dem folgenden Text.
+
+Anforderungen:
+- Wähle wichtige Sätze aus dem Text und ersetze genau EINEN Schlüsselbegriff durch {{blank}}
+- Der fehlende Begriff soll ein einzelnes Wort oder ein kurzer Ausdruck (max. 3 Wörter) sein
+- correctAnswer: Das fehlende Wort/der fehlende Ausdruck
+- Der Satz muss ohne die Lücke noch verständlich sein und einen klaren Hinweis auf die Antwort geben
+- Vermeide triviale Lücken (Artikel, Präpositionen) — wähle inhaltlich relevante Begriffe
+- sourceSnippet: Ein wörtliches Zitat aus dem Text
 
 Text:
 ${contextText}`,

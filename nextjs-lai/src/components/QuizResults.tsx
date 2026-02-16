@@ -43,6 +43,7 @@ const TYPE_LABELS: Record<string, string> = {
     multipleChoice: 'Multiple Choice',
     freetext: 'Freitext',
     truefalse: 'Wahr/Falsch',
+    cloze: 'Lückentext',
 }
 
 export function QuizResults({ quizTitle, documentTitle, results, onRetry, initialSavedIds = [] }: QuizResultsProps) {
@@ -62,10 +63,10 @@ export function QuizResults({ quizTitle, documentTitle, results, onRetry, initia
         }
     }
 
-    // Scoring: freetext = weighted freeTextScore (0-1), singleChoice/truefalse = binary (0 or 1)
+    // Scoring: freetext/cloze = weighted freeTextScore (0-1), singleChoice/truefalse = binary (0 or 1)
     const totalCount = results.length
     const totalScore = results.reduce((sum, r) => {
-        if (r.questionType === 'freetext') {
+        if (r.questionType === 'freetext' || r.questionType === 'cloze') {
             return sum + (r.freeTextScore ?? 0)
         }
         return sum + (r.isCorrect ? 1 : 0)
@@ -99,7 +100,8 @@ export function QuizResults({ quizTitle, documentTitle, results, onRetry, initia
             {/* Individual question results */}
             {results.map((result, i) => {
                 const isFreetext = result.questionType === 'freetext'
-                const resultBadge = isFreetext ? (
+                const isCloze = result.questionType === 'cloze'
+                const resultBadge = (isFreetext || isCloze) ? (
                     <Badge variant="outline" className="shrink-0">
                         {Math.round((result.freeTextScore ?? 0) * 100)}%
                     </Badge>
@@ -174,8 +176,8 @@ export function QuizResults({ quizTitle, documentTitle, results, onRetry, initia
                                 </div>
                             )}
 
-                            {/* Freetext: show user answer and score */}
-                            {isFreetext && result.freeTextAnswer && (
+                            {/* Freetext/Cloze: show user answer and score */}
+                            {(isFreetext || isCloze) && result.freeTextAnswer && (
                                 <div className="p-3 rounded-lg bg-muted/50 border space-y-2">
                                     <div className="flex items-center justify-between">
                                         <p className="text-sm font-medium">Deine Antwort:</p>

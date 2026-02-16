@@ -169,7 +169,7 @@ export async function getDocumentProgress() {
 
         for (const q of answered) {
             const attempt = q.attempts[0]
-            if (q.questionType === 'freetext') {
+            if (q.questionType === 'freetext' || q.questionType === 'cloze') {
                 totalScore += attempt.freeTextScore ?? (attempt.isCorrect ? 1 : 0)
             } else {
                 totalScore += attempt.isCorrect ? 1 : 0
