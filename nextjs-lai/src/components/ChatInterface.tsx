@@ -5,8 +5,8 @@ import { DefaultChatTransport, type UIMessage } from 'ai'
 import { useChat } from '@ai-sdk/react'
 import { z } from 'zod'
 import { BookOpen, FileText, Loader2, ChevronDown, CornerDownLeft, Check, AlertTriangle } from 'lucide-react'
-import { getSession } from '@/src/actions/chat'
-import { getDocuments } from '@/src/actions/documents'
+import { getSession, getChatSuggestions } from '@/src/actions/chat'
+import { getDocuments, getSubjects } from '@/src/actions/documents'
 import {
     Sheet,
     SheetContent,
@@ -171,7 +171,17 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
         documentId ? [documentId] : []
     )
     const selectedDocumentIdsRef = useRef(selectedDocumentIds)
-    const [documents, setDocuments] = useState<{ id: string; title: string }[]>([])
+    const [documents, setDocuments] = useState<{ id: string; title: string; subject?: string | null }[]>([])
+    const [subjects, setSubjects] = useState<string[]>([])
+    const [activeSubject, setActiveSubject] = useState<string | null>(null)
+
+    const DEFAULT_SUGGESTIONS = [
+        'Fasse das Dokument zusammen',
+        'Erkläre die wichtigsten Konzepte',
+        'Erstelle mir eine Übersicht',
+        'Was sind die Kernaussagen?',
+    ]
+    const [suggestions, setSuggestions] = useState<string[]>(DEFAULT_SUGGESTIONS)
 
     useEffect(() => {
         selectedDocumentIdsRef.current = selectedDocumentIds
@@ -179,8 +189,9 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
 
     useEffect(() => {
         getDocuments().then((docs) =>
-            setDocuments(docs.map((d) => ({ id: d.id, title: d.title })))
+            setDocuments(docs.map((d) => ({ id: d.id, title: d.title, subject: (d as { subject?: string | null }).subject })))
         ).catch(() => {})
+        getSubjects().then(setSubjects).catch(() => {})
     }, [])
 
     const activeSessionIdRef = useRef(activeSessionId)
@@ -235,6 +246,22 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
         transport,
         messageMetadataSchema,
     })
+
+    // Fetch dynamic suggestions when chat is empty
+    const isEmpty = messages.length === 0
+    useEffect(() => {
+        if (!isEmpty) return
+        let cancelled = false
+        getChatSuggestions(
+            selectedDocumentIds.length > 0 ? selectedDocumentIds : undefined
+        ).then((dynamic) => {
+            if (!cancelled && dynamic.length > 0) {
+                setSuggestions(dynamic)
+            }
+        }).catch(() => {})
+        return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isEmpty, selectedDocumentIds])
 
     // Handle sessionId prop changes: initial load + sidebar navigation
     useEffect(() => {
@@ -314,12 +341,7 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
                                     icon={<BookOpen className="h-12 w-12" />}
                                 />
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-lg">
-                                    {[
-                                        'Fasse das Dokument zusammen',
-                                        'Erkläre die wichtigsten Konzepte',
-                                        'Erstelle mir eine Übersicht',
-                                        'Was sind die Kernaussagen?',
-                                    ].map((suggestion) => (
+                                    {suggestions.map((suggestion) => (
                                         <button
                                             key={suggestion}
                                             type="button"
@@ -470,11 +492,36 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
                                             <ChevronDown className="size-3.5 opacity-50" />
                                         </button>
                                     </PopoverTrigger>
-                                    <PopoverContent align="start" className="w-64 max-h-72 overflow-y-auto p-1">
+                                    <PopoverContent align="start" className="w-72 max-h-80 overflow-y-auto p-1">
+                                        {subjects.length > 0 && (
+                                            <div className="flex flex-wrap gap-1 px-2 py-1.5 border-b border-border mb-1">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setActiveSubject(null)}
+                                                    className={`px-2 py-0.5 rounded-full text-xs font-medium transition-colors ${
+                                                        !activeSubject ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-accent'
+                                                    }`}
+                                                >
+                                                    Alle
+                                                </button>
+                                                {subjects.map((s) => (
+                                                    <button
+                                                        key={s}
+                                                        type="button"
+                                                        onClick={() => setActiveSubject(activeSubject === s ? null : s)}
+                                                        className={`px-2 py-0.5 rounded-full text-xs font-medium transition-colors ${
+                                                            activeSubject === s ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-accent'
+                                                        }`}
+                                                    >
+                                                        {s}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
                                         <button
                                             type="button"
                                             className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
-                                            onClick={() => setSelectedDocumentIds([])}
+                                            onClick={() => { setSelectedDocumentIds([]); setActiveSubject(null) }}
                                         >
                                             <span className="flex size-4 shrink-0 items-center justify-center rounded-sm border border-primary">
                                                 {selectedDocumentIds.length === 0 && (
@@ -483,7 +530,9 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
                                             </span>
                                             Alle Lernmaterialien
                                         </button>
-                                        {documents.map((doc) => {
+                                        {documents
+                                            .filter((doc) => !activeSubject || doc.subject === activeSubject)
+                                            .map((doc) => {
                                             const isChecked = selectedDocumentIds.includes(doc.id)
                                             return (
                                                 <button

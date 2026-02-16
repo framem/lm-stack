@@ -35,13 +35,14 @@ import {
 } from '@/src/components/ui/alert-dialog'
 import { QuizCard } from '@/src/components/QuizCard'
 import { getQuizzes, deleteQuiz, getDocumentProgress } from '@/src/actions/quiz'
-import { getDocuments } from '@/src/actions/documents'
+import { getDocuments, getSubjects } from '@/src/actions/documents'
 import { formatDate } from '@/src/lib/utils'
 
 interface Document {
     id: string
     title: string
     fileType: string
+    subject?: string | null
 }
 
 interface DocumentProgressItem {
@@ -106,6 +107,8 @@ export function QuizContent() {
     const [quizzes, setQuizzes] = useState<Quiz[]>([])
     const [progress, setProgress] = useState<DocumentProgressItem[]>([])
     const [loading, setLoading] = useState(true)
+    const [subjects, setSubjects] = useState<string[]>([])
+    const [activeSubject, setActiveSubject] = useState<string | null>(null)
     const [dialogOpen, setDialogOpen] = useState(false)
     const [selectedDocIds, setSelectedDocIds] = useState<string[]>(
         searchParams.get('documentId') ? [searchParams.get('documentId')!] : []
@@ -119,15 +122,17 @@ export function QuizContent() {
     useEffect(() => {
         async function load() {
             try {
-                const [docs, quizList, progressData] = await Promise.all([
+                const [docs, quizList, progressData, subjectList] = await Promise.all([
                     getDocuments(),
                     getQuizzes(),
                     getDocumentProgress(),
+                    getSubjects(),
                 ])
                 const typedDocs = docs as unknown as Document[]
                 setDocuments(typedDocs)
                 setQuizzes(quizList as Quiz[])
                 setProgress(progressData as unknown as DocumentProgressItem[])
+                setSubjects(subjectList)
 
                 // Pre-select when only one document exists
                 if (typedDocs.length === 1 && !searchParams.get('documentId')) {
@@ -228,9 +233,23 @@ export function QuizContent() {
         )
     }
 
+    // Build docId → subject map for filtering
+    const docSubjectMap = new Map(documents.map((d) => [d.id, d.subject ?? null]))
+
+    // Filter quizzes, progress, and documents by active subject
+    const filteredQuizzes = activeSubject
+        ? quizzes.filter((q) => docSubjectMap.get(q.document.id) === activeSubject)
+        : quizzes
+    const filteredProgress = activeSubject
+        ? progress.filter((p) => docSubjectMap.get(p.documentId) === activeSubject)
+        : progress
+    const filteredDocuments = activeSubject
+        ? documents.filter((d) => d.subject === activeSubject)
+        : documents
+
     const hasDocuments = documents.length > 0
-    const hasQuizzes = quizzes.length > 0
-    const isEmpty = !hasQuizzes && progress.length === 0
+    const hasQuizzes = filteredQuizzes.length > 0
+    const isEmpty = !hasQuizzes && filteredProgress.length === 0
 
     return (
         <div className="p-6 max-w-4xl mx-auto space-y-8">
@@ -243,7 +262,7 @@ export function QuizContent() {
                     </h1>
                     <p className="text-muted-foreground mt-1">
                         {hasQuizzes
-                            ? `${quizzes.length} Quiz${quizzes.length !== 1 ? 'ze' : ''} vorhanden`
+                            ? `${filteredQuizzes.length} Quiz${filteredQuizzes.length !== 1 ? 'ze' : ''} vorhanden`
                             : 'Erstelle Quizze aus deinem Lernmaterial und teste dein Wissen.'}
                     </p>
                 </div>
@@ -254,6 +273,33 @@ export function QuizContent() {
                     </Button>
                 )}
             </div>
+
+            {/* Subject filter */}
+            {subjects.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                    <button
+                        type="button"
+                        onClick={() => setActiveSubject(null)}
+                        className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                            !activeSubject ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-accent'
+                        }`}
+                    >
+                        Alle
+                    </button>
+                    {subjects.map((s) => (
+                        <button
+                            key={s}
+                            type="button"
+                            onClick={() => setActiveSubject(activeSubject === s ? null : s)}
+                            className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                                activeSubject === s ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-accent'
+                            }`}
+                        >
+                            {s}
+                        </button>
+                    ))}
+                </div>
+            )}
 
             {/* Empty state */}
             {isEmpty && (
@@ -284,14 +330,14 @@ export function QuizContent() {
             )}
 
             {/* Knowledge progress per document */}
-            {progress.length > 0 && (
+            {filteredProgress.length > 0 && (
                 <section className="space-y-4">
                     <h2 className="text-lg font-semibold flex items-center gap-2">
                         <TrendingUp className="h-5 w-5" />
                         Wissensstand
                     </h2>
                     <div className="grid gap-3">
-                        {progress.map((p) => (
+                        {filteredProgress.map((p) => (
                             <Card key={p.documentId}>
                                 <CardContent className="flex items-center gap-4 py-4">
                                     <div className="min-w-0 flex-1 space-y-2">
@@ -323,7 +369,7 @@ export function QuizContent() {
                 <section className="space-y-4">
                     <h2 className="text-lg font-semibold">Vorhandene Quizze</h2>
                     <div className="grid gap-4 sm:grid-cols-2">
-                        {quizzes.map((quiz) => {
+                        {filteredQuizzes.map((quiz) => {
                             const stats = getLastAttemptStats(quiz.questions)
                             return (
                                 <QuizCard
@@ -358,7 +404,7 @@ export function QuizContent() {
                         <div className="space-y-2">
                             <label className="text-sm font-medium">Lernmaterial</label>
                             <div className="border rounded-md max-h-48 overflow-y-auto p-2 space-y-1">
-                                {documents.map((doc) => {
+                                {filteredDocuments.map((doc) => {
                                     const isChecked = selectedDocIds.includes(doc.id)
                                     return (
                                         <label key={doc.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-accent cursor-pointer text-sm">

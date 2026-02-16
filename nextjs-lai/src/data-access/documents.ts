@@ -137,6 +137,34 @@ export async function saveChunkEmbeddingsBatch(
     )
 }
 
+// ---- Random chunk sampling ----
+
+export async function getRandomChunks(
+    count: number = 4,
+    documentIds?: string[]
+): Promise<{ id: string; content: string; documentId: string; documentTitle: string }[]> {
+    if (documentIds && documentIds.length > 0) {
+        return prisma.$queryRawUnsafe(
+            `SELECT c.id, c.content, c."documentId", d.title as "documentTitle"
+             FROM "DocumentChunk" c
+             JOIN "Document" d ON d.id = c."documentId"
+             WHERE c."documentId" = ANY($1::text[])
+             ORDER BY RANDOM()
+             LIMIT $2`,
+            documentIds,
+            count
+        )
+    }
+    return prisma.$queryRawUnsafe(
+        `SELECT c.id, c.content, c."documentId", d.title as "documentTitle"
+         FROM "DocumentChunk" c
+         JOIN "Document" d ON d.id = c."documentId"
+         ORDER BY RANDOM()
+         LIMIT $1`,
+        count
+    )
+}
+
 // ---- Similarity search ----
 
 export interface SimilarChunk {
