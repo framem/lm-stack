@@ -117,7 +117,7 @@ export function DocumentUploader({ onSuccess }: DocumentUploaderProps) {
                         }
                     }, 800)
                 } else if (event.type === 'error') {
-                    setError(event.error || 'Unbekannter Fehler')
+                    setError(event.error || 'Da ist was schiefgelaufen – nicht mal die KI weiß, was.')
                     setUploading(false)
                 }
             }
@@ -145,14 +145,14 @@ export function DocumentUploader({ onSuccess }: DocumentUploaderProps) {
 
             if (!response.ok && response.headers.get('content-type')?.includes('application/json')) {
                 const data = await response.json()
-                setError(data.error || 'Hochladen fehlgeschlagen.')
+                setError(data.error || 'Upload verpatzt – bitte nochmal abgeben!')
                 setUploading(false)
                 return
             }
 
             await processSSE(response)
         } catch {
-            setError('Verbindungsfehler beim Hochladen.')
+            setError('Keine Verbindung – das WLAN ist wohl in der Mensa.')
             setUploading(false)
         }
     }
@@ -178,14 +178,14 @@ export function DocumentUploader({ onSuccess }: DocumentUploaderProps) {
 
             if (!response.ok && response.headers.get('content-type')?.includes('application/json')) {
                 const data = await response.json()
-                setError(data.error || 'Verarbeitung fehlgeschlagen.')
+                setError(data.error || 'Verarbeitung vergeigt – die KI braucht noch einen Kaffee.')
                 setUploading(false)
                 return
             }
 
             await processSSE(response)
         } catch {
-            setError('Verbindungsfehler beim Verarbeiten.')
+            setError('Verbindung abgebrochen – das Internet schwänzt mal wieder.')
             setUploading(false)
         }
     }
