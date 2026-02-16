@@ -1,21 +1,21 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import {useRouter} from 'next/navigation'
 import {
-    BarChart,
     Bar,
-    XAxis,
-    YAxis,
-    Tooltip,
-    ResponsiveContainer,
+    BarChart,
     CartesianGrid,
     Cell,
     LabelList,
     ReferenceLine,
+    ResponsiveContainer,
+    Tooltip,
+    XAxis,
+    YAxis,
 } from 'recharts'
-import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/card'
-import { Button } from '@/src/components/ui/button'
-import { GraduationCap, HelpCircle, Layers, RotateCcw } from 'lucide-react'
+import {Card, CardContent, CardHeader, CardTitle} from '@/src/components/ui/card'
+import {Button} from '@/src/components/ui/button'
+import {GraduationCap, HelpCircle, Layers, RotateCcw} from 'lucide-react'
 import Link from 'next/link'
 
 interface DocumentProgress {
@@ -183,7 +183,7 @@ export function LearningProgress({
                                         radius={[0, 4, 4, 0]}
                                         maxBarSize={24}
                                         cursor="pointer"
-                                        onClick={(_data, _index, e) => {
+                                        onClick={(_data, _index) => {
                                             const entry = chartData[_index]
                                             if (entry?.documentId) {
                                                 router.push(`/learn/documents/${entry.documentId}`)

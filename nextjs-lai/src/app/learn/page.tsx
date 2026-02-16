@@ -1,14 +1,13 @@
 import Link from 'next/link'
-import { FileText, MessageSquare, HelpCircle, Layers, ArrowRight, TrendingUp, Upload, Sparkles } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/card'
-import { Button } from '@/src/components/ui/button'
-import { Progress } from '@/src/components/ui/progress'
-import { formatDate } from '@/src/lib/utils'
-import { getDocuments } from '@/src/data-access/documents'
-import { getSessions } from '@/src/data-access/chat'
-import { getQuizzes, getDocumentProgress, getDueReviewCount } from '@/src/data-access/quiz'
-import { getDueFlashcardCount, getFlashcardCount, getFlashcardDocumentProgress } from '@/src/data-access/flashcards'
-import { LearningProgress } from '@/src/components/LearningProgress'
+import {ArrowRight, FileText, HelpCircle, Layers, MessageSquare, Sparkles, TrendingUp, Upload} from 'lucide-react'
+import {Card, CardContent, CardHeader, CardTitle} from '@/src/components/ui/card'
+import {Button} from '@/src/components/ui/button'
+import {formatDate} from '@/src/lib/utils'
+import {getDocuments} from '@/src/data-access/documents'
+import {getSessions} from '@/src/data-access/chat'
+import {getDocumentProgress, getDueReviewCount, getQuizzes} from '@/src/data-access/quiz'
+import {getDueFlashcardCount, getFlashcardCount, getFlashcardDocumentProgress} from '@/src/data-access/flashcards'
+import {LearningProgress} from '@/src/components/LearningProgress'
 
 export default async function DashboardPage() {
     const [documents, sessions, quizzes, quizProgress, flashcardProgress, dueQuizReviews, dueFlashcardReviews, totalFlashcards] = await Promise.all([
