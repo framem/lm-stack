@@ -410,6 +410,9 @@ export default function QuizPage() {
                                     </label>
                                 ))}
                             </div>
+                            <p className="text-xs text-muted-foreground">
+                                Pro ausgewähltem Fragetyp wird mindestens eine Frage erstellt. Die Fragen werden möglichst gleichmäßig auf alle Typen verteilt.
+                            </p>
                         </div>
                     </div>
 
