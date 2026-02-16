@@ -1,12 +1,15 @@
 'use client'
 
+import { useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { toast } from 'sonner'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/src/components/ui/card'
 import { Button } from '@/src/components/ui/button'
 import { Badge } from '@/src/components/ui/badge'
 import { Progress } from '@/src/components/ui/progress'
-import { CheckCircle2, XCircle } from 'lucide-react'
+import { CheckCircle2, XCircle, Layers, Loader2 } from 'lucide-react'
+import { createFlashcardFromQuestion } from '@/src/actions/flashcards'
 
 interface QuestionResult {
     id: string
@@ -42,6 +45,22 @@ const TYPE_LABELS: Record<string, string> = {
 }
 
 export function QuizResults({ quizTitle, documentTitle, results, onRetry }: QuizResultsProps) {
+    const [savedIds, setSavedIds] = useState<Set<string>>(new Set())
+    const [savingId, setSavingId] = useState<string | null>(null)
+
+    async function handleSaveAsFlashcard(questionId: string) {
+        setSavingId(questionId)
+        try {
+            await createFlashcardFromQuestion(questionId)
+            setSavedIds(prev => new Set(prev).add(questionId))
+            toast.success('Karteikarte erstellt')
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Fehler beim Erstellen der Karteikarte')
+        } finally {
+            setSavingId(null)
+        }
+    }
+
     // Scoring: freetext = weighted freeTextScore (0-1), singleChoice/truefalse = binary (0 or 1)
     const totalCount = results.length
     const totalScore = results.reduce((sum, r) => {
@@ -208,6 +227,31 @@ export function QuizResults({ quizTitle, documentTitle, results, onRetry }: Quiz
                                     </p>
                                 </div>
                             )}
+
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 text-xs"
+                                disabled={savedIds.has(result.id) || savingId === result.id}
+                                onClick={() => handleSaveAsFlashcard(result.id)}
+                            >
+                                {savedIds.has(result.id) ? (
+                                    <>
+                                        <CheckCircle2 className="h-3.5 w-3.5" />
+                                        Karteikarte erstellt
+                                    </>
+                                ) : savingId === result.id ? (
+                                    <>
+                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                        Wird erstellt…
+                                    </>
+                                ) : (
+                                    <>
+                                        <Layers className="h-3.5 w-3.5" />
+                                        Als Karteikarte speichern
+                                    </>
+                                )}
+                            </Button>
                         </CardContent>
                     </Card>
                 )

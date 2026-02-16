@@ -263,6 +263,16 @@ export async function getDueReviewCount() {
     })
 }
 
+// Get a single quiz question by ID (with quiz for documentId)
+export async function getQuizQuestionById(questionId: string) {
+    return prisma.quizQuestion.findUnique({
+        where: { id: questionId },
+        include: {
+            quiz: { select: { documentId: true } },
+        },
+    })
+}
+
 // Get results for a quiz (all attempts for its questions)
 export async function getQuizResults(quizId: string) {
     const quiz = await prisma.quiz.findUnique({

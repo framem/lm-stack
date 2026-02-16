@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { getModel } from '@/src/lib/llm'
 import { getDocumentWithChunks } from '@/src/data-access/documents'
 import { selectRepresentativeChunks } from '@/src/lib/quiz-generation'
+import { getQuizQuestionById } from '@/src/data-access/quiz'
 import {
     getFlashcards as dbGetFlashcards,
     getDueFlashcards as dbGetDueFlashcards,
@@ -133,6 +134,49 @@ export async function reviewFlashcard(flashcardId: string, quality: number) {
 
     await dbUpsertFlashcardProgress(flashcardId, quality)
     revalidatePath('/learn/flashcards')
+}
+
+// ── Create flashcard from a quiz question ──
+
+export async function createFlashcardFromQuestion(questionId: string) {
+    if (!questionId) throw new Error('Frage-ID ist erforderlich.')
+
+    const question = await getQuizQuestionById(questionId)
+    if (!question) throw new Error('Frage nicht gefunden.')
+
+    const front = question.questionText
+    const options = question.options as string[] | null
+    const type = question.questionType || 'singleChoice'
+
+    // Build back side from correct answer
+    let answer = ''
+    if (type === 'singleChoice' || type === 'truefalse') {
+        if (options && question.correctIndex !== null) {
+            answer = options[question.correctIndex]
+        }
+    } else if (type === 'multipleChoice') {
+        const indices = question.correctIndices as number[] | null
+        if (options && indices) {
+            answer = indices.map(i => options[i]).join(', ')
+        }
+    } else if (type === 'freetext') {
+        answer = question.correctAnswer || ''
+    }
+
+    const back = question.explanation
+        ? `${answer}\n\n${question.explanation}`
+        : answer
+
+    const card = await dbCreateFlashcard({
+        documentId: question.quiz.documentId,
+        front,
+        back,
+        context: question.sourceSnippet || undefined,
+        chunkId: question.sourceChunkId || undefined,
+    })
+
+    revalidatePath('/learn/flashcards')
+    return card
 }
 
 // ── Delete a flashcard ──
