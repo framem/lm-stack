@@ -71,79 +71,79 @@ export async function POST(request: NextRequest) {
                     // Distribute questions across types
                     const distribution = distributeQuestions(count, types)
 
+                    // Build flat generation queue for per-question progress
+                    const queue: string[] = []
+                    for (const type of types) {
+                        for (let i = 0; i < (distribution[type] || 0); i++) {
+                            queue.push(type)
+                        }
+                    }
+
                     const allQuestions: QuestionToSave[] = []
-                    let generated = 0
+                    send({ type: 'progress', generated: 0, total: count })
 
-                    // Generate sequentially so we can report progress after each type
-                    if (distribution['singleChoice']) {
-                        send({ type: 'progress', generated })
-                        const qs = await generateSingleChoiceQuestions(contextText, distribution['singleChoice'])
-                        for (const q of qs) {
-                            allQuestions.push({
-                                questionText: q.questionText,
-                                options: q.options,
-                                correctIndex: q.correctIndex,
-                                explanation: q.explanation,
-                                sourceSnippet: q.sourceSnippet,
-                                questionType: 'singleChoice',
-                            })
-                        }
-                        generated += qs.length
-                        send({ type: 'progress', generated })
-                    }
+                    for (const type of queue) {
+                        let question: QuestionToSave | null = null
 
-                    if (distribution['multipleChoice']) {
-                        send({ type: 'progress', generated })
-                        const qs = await generateMultipleChoiceQuestions(contextText, distribution['multipleChoice'])
-                        for (const q of qs) {
-                            allQuestions.push({
-                                questionText: q.questionText,
-                                options: q.options,
-                                correctIndex: null,
-                                correctIndices: q.correctIndices,
-                                explanation: q.explanation,
-                                sourceSnippet: q.sourceSnippet,
-                                questionType: 'multipleChoice',
-                            })
+                        if (type === 'singleChoice') {
+                            const qs = await generateSingleChoiceQuestions(contextText, 1)
+                            if (qs[0]) {
+                                const q = qs[0]
+                                question = {
+                                    questionText: q.questionText,
+                                    options: q.options,
+                                    correctIndex: q.correctIndex,
+                                    explanation: q.explanation,
+                                    sourceSnippet: q.sourceSnippet,
+                                    questionType: 'singleChoice',
+                                }
+                            }
+                        } else if (type === 'multipleChoice') {
+                            const qs = await generateMultipleChoiceQuestions(contextText, 1)
+                            if (qs[0]) {
+                                const q = qs[0]
+                                question = {
+                                    questionText: q.questionText,
+                                    options: q.options,
+                                    correctIndex: null,
+                                    correctIndices: q.correctIndices,
+                                    explanation: q.explanation,
+                                    sourceSnippet: q.sourceSnippet,
+                                    questionType: 'multipleChoice',
+                                }
+                            }
+                        } else if (type === 'freetext') {
+                            const qs = await generateFreetextQuestions(contextText, 1)
+                            if (qs[0]) {
+                                const q = qs[0]
+                                question = {
+                                    questionText: q.questionText,
+                                    options: null,
+                                    correctIndex: null,
+                                    correctAnswer: q.correctAnswer,
+                                    explanation: q.explanation,
+                                    sourceSnippet: q.sourceSnippet,
+                                    questionType: 'freetext',
+                                }
+                            }
+                        } else if (type === 'truefalse') {
+                            const qs = await generateTruefalseQuestions(contextText, 1)
+                            if (qs[0]) {
+                                const q = qs[0]
+                                question = {
+                                    questionText: q.questionText,
+                                    options: ['Wahr', 'Falsch'],
+                                    correctIndex: q.correctAnswer === 'wahr' ? 0 : 1,
+                                    correctAnswer: q.correctAnswer,
+                                    explanation: q.explanation,
+                                    sourceSnippet: q.sourceSnippet,
+                                    questionType: 'truefalse',
+                                }
+                            }
                         }
-                        generated += qs.length
-                        send({ type: 'progress', generated })
-                    }
 
-                    if (distribution['freetext']) {
-                        send({ type: 'progress', generated })
-                        const qs = await generateFreetextQuestions(contextText, distribution['freetext'])
-                        for (const q of qs) {
-                            allQuestions.push({
-                                questionText: q.questionText,
-                                options: null,
-                                correctIndex: null,
-                                correctAnswer: q.correctAnswer,
-                                explanation: q.explanation,
-                                sourceSnippet: q.sourceSnippet,
-                                questionType: 'freetext',
-                            })
-                        }
-                        generated += qs.length
-                        send({ type: 'progress', generated })
-                    }
-
-                    if (distribution['truefalse']) {
-                        send({ type: 'progress', generated })
-                        const qs = await generateTruefalseQuestions(contextText, distribution['truefalse'])
-                        for (const q of qs) {
-                            allQuestions.push({
-                                questionText: q.questionText,
-                                options: ['Wahr', 'Falsch'],
-                                correctIndex: q.correctAnswer === 'wahr' ? 0 : 1,
-                                correctAnswer: q.correctAnswer,
-                                explanation: q.explanation,
-                                sourceSnippet: q.sourceSnippet,
-                                questionType: 'truefalse',
-                            })
-                        }
-                        generated += qs.length
-                        send({ type: 'progress', generated })
+                        if (question) allQuestions.push(question)
+                        send({ type: 'progress', generated: allQuestions.length, total: count })
                     }
 
                     if (allQuestions.length === 0) {

@@ -113,7 +113,7 @@ export default function QuizPage() {
     const [generating, setGenerating] = useState(false)
     const [generatedCount, setGeneratedCount] = useState(0)
     const [questionCount, setQuestionCount] = useState(5)
-    const [questionTypes, setQuestionTypes] = useState<string[]>(['singleChoice'])
+    const [questionTypes, setQuestionTypes] = useState<string[]>(['singleChoice', 'multipleChoice', 'freetext', 'truefalse'])
     const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
 
     useEffect(() => {
@@ -426,7 +426,7 @@ export default function QuizPage() {
                                 ? <>
                                     <Loader2 className="h-4 w-4 animate-spin" />
                                     {generatedCount > 0
-                                        ? `${generatedCount} Fragen generiert…`
+                                        ? `${generatedCount} von ${questionCount} Fragen generiert…`
                                         : 'Fragen werden generiert…'}
                                 </>
                                 : 'Quiz generieren'}
