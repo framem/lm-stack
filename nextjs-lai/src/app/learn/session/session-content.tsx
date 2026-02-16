@@ -22,6 +22,8 @@ import { Textarea } from '@/src/components/ui/textarea'
 import { getCombinedDueItems } from '@/src/actions/session'
 import { reviewFlashcard } from '@/src/actions/flashcards'
 import { evaluateAnswer } from '@/src/actions/quiz'
+import { isFreetextLikeType } from '@/src/lib/quiz-types'
+import { SortableWordChips } from '@/src/components/quiz/SortableWordChips'
 
 interface FlashcardData {
     id: string
@@ -79,6 +81,9 @@ export function SessionContent() {
     const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
     const [selectedIndices, setSelectedIndices] = useState<number[]>([])
     const [freeTextAnswer, setFreeTextAnswer] = useState('')
+    const [fillInBlanksAnswers, setFillInBlanksAnswers] = useState<string[]>([])
+    const [conjugationAnswers, setConjugationAnswers] = useState<string[]>([])
+    const [orderedWords, setOrderedWords] = useState<string[]>([])
     const [quizResult, setQuizResult] = useState<{
         isCorrect: boolean
         correctIndex?: number | null
@@ -112,6 +117,9 @@ export function SessionContent() {
         setSelectedIndex(null)
         setSelectedIndices([])
         setFreeTextAnswer('')
+        setFillInBlanksAnswers([])
+        setConjugationAnswers([])
+        setOrderedWords([])
         setQuizResult(null)
     }, [])
 
@@ -151,17 +159,31 @@ export function SessionContent() {
         const isMulti = type === 'multipleChoice'
         const isFreetext = type === 'freetext'
         const isCloze = type === 'cloze'
+        const isFillInBlanksQ = type === 'fillInBlanks'
+        const isConjugationQ = type === 'conjugation'
+        const isSentenceOrderQ = type === 'sentenceOrder'
 
         if (isMulti && selectedIndices.length === 0) return
-        if (!isMulti && !isFreetext && !isCloze && selectedIndex === null) return
+        if (!isMulti && !isFreetext && !isCloze && !isFillInBlanksQ && !isConjugationQ && !isSentenceOrderQ && selectedIndex === null) return
         if ((isFreetext || isCloze) && !freeTextAnswer.trim()) return
+
+        let serializedFreeText: string | undefined
+        if (isFillInBlanksQ) {
+            serializedFreeText = JSON.stringify(fillInBlanksAnswers)
+        } else if (isConjugationQ) {
+            serializedFreeText = JSON.stringify(conjugationAnswers)
+        } else if (isSentenceOrderQ) {
+            serializedFreeText = orderedWords.join(' ')
+        } else if (isFreetext || isCloze) {
+            serializedFreeText = freeTextAnswer
+        }
 
         setSubmitting(true)
         try {
             const result = await evaluateAnswer(
                 currentItem.id,
-                isFreetext || isCloze || isMulti ? null : selectedIndex,
-                (isFreetext || isCloze) ? freeTextAnswer : undefined,
+                isFreetextLikeType(type) || isMulti ? null : selectedIndex,
+                serializedFreeText,
                 isMulti ? selectedIndices : undefined,
             ) as typeof quizResult
 
@@ -294,6 +316,9 @@ export function SessionContent() {
                     selectedIndex={selectedIndex}
                     selectedIndices={selectedIndices}
                     freeTextAnswer={freeTextAnswer}
+                    fillInBlanksAnswers={fillInBlanksAnswers}
+                    conjugationAnswers={conjugationAnswers}
+                    orderedWords={orderedWords}
                     result={quizResult}
                     submitting={submitting}
                     onSelectIndex={setSelectedIndex}
@@ -303,6 +328,9 @@ export function SessionContent() {
                         )
                     }
                     onFreeTextChange={setFreeTextAnswer}
+                    onFillInBlanksChange={setFillInBlanksAnswers}
+                    onConjugationChange={setConjugationAnswers}
+                    onOrderedWordsChange={setOrderedWords}
                     onSubmit={handleQuizSubmit}
                     onNext={advance}
                 />

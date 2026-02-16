@@ -1,11 +1,18 @@
 import { prisma } from '@/src/lib/prisma'
 
-// Create a new chat session, optionally scoped to a document
-export async function createSession(opts: { title?: string; documentId?: string } = {}) {
+// Create a new chat session, optionally scoped to a document or conversation mode
+export async function createSession(opts: {
+    title?: string
+    documentId?: string
+    mode?: string
+    scenario?: string
+} = {}) {
     return prisma.chatSession.create({
         data: {
             title: opts.title ?? null,
             documentId: opts.documentId ?? null,
+            mode: opts.mode ?? 'learning',
+            scenario: opts.scenario ?? null,
         },
     })
 }

@@ -12,6 +12,28 @@ import { Progress } from '@/src/components/ui/progress'
 import { Loader2, Send } from 'lucide-react'
 import { ExamTimer } from '@/src/components/ExamTimer'
 import { evaluateAnswer } from '@/src/actions/quiz'
+import { TTSButton } from '@/src/components/TTSButton'
+import { isFreetextLikeType } from '@/src/lib/quiz-types'
+import { SortableWordChips } from '@/src/components/quiz/SortableWordChips'
+
+// Map document subject to BCP-47 language code for TTS
+const SUBJECT_LANG_MAP: Record<string, string> = {
+    'Englisch': 'en-US',
+    'Spanisch': 'es-ES',
+    'Französisch': 'fr-FR',
+    'Italienisch': 'it-IT',
+    'Portugiesisch': 'pt-PT',
+}
+
+/** Extract the foreign-language word/phrase from a quiz question for TTS */
+function extractTTSText(questionText: string, questionType?: string): string | null {
+    if (questionType === 'cloze') {
+        const match = questionText.match(/ein:\s*(.+?)\s*\(Deutsch:/)
+        if (match) return match[1].replace(/\{\{blank\}\}/g, '…')
+    }
+    const match = questionText.match(/«(.+?)»/)
+    return match ? match[1] : null
+}
 
 interface Question {
     id: string
@@ -25,6 +47,9 @@ interface ExamAnswer {
     selectedIndex?: number | null
     selectedIndices?: number[]
     freeTextAnswer?: string
+    fillInBlanksAnswers?: string[]
+    conjugationAnswers?: string[]
+    orderedWords?: string[]
 }
 
 interface ExamPlayerProps {
@@ -32,6 +57,7 @@ interface ExamPlayerProps {
     quizTitle: string
     questions: Question[]
     timeLimit: number // minutes
+    subject?: string | null
 }
 
 const TYPE_LABELS: Record<string, string> = {
@@ -40,9 +66,12 @@ const TYPE_LABELS: Record<string, string> = {
     freetext: 'Freitext',
     truefalse: 'Wahr/Falsch',
     cloze: 'Lückentext',
+    fillInBlanks: 'Lückentext (mehrfach)',
+    conjugation: 'Konjugation',
+    sentenceOrder: 'Satzordnung',
 }
 
-export function ExamPlayer({ quizId, quizTitle, questions, timeLimit }: ExamPlayerProps) {
+export function ExamPlayer({ quizId, quizTitle, questions, timeLimit, subject }: ExamPlayerProps) {
     const router = useRouter()
     const [answers, setAnswers] = useState<Map<string, ExamAnswer>>(new Map())
     const [submitting, setSubmitting] = useState(false)
@@ -72,7 +101,25 @@ export function ExamPlayer({ quizId, quizTitle, questions, timeLimit }: ExamPlay
             const type = question.questionType || 'singleChoice'
 
             let promise: Promise<unknown>
-            if (type === 'freetext' || type === 'cloze') {
+            if (type === 'fillInBlanks') {
+                promise = evaluateAnswer(
+                    question.id,
+                    null,
+                    JSON.stringify(answer?.fillInBlanksAnswers || []),
+                )
+            } else if (type === 'conjugation') {
+                promise = evaluateAnswer(
+                    question.id,
+                    null,
+                    JSON.stringify(answer?.conjugationAnswers || []),
+                )
+            } else if (type === 'sentenceOrder') {
+                promise = evaluateAnswer(
+                    question.id,
+                    null,
+                    (answer?.orderedWords || (question.options as string[]) || []).join(' '),
+                )
+            } else if (type === 'freetext' || type === 'cloze') {
                 promise = evaluateAnswer(
                     question.id,
                     null,
@@ -110,6 +157,9 @@ export function ExamPlayer({ quizId, quizTitle, questions, timeLimit }: ExamPlay
         if (!a) return false
         const type = q.questionType || 'singleChoice'
         if (type === 'freetext' || type === 'cloze') return !!a.freeTextAnswer?.trim()
+        if (type === 'fillInBlanks') return (a.fillInBlanksAnswers?.length ?? 0) > 0 && a.fillInBlanksAnswers!.some((v) => v.trim())
+        if (type === 'conjugation') return (a.conjugationAnswers?.length ?? 0) > 0 && a.conjugationAnswers!.some((v) => v.trim())
+        if (type === 'sentenceOrder') return (a.orderedWords?.length ?? 0) > 0
         if (type === 'multipleChoice') return (a.selectedIndices?.length ?? 0) > 0
         return a.selectedIndex !== null && a.selectedIndex !== undefined
     }).length
@@ -151,8 +201,14 @@ export function ExamPlayer({ quizId, quizTitle, questions, timeLimit }: ExamPlay
                         const isFreetext = type === 'freetext'
                         const isCloze = type === 'cloze'
                         const isMultipleChoice = type === 'multipleChoice'
+                        const isFillInBlanks = type === 'fillInBlanks'
+                        const isConjugation = type === 'conjugation'
+                        const isSentenceOrder = type === 'sentenceOrder'
                         const options = question.options
                         const clozeParts = isCloze ? question.questionText.split('{{blank}}') : []
+                        const fillInBlanksParts = isFillInBlanks ? question.questionText.split('{{blank}}') : []
+                        const ttsLang = subject ? SUBJECT_LANG_MAP[subject] : undefined
+                        const ttsText = ttsLang ? extractTTSText(question.questionText, question.questionType) : null
 
                         return (
                             <Card key={question.id} id={`q-${qIdx}`}>
@@ -166,8 +222,11 @@ export function ExamPlayer({ quizId, quizTitle, questions, timeLimit }: ExamPlay
                                                 {TYPE_LABELS[question.questionType] ?? question.questionType}
                                             </Badge>
                                         )}
+                                        {ttsText && ttsLang && (
+                                            <TTSButton text={ttsText} lang={ttsLang} size="sm" className="ml-auto" />
+                                        )}
                                     </div>
-                                    {!isCloze && (
+                                    {!isCloze && !isFillInBlanks && (
                                         <CardTitle className="text-base mt-2">
                                             {question.questionText}
                                         </CardTitle>
@@ -202,7 +261,7 @@ export function ExamPlayer({ quizId, quizTitle, questions, timeLimit }: ExamPlay
                                     )}
 
                                     {/* Single Choice / True-False: RadioGroup */}
-                                    {!isMultipleChoice && !isFreetext && !isCloze && options && options.length > 0 && (
+                                    {!isMultipleChoice && !isFreetext && !isCloze && !isFillInBlanks && !isConjugation && !isSentenceOrder && options && options.length > 0 && (
                                         <RadioGroup
                                             value={answer.selectedIndex !== null && answer.selectedIndex !== undefined ? String(answer.selectedIndex) : ''}
                                             onValueChange={(v) => updateAnswer(question.id, { selectedIndex: Number(v) })}
@@ -240,6 +299,66 @@ export function ExamPlayer({ quizId, quizTitle, questions, timeLimit }: ExamPlay
                                                 ))}
                                             </p>
                                         </div>
+                                    )}
+
+                                    {/* FillInBlanks */}
+                                    {isFillInBlanks && (
+                                        <div className="space-y-2">
+                                            <p className="text-base leading-relaxed">
+                                                {fillInBlanksParts.map((part, i) => (
+                                                    <span key={i}>
+                                                        {part}
+                                                        {i < fillInBlanksParts.length - 1 && (
+                                                            <input
+                                                                type="text"
+                                                                value={(answer.fillInBlanksAnswers || [])[i] ?? ''}
+                                                                onChange={(e) => {
+                                                                    const prev = answer.fillInBlanksAnswers || []
+                                                                    const next = [...prev]
+                                                                    next[i] = e.target.value
+                                                                    updateAnswer(question.id, { fillInBlanksAnswers: next })
+                                                                }}
+                                                                className="inline-block w-40 mx-1 px-2 py-0.5 text-center border-b-2 border-primary bg-transparent outline-none text-base focus:border-primary"
+                                                                placeholder="___"
+                                                                maxLength={100}
+                                                            />
+                                                        )}
+                                                    </span>
+                                                ))}
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    {/* Conjugation */}
+                                    {isConjugation && options && (
+                                        <div className="grid gap-2">
+                                            {(options as string[]).map((person, i) => (
+                                                <div key={i} className="flex items-center gap-3">
+                                                    <span className="text-sm font-medium w-24 text-right shrink-0">{person}</span>
+                                                    <input
+                                                        type="text"
+                                                        value={(answer.conjugationAnswers || [])[i] ?? ''}
+                                                        onChange={(e) => {
+                                                            const prev = answer.conjugationAnswers || []
+                                                            const next = [...prev]
+                                                            next[i] = e.target.value
+                                                            updateAnswer(question.id, { conjugationAnswers: next })
+                                                        }}
+                                                        className="flex-1 px-3 py-1.5 rounded border border-input text-sm bg-transparent outline-none focus:border-primary"
+                                                        placeholder="…"
+                                                        maxLength={100}
+                                                    />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {/* SentenceOrder */}
+                                    {isSentenceOrder && options && (
+                                        <SortableWordChips
+                                            words={answer.orderedWords?.length ? answer.orderedWords : (options as string[])}
+                                            onChange={(words) => updateAnswer(question.id, { orderedWords: words })}
+                                        />
                                     )}
 
                                     {/* Freetext */}

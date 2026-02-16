@@ -41,6 +41,29 @@ export const clozeQuestionSchema = z.object({
     sourceSnippet: z.string().describe('Wörtliches Zitat aus dem Quelltext'),
 })
 
+export const fillInBlanksQuestionSchema = z.object({
+    questionText: z.string().describe('Ein Satz mit genau 2-3 Schlüsselbegriffen, die jeweils durch {{blank}} ersetzt wurden'),
+    correctAnswers: z.array(z.string()).min(2).max(3).describe('Die fehlenden Wörter/Ausdrücke in der Reihenfolge der Lücken'),
+    explanation: z.string().describe('Erklärung warum diese Wörter an diese Stellen gehören'),
+    sourceSnippet: z.string().describe('Wörtliches Zitat aus dem Quelltext'),
+})
+
+export const conjugationQuestionSchema = z.object({
+    verb: z.string().describe('Das zu konjugierende Verb im Infinitiv'),
+    translation: z.string().describe('Deutsche Übersetzung des Verbs'),
+    tense: z.string().describe('Die Zeitform (z.B. Präsens, Präteritum)'),
+    persons: z.array(z.string()).min(3).max(6).describe('Die Personen (z.B. yo, tú, él/ella, nosotros, vosotros, ellos)'),
+    forms: z.array(z.string()).min(3).max(6).describe('Die korrekten konjugierten Formen in gleicher Reihenfolge wie persons'),
+    explanation: z.string().describe('Erklärung der Konjugationsregel'),
+    sourceSnippet: z.string().describe('Wörtliches Zitat oder Kontextinfo aus dem Quelltext'),
+})
+
+export const sentenceOrderQuestionSchema = z.object({
+    correctSentence: z.string().describe('Der korrekte Satz in richtiger Wortstellung'),
+    explanation: z.string().describe('Erklärung der Satzstruktur'),
+    sourceSnippet: z.string().describe('Wörtliches Zitat aus dem Quelltext'),
+})
+
 // Detect whether content is a vocabulary list or prose text
 export function detectContentType(text: string): 'vocabulary' | 'prose' {
     const lines = text.split('\n').filter((l) => l.trim().length > 0)
@@ -203,6 +226,80 @@ Anforderungen:
 - correctAnswer: Das fehlende Wort/der fehlende Ausdruck
 - Der Satz muss ohne die Lücke noch verständlich sein und einen klaren Hinweis auf die Antwort geben
 - Vermeide triviale Lücken (Artikel, Präpositionen) — wähle inhaltlich relevante Begriffe
+- sourceSnippet: Ein wörtliches Zitat aus dem Text
+
+Text:
+${contextText}`,
+    })
+    return output ?? []
+}
+
+/** Fisher-Yates shuffle (returns new array) */
+export function shuffle<T>(arr: T[]): T[] {
+    const a = [...arr]
+    for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1))
+        ;[a[i], a[j]] = [a[j], a[i]]
+    }
+    return a
+}
+
+export async function generateFillInBlanksQuestions(contextText: string, count: number) {
+    const { output } = await generateText({
+        model: getModel(),
+        system: 'Du erstellst Lückentext-Aufgaben mit mehreren Lücken auf Deutsch basierend auf Lerntexten.',
+        output: Output.array({ element: fillInBlanksQuestionSchema }),
+        prompt: `Erstelle genau ${count} Lückentext-Aufgaben mit jeweils 2-3 Lücken basierend auf dem folgenden Text.
+
+Anforderungen:
+- Wähle wichtige Sätze aus dem Text und ersetze genau 2-3 Schlüsselbegriffe durch {{blank}}
+- Die fehlenden Begriffe sollen inhaltlich relevante Wörter oder kurze Ausdrücke sein
+- correctAnswers: Array der fehlenden Wörter in Reihenfolge der Lücken im Satz
+- Der Satz muss ohne die Lücken noch verständlich sein
+- Vermeide triviale Lücken (Artikel, Präpositionen)
+- sourceSnippet: Ein wörtliches Zitat aus dem Text
+
+Text:
+${contextText}`,
+    })
+    return output ?? []
+}
+
+export async function generateConjugationQuestions(contextText: string, count: number) {
+    const { output } = await generateText({
+        model: getModel(),
+        system: 'Du erstellst Konjugationsaufgaben basierend auf Lerntexten. Erkenne Verben im Text und erstelle Konjugationstabellen.',
+        output: Output.array({ element: conjugationQuestionSchema }),
+        prompt: `Erstelle genau ${count} Konjugationsaufgaben basierend auf dem folgenden Text.
+
+Anforderungen:
+- Identifiziere wichtige Verben im Text
+- verb: Infinitivform des Verbs
+- translation: Deutsche Übersetzung
+- tense: Zeitform (bevorzuge Präsens)
+- persons: 3-6 Personalformen (z.B. ["yo", "tú", "él/ella", "nosotros", "vosotros", "ellos"])
+- forms: Die korrekten konjugierten Formen in gleicher Reihenfolge
+- Falls der Text keine Fremdsprache enthält, verwende deutsche Verben mit deutschen Personalformen (ich, du, er/sie, wir, ihr, sie)
+- sourceSnippet: Kontextinfo aus dem Text
+
+Text:
+${contextText}`,
+    })
+    return output ?? []
+}
+
+export async function generateSentenceOrderQuestions(contextText: string, count: number) {
+    const { output } = await generateText({
+        model: getModel(),
+        system: 'Du erstellst Satzordnungs-Aufgaben auf Deutsch basierend auf Lerntexten.',
+        output: Output.array({ element: sentenceOrderQuestionSchema }),
+        prompt: `Erstelle genau ${count} Satzordnungs-Aufgaben basierend auf dem folgenden Text.
+
+Anforderungen:
+- Wähle wichtige, aussagekräftige Sätze aus dem Text (5-10 Wörter ideal)
+- correctSentence: Der vollständige, korrekte Satz
+- Die Wörter werden dem Nutzer in gemischter Reihenfolge angezeigt — er muss sie ordnen
+- Wähle Sätze mit klarer Wortstellung, keine zu langen Sätze
 - sourceSnippet: Ein wörtliches Zitat aus dem Text
 
 Text:

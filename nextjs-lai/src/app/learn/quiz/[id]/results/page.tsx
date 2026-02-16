@@ -9,6 +9,7 @@ import { QuizResults } from '@/src/components/QuizResults'
 import { QuizRecommendations } from '@/src/components/QuizRecommendations'
 import { getQuizResults } from '@/src/actions/quiz'
 import { getQuestionIdsWithFlashcards } from '@/src/actions/flashcards'
+import { isFreetextLikeType } from '@/src/lib/quiz-types'
 
 interface QuestionResult {
     id: string
@@ -130,8 +131,7 @@ export default function QuizResultsPage({ params }: { params: Promise<{ id: stri
     for (const q of data.questions) {
         const lastAttempt = q.attempts[0]
         if (!lastAttempt) continue
-        const isFreetextLike = q.questionType === 'freetext' || q.questionType === 'cloze'
-        const isIncorrect = isFreetextLike
+        const isIncorrect = isFreetextLikeType(q.questionType)
             ? (lastAttempt.freeTextScore ?? 0) < 0.5
             : !lastAttempt.isCorrect
         if (!isIncorrect) continue

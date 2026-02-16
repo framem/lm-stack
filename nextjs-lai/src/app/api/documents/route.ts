@@ -5,6 +5,7 @@ import { createEmbeddingsBatchWithProgress } from '@/src/lib/llm'
 import { createDocument, createChunks, saveChunkEmbeddingsBatch } from '@/src/data-access/documents'
 import { prisma } from '@/src/lib/prisma'
 import { generateAndSaveSummary } from '@/src/lib/summary'
+import { generateAndSaveToc } from '@/src/lib/toc-extraction'
 
 // POST /api/documents - Upload file or paste text, process pipeline with SSE progress
 export async function POST(request: NextRequest) {
@@ -147,8 +148,9 @@ export async function POST(request: NextRequest) {
                         encoder.encode(`data: ${JSON.stringify({ type: 'complete', documentId: doc.id, chunkCount: chunks.length })}\n\n`)
                     )
 
-                    // Fire-and-forget: generate summary in background
+                    // Fire-and-forget: generate summary and TOC in background
                     generateAndSaveSummary(doc.id).catch(console.error)
+                    generateAndSaveToc(doc.id).catch(console.error)
                 } catch (error) {
                     console.error('Pipeline error:', error)
                     const message = error instanceof Error ? error.message : 'Unbekannter Fehler'

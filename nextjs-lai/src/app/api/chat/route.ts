@@ -4,6 +4,7 @@ import { getModel } from '@/src/lib/llm'
 import { retrieveContext, buildContextPrompt, extractCitations } from '@/src/lib/rag'
 import { formatCitationsForStorage } from '@/src/lib/citations'
 import { addMessage, createSession } from '@/src/data-access/chat'
+import { getScenario } from '@/src/lib/conversation-scenarios'
 
 const SYSTEM_PROMPT_TEMPLATE = `Du bist ein KI-Lernassistent. Beantworte Fragen NUR basierend auf dem folgenden Kontext.
 Zitiere deine Quellen IMMER exakt im Format [Quelle N] mit eckigen Klammern, z.B. [Quelle 1], [Quelle 3].
@@ -19,10 +20,12 @@ Kontext:
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json()
-        const { messages, sessionId, documentIds } = body as {
+        const { messages, sessionId, documentIds, mode, scenario } = body as {
             messages: UIMessage[]
             sessionId?: string
             documentIds?: string[]
+            mode?: string
+            scenario?: string
         }
 
         if (!messages || messages.length === 0) {
@@ -45,21 +48,38 @@ export async function POST(request: NextRequest) {
             .map((p) => p.text)
             .join('')
 
-        // Retrieve relevant context via RAG pipeline
-        const contexts = await retrieveContext(userQuery, {
-            topK: 5,
-            documentIds: documentIds && documentIds.length > 0 ? documentIds : undefined,
-        })
+        const isConversation = mode === 'conversation'
+        let systemPrompt: string
+        let contexts: Awaited<ReturnType<typeof retrieveContext>> = []
 
-        const contextPrompt = buildContextPrompt(contexts)
-        const systemPrompt = SYSTEM_PROMPT_TEMPLATE.replace('{context}', contextPrompt)
+        if (isConversation && scenario) {
+            // Conversation mode: use scenario system prompt, skip RAG
+            const scenarioDef = getScenario(scenario)
+            if (!scenarioDef) {
+                return new Response(
+                    JSON.stringify({ error: 'Unbekanntes Szenario.' }),
+                    { status: 400, headers: { 'Content-Type': 'application/json' } }
+                )
+            }
+            systemPrompt = scenarioDef.systemPrompt
+        } else {
+            // Learning mode: RAG pipeline
+            contexts = await retrieveContext(userQuery, {
+                topK: 5,
+                documentIds: documentIds && documentIds.length > 0 ? documentIds : undefined,
+            })
+            const contextPrompt = buildContextPrompt(contexts)
+            systemPrompt = SYSTEM_PROMPT_TEMPLATE.replace('{context}', contextPrompt)
+        }
 
         // Ensure a session exists for message persistence
         let activeSessionId = sessionId
         if (!activeSessionId) {
             const session = await createSession({
                 title: userQuery.slice(0, 100),
-                documentId: documentIds?.length === 1 ? documentIds[0] : undefined,
+                documentId: !isConversation && documentIds?.length === 1 ? documentIds[0] : undefined,
+                mode: isConversation ? 'conversation' : 'learning',
+                scenario: isConversation ? scenario : undefined,
             })
             activeSessionId = session.id
         }
@@ -78,7 +98,30 @@ export async function POST(request: NextRequest) {
             messages: await convertToModelMessages(messages),
         })
 
-        // Accumulate text and detect citations incrementally for live source display
+        if (isConversation) {
+            // Conversation mode: no citations, simpler streaming
+            let accumulatedText = ''
+
+            return result.toUIMessageStreamResponse({
+                sendReasoning: true,
+                headers: { 'X-Session-Id': activeSessionId },
+                messageMetadata: ({ part }) => {
+                    if (part.type === 'text-delta') {
+                        accumulatedText += part.text
+                    }
+                    if (part.type === 'finish') {
+                        addMessage({
+                            sessionId: activeSessionId!,
+                            role: 'assistant',
+                            content: accumulatedText,
+                        })
+                    }
+                    return undefined
+                },
+            })
+        }
+
+        // Learning mode: citation extraction
         let accumulatedText = ''
         let lastSourceCount = 0
         const noContext = contexts.length === 0

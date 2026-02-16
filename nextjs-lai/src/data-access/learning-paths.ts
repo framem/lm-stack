@@ -1,4 +1,5 @@
 import { prisma } from '@/src/lib/prisma'
+import { isFreetextLikeType } from '@/src/lib/quiz-types'
 
 // Learner profile per document
 export interface DocumentProfile {
@@ -80,7 +81,7 @@ export async function getLearnerProfile(): Promise<LearnerProfile> {
 
                     if (q.attempts.length > 0) {
                         const attempt = q.attempts[0]
-                        const score = q.questionType === 'freetext'
+                        const score = isFreetextLikeType(q.questionType)
                             ? (attempt.freeTextScore ?? (attempt.isCorrect ? 1 : 0))
                             : (attempt.isCorrect ? 1 : 0)
                         totalScore += score

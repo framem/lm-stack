@@ -54,8 +54,8 @@ export async function getDocumentWithChunks(id: string) {
     })
 }
 
-export async function updateDocument(id: string, data: { title?: string; subject?: string; tags?: string[]; summary?: string }) {
-    return prisma.document.update({ where: { id }, data })
+export async function updateDocument(id: string, data: { title?: string; subject?: string; tags?: string[]; summary?: string; tableOfContents?: unknown }) {
+    return prisma.document.update({ where: { id }, data: data as Parameters<typeof prisma.document.update>[0]['data'] })
 }
 
 export async function getSubjects(): Promise<string[]> {

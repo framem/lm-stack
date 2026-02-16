@@ -1,20 +1,22 @@
 model Document {
-  id        String   @id @default(cuid())
-  title     String
-  fileName  String?
-  fileType  String
-  fileSize  Int?
-  content   String
-  subject   String?
-  tags      String[] @default([])
-  summary   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String   @id @default(cuid())
+  title           String
+  fileName        String?
+  fileType        String
+  fileSize        Int?
+  content         String
+  subject         String?
+  tags            String[] @default([])
+  summary         String?
+  tableOfContents Json?    // Stored as JSON array of TOC sections
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   chunks       DocumentChunk[]
   chatSessions ChatSession[]
   quizzes      Quiz[]
   flashcards   Flashcard[]
+  topics       Topic[]
 }
 
 model DocumentChunk {
@@ -29,6 +31,19 @@ model DocumentChunk {
   document      Document       @relation(fields: [documentId], references: [id], onDelete: Cascade)
   quizQuestions QuizQuestion[]
   flashcards    Flashcard[]
+
+  @@index([documentId])
+}
+
+model Topic {
+  id          String   @id @default(cuid())
+  documentId  String
+  name        String
+  description String?
+  chunkIds    String[] @default([])
+  createdAt   DateTime @default(now())
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
 
   @@index([documentId])
 }

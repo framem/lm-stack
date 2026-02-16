@@ -1,5 +1,6 @@
 import { prisma } from '@/src/lib/prisma'
 import { sm2, quizQualityFromAnswer } from '@/src/lib/spaced-repetition'
+import { isFreetextLikeType } from '@/src/lib/quiz-types'
 
 // Types for quiz question creation
 interface CreateQuestionInput {
@@ -50,7 +51,7 @@ export async function getQuizWithQuestions(quizId: string) {
                 orderBy: { questionIndex: 'asc' },
             },
             document: {
-                select: { id: true, title: true },
+                select: { id: true, title: true, subject: true },
             },
         },
     })
@@ -169,7 +170,7 @@ export async function getDocumentProgress() {
 
         for (const q of answered) {
             const attempt = q.attempts[0]
-            if (q.questionType === 'freetext' || q.questionType === 'cloze') {
+            if (isFreetextLikeType(q.questionType)) {
                 totalScore += attempt.freeTextScore ?? (attempt.isCorrect ? 1 : 0)
             } else {
                 totalScore += attempt.isCorrect ? 1 : 0

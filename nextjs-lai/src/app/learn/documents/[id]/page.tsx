@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { FileText, Trash2, Pencil, ArrowLeft, Check, X, Loader2 } from 'lucide-react'
+import { FileText, Trash2, Pencil, ArrowLeft, Check, X, Loader2, ChevronDown, ChevronRight, List } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { Button } from '@/src/components/ui/button'
@@ -11,11 +11,17 @@ import { Input } from '@/src/components/ui/input'
 import { Badge } from '@/src/components/ui/badge'
 import { Card, CardContent } from '@/src/components/ui/card'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/src/components/ui/tabs'
-import { ChunkViewer } from '@/src/components/ChunkViewer'
+import { ChunkViewer, type ChunkViewerHandle } from '@/src/components/ChunkViewer'
 import { ChatInterface } from '@/src/components/ChatInterface'
 import { DocumentQuizzesTab } from '@/src/components/DocumentQuizzesTab'
 import { DocumentFlashcardsTab } from '@/src/components/DocumentFlashcardsTab'
+import { TableOfContents } from '@/src/components/TableOfContents'
 import { Skeleton } from '@/src/components/ui/skeleton'
+import {
+    Collapsible,
+    CollapsibleContent,
+    CollapsibleTrigger,
+} from '@/src/components/ui/collapsible'
 import {
     AlertDialog,
     AlertDialogAction,
@@ -29,6 +35,12 @@ import {
 import { getDocument, deleteDocument, renameDocument } from '@/src/actions/documents'
 import { formatDate } from '@/src/lib/utils'
 
+interface TocSection {
+    title: string
+    level: number
+    startChunkIndex: number
+}
+
 interface DocumentDetail {
     id: string
     title: string
@@ -37,6 +49,7 @@ interface DocumentDetail {
     fileSize: number | null
     content: string
     summary: string | null
+    tableOfContents: TocSection[] | null
     createdAt: string
     chunks: {
         id: string
@@ -59,6 +72,11 @@ export default function DocumentDetailPage() {
     const [showDeleteDialog, setShowDeleteDialog] = useState(false)
     const [summaryText, setSummaryText] = useState('')
     const [generatingSummary, setGeneratingSummary] = useState(false)
+    const [tocSections, setTocSections] = useState<TocSection[]>([])
+    const [generatingToc, setGeneratingToc] = useState(false)
+    const [tocOpen, setTocOpen] = useState(true)
+    const [extractingTopics, setExtractingTopics] = useState(false)
+    const chunkViewerRef = useRef<ChunkViewerHandle>(null)
 
     const fetchDocument = useCallback(async () => {
         try {
@@ -66,6 +84,10 @@ export default function DocumentDetailPage() {
             setDocument(data as unknown as DocumentDetail)
             if ((data as unknown as DocumentDetail)?.summary) {
                 setSummaryText((data as unknown as DocumentDetail).summary!)
+            }
+            const toc = (data as unknown as DocumentDetail)?.tableOfContents
+            if (toc && Array.isArray(toc) && toc.length > 0) {
+                setTocSections(toc)
             }
         } catch {
             setError('Lernmaterial nicht gefunden.')
@@ -121,6 +143,39 @@ export default function DocumentDetailPage() {
             toast.error('Zusammenfassung konnte nicht erstellt werden.')
         } finally {
             setGeneratingSummary(false)
+        }
+    }
+
+    async function handleGenerateToc() {
+        setGeneratingToc(true)
+        setTocSections([])
+        try {
+            const res = await fetch(`/api/documents/${params.id}/toc`, { method: 'POST' })
+            if (!res.ok) throw new Error('Fehler')
+            const data = await res.json()
+            if (data.tableOfContents) {
+                setTocSections(data.tableOfContents)
+            } else {
+                throw new Error('Kein Inhaltsverzeichnis')
+            }
+        } catch {
+            toast.error('Inhaltsverzeichnis konnte nicht erstellt werden.')
+        } finally {
+            setGeneratingToc(false)
+        }
+    }
+
+    async function handleExtractTopics() {
+        setExtractingTopics(true)
+        try {
+            const res = await fetch(`/api/documents/${params.id}/topics`, { method: 'POST' })
+            if (!res.ok) throw new Error('Fehler')
+            const data = await res.json()
+            toast.success(`${data.topics?.length ?? 0} Themen extrahiert.`)
+        } catch {
+            toast.error('Themenextraktion fehlgeschlagen.')
+        } finally {
+            setExtractingTopics(false)
         }
     }
 
@@ -227,20 +282,34 @@ export default function DocumentDetailPage() {
                     <div className="space-y-3">
                         <div className="flex items-center justify-between">
                             <h2 className="text-lg font-semibold">Zusammenfassung</h2>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={handleGenerateSummary}
-                                disabled={generatingSummary}
-                            >
-                                {generatingSummary ? (
-                                    <><Loader2 className="h-4 w-4 animate-spin" /> Wird erstellt...</>
-                                ) : summaryText ? (
-                                    'Neu generieren'
-                                ) : (
-                                    'Zusammenfassung erstellen'
-                                )}
-                            </Button>
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handleExtractTopics}
+                                    disabled={extractingTopics}
+                                >
+                                    {extractingTopics ? (
+                                        <><Loader2 className="h-4 w-4 animate-spin" /> Themen werden extrahiert...</>
+                                    ) : (
+                                        'Themen extrahieren'
+                                    )}
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handleGenerateSummary}
+                                    disabled={generatingSummary}
+                                >
+                                    {generatingSummary ? (
+                                        <><Loader2 className="h-4 w-4 animate-spin" /> Wird erstellt...</>
+                                    ) : summaryText ? (
+                                        'Neu generieren'
+                                    ) : (
+                                        'Zusammenfassung erstellen'
+                                    )}
+                                </Button>
+                            </div>
                         </div>
                         {summaryText ? (
                             <Card>
@@ -257,10 +326,53 @@ export default function DocumentDetailPage() {
                         )}
                     </div>
 
+                    {/* Table of Contents */}
+                    <Collapsible open={tocOpen} onOpenChange={setTocOpen}>
+                        <div className="flex items-center justify-between">
+                            <CollapsibleTrigger className="flex items-center gap-2 hover:text-foreground transition-colors">
+                                {tocOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                                <h2 className="text-lg font-semibold">Inhaltsverzeichnis</h2>
+                                {tocSections.length > 0 && (
+                                    <Badge variant="secondary">{tocSections.length}</Badge>
+                                )}
+                            </CollapsibleTrigger>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={handleGenerateToc}
+                                disabled={generatingToc}
+                            >
+                                {generatingToc ? (
+                                    <><Loader2 className="h-4 w-4 animate-spin" /> Wird erstellt...</>
+                                ) : tocSections.length > 0 ? (
+                                    'Neu generieren'
+                                ) : (
+                                    <><List className="h-4 w-4" /> Inhaltsverzeichnis erstellen</>
+                                )}
+                            </Button>
+                        </div>
+                        <CollapsibleContent className="mt-3">
+                            {tocSections.length > 0 ? (
+                                <Card>
+                                    <CardContent className="p-3">
+                                        <TableOfContents
+                                            sections={tocSections}
+                                            onNavigate={(chunkIndex) => chunkViewerRef.current?.scrollToChunk(chunkIndex)}
+                                        />
+                                    </CardContent>
+                                </Card>
+                            ) : !generatingToc && (
+                                <p className="text-sm text-muted-foreground">
+                                    Noch kein Inhaltsverzeichnis vorhanden. Klicke auf den Button, um eines zu erstellen.
+                                </p>
+                            )}
+                        </CollapsibleContent>
+                    </Collapsible>
+
                     {/* Chunks */}
                     <div>
                         <h2 className="text-lg font-semibold mb-3">Abschnitte</h2>
-                        <ChunkViewer chunks={document.chunks} />
+                        <ChunkViewer ref={chunkViewerRef} chunks={document.chunks} />
                     </div>
                 </TabsContent>
 

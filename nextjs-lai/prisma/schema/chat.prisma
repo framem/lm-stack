@@ -2,6 +2,8 @@ model ChatSession {
   id         String   @id @default(cuid())
   title      String?
   documentId String?
+  mode       String   @default("learning") // "learning" | "conversation"
+  scenario   String?                       // scenario key (e.g. "restaurant")
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 

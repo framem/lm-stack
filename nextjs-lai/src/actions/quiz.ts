@@ -27,8 +27,15 @@ import {
     generateFreetextQuestions,
     generateTruefalseQuestions,
     generateClozeQuestions,
+    generateFillInBlanksQuestions,
+    generateConjugationQuestions,
+    generateSentenceOrderQuestions,
+    shuffle,
     type QuestionToSave,
 } from '@/src/lib/quiz-generation'
+import { isFreetextLikeType } from '@/src/lib/quiz-types'
+import { generateVocabQuizQuestions, type VocabFlashcard } from '@/src/lib/vocab-quiz-generation'
+import { getFlashcardsByDocument } from '@/src/data-access/flashcards'
 import { normalizedLevenshtein } from '@/src/lib/string-similarity'
 import { recordActivity } from '@/src/data-access/user-stats'
 
@@ -101,7 +108,7 @@ export async function generateQuiz(
         throw new Error('Lernmaterial-ID ist erforderlich.')
     }
 
-    const validTypes = ['singleChoice', 'multipleChoice', 'freetext', 'truefalse', 'cloze']
+    const validTypes = ['singleChoice', 'multipleChoice', 'freetext', 'truefalse', 'cloze', 'fillInBlanks', 'conjugation', 'sentenceOrder']
     const types = (Array.isArray(questionTypes) ? questionTypes : ['singleChoice'])
         .filter((t: string) => validTypes.includes(t))
     if (types.length === 0) {
@@ -116,113 +123,126 @@ export async function generateQuiz(
         throw new Error('Lernmaterial nicht gefunden.')
     }
 
-    if (!document.chunks || document.chunks.length === 0) {
-        throw new Error('Das Lernmaterial hat keine verarbeiteten Textabschnitte.')
+    let allQuestions: QuestionToSave[] = []
+    let selectedChunks: { id: string; content: string; chunkIndex: number }[] = []
+
+    // ── Vocabulary quiz path (deterministic, no LLM) ──
+    if (document.fileType === 'language-set') {
+        const flashcards = await getFlashcardsByDocument(documentId)
+        if (flashcards.length < 4) {
+            throw new Error('Zu wenige Vokabeln für ein Quiz (mindestens 4 nötig).')
+        }
+
+        const language = document.subject ?? 'Spanisch'
+        const vocabCards: VocabFlashcard[] = flashcards.map(f => ({
+            id: f.id,
+            front: f.front,
+            back: f.back,
+            context: f.context,
+            exampleSentence: f.exampleSentence,
+            partOfSpeech: f.partOfSpeech,
+            conjugation: f.conjugation as Record<string, Record<string, string>> | null,
+        }))
+
+        allQuestions = generateVocabQuizQuestions(vocabCards, count, types, language)
+    } else {
+        // ── Regular chunk-based quiz path (LLM) ──
+        if (!document.chunks || document.chunks.length === 0) {
+            throw new Error('Das Lernmaterial hat keine verarbeiteten Textabschnitte.')
+        }
+
+        selectedChunks = selectRepresentativeChunks(document.chunks, count)
+        const contextText = selectedChunks.map((c) => c.content).join('\n\n---\n\n')
+
+        const distribution = distributeQuestions(count, types)
+        const generationTasks: Promise<void>[] = []
+
+        if (distribution['singleChoice']) {
+            generationTasks.push(
+                generateSingleChoiceQuestions(contextText, distribution['singleChoice']).then((qs) => {
+                    for (const q of qs) {
+                        allQuestions.push({ questionText: q.questionText, options: q.options, correctIndex: q.correctIndex, explanation: q.explanation, sourceSnippet: q.sourceSnippet, questionType: 'singleChoice' })
+                    }
+                })
+            )
+        }
+
+        if (distribution['multipleChoice']) {
+            generationTasks.push(
+                generateMultipleChoiceQuestions(contextText, distribution['multipleChoice']).then((qs) => {
+                    for (const q of qs) {
+                        allQuestions.push({ questionText: q.questionText, options: q.options, correctIndex: null, correctIndices: q.correctIndices, explanation: q.explanation, sourceSnippet: q.sourceSnippet, questionType: 'multipleChoice' })
+                    }
+                })
+            )
+        }
+
+        if (distribution['freetext']) {
+            generationTasks.push(
+                generateFreetextQuestions(contextText, distribution['freetext']).then((qs) => {
+                    for (const q of qs) {
+                        allQuestions.push({ questionText: q.questionText, options: null, correctIndex: null, correctAnswer: q.correctAnswer, explanation: q.explanation, sourceSnippet: q.sourceSnippet, questionType: 'freetext' })
+                    }
+                })
+            )
+        }
+
+        if (distribution['truefalse']) {
+            generationTasks.push(
+                generateTruefalseQuestions(contextText, distribution['truefalse']).then((qs) => {
+                    for (const q of qs) {
+                        allQuestions.push({ questionText: q.questionText, options: ['Wahr', 'Falsch'], correctIndex: q.correctAnswer === 'wahr' ? 0 : 1, correctAnswer: q.correctAnswer, explanation: q.explanation, sourceSnippet: q.sourceSnippet, questionType: 'truefalse' })
+                    }
+                })
+            )
+        }
+
+        if (distribution['cloze']) {
+            generationTasks.push(
+                generateClozeQuestions(contextText, distribution['cloze']).then((qs) => {
+                    for (const q of qs) {
+                        allQuestions.push({ questionText: q.questionText, options: null, correctIndex: null, correctAnswer: q.correctAnswer, explanation: q.explanation, sourceSnippet: q.sourceSnippet, questionType: 'cloze' })
+                    }
+                })
+            )
+        }
+
+        if (distribution['fillInBlanks']) {
+            generationTasks.push(
+                generateFillInBlanksQuestions(contextText, distribution['fillInBlanks']).then((qs) => {
+                    for (const q of qs) {
+                        allQuestions.push({ questionText: q.questionText, options: null, correctIndex: null, correctAnswer: JSON.stringify(q.correctAnswers), explanation: q.explanation, sourceSnippet: q.sourceSnippet, questionType: 'fillInBlanks' })
+                    }
+                })
+            )
+        }
+
+        if (distribution['conjugation']) {
+            generationTasks.push(
+                generateConjugationQuestions(contextText, distribution['conjugation']).then((qs) => {
+                    for (const q of qs) {
+                        allQuestions.push({ questionText: `Konjugiere «${q.verb}» (= ${q.translation}) im ${q.tense}`, options: q.persons, correctIndex: null, correctAnswer: JSON.stringify(q.forms), explanation: q.explanation, sourceSnippet: q.sourceSnippet, questionType: 'conjugation' })
+                    }
+                })
+            )
+        }
+
+        if (distribution['sentenceOrder']) {
+            generationTasks.push(
+                generateSentenceOrderQuestions(contextText, distribution['sentenceOrder']).then((qs) => {
+                    for (const q of qs) {
+                        const words = q.correctSentence.split(/\s+/)
+                        allQuestions.push({ questionText: 'Bringe die Wörter in die richtige Reihenfolge:', options: shuffle(words), correctIndex: null, correctAnswer: q.correctSentence, explanation: q.explanation, sourceSnippet: q.sourceSnippet, questionType: 'sentenceOrder' })
+                    }
+                })
+            )
+        }
+
+        await Promise.all(generationTasks)
     }
-
-    // Select representative chunks distributed across the document
-    const selectedChunks = selectRepresentativeChunks(document.chunks, count)
-    const contextText = selectedChunks.map((c) => c.content).join('\n\n---\n\n')
-
-    // Distribute questions across types and generate in parallel
-    const distribution = distributeQuestions(count, types)
-
-    const allQuestions: QuestionToSave[] = []
-    const generationTasks: Promise<void>[] = []
-
-    if (distribution['singleChoice']) {
-        generationTasks.push(
-            generateSingleChoiceQuestions(contextText, distribution['singleChoice']).then((qs) => {
-                for (const q of qs) {
-                    allQuestions.push({
-                        questionText: q.questionText,
-                        options: q.options,
-                        correctIndex: q.correctIndex,
-                        explanation: q.explanation,
-                        sourceSnippet: q.sourceSnippet,
-                        questionType: 'singleChoice',
-                    })
-                }
-            })
-        )
-    }
-
-    if (distribution['multipleChoice']) {
-        generationTasks.push(
-            generateMultipleChoiceQuestions(contextText, distribution['multipleChoice']).then((qs) => {
-                for (const q of qs) {
-                    allQuestions.push({
-                        questionText: q.questionText,
-                        options: q.options,
-                        correctIndex: null,
-                        correctIndices: q.correctIndices,
-                        explanation: q.explanation,
-                        sourceSnippet: q.sourceSnippet,
-                        questionType: 'multipleChoice',
-                    })
-                }
-            })
-        )
-    }
-
-    if (distribution['freetext']) {
-        generationTasks.push(
-            generateFreetextQuestions(contextText, distribution['freetext']).then((qs) => {
-                for (const q of qs) {
-                    allQuestions.push({
-                        questionText: q.questionText,
-                        options: null,
-                        correctIndex: null,
-                        correctAnswer: q.correctAnswer,
-                        explanation: q.explanation,
-                        sourceSnippet: q.sourceSnippet,
-                        questionType: 'freetext',
-                    })
-                }
-            })
-        )
-    }
-
-    if (distribution['truefalse']) {
-        generationTasks.push(
-            generateTruefalseQuestions(contextText, distribution['truefalse']).then((qs) => {
-                for (const q of qs) {
-                    allQuestions.push({
-                        questionText: q.questionText,
-                        options: ['Wahr', 'Falsch'],
-                        correctIndex: q.correctAnswer === 'wahr' ? 0 : 1,
-                        correctAnswer: q.correctAnswer,
-                        explanation: q.explanation,
-                        sourceSnippet: q.sourceSnippet,
-                        questionType: 'truefalse',
-                    })
-                }
-            })
-        )
-    }
-
-    if (distribution['cloze']) {
-        generationTasks.push(
-            generateClozeQuestions(contextText, distribution['cloze']).then((qs) => {
-                for (const q of qs) {
-                    allQuestions.push({
-                        questionText: q.questionText,
-                        options: null,
-                        correctIndex: null,
-                        correctAnswer: q.correctAnswer,
-                        explanation: q.explanation,
-                        sourceSnippet: q.sourceSnippet,
-                        questionType: 'cloze',
-                    })
-                }
-            })
-        )
-    }
-
-    await Promise.all(generationTasks)
 
     if (allQuestions.length === 0) {
-        throw new Error('Das LLM konnte keine gültige Antwort generieren.')
+        throw new Error('Es konnten keine Quizfragen generiert werden.')
     }
 
     // Create quiz in DB
@@ -462,6 +482,162 @@ async function evaluateCloze(
     return evaluateFreetext(question, freeTextAnswer)
 }
 
+// Evaluate fillInBlanks: parse JSON array, check each blank via Levenshtein
+async function evaluateFillInBlanks(
+    question: {
+        id: string
+        questionText: string
+        correctAnswer: string | null
+        sourceSnippet: string | null
+    },
+    freeTextAnswer: string,
+) {
+    let correctAnswers: string[]
+    try {
+        correctAnswers = JSON.parse(question.correctAnswer ?? '[]')
+    } catch {
+        correctAnswers = []
+    }
+
+    // User answer is JSON array of individual blank responses
+    let userAnswers: string[]
+    try {
+        userAnswers = JSON.parse(freeTextAnswer)
+    } catch {
+        userAnswers = [freeTextAnswer]
+    }
+
+    let totalSim = 0
+    const feedback: string[] = []
+    for (let i = 0; i < correctAnswers.length; i++) {
+        const expected = correctAnswers[i] ?? ''
+        const given = userAnswers[i] ?? ''
+        const sim = normalizedLevenshtein(given, expected)
+        totalSim += sim >= 0.85 ? 1.0 : 0.0
+        if (sim >= 0.85) {
+            feedback.push(`Lücke ${i + 1}: ✓ Richtig`)
+        } else {
+            feedback.push(`Lücke ${i + 1}: ✗ Erwartet «${expected}», erhalten «${given}»`)
+        }
+    }
+
+    const freeTextScore = correctAnswers.length > 0 ? totalSim / correctAnswers.length : 0
+    const isCorrect = freeTextScore >= 0.5
+    const freeTextFeedback = feedback.join('\n')
+
+    const attempt = await dbRecordAttempt(
+        question.id, null, isCorrect, undefined,
+        freeTextAnswer, freeTextScore, freeTextFeedback
+    )
+    await upsertQuestionProgress(question.id, isCorrect, freeTextScore)
+
+    return {
+        isCorrect,
+        freeTextScore,
+        freeTextFeedback,
+        correctAnswer: question.correctAnswer ?? undefined,
+        sourceSnippet: question.sourceSnippet ?? undefined,
+        attemptId: attempt.id,
+    }
+}
+
+// Evaluate conjugation: parse JSON array of forms, check each via Levenshtein
+async function evaluateConjugation(
+    question: {
+        id: string
+        questionText: string
+        options: unknown
+        correctAnswer: string | null
+        sourceSnippet: string | null
+    },
+    freeTextAnswer: string,
+) {
+    let correctForms: string[]
+    try {
+        correctForms = JSON.parse(question.correctAnswer ?? '[]')
+    } catch {
+        correctForms = []
+    }
+
+    const persons = (question.options as string[]) ?? []
+
+    let userForms: string[]
+    try {
+        userForms = JSON.parse(freeTextAnswer)
+    } catch {
+        userForms = [freeTextAnswer]
+    }
+
+    let correctCount = 0
+    const feedback: string[] = []
+    for (let i = 0; i < correctForms.length; i++) {
+        const expected = correctForms[i] ?? ''
+        const given = userForms[i] ?? ''
+        const personLabel = persons[i] ?? `Form ${i + 1}`
+        const sim = normalizedLevenshtein(given, expected)
+        if (sim >= 0.85) {
+            correctCount++
+            feedback.push(`${personLabel}: ✓ ${expected}`)
+        } else {
+            feedback.push(`${personLabel}: ✗ Erwartet «${expected}», erhalten «${given}»`)
+        }
+    }
+
+    const freeTextScore = correctForms.length > 0 ? correctCount / correctForms.length : 0
+    const isCorrect = freeTextScore >= 0.5
+    const freeTextFeedback = feedback.join('\n')
+
+    const attempt = await dbRecordAttempt(
+        question.id, null, isCorrect, undefined,
+        freeTextAnswer, freeTextScore, freeTextFeedback
+    )
+    await upsertQuestionProgress(question.id, isCorrect, freeTextScore)
+
+    return {
+        isCorrect,
+        freeTextScore,
+        freeTextFeedback,
+        correctAnswer: question.correctAnswer ?? undefined,
+        sourceSnippet: question.sourceSnippet ?? undefined,
+        attemptId: attempt.id,
+    }
+}
+
+// Evaluate sentenceOrder: compare word sequence via Levenshtein
+async function evaluateSentenceOrder(
+    question: {
+        id: string
+        questionText: string
+        correctAnswer: string | null
+        sourceSnippet: string | null
+    },
+    freeTextAnswer: string,
+) {
+    const correct = question.correctAnswer ?? ''
+    const similarity = normalizedLevenshtein(freeTextAnswer, correct)
+    const freeTextScore = similarity >= 0.9 ? 1.0 : similarity >= 0.75 ? 0.5 : 0.0
+    const isCorrect = freeTextScore >= 0.5
+
+    const freeTextFeedback = isCorrect
+        ? (freeTextScore === 1.0 ? 'Richtig!' : 'Fast richtig — kleine Abweichungen.')
+        : `Falsch. Der korrekte Satz lautet: «${correct}»`
+
+    const attempt = await dbRecordAttempt(
+        question.id, null, isCorrect, undefined,
+        freeTextAnswer, freeTextScore, freeTextFeedback
+    )
+    await upsertQuestionProgress(question.id, isCorrect, freeTextScore)
+
+    return {
+        isCorrect,
+        freeTextScore,
+        freeTextFeedback,
+        correctAnswer: correct,
+        sourceSnippet: question.sourceSnippet ?? undefined,
+        attemptId: attempt.id,
+    }
+}
+
 export async function evaluateAnswer(
     questionId: string,
     selectedIndex?: number | null,
@@ -495,8 +671,8 @@ export async function evaluateAnswer(
         throw new Error('Mindestens eine Auswahl ist für diesen Fragetyp erforderlich.')
     }
 
-    // Validate: freetext/cloze requires freeTextAnswer
-    if ((questionType === 'freetext' || questionType === 'cloze') && !freeTextAnswer) {
+    // Validate: freetext-like types require freeTextAnswer
+    if (isFreetextLikeType(questionType) && !freeTextAnswer) {
         throw new Error('Eine Freitext-Antwort ist für diesen Fragetyp erforderlich.')
     }
 
@@ -507,7 +683,13 @@ export async function evaluateAnswer(
 
     // Evaluate based on question type
     let evalResult
-    if (questionType === 'cloze') {
+    if (questionType === 'fillInBlanks') {
+        evalResult = await evaluateFillInBlanks(question, sanitizedFreeText!)
+    } else if (questionType === 'conjugation') {
+        evalResult = await evaluateConjugation(question, sanitizedFreeText!)
+    } else if (questionType === 'sentenceOrder') {
+        evalResult = await evaluateSentenceOrder(question, sanitizedFreeText!)
+    } else if (questionType === 'cloze') {
         evalResult = await evaluateCloze(question, sanitizedFreeText!)
     } else if (questionType === 'freetext') {
         evalResult = await evaluateFreetext(question, sanitizedFreeText!)

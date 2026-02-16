@@ -4,9 +4,10 @@ import { Fragment, useState, useMemo, useEffect, useRef } from 'react'
 import { DefaultChatTransport, type UIMessage } from 'ai'
 import { useChat } from '@ai-sdk/react'
 import { z } from 'zod'
-import { BookOpen, FileText, Loader2, ChevronDown, CornerDownLeft, Check, AlertTriangle, Bookmark } from 'lucide-react'
+import { BookOpen, FileText, Loader2, ChevronDown, CornerDownLeft, Check, AlertTriangle, Bookmark, ClipboardCheck, MessageSquare } from 'lucide-react'
 import { getSession, getChatSuggestions, toggleBookmark } from '@/src/actions/chat'
 import { getDocuments, getSubjects } from '@/src/actions/documents'
+import type { ConversationEvaluation } from '@/src/app/api/chat/conversation/evaluate/route'
 import {
     Sheet,
     SheetContent,
@@ -56,6 +57,10 @@ import { Shimmer } from '@/src/components/ai-elements/shimmer'
 interface ChatInterfaceProps {
     sessionId?: string
     documentId?: string
+    mode?: 'learning' | 'conversation'
+    scenario?: string
+    scenarioTitle?: string
+    scenarioDescription?: string
     onSessionCreated?: (sessionId: string, title: string) => void
 }
 
@@ -158,8 +163,57 @@ function storedToUIMessages(stored: StoredMessage[]): ChatMessage[] {
     }))
 }
 
+// Evaluation result card for conversation mode
+function EvaluationCard({ evaluation }: { evaluation: ConversationEvaluation }) {
+    const scoreColor = (score: number) => {
+        if (score >= 8) return 'text-green-600 dark:text-green-400'
+        if (score >= 5) return 'text-yellow-600 dark:text-yellow-400'
+        return 'text-red-600 dark:text-red-400'
+    }
+
+    return (
+        <div className="rounded-lg border border-border bg-card p-4 space-y-4">
+            <div className="flex items-center gap-2 font-semibold">
+                <ClipboardCheck className="h-5 w-5 text-primary" />
+                <span>Bewertung</span>
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+                {[
+                    { label: 'Grammatik', score: evaluation.grammar },
+                    { label: 'Wortschatz', score: evaluation.vocabulary },
+                    { label: 'Kommunikation', score: evaluation.communication },
+                ].map(({ label, score }) => (
+                    <div key={label} className="text-center">
+                        <div className={`text-2xl font-bold ${scoreColor(score)}`}>{score}/10</div>
+                        <div className="text-xs text-muted-foreground">{label}</div>
+                    </div>
+                ))}
+            </div>
+
+            <p className="text-sm">{evaluation.overallFeedback}</p>
+
+            {evaluation.corrections.length > 0 && (
+                <div className="space-y-2">
+                    <p className="text-sm font-medium">Korrekturen:</p>
+                    {evaluation.corrections.map((c, i) => (
+                        <div key={i} className="rounded-md bg-muted p-2.5 text-sm space-y-1">
+                            <div className="flex items-start gap-2">
+                                <span className="text-red-500 line-through">{c.original}</span>
+                                <span className="text-muted-foreground">→</span>
+                                <span className="text-green-600 dark:text-green-400 font-medium">{c.corrected}</span>
+                            </div>
+                            <p className="text-xs text-muted-foreground">{c.explanation}</p>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    )
+}
+
 // Full chat interface with message list, input, and source detail panel
-export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatInterfaceProps) {
+export function ChatInterface({ sessionId, documentId, mode = 'learning', scenario, scenarioTitle, scenarioDescription, onSessionCreated }: ChatInterfaceProps) {
     const [activeSessionId, setActiveSessionId] = useState(sessionId)
     const [activeSource, setActiveSource] = useState<StoredSource | null>(null)
     const [loadingSession, setLoadingSession] = useState(!!sessionId)
@@ -169,6 +223,11 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
     const prevSessionIdRef = useRef(sessionId)
 
     const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set())
+
+    const [evaluation, setEvaluation] = useState<ConversationEvaluation | null>(null)
+    const [evaluating, setEvaluating] = useState(false)
+
+    const isConversation = mode === 'conversation'
 
     const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>(
         documentId ? [documentId] : []
@@ -207,7 +266,9 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
         api: '/api/chat',
         body: () => ({
             sessionId: activeSessionIdRef.current,
-            documentIds: selectedDocumentIdsRef.current.length > 0 ? selectedDocumentIdsRef.current : undefined,
+            documentIds: !isConversation && selectedDocumentIdsRef.current.length > 0 ? selectedDocumentIdsRef.current : undefined,
+            mode: isConversation ? 'conversation' : undefined,
+            scenario: isConversation ? scenario : undefined,
         }),
         fetch: async (url, init) => {
             const response = await globalThis.fetch(url as string, init as RequestInit)
@@ -346,6 +407,32 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
         }
     }
 
+    async function handleEvaluate() {
+        if (evaluating || messages.length < 2) return
+        setEvaluating(true)
+        try {
+            const msgPayload = messages.map((m) => ({
+                role: m.role,
+                content: m.parts
+                    .filter((p): p is { type: 'text'; text: string } => p.type === 'text')
+                    .map((p) => p.text)
+                    .join(''),
+            }))
+            const res = await fetch('/api/chat/conversation/evaluate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ messages: msgPayload, scenario }),
+            })
+            if (!res.ok) throw new Error('Fehler')
+            const data = await res.json()
+            setEvaluation(data)
+        } catch {
+            // silently fail
+        } finally {
+            setEvaluating(false)
+        }
+    }
+
     // Toggle a source in the detail panel
     function handleSourceClick(source: StoredSource) {
         setActiveSource(source)
@@ -368,9 +455,11 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
                         {messages.length === 0 && (
                             <div className="flex flex-col items-center justify-center py-16 gap-6">
                                 <ConversationEmptyState
-                                    title="Lernassistent"
-                                    description="Stelle eine Frage zu deinem Lernmaterial. Der Assistent antwortet basierend auf den hochgeladenen Inhalten und zitiert die Quellen."
-                                    icon={<BookOpen className="h-12 w-12" />}
+                                    title={isConversation ? (scenarioTitle ?? 'Konversation') : 'Lernassistent'}
+                                    description={isConversation
+                                        ? (scenarioDescription ?? 'Starte das Gespräch auf Deutsch.')
+                                        : 'Stelle eine Frage zu deinem Lernmaterial. Der Assistent antwortet basierend auf den hochgeladenen Inhalten und zitiert die Quellen.'}
+                                    icon={isConversation ? <MessageSquare className="h-12 w-12" /> : <BookOpen className="h-12 w-12" />}
                                 />
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-lg">
                                     {suggestions.map((suggestion) => (
@@ -512,6 +601,28 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
                         {isLoading && messages[messages.length - 1]?.role === 'user' && (
                             <Shimmer>Denke nach...</Shimmer>
                         )}
+
+                        {/* Conversation mode: evaluation button and result */}
+                        {isConversation && messages.length >= 2 && !isLoading && (
+                            <div className="space-y-4 pt-4">
+                                {evaluation ? (
+                                    <EvaluationCard evaluation={evaluation} />
+                                ) : (
+                                    <button
+                                        type="button"
+                                        onClick={handleEvaluate}
+                                        disabled={evaluating}
+                                        className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-4 py-2.5 text-sm font-medium text-primary transition-colors hover:bg-primary/10 disabled:opacity-50"
+                                    >
+                                        {evaluating ? (
+                                            <><Loader2 className="h-4 w-4 animate-spin" /> Wird bewertet...</>
+                                        ) : (
+                                            <><ClipboardCheck className="h-4 w-4" /> Bewertung anfordern</>
+                                        )}
+                                    </button>
+                                )}
+                            </div>
+                        )}
                     </ConversationContent>
                     <ConversationScrollButton />
                 </Conversation>
@@ -521,11 +632,11 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
                   <div className="max-w-3xl mx-auto w-full">
                     <PromptInput onSubmit={handleSubmit}>
                         <PromptInputBody>
-                            <PromptInputTextarea placeholder="Stelle eine Frage zu deinem Lernmaterial..." />
+                            <PromptInputTextarea placeholder={isConversation ? 'Schreibe auf Deutsch...' : 'Stelle eine Frage zu deinem Lernmaterial...'} />
                         </PromptInputBody>
                         <PromptInputFooter>
                             <PromptInputTools>
-                                <Popover>
+                                {!isConversation && <Popover>
                                     <PopoverTrigger asChild>
                                         <button
                                             type="button"
@@ -605,7 +716,7 @@ export function ChatInterface({ sessionId, documentId, onSessionCreated }: ChatI
                                             )
                                         })}
                                     </PopoverContent>
-                                </Popover>
+                                </Popover>}
                                 <PromptInputButton
                                     tooltip={{ content: 'Absenden', shortcut: '↵' }}
                                     variant="ghost"

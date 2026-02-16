@@ -16,6 +16,30 @@ import {
     ReasoningTrigger,
 } from '@/src/components/ai-elements/reasoning'
 import { evaluateAnswer } from '@/src/actions/quiz'
+import { TTSButton } from '@/src/components/TTSButton'
+import { isFreetextLikeType } from '@/src/lib/quiz-types'
+import { SortableWordChips } from '@/src/components/quiz/SortableWordChips'
+
+// Map document subject to BCP-47 language code for TTS
+const SUBJECT_LANG_MAP: Record<string, string> = {
+    'Englisch': 'en-US',
+    'Spanisch': 'es-ES',
+    'Französisch': 'fr-FR',
+    'Italienisch': 'it-IT',
+    'Portugiesisch': 'pt-PT',
+}
+
+/** Extract the foreign-language word/phrase from a quiz question for TTS */
+function extractTTSText(questionText: string, questionType?: string): string | null {
+    // For cloze: extract the foreign-language sentence
+    if (questionType === 'cloze') {
+        const match = questionText.match(/ein:\s*(.+?)\s*\(Deutsch:/)
+        if (match) return match[1].replace(/\{\{blank\}\}/g, '…')
+    }
+    // For other types: extract first «...» content
+    const match = questionText.match(/«(.+?)»/)
+    return match ? match[1] : null
+}
 
 interface Question {
     id: string
@@ -42,6 +66,7 @@ interface QuizPlayerProps {
     quizTitle: string
     questions: Question[]
     onComplete: (results: Map<string, AnswerResult>) => void
+    subject?: string | null
 }
 
 const TYPE_LABELS: Record<string, string> = {
@@ -50,9 +75,12 @@ const TYPE_LABELS: Record<string, string> = {
     freetext: 'Freitext',
     truefalse: 'Wahr/Falsch',
     cloze: 'Lückentext',
+    fillInBlanks: 'Lückentext (mehrfach)',
+    conjugation: 'Konjugation',
+    sentenceOrder: 'Satzordnung',
 }
 
-export function QuizPlayer({ quizTitle, questions, onComplete }: QuizPlayerProps) {
+export function QuizPlayer({ quizTitle, questions, onComplete, subject }: QuizPlayerProps) {
     const [currentIndex, setCurrentIndex] = useState(0)
     const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
     const [freeTextAnswer, setFreeTextAnswer] = useState('')
@@ -60,7 +88,10 @@ export function QuizPlayer({ quizTitle, questions, onComplete }: QuizPlayerProps
     const [results, setResults] = useState<Map<string, AnswerResult>>(new Map())
     const [selectedIndices, setSelectedIndices] = useState<number[]>([])
     const [submitting, setSubmitting] = useState(false)
-    const [answerHistory, setAnswerHistory] = useState<Map<number, { selectedIndex: number | null; selectedIndices: number[]; freeTextAnswer: string; result: AnswerResult | null }>>(new Map())
+    const [fillInBlanksAnswers, setFillInBlanksAnswers] = useState<string[]>([])
+    const [conjugationAnswers, setConjugationAnswers] = useState<string[]>([])
+    const [orderedWords, setOrderedWords] = useState<string[]>([])
+    const [answerHistory, setAnswerHistory] = useState<Map<number, { selectedIndex: number | null; selectedIndices: number[]; freeTextAnswer: string; fillInBlanksAnswers: string[]; conjugationAnswers: string[]; orderedWords: string[]; result: AnswerResult | null }>>(new Map())
 
     const currentQuestion = questions[currentIndex]
     const isLastQuestion = currentIndex === questions.length - 1
@@ -68,20 +99,35 @@ export function QuizPlayer({ quizTitle, questions, onComplete }: QuizPlayerProps
     const isFreetext = currentQuestion?.questionType === 'freetext'
     const isCloze = currentQuestion?.questionType === 'cloze'
     const isMultipleChoice = currentQuestion?.questionType === 'multipleChoice'
+    const isFillInBlanks = currentQuestion?.questionType === 'fillInBlanks'
+    const isConjugation = currentQuestion?.questionType === 'conjugation'
+    const isSentenceOrder = currentQuestion?.questionType === 'sentenceOrder'
 
     async function handleSubmit() {
         if (!currentQuestion) return
         if (isMultipleChoice && selectedIndices.length === 0) return
-        if (!isMultipleChoice && !isFreetext && !isCloze && selectedIndex === null) return
+        if (!isMultipleChoice && !isFreetext && !isCloze && !isFillInBlanks && !isConjugation && !isSentenceOrder && selectedIndex === null) return
         if ((isFreetext || isCloze) && !freeTextAnswer.trim()) return
 
         setSubmitting(true)
 
+        // Serialize answer for new types
+        let serializedFreeText: string | undefined
+        if (isFillInBlanks) {
+            serializedFreeText = JSON.stringify(fillInBlanksAnswers)
+        } else if (isConjugation) {
+            serializedFreeText = JSON.stringify(conjugationAnswers)
+        } else if (isSentenceOrder) {
+            serializedFreeText = orderedWords.join(' ')
+        } else if (isFreetext || isCloze) {
+            serializedFreeText = freeTextAnswer
+        }
+
         try {
             const data = await evaluateAnswer(
                 currentQuestion.id,
-                isFreetext || isCloze || isMultipleChoice ? null : selectedIndex,
-                (isFreetext || isCloze) ? freeTextAnswer : undefined,
+                isFreetextLikeType(currentQuestion.questionType) || isMultipleChoice ? null : selectedIndex,
+                serializedFreeText,
                 isMultipleChoice ? selectedIndices : undefined,
             ) as AnswerResult
             setResult(data)
@@ -100,7 +146,7 @@ export function QuizPlayer({ quizTitle, questions, onComplete }: QuizPlayerProps
         // Save current state to history
         setAnswerHistory(prev => {
             const next = new Map(prev)
-            next.set(currentIndex, { selectedIndex, selectedIndices, freeTextAnswer, result })
+            next.set(currentIndex, { selectedIndex, selectedIndices, freeTextAnswer, fillInBlanksAnswers, conjugationAnswers, orderedWords, result })
             return next
         })
 
@@ -115,6 +161,9 @@ export function QuizPlayer({ quizTitle, questions, onComplete }: QuizPlayerProps
         setSelectedIndex(nextState?.selectedIndex ?? null)
         setSelectedIndices(nextState?.selectedIndices ?? [])
         setFreeTextAnswer(nextState?.freeTextAnswer ?? '')
+        setFillInBlanksAnswers(nextState?.fillInBlanksAnswers ?? [])
+        setConjugationAnswers(nextState?.conjugationAnswers ?? [])
+        setOrderedWords(nextState?.orderedWords ?? [])
         setResult(nextState?.result ?? null)
     }
 
@@ -122,7 +171,7 @@ export function QuizPlayer({ quizTitle, questions, onComplete }: QuizPlayerProps
         // Save current empty state
         setAnswerHistory(prev => {
             const next = new Map(prev)
-            next.set(currentIndex, { selectedIndex: null, selectedIndices: [], freeTextAnswer: '', result: null })
+            next.set(currentIndex, { selectedIndex: null, selectedIndices: [], freeTextAnswer: '', fillInBlanksAnswers: [], conjugationAnswers: [], orderedWords: [], result: null })
             return next
         })
 
@@ -143,6 +192,9 @@ export function QuizPlayer({ quizTitle, questions, onComplete }: QuizPlayerProps
         setSelectedIndex(null)
         setSelectedIndices([])
         setFreeTextAnswer('')
+        setFillInBlanksAnswers([])
+        setConjugationAnswers([])
+        setOrderedWords([])
         setResult(null)
     }
 
@@ -151,7 +203,7 @@ export function QuizPlayer({ quizTitle, questions, onComplete }: QuizPlayerProps
         // Save current state
         setAnswerHistory(prev => {
             const next = new Map(prev)
-            next.set(currentIndex, { selectedIndex, selectedIndices, freeTextAnswer, result })
+            next.set(currentIndex, { selectedIndex, selectedIndices, freeTextAnswer, fillInBlanksAnswers, conjugationAnswers, orderedWords, result })
             return next
         })
 
@@ -161,6 +213,9 @@ export function QuizPlayer({ quizTitle, questions, onComplete }: QuizPlayerProps
         setSelectedIndex(prevState?.selectedIndex ?? null)
         setSelectedIndices(prevState?.selectedIndices ?? [])
         setFreeTextAnswer(prevState?.freeTextAnswer ?? '')
+        setFillInBlanksAnswers(prevState?.fillInBlanksAnswers ?? [])
+        setConjugationAnswers(prevState?.conjugationAnswers ?? [])
+        setOrderedWords(prevState?.orderedWords ?? [])
         setResult(prevState?.result ?? null)
     }
 
@@ -169,12 +224,23 @@ export function QuizPlayer({ quizTitle, questions, onComplete }: QuizPlayerProps
     const options = currentQuestion.options
     const canSubmit = (isFreetext || isCloze)
         ? !!freeTextAnswer.trim()
-        : isMultipleChoice
-            ? selectedIndices.length > 0
-            : selectedIndex !== null
+        : isFillInBlanks
+            ? fillInBlanksAnswers.some((a) => a.trim())
+            : isConjugation
+                ? conjugationAnswers.some((a) => a.trim())
+                : isSentenceOrder
+                    ? orderedWords.length > 0
+                    : isMultipleChoice
+                        ? selectedIndices.length > 0
+                        : selectedIndex !== null
 
-    // Split cloze question text around {{blank}}
+    // Split cloze/fillInBlanks question text around {{blank}}
     const clozeParts = isCloze ? currentQuestion.questionText.split('{{blank}}') : []
+    const fillInBlanksParts = isFillInBlanks ? currentQuestion.questionText.split('{{blank}}') : []
+
+    // TTS for language quizzes
+    const ttsLang = subject ? SUBJECT_LANG_MAP[subject] : undefined
+    const ttsText = ttsLang ? extractTTSText(currentQuestion.questionText, currentQuestion.questionType) : null
 
     return (
         <div className="space-y-6">
@@ -193,9 +259,14 @@ export function QuizPlayer({ quizTitle, questions, onComplete }: QuizPlayerProps
 
             <Card>
                 <CardHeader>
-                    <CardTitle className="text-lg">
-                        {currentQuestion.questionText}
-                    </CardTitle>
+                    <div className="flex items-start gap-2">
+                        <CardTitle className="text-lg flex-1">
+                            {currentQuestion.questionText}
+                        </CardTitle>
+                        {ttsText && ttsLang && (
+                            <TTSButton text={ttsText} lang={ttsLang} size="sm" className="shrink-0 mt-0.5" />
+                        )}
+                    </div>
                     <div className="flex items-center gap-1.5 mt-1">
                         {currentQuestion.questionType && (
                             <Badge variant="outline" className="text-xs font-normal text-muted-foreground">
@@ -250,7 +321,7 @@ export function QuizPlayer({ quizTitle, questions, onComplete }: QuizPlayerProps
                     )}
 
                     {/* MC / True-False: show RadioGroup */}
-                    {!isMultipleChoice && !isCloze && options && options.length > 0 && (
+                    {!isMultipleChoice && !isCloze && !isFillInBlanks && !isConjugation && !isSentenceOrder && options && options.length > 0 && (
                         <RadioGroup
                             value={selectedIndex !== null ? String(selectedIndex) : ''}
                             onValueChange={(v) => {
@@ -323,6 +394,97 @@ export function QuizPlayer({ quizTitle, questions, onComplete }: QuizPlayerProps
                         </div>
                     )}
 
+                    {/* FillInBlanks: multiple inline inputs */}
+                    {isFillInBlanks && (
+                        <div className="space-y-2">
+                            <p className="text-lg leading-relaxed">
+                                {fillInBlanksParts.map((part, i) => (
+                                    <span key={i}>
+                                        {part}
+                                        {i < fillInBlanksParts.length - 1 && (
+                                            <input
+                                                type="text"
+                                                value={fillInBlanksAnswers[i] ?? ''}
+                                                onChange={(e) => {
+                                                    if (!result) {
+                                                        const next = [...fillInBlanksAnswers]
+                                                        next[i] = e.target.value
+                                                        setFillInBlanksAnswers(next)
+                                                    }
+                                                }}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter' && !result && canSubmit) handleSubmit()
+                                                }}
+                                                disabled={!!result}
+                                                autoFocus={i === 0}
+                                                className={`inline-block w-40 mx-1 px-2 py-0.5 text-center border-b-2 bg-transparent outline-none text-base ${
+                                                    result
+                                                        ? (result.freeTextScore ?? 0) >= 0.5
+                                                            ? 'border-green-500 text-green-700 dark:text-green-400'
+                                                            : 'border-red-500 text-red-700 dark:text-red-400'
+                                                        : 'border-primary focus:border-primary'
+                                                }`}
+                                                placeholder="___"
+                                                maxLength={100}
+                                            />
+                                        )}
+                                    </span>
+                                ))}
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Conjugation: table with person labels + inputs */}
+                    {isConjugation && options && (
+                        <div className="space-y-3">
+                            <div className="grid gap-2">
+                                {(options as string[]).map((person, i) => (
+                                    <div key={i} className="flex items-center gap-3">
+                                        <span className="text-sm font-medium w-24 text-right shrink-0">{person}</span>
+                                        <input
+                                            type="text"
+                                            value={conjugationAnswers[i] ?? ''}
+                                            onChange={(e) => {
+                                                if (!result) {
+                                                    const next = [...conjugationAnswers]
+                                                    next[i] = e.target.value
+                                                    setConjugationAnswers(next)
+                                                }
+                                            }}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter' && !result && canSubmit) handleSubmit()
+                                            }}
+                                            disabled={!!result}
+                                            autoFocus={i === 0}
+                                            className={`flex-1 px-3 py-1.5 rounded border text-sm bg-transparent outline-none ${
+                                                result
+                                                    ? (result.freeTextScore ?? 0) >= 0.5
+                                                        ? 'border-green-500'
+                                                        : 'border-red-500'
+                                                    : 'border-input focus:border-primary'
+                                            }`}
+                                            placeholder="…"
+                                            maxLength={100}
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* SentenceOrder: drag-and-drop word chips */}
+                    {isSentenceOrder && options && (
+                        <div className="space-y-3">
+                            <SortableWordChips
+                                words={orderedWords.length > 0 ? orderedWords : (options as string[])}
+                                onChange={(words) => {
+                                    if (!result) setOrderedWords(words)
+                                }}
+                                disabled={!!result}
+                            />
+                        </div>
+                    )}
+
                     {/* Freetext: show only Textarea */}
                     {isFreetext && (
                         <div className="space-y-2">
@@ -348,7 +510,7 @@ export function QuizPlayer({ quizTitle, questions, onComplete }: QuizPlayerProps
                     {result && (
                         <div className="mt-4 p-4 rounded-lg border bg-muted/50 space-y-3">
                             <div className="flex items-center gap-2">
-                                {(isFreetext || isCloze) ? (
+                                {isFreetextLikeType(currentQuestion.questionType) ? (
                                     <Badge variant="outline">
                                         Bewertung: {Math.round((result.freeTextScore ?? 0) * 100)}%
                                     </Badge>
@@ -358,7 +520,7 @@ export function QuizPlayer({ quizTitle, questions, onComplete }: QuizPlayerProps
                                     <Badge variant="destructive">Falsch</Badge>
                                 )}
                             </div>
-                            {isCloze && result.correctAnswer && (
+                            {(isCloze || isFillInBlanks || isSentenceOrder) && result.correctAnswer && (
                                 <p className="text-sm font-medium">
                                     Richtige Antwort: <span className="text-green-600">{result.correctAnswer}</span>
                                 </p>

@@ -18,7 +18,7 @@ interface Question {
 interface QuizData {
     id: string
     title: string
-    document: { id: string; title: string }
+    document: { id: string; title: string; subject?: string | null }
     questions: Question[]
 }
 
@@ -76,6 +76,7 @@ export default function QuizPlayerPage({ params }: { params: Promise<{ id: strin
                 quizTitle={quiz.title}
                 questions={quiz.questions}
                 timeLimit={timeLimit}
+                subject={quiz.document.subject}
             />
         )
     }
@@ -87,6 +88,7 @@ export default function QuizPlayerPage({ params }: { params: Promise<{ id: strin
                 quizTitle={quiz.title}
                 questions={quiz.questions}
                 onComplete={handleComplete}
+                subject={quiz.document.subject}
             />
         </div>
     )

@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { getDocumentWithChunks } from '@/src/data-access/documents'
+import { getFlashcardsByDocument } from '@/src/data-access/flashcards'
 import { createQuiz, addQuestions } from '@/src/data-access/quiz'
 import {
     selectRepresentativeChunks,
@@ -9,8 +10,13 @@ import {
     generateFreetextQuestions,
     generateTruefalseQuestions,
     generateClozeQuestions,
+    generateFillInBlanksQuestions,
+    generateConjugationQuestions,
+    generateSentenceOrderQuestions,
+    shuffle,
     type QuestionToSave,
 } from '@/src/lib/quiz-generation'
+import { generateVocabQuizQuestions, type VocabFlashcard } from '@/src/lib/vocab-quiz-generation'
 
 // POST /api/quiz/generate - Generate quiz with SSE progress
 export async function POST(request: NextRequest) {
@@ -27,7 +33,7 @@ export async function POST(request: NextRequest) {
             return Response.json({ error: 'Mindestens ein Lernmaterial ist erforderlich.' }, { status: 400 })
         }
 
-        const validTypes = ['singleChoice', 'multipleChoice', 'freetext', 'truefalse', 'cloze']
+        const validTypes = ['singleChoice', 'multipleChoice', 'freetext', 'truefalse', 'cloze', 'fillInBlanks', 'conjugation', 'sentenceOrder']
         const types = (Array.isArray(questionTypes) ? questionTypes : ['singleChoice'])
             .filter((t: string) => validTypes.includes(t))
         if (types.length === 0) {
@@ -58,102 +64,120 @@ export async function POST(request: NextRequest) {
                         return
                     }
 
-                    const allChunks = validDocs.flatMap(d => d.chunks)
-                    if (allChunks.length === 0) {
-                        send({ type: 'error', message: 'Die Lernmaterialien haben keine verarbeiteten Textabschnitte.' })
-                        controller.close()
-                        return
-                    }
+                    // Partition into language-set vs regular documents
+                    const languageSetDocs = validDocs.filter(d => d.fileType === 'language-set')
+                    const regularDocs = validDocs.filter(d => d.fileType !== 'language-set')
 
-                    // Select representative chunks from merged set
-                    const selectedChunks = selectRepresentativeChunks(allChunks, count)
-                    const contextText = selectedChunks.map((c) => c.content).join('\n\n---\n\n')
-
-                    // Distribute questions across types
-                    const distribution = distributeQuestions(count, types)
-
-                    // Generate questions in batches per type (one LLM call per type)
                     const allQuestions: QuestionToSave[] = []
+                    let selectedChunks: { id: string; content: string; chunkIndex: number }[] = []
                     send({ type: 'progress', generated: 0, total: count })
 
-                    for (const type of types) {
-                        const typeCount = distribution[type] || 0
-                        if (typeCount === 0) continue
+                    // ── Vocabulary quiz path (deterministic, no LLM) ──
+                    if (languageSetDocs.length > 0) {
+                        const allFlashcards = (await Promise.all(
+                            languageSetDocs.map(d => getFlashcardsByDocument(d.id))
+                        )).flat()
 
-                        if (type === 'singleChoice') {
-                            const qs = await generateSingleChoiceQuestions(contextText, typeCount)
-                            for (const q of qs) {
-                                allQuestions.push({
-                                    questionText: q.questionText,
-                                    options: q.options,
-                                    correctIndex: q.correctIndex,
-                                    explanation: q.explanation,
-                                    sourceSnippet: q.sourceSnippet,
-                                    questionType: 'singleChoice',
-                                })
-                                send({ type: 'progress', generated: allQuestions.length, total: count })
-                            }
-                        } else if (type === 'multipleChoice') {
-                            const qs = await generateMultipleChoiceQuestions(contextText, typeCount)
-                            for (const q of qs) {
-                                allQuestions.push({
-                                    questionText: q.questionText,
-                                    options: q.options,
-                                    correctIndex: null,
-                                    correctIndices: q.correctIndices,
-                                    explanation: q.explanation,
-                                    sourceSnippet: q.sourceSnippet,
-                                    questionType: 'multipleChoice',
-                                })
-                                send({ type: 'progress', generated: allQuestions.length, total: count })
-                            }
-                        } else if (type === 'freetext') {
-                            const qs = await generateFreetextQuestions(contextText, typeCount)
-                            for (const q of qs) {
-                                allQuestions.push({
-                                    questionText: q.questionText,
-                                    options: null,
-                                    correctIndex: null,
-                                    correctAnswer: q.correctAnswer,
-                                    explanation: q.explanation,
-                                    sourceSnippet: q.sourceSnippet,
-                                    questionType: 'freetext',
-                                })
-                                send({ type: 'progress', generated: allQuestions.length, total: count })
-                            }
-                        } else if (type === 'truefalse') {
-                            const qs = await generateTruefalseQuestions(contextText, typeCount)
-                            for (const q of qs) {
-                                allQuestions.push({
-                                    questionText: q.questionText,
-                                    options: ['Wahr', 'Falsch'],
-                                    correctIndex: q.correctAnswer === 'wahr' ? 0 : 1,
-                                    correctAnswer: q.correctAnswer,
-                                    explanation: q.explanation,
-                                    sourceSnippet: q.sourceSnippet,
-                                    questionType: 'truefalse',
-                                })
-                                send({ type: 'progress', generated: allQuestions.length, total: count })
-                            }
-                        } else if (type === 'cloze') {
-                            const qs = await generateClozeQuestions(contextText, typeCount)
-                            for (const q of qs) {
-                                allQuestions.push({
-                                    questionText: q.questionText,
-                                    options: null,
-                                    correctIndex: null,
-                                    correctAnswer: q.correctAnswer,
-                                    explanation: q.explanation,
-                                    sourceSnippet: q.sourceSnippet,
-                                    questionType: 'cloze',
-                                })
-                                send({ type: 'progress', generated: allQuestions.length, total: count })
+                        if (allFlashcards.length >= 4) {
+                            // Derive language from document subject
+                            const language = languageSetDocs[0].subject ?? 'Spanisch'
+                            const vocabCount = regularDocs.length > 0
+                                ? Math.round(count * languageSetDocs.length / validDocs.length)
+                                : count
+
+                            const vocabCards: VocabFlashcard[] = allFlashcards.map(f => ({
+                                id: f.id,
+                                front: f.front,
+                                back: f.back,
+                                context: f.context,
+                                exampleSentence: f.exampleSentence,
+                                partOfSpeech: f.partOfSpeech,
+                                conjugation: f.conjugation as Record<string, Record<string, string>> | null,
+                            }))
+
+                            const vocabQuestions = generateVocabQuizQuestions(vocabCards, vocabCount, types, language)
+                            allQuestions.push(...vocabQuestions)
+                            send({ type: 'progress', generated: allQuestions.length, total: count })
+                        }
+                    }
+
+                    // ── Regular chunk-based quiz path (LLM) ──
+                    if (regularDocs.length > 0) {
+                        const allChunks = regularDocs.flatMap(d => d.chunks)
+                        if (allChunks.length === 0 && languageSetDocs.length === 0) {
+                            send({ type: 'error', message: 'Die Lernmaterialien haben keine verarbeiteten Textabschnitte.' })
+                            controller.close()
+                            return
+                        }
+
+                        if (allChunks.length > 0) {
+                            const remainingCount = count - allQuestions.length
+                            if (remainingCount > 0) {
+                                selectedChunks = selectRepresentativeChunks(allChunks, remainingCount)
+                                const contextText = selectedChunks.map((c) => c.content).join('\n\n---\n\n')
+                                const distribution = distributeQuestions(remainingCount, types)
+
+                                for (const type of types) {
+                                    const typeCount = distribution[type] || 0
+                                    if (typeCount === 0) continue
+
+                                    if (type === 'singleChoice') {
+                                        const qs = await generateSingleChoiceQuestions(contextText, typeCount)
+                                        for (const q of qs) {
+                                            allQuestions.push({ questionText: q.questionText, options: q.options, correctIndex: q.correctIndex, explanation: q.explanation, sourceSnippet: q.sourceSnippet, questionType: 'singleChoice' })
+                                            send({ type: 'progress', generated: allQuestions.length, total: count })
+                                        }
+                                    } else if (type === 'multipleChoice') {
+                                        const qs = await generateMultipleChoiceQuestions(contextText, typeCount)
+                                        for (const q of qs) {
+                                            allQuestions.push({ questionText: q.questionText, options: q.options, correctIndex: null, correctIndices: q.correctIndices, explanation: q.explanation, sourceSnippet: q.sourceSnippet, questionType: 'multipleChoice' })
+                                            send({ type: 'progress', generated: allQuestions.length, total: count })
+                                        }
+                                    } else if (type === 'freetext') {
+                                        const qs = await generateFreetextQuestions(contextText, typeCount)
+                                        for (const q of qs) {
+                                            allQuestions.push({ questionText: q.questionText, options: null, correctIndex: null, correctAnswer: q.correctAnswer, explanation: q.explanation, sourceSnippet: q.sourceSnippet, questionType: 'freetext' })
+                                            send({ type: 'progress', generated: allQuestions.length, total: count })
+                                        }
+                                    } else if (type === 'truefalse') {
+                                        const qs = await generateTruefalseQuestions(contextText, typeCount)
+                                        for (const q of qs) {
+                                            allQuestions.push({ questionText: q.questionText, options: ['Wahr', 'Falsch'], correctIndex: q.correctAnswer === 'wahr' ? 0 : 1, correctAnswer: q.correctAnswer, explanation: q.explanation, sourceSnippet: q.sourceSnippet, questionType: 'truefalse' })
+                                            send({ type: 'progress', generated: allQuestions.length, total: count })
+                                        }
+                                    } else if (type === 'cloze') {
+                                        const qs = await generateClozeQuestions(contextText, typeCount)
+                                        for (const q of qs) {
+                                            allQuestions.push({ questionText: q.questionText, options: null, correctIndex: null, correctAnswer: q.correctAnswer, explanation: q.explanation, sourceSnippet: q.sourceSnippet, questionType: 'cloze' })
+                                            send({ type: 'progress', generated: allQuestions.length, total: count })
+                                        }
+                                    } else if (type === 'fillInBlanks') {
+                                        const qs = await generateFillInBlanksQuestions(contextText, typeCount)
+                                        for (const q of qs) {
+                                            allQuestions.push({ questionText: q.questionText, options: null, correctIndex: null, correctAnswer: JSON.stringify(q.correctAnswers), explanation: q.explanation, sourceSnippet: q.sourceSnippet, questionType: 'fillInBlanks' })
+                                            send({ type: 'progress', generated: allQuestions.length, total: count })
+                                        }
+                                    } else if (type === 'conjugation') {
+                                        const qs = await generateConjugationQuestions(contextText, typeCount)
+                                        for (const q of qs) {
+                                            allQuestions.push({ questionText: `Konjugiere «${q.verb}» (= ${q.translation}) im ${q.tense}`, options: q.persons, correctIndex: null, correctAnswer: JSON.stringify(q.forms), explanation: q.explanation, sourceSnippet: q.sourceSnippet, questionType: 'conjugation' })
+                                            send({ type: 'progress', generated: allQuestions.length, total: count })
+                                        }
+                                    } else if (type === 'sentenceOrder') {
+                                        const qs = await generateSentenceOrderQuestions(contextText, typeCount)
+                                        for (const q of qs) {
+                                            const words = q.correctSentence.split(/\s+/)
+                                            allQuestions.push({ questionText: 'Bringe die Wörter in die richtige Reihenfolge:', options: shuffle(words), correctIndex: null, correctAnswer: q.correctSentence, explanation: q.explanation, sourceSnippet: q.sourceSnippet, questionType: 'sentenceOrder' })
+                                            send({ type: 'progress', generated: allQuestions.length, total: count })
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
 
                     if (allQuestions.length === 0) {
-                        send({ type: 'error', message: 'Das LLM konnte keine gültige Antwort generieren.' })
+                        send({ type: 'error', message: 'Es konnten keine Quizfragen generiert werden.' })
                         controller.close()
                         return
                     }
@@ -164,7 +188,7 @@ export async function POST(request: NextRequest) {
                         : `Quiz – ${validDocs.length} Lernmaterialien`
                     const quiz = await createQuiz(quizTitle, documentIds[0])
 
-                    // Save questions with correct indices
+                    // Save questions
                     const questionsToSave = allQuestions.slice(0, count).map((q, i) => ({
                         questionText: q.questionText,
                         options: q.options,

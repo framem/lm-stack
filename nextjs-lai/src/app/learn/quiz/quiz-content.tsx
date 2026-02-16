@@ -38,6 +38,7 @@ import { QuizCard } from '@/src/components/QuizCard'
 import { getQuizzes, deleteQuiz, getDocumentProgress } from '@/src/actions/quiz'
 import { getDocuments, getSubjects } from '@/src/actions/documents'
 import { formatDate } from '@/src/lib/utils'
+import { isFreetextLikeType } from '@/src/lib/quiz-types'
 
 interface Document {
     id: string
@@ -81,7 +82,7 @@ function getLastAttemptStats(questions: Quiz['questions']) {
     let lastDate: Date | null = null
     for (const q of answered) {
         const a = q.attempts[0]
-        score += (q.questionType === 'freetext' || q.questionType === 'cloze')
+        score += isFreetextLikeType(q.questionType)
             ? (a.freeTextScore ?? (a.isCorrect ? 1 : 0))
             : (a.isCorrect ? 1 : 0)
         const d = new Date(a.createdAt)
@@ -100,6 +101,9 @@ const QUESTION_TYPES = [
     { value: 'freetext', label: 'Freitext' },
     { value: 'truefalse', label: 'Wahr/Falsch' },
     { value: 'cloze', label: 'Lückentext' },
+    { value: 'fillInBlanks', label: 'Lückentext (mehrfach)' },
+    { value: 'conjugation', label: 'Konjugation' },
+    { value: 'sentenceOrder', label: 'Satzordnung' },
 ] as const
 
 export function QuizContent() {
@@ -433,6 +437,12 @@ export function QuizContent() {
                                 <p className="text-xs text-muted-foreground">{selectedDocIds.length} ausgewählt</p>
                             )}
                         </div>
+
+                        {selectedDocIds.length > 0 && selectedDocIds.every(id => documents.find(d => d.id === id)?.fileType === 'language-set') && (
+                            <p className="text-xs text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 p-2.5 rounded-md">
+                                Vokabelquiz — Fragen werden sofort aus den Vokabeldaten generiert (kein LLM nötig).
+                            </p>
+                        )}
 
                         <div className="space-y-2">
                             <label className="text-sm font-medium">Anzahl Fragen</label>

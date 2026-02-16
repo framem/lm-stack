@@ -1,4 +1,5 @@
 import { prisma } from '@/src/lib/prisma'
+import { isFreetextLikeType } from '@/src/lib/quiz-types'
 
 // Aggregated overview per subject
 export interface SubjectOverviewItem {
@@ -87,7 +88,7 @@ export async function getSubjectOverview(): Promise<SubjectOverviewItem[]> {
                 }
                 if (q.attempts.length > 0) {
                     const attempt = q.attempts[0]
-                    if (q.questionType === 'freetext') {
+                    if (isFreetextLikeType(q.questionType)) {
                         entry.totalScore += attempt.freeTextScore ?? (attempt.isCorrect ? 1 : 0)
                     } else {
                         entry.totalScore += attempt.isCorrect ? 1 : 0
@@ -218,7 +219,7 @@ export async function getSubjectDetail(subject: string): Promise<SubjectDetail |
                 if (q.progress && q.progress.nextReviewAt <= now) totalDue++
                 if (q.attempts.length > 0) {
                     const attempt = q.attempts[0]
-                    if (q.questionType === 'freetext') {
+                    if (isFreetextLikeType(q.questionType)) {
                         score += attempt.freeTextScore ?? (attempt.isCorrect ? 1 : 0)
                     } else {
                         score += attempt.isCorrect ? 1 : 0
