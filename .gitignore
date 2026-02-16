@@ -13,6 +13,5 @@ node_modules
 **/.claude
 **/__pycache__
 
-
 # TypeScript incremental build cache
 *.tsbuildinfo
