@@ -1,14 +1,14 @@
-name: MCP Tests
+name: MCP CI
 
 on:
   push:
     paths:
       - 'mcp/**'
-      - '.github/workflows/mcp-test.yml'
+      - '.github/workflows/mcp.yml'
   pull_request:
     paths:
       - 'mcp/**'
-      - '.github/workflows/mcp-test.yml'
+      - '.github/workflows/mcp.yml'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
