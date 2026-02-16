@@ -6,6 +6,7 @@ interface CreateQuestionInput {
     questionText: string
     options: string[] | null
     correctIndex: number | null
+    correctIndices?: number[] | null
     correctAnswer?: string
     explanation?: string
     sourceChunkId?: string
@@ -29,12 +30,13 @@ export async function addQuestions(quizId: string, questions: CreateQuestionInpu
             questionText: q.questionText,
             options: q.options ?? undefined,
             correctIndex: q.correctIndex ?? undefined,
+            correctIndices: q.correctIndices ?? undefined,
             correctAnswer: q.correctAnswer,
             explanation: q.explanation,
             sourceChunkId: q.sourceChunkId,
             sourceSnippet: q.sourceSnippet,
             questionIndex: q.questionIndex,
-            questionType: q.questionType ?? 'mc',
+            questionType: q.questionType ?? 'singleChoice',
         })),
     })
 }
@@ -98,12 +100,14 @@ export async function recordAttempt(
     explanation?: string,
     freeTextAnswer?: string,
     freeTextScore?: number,
-    freeTextFeedback?: string
+    freeTextFeedback?: string,
+    selectedIndices?: number[] | null,
 ) {
     return prisma.quizAttempt.create({
         data: {
             questionId,
             selectedIndex,
+            selectedIndices: selectedIndices ?? undefined,
             isCorrect,
             explanation,
             freeTextAnswer,

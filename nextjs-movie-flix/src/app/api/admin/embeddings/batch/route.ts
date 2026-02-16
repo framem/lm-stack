@@ -1,39 +1,15 @@
 import {
     getEmbeddingStatus,
     getMoviesWithoutEmbedding,
-    saveMovieEmbedding,
+    saveMovieEmbeddings,
     buildEmbeddingText,
-    resetAllEmbeddings,
 } from '@/src/data-access/movies'
-import { createEmbedding } from '@/src/lib/llm'
+import { createEmbeddings } from '@/src/lib/llm'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
 
-export async function GET() {
-    try {
-        const status = await getEmbeddingStatus()
-        return Response.json(status)
-    } catch (error) {
-        return Response.json(
-            { error: error instanceof Error ? error.message : 'Failed to fetch embedding status' },
-            { status: 500 },
-        )
-    }
-}
-
-export async function DELETE() {
-    try {
-        await resetAllEmbeddings()
-        const status = await getEmbeddingStatus()
-        return Response.json(status)
-    } catch (error) {
-        return Response.json(
-            { error: error instanceof Error ? error.message : 'Failed to reset embeddings' },
-            { status: 500 },
-        )
-    }
-}
+const BATCH_SIZE = 50
 
 export async function POST() {
     const encoder = new TextEncoder()
@@ -45,19 +21,21 @@ export async function POST() {
                 controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'status', ...initialStatus })}\n\n`))
 
                 while (true) {
-                    const movies = await getMoviesWithoutEmbedding(1)
+                    const movies = await getMoviesWithoutEmbedding(BATCH_SIZE)
                     if (movies.length === 0) break
 
-                    const movie = movies[0]
-                    const text = buildEmbeddingText(movie)
-                    const embedding = await createEmbedding(text)
-                    await saveMovieEmbedding(movie.id, embedding)
+                    const texts = movies.map(buildEmbeddingText)
+                    const embeddings = await createEmbeddings(texts)
+                    await saveMovieEmbeddings(
+                        movies.map(m => m.id),
+                        embeddings,
+                    )
 
                     const status = await getEmbeddingStatus()
                     controller.enqueue(encoder.encode(`data: ${JSON.stringify({
                         type: 'progress',
                         ...status,
-                        lastProcessed: movie.seriesTitle,
+                        lastProcessed: `${movies.length} Filme (Batch)`,
                     })}\n\n`))
                 }
 

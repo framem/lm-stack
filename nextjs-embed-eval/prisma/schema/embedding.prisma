@@ -17,12 +17,13 @@ model EmbeddingModel {
 }
 
 model ChunkEmbedding {
-  id         String   @id @default(cuid())
-  chunkId    String
-  modelId    String
-  embedding  Float[]
-  durationMs Int
-  createdAt  DateTime @default(now())
+  id          String   @id @default(cuid())
+  chunkId     String
+  modelId     String
+  embedding   Float[]
+  durationMs  Int
+  contentHash String?
+  createdAt   DateTime @default(now())
   chunk TextChunk      @relation(fields: [chunkId], references: [id], onDelete: Cascade)
   model EmbeddingModel @relation(fields: [modelId], references: [id], onDelete: Cascade)
   @@unique([chunkId, modelId])

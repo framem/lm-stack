@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/src/components/ui/button'
-import { Play, Square, Database, ArrowLeft } from 'lucide-react'
+import { Play, Square, Database, ArrowLeft, Zap, RotateCcw } from 'lucide-react'
 import Link from 'next/link'
 
 type EmbeddingStatus = {
@@ -11,15 +11,28 @@ type EmbeddingStatus = {
     percentage: number
 }
 
+type EmbeddingMode = 'single' | 'batch'
+
 export default function AdminPage() {
     const [status, setStatus] = useState<EmbeddingStatus | null>(null)
     const [isRunning, setIsRunning] = useState(false)
+    const [activeMode, setActiveMode] = useState<EmbeddingMode | null>(null)
     const [lastProcessed, setLastProcessed] = useState<string | null>(null)
     const [error, setError] = useState<string | null>(null)
+    const [elapsedMs, setElapsedMs] = useState<number | null>(null)
+    const [isResetting, setIsResetting] = useState(false)
     const abortControllerRef = useRef<AbortController | null>(null)
+    const startTimeRef = useRef<number | null>(null)
+    const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
     useEffect(() => {
         fetchStatus()
+    }, [])
+
+    useEffect(() => {
+        return () => {
+            if (timerRef.current) clearInterval(timerRef.current)
+        }
     }, [])
 
     async function fetchStatus() {
@@ -32,14 +45,54 @@ export default function AdminPage() {
         }
     }
 
-    async function startEmbedding() {
+    function startTimer() {
+        startTimeRef.current = Date.now()
+        setElapsedMs(0)
+        timerRef.current = setInterval(() => {
+            if (startTimeRef.current) {
+                setElapsedMs(Date.now() - startTimeRef.current)
+            }
+        }, 100)
+    }
+
+    function stopTimer() {
+        if (timerRef.current) {
+            clearInterval(timerRef.current)
+            timerRef.current = null
+        }
+        if (startTimeRef.current) {
+            setElapsedMs(Date.now() - startTimeRef.current)
+            startTimeRef.current = null
+        }
+    }
+
+    function formatTime(ms: number): string {
+        const seconds = Math.floor(ms / 1000)
+        const minutes = Math.floor(seconds / 60)
+        const remainingSeconds = seconds % 60
+        const tenths = Math.floor((ms % 1000) / 100)
+        if (minutes > 0) {
+            return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}.${tenths} min`
+        }
+        return `${seconds}.${tenths}s`
+    }
+
+    async function startEmbedding(mode: EmbeddingMode) {
         setIsRunning(true)
+        setActiveMode(mode)
         setError(null)
+        setElapsedMs(null)
+        startTimer()
+
         const controller = new AbortController()
         abortControllerRef.current = controller
 
+        const url = mode === 'batch'
+            ? '/api/admin/embeddings/batch'
+            : '/api/admin/embeddings'
+
         try {
-            const res = await fetch('/api/admin/embeddings', {
+            const res = await fetch(url, {
                 method: 'POST',
                 signal: controller.signal,
             })
@@ -63,11 +116,17 @@ export default function AdminPage() {
                         if (data.type === 'error') {
                             setError(data.message)
                             setIsRunning(false)
+                            setActiveMode(null)
+                            stopTimer()
                             return
                         }
                         setStatus({ total: data.total, embedded: data.embedded, percentage: data.percentage })
                         if (data.lastProcessed) setLastProcessed(data.lastProcessed)
-                        if (data.type === 'done') setIsRunning(false)
+                        if (data.type === 'done') {
+                            setIsRunning(false)
+                            setActiveMode(null)
+                            stopTimer()
+                        }
                     }
                 }
             }
@@ -77,6 +136,8 @@ export default function AdminPage() {
             }
         } finally {
             setIsRunning(false)
+            setActiveMode(null)
+            stopTimer()
             abortControllerRef.current = null
         }
     }
@@ -84,6 +145,28 @@ export default function AdminPage() {
     function stopEmbedding() {
         abortControllerRef.current?.abort()
         setIsRunning(false)
+        setActiveMode(null)
+        stopTimer()
+    }
+
+    async function resetEmbeddings() {
+        setIsResetting(true)
+        setError(null)
+        setLastProcessed(null)
+        setElapsedMs(null)
+        try {
+            const res = await fetch('/api/admin/embeddings', { method: 'DELETE' })
+            const data = await res.json()
+            if (data.error) {
+                setError(data.error)
+            } else {
+                setStatus(data)
+            }
+        } catch {
+            setError('Reset fehlgeschlagen')
+        } finally {
+            setIsResetting(false)
+        }
     }
 
     return (
@@ -123,10 +206,25 @@ export default function AdminPage() {
                                 </div>
                             </div>
 
+                            {/* Timer */}
+                            {elapsedMs !== null && (
+                                <div className="mt-3 flex items-center gap-2 text-sm">
+                                    <span className="text-zinc-400">Dauer:</span>
+                                    <span className={`font-mono ${isRunning ? 'text-yellow-400' : 'text-green-400'}`}>
+                                        {formatTime(elapsedMs)}
+                                    </span>
+                                    {activeMode && (
+                                        <span className="text-zinc-500">
+                                            ({activeMode === 'batch' ? 'Batch / embedMany' : 'Einzeln / embed'})
+                                        </span>
+                                    )}
+                                </div>
+                            )}
+
                             {/* Last Processed */}
                             {lastProcessed && (
                                 <p className="text-sm text-zinc-400 mt-3">
-                                    Last processed: <span className="text-zinc-200">{lastProcessed}</span>
+                                    Zuletzt verarbeitet: <span className="text-zinc-200">{lastProcessed}</span>
                                 </p>
                             )}
 
@@ -140,14 +238,35 @@ export default function AdminPage() {
                             {/* Actions */}
                             <div className="flex gap-3 mt-6">
                                 {!isRunning ? (
-                                    <Button
-                                        onClick={startEmbedding}
-                                        className="bg-red-600 hover:bg-red-700 text-white"
-                                        disabled={status.percentage === 100}
-                                    >
-                                        <Play className="w-4 h-4 mr-2" />
-                                        {status.percentage === 100 ? 'All Done' : 'Start Embedding'}
-                                    </Button>
+                                    <>
+                                        <Button
+                                            onClick={() => startEmbedding('single')}
+                                            className="bg-red-600 hover:bg-red-700 text-white"
+                                            disabled={status.percentage === 100 || isResetting}
+                                        >
+                                            <Play className="w-4 h-4 mr-2" />
+                                            {status.percentage === 100 ? 'Fertig' : 'Einzeln (embed)'}
+                                        </Button>
+                                        <Button
+                                            onClick={() => startEmbedding('batch')}
+                                            className="bg-amber-600 hover:bg-amber-700 text-white"
+                                            disabled={status.percentage === 100 || isResetting}
+                                        >
+                                            <Zap className="w-4 h-4 mr-2" />
+                                            {status.percentage === 100 ? 'Fertig' : 'Batch (embedMany)'}
+                                        </Button>
+                                        {status.embedded > 0 && (
+                                            <Button
+                                                onClick={resetEmbeddings}
+                                                variant="outline"
+                                                className="border-zinc-600 text-zinc-300 hover:bg-zinc-700"
+                                                disabled={isResetting}
+                                            >
+                                                <RotateCcw className={`w-4 h-4 mr-2 ${isResetting ? 'animate-spin' : ''}`} />
+                                                {isResetting ? 'Wird zurückgesetzt...' : 'Reset'}
+                                            </Button>
+                                        )}
+                                    </>
                                 ) : (
                                     <Button
                                         onClick={stopEmbedding}

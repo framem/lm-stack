@@ -2,11 +2,15 @@ export const dynamic = 'force-dynamic'
 
 import { Navigation } from '@/src/components/Navigation'
 import { getEmbeddingModels } from '@/src/data-access/embedding-models'
-import { getChunkEmbeddingCount, getPhraseEmbeddingCount } from '@/src/data-access/embeddings'
+import { getChunkEmbeddingCount, getPhraseEmbeddingCount, getTotalChunkCount, getTotalPhraseCount } from '@/src/data-access/embeddings'
 import { EmbedClient } from './EmbedClient'
 
 export default async function EmbedPage() {
-    const models = await getEmbeddingModels()
+    const [models, totalChunkCount, totalPhraseCount] = await Promise.all([
+        getEmbeddingModels(),
+        getTotalChunkCount(),
+        getTotalPhraseCount(),
+    ])
 
     // Get embedding counts per model
     const modelsWithCounts = await Promise.all(
@@ -29,7 +33,7 @@ export default async function EmbedPage() {
                         Chunks und Suchphrasen mit einem Modell einbetten
                     </p>
                 </div>
-                <EmbedClient models={modelsWithCounts} />
+                <EmbedClient models={modelsWithCounts} totalChunkCount={totalChunkCount} totalPhraseCount={totalPhraseCount} />
             </main>
         </div>
     )

@@ -1,5 +1,11 @@
+import { createHash } from 'crypto'
 import { prisma } from '@/src/lib/prisma'
 import type { Chunk } from '@/src/lib/chunking'
+
+/** SHA-256 hex digest of a string */
+export function contentHash(text: string): string {
+    return createHash('sha256').update(text).digest('hex')
+}
 
 // ---- SourceText CRUD ----
 
@@ -44,6 +50,7 @@ export async function createChunks(sourceTextId: string, chunks: Chunk[]) {
             content: chunk.content,
             chunkIndex: chunk.chunkIndex,
             tokenCount: chunk.tokenCount,
+            contentHash: contentHash(chunk.content),
         })),
     })
 }

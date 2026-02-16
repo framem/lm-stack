@@ -17,7 +17,8 @@ vi.mock('@/src/lib/prisma', () => ({
 }))
 
 vi.mock('@/src/lib/llm', () => ({
-    createEmbedding: vi.fn(),
+    createEmbeddingsBatch: vi.fn(),
+    createEmbeddingsBatchWithProgress: vi.fn(),
     getModel: vi.fn(() => ({})),
 }))
 
@@ -35,11 +36,11 @@ vi.mock('next/cache', () => ({
 }))
 
 import { prisma } from '@/src/lib/prisma'
-import { createEmbedding } from '@/src/lib/llm'
+import { createEmbeddingsBatchWithProgress } from '@/src/lib/llm'
 import { chunkDocument } from '@/src/lib/chunking'
 
 const mockPrisma = vi.mocked(prisma)
-const mockCreateEmbedding = vi.mocked(createEmbedding)
+const mockCreateEmbeddingsBatchWithProgress = vi.mocked(createEmbeddingsBatchWithProgress)
 const mockChunkDocument = vi.mocked(chunkDocument)
 
 beforeEach(() => {
@@ -132,7 +133,7 @@ describe('POST /api/documents', () => {
         mockPrisma.documentChunk.findMany.mockResolvedValue([
             { id: 'c1', content: 'chunk 1' },
         ] as never)
-        mockCreateEmbedding.mockResolvedValue([0.1, 0.2, 0.3])
+        mockCreateEmbeddingsBatchWithProgress.mockResolvedValue([[0.1, 0.2, 0.3]])
         mockPrisma.$queryRawUnsafe.mockResolvedValue(undefined as never)
 
         const { POST } = await import('@/src/app/api/documents/route')

@@ -2,6 +2,7 @@
 
 import React, { useState, useCallback, useRef, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import { highlightPhrase } from '@/src/lib/highlight'
 import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/card'
 import { Badge } from '@/src/components/ui/badge'
 import { Button } from '@/src/components/ui/button'
@@ -45,40 +46,6 @@ interface PhrasesClientProps {
     sourceTexts: SourceTextItem[]
 }
 
-/**
- * Highlights occurrences of `phrase` within `content`.
- * Normalizes whitespace for matching, shows context around the match.
- */
-function highlightPhrase(content: string, phrase: string): React.ReactNode {
-    if (!phrase) return content.slice(0, 150) + (content.length > 150 ? '...' : '')
-
-    const normalized = content.replace(/\s+/g, ' ')
-    const normalizedPhrase = phrase.replace(/\s+/g, ' ')
-    const idx = normalized.toLowerCase().indexOf(normalizedPhrase.toLowerCase())
-
-    if (idx === -1) {
-        return content.length > 150 ? content.slice(0, 150) + '...' : content
-    }
-
-    const matchEnd = idx + normalizedPhrase.length
-    const ctxBefore = 60
-    const ctxAfter = 60
-    const start = Math.max(0, idx - ctxBefore)
-    const end = Math.min(normalized.length, matchEnd + ctxAfter)
-
-    return (
-        <>
-            {start > 0 && '...'}
-            {normalized.slice(start, idx)}
-            <mark className="bg-yellow-200 dark:bg-yellow-900/60 rounded px-0.5">
-                {normalized.slice(idx, matchEnd)}
-            </mark>
-            {normalized.slice(matchEnd, end)}
-            {end < normalized.length && '...'}
-        </>
-    )
-}
-
 export function PhrasesClient({ initialPhrases, chunks, sourceTexts }: PhrasesClientProps) {
     const router = useRouter()
     const [isPending, startTransition] = useTransition()
@@ -89,7 +56,9 @@ export function PhrasesClient({ initialPhrases, chunks, sourceTexts }: PhrasesCl
     const [llmProviderUrl, setLlmProviderUrl] = useState(
         process.env.NEXT_PUBLIC_LLM_PROVIDER_URL || 'http://localhost:1234/v1'
     )
-    const [llmModelName, setLlmModelName] = useState('')
+    const [llmModelName, setLlmModelName] = useState(
+        process.env.NEXT_PUBLIC_LLM_MODEL || 'qwen/qwen3-8b'
+    )
     const [phrasesPerChunk, setPhrasesPerChunk] = useState(3)
     const [genProgress, setGenProgress] = useState<{ current: number; total: number; message: string } | null>(null)
     const [genResult, setGenResult] = useState<{ totalGenerated: number } | null>(null)

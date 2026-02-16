@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { getEmbeddingModels, updateModelEmbedDuration } from '@/src/data-access/embedding-models'
 import { getAllChunks } from '@/src/data-access/source-texts'
 import { getTestPhrases } from '@/src/data-access/test-phrases'
-import { saveChunkEmbeddingsBatch, savePhraseEmbeddingsBatch } from '@/src/data-access/embeddings'
+import { saveChunkEmbeddingsBatch, savePhraseEmbeddingsBatch, getChunkEmbeddingHashes } from '@/src/data-access/embeddings'
 import { createEmbeddings, type EmbeddingModelConfig } from '@/src/lib/embedding'
 
 const BATCH_SIZE = 50
@@ -13,10 +13,8 @@ export async function GET(request: NextRequest) {
         return new Response('Keine Modelle registriert', { status: 400 })
     }
 
-    const chunks = await getAllChunks()
+    const allChunks = await getAllChunks()
     const phrases = await getTestPhrases()
-    const itemsPerModel = chunks.length + phrases.length
-    const totalItems = itemsPerModel * models.length
 
     const encoder = new TextEncoder()
     const stream = new ReadableStream({
@@ -25,8 +23,8 @@ export async function GET(request: NextRequest) {
                 controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`))
             }
 
-            if (itemsPerModel === 0) {
-                send({ type: 'complete', data: { modelsProcessed: 0, chunksEmbedded: 0, phrasesEmbedded: 0, totalDurationMs: 0 } })
+            if (allChunks.length === 0 && phrases.length === 0) {
+                send({ type: 'complete', data: { modelsProcessed: 0, chunksEmbedded: 0, chunksSkipped: 0, phrasesEmbedded: 0, totalDurationMs: 0 } })
                 controller.close()
                 return
             }
@@ -34,6 +32,7 @@ export async function GET(request: NextRequest) {
             let globalCurrent = 0
             const globalStart = Date.now()
             let totalChunksEmbedded = 0
+            let totalChunksSkipped = 0
             let totalPhrasesEmbedded = 0
 
             try {
@@ -53,6 +52,25 @@ export async function GET(request: NextRequest) {
                         documentPrefix: model.documentPrefix,
                     }
 
+                    // Filter out cached chunks for this model
+                    let chunks = allChunks
+                    let skippedChunks = 0
+                    if (allChunks.length > 0) {
+                        const existingHashes = await getChunkEmbeddingHashes(allChunks.map(c => c.id), model.id)
+                        chunks = allChunks.filter(c => {
+                            const existingHash = existingHashes.get(c.id)
+                            if (existingHash && c.contentHash && existingHash === c.contentHash) {
+                                skippedChunks++
+                                return false
+                            }
+                            return true
+                        })
+                        totalChunksSkipped += skippedChunks
+                        if (skippedChunks > 0) {
+                            send({ type: 'progress', current: globalCurrent, total: 0, phase, message: `${skippedChunks} Chunks aus Cache übersprungen` })
+                        }
+                    }
+
                     const modelStart = Date.now()
 
                     for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
@@ -65,7 +83,7 @@ export async function GET(request: NextRequest) {
                         try {
                             const embeddings = await createEmbeddings(batch.map(c => c.content), config, 'document')
                             await saveChunkEmbeddingsBatch(
-                                batch.map((chunk, idx) => ({ chunkId: chunk.id, embedding: embeddings[idx] })),
+                                batch.map((chunk, idx) => ({ chunkId: chunk.id, embedding: embeddings[idx], contentHash: chunk.contentHash ?? undefined })),
                                 model.id
                             )
                             totalChunksEmbedded += batch.length
@@ -76,7 +94,7 @@ export async function GET(request: NextRequest) {
                         send({
                             type: 'progress',
                             current: globalCurrent,
-                            total: totalItems,
+                            total: chunks.length + phrases.length,
                             phase,
                             message: `Chunk ${Math.min(i + batch.length, chunks.length)}/${chunks.length}`,
                             elapsedMs: Date.now() - globalStart,
@@ -104,7 +122,7 @@ export async function GET(request: NextRequest) {
                         send({
                             type: 'progress',
                             current: globalCurrent,
-                            total: totalItems,
+                            total: chunks.length + phrases.length,
                             phase,
                             message: `Phrase ${Math.min(i + batch.length, phrases.length)}/${phrases.length}`,
                             elapsedMs: Date.now() - globalStart,
@@ -119,6 +137,7 @@ export async function GET(request: NextRequest) {
                     data: {
                         modelsProcessed: models.length,
                         chunksEmbedded: totalChunksEmbedded,
+                        chunksSkipped: totalChunksSkipped,
                         phrasesEmbedded: totalPhrasesEmbedded,
                         totalDurationMs: Date.now() - globalStart,
                     },

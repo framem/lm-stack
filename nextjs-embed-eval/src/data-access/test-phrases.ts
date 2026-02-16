@@ -7,7 +7,19 @@ export async function createTestPhrase(data: {
     expectedContent?: string
     category?: string
 }) {
-    return prisma.testPhrase.create({ data })
+    return prisma.testPhrase.create({
+        data: {
+            phrase: data.phrase,
+            category: data.category ?? undefined,
+            expectedContent: data.expectedContent ?? undefined,
+            expectedChunk: data.expectedChunkId
+                ? { connect: { id: data.expectedChunkId } }
+                : undefined,
+            sourceText: data.sourceTextId
+                ? { connect: { id: data.sourceTextId } }
+                : undefined,
+        },
+    })
 }
 
 export async function getTestPhrases() {
@@ -49,7 +61,24 @@ export async function updateTestPhrase(id: string, data: {
     expectedContent?: string | null
     category?: string | null
 }) {
-    return prisma.testPhrase.update({ where: { id }, data })
+    return prisma.testPhrase.update({
+        where: { id },
+        data: {
+            phrase: data.phrase ?? undefined,
+            category: data.category,
+            expectedContent: data.expectedContent,
+            expectedChunk: data.expectedChunkId === null
+                ? { disconnect: true }
+                : data.expectedChunkId !== undefined
+                    ? { connect: { id: data.expectedChunkId } }
+                    : undefined,
+            sourceText: data.sourceTextId === null
+                ? { disconnect: true }
+                : data.sourceTextId !== undefined
+                    ? { connect: { id: data.sourceTextId } }
+                    : undefined,
+        },
+    })
 }
 
 export async function deleteTestPhrase(id: string) {
@@ -79,7 +108,9 @@ export async function getPhrasesForRemapping() {
 export async function remapPhraseToChunk(phraseId: string, newChunkId: string) {
     return prisma.testPhrase.update({
         where: { id: phraseId },
-        data: { expectedChunkId: newChunkId },
+        data: {
+            expectedChunk: { connect: { id: newChunkId } },
+        },
     })
 }
 

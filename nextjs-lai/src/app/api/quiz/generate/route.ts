@@ -4,7 +4,8 @@ import { createQuiz, addQuestions } from '@/src/data-access/quiz'
 import {
     selectRepresentativeChunks,
     distributeQuestions,
-    generateMcQuestions,
+    generateSingleChoiceQuestions,
+    generateMultipleChoiceQuestions,
     generateFreetextQuestions,
     generateTruefalseQuestions,
     type QuestionToSave,
@@ -14,7 +15,7 @@ import {
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json()
-        const { documentId, documentIds: rawDocumentIds, questionCount = 5, questionTypes = ['mc'] } = body
+        const { documentId, documentIds: rawDocumentIds, questionCount = 5, questionTypes = ['singleChoice'] } = body
 
         // Support both single documentId and multiple documentIds
         const documentIds: string[] = rawDocumentIds && Array.isArray(rawDocumentIds) && rawDocumentIds.length > 0
@@ -25,8 +26,8 @@ export async function POST(request: NextRequest) {
             return Response.json({ error: 'Mindestens ein Lernmaterial ist erforderlich.' }, { status: 400 })
         }
 
-        const validTypes = ['mc', 'freetext', 'truefalse']
-        const types = (Array.isArray(questionTypes) ? questionTypes : ['mc'])
+        const validTypes = ['singleChoice', 'multipleChoice', 'freetext', 'truefalse']
+        const types = (Array.isArray(questionTypes) ? questionTypes : ['singleChoice'])
             .filter((t: string) => validTypes.includes(t))
         if (types.length === 0) {
             return Response.json(
@@ -74,9 +75,9 @@ export async function POST(request: NextRequest) {
                     let generated = 0
 
                     // Generate sequentially so we can report progress after each type
-                    if (distribution['mc']) {
+                    if (distribution['singleChoice']) {
                         send({ type: 'progress', generated })
-                        const qs = await generateMcQuestions(contextText, distribution['mc'])
+                        const qs = await generateSingleChoiceQuestions(contextText, distribution['singleChoice'])
                         for (const q of qs) {
                             allQuestions.push({
                                 questionText: q.questionText,
@@ -84,7 +85,25 @@ export async function POST(request: NextRequest) {
                                 correctIndex: q.correctIndex,
                                 explanation: q.explanation,
                                 sourceSnippet: q.sourceSnippet,
-                                questionType: 'mc',
+                                questionType: 'singleChoice',
+                            })
+                        }
+                        generated += qs.length
+                        send({ type: 'progress', generated })
+                    }
+
+                    if (distribution['multipleChoice']) {
+                        send({ type: 'progress', generated })
+                        const qs = await generateMultipleChoiceQuestions(contextText, distribution['multipleChoice'])
+                        for (const q of qs) {
+                            allQuestions.push({
+                                questionText: q.questionText,
+                                options: q.options,
+                                correctIndex: null,
+                                correctIndices: q.correctIndices,
+                                explanation: q.explanation,
+                                sourceSnippet: q.sourceSnippet,
+                                questionType: 'multipleChoice',
                             })
                         }
                         generated += qs.length
@@ -144,6 +163,7 @@ export async function POST(request: NextRequest) {
                         questionText: q.questionText,
                         options: q.options,
                         correctIndex: q.correctIndex,
+                        correctIndices: q.correctIndices,
                         correctAnswer: q.correctAnswer,
                         explanation: q.explanation,
                         sourceChunkId: selectedChunks[i]?.id,

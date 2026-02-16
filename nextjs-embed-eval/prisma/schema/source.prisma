@@ -16,6 +16,7 @@ model TextChunk {
   content      String
   chunkIndex   Int
   tokenCount   Int
+  contentHash  String?
   sourceText       SourceText       @relation(fields: [sourceTextId], references: [id], onDelete: Cascade)
   chunkEmbeddings  ChunkEmbedding[]
   expectedByPhrases TestPhrase[]    @relation("ExpectedChunk")

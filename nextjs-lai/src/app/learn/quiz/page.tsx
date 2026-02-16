@@ -7,7 +7,15 @@ import { toast } from 'sonner'
 import { HelpCircle, Loader2, FileText, TrendingUp, Plus } from 'lucide-react'
 import { Card, CardContent } from '@/src/components/ui/card'
 import { Button } from '@/src/components/ui/button'
+import { Checkbox } from '@/src/components/ui/checkbox'
 import { Progress } from '@/src/components/ui/progress'
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/src/components/ui/select'
 import {
     Dialog,
     DialogContent,
@@ -85,7 +93,8 @@ function getLastAttemptStats(questions: Quiz['questions']) {
 }
 
 const QUESTION_TYPES = [
-    { value: 'mc', label: 'Multiple Choice' },
+    { value: 'singleChoice', label: 'Single Choice' },
+    { value: 'multipleChoice', label: 'Multiple Choice' },
     { value: 'freetext', label: 'Freitext' },
     { value: 'truefalse', label: 'Wahr/Falsch' },
 ] as const
@@ -104,7 +113,7 @@ export default function QuizPage() {
     const [generating, setGenerating] = useState(false)
     const [generatedCount, setGeneratedCount] = useState(0)
     const [questionCount, setQuestionCount] = useState(5)
-    const [questionTypes, setQuestionTypes] = useState<string[]>(['mc'])
+    const [questionTypes, setQuestionTypes] = useState<string[]>(['singleChoice'])
     const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
 
     useEffect(() => {
@@ -115,9 +124,15 @@ export default function QuizPage() {
                     getQuizzes(),
                     getDocumentProgress(),
                 ])
-                setDocuments(docs as unknown as Document[])
+                const typedDocs = docs as unknown as Document[]
+                setDocuments(typedDocs)
                 setQuizzes(quizList as Quiz[])
                 setProgress(progressData as unknown as DocumentProgressItem[])
+
+                // Pre-select when only one document exists
+                if (typedDocs.length === 1 && !searchParams.get('documentId')) {
+                    setSelectedDocIds([typedDocs[0].id])
+                }
             } catch (error) {
                 console.error('Failed to load data:', error)
             } finally {
@@ -125,7 +140,7 @@ export default function QuizPage() {
             }
         }
         load()
-    }, [])
+    }, [searchParams])
 
     function toggleQuestionType(type: string) {
         setQuestionTypes((prev) =>
@@ -347,15 +362,13 @@ export default function QuizPage() {
                                     const isChecked = selectedDocIds.includes(doc.id)
                                     return (
                                         <label key={doc.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-accent cursor-pointer text-sm">
-                                            <input
-                                                type="checkbox"
+                                            <Checkbox
                                                 checked={isChecked}
-                                                onChange={() => {
+                                                onCheckedChange={() => {
                                                     setSelectedDocIds(prev =>
                                                         isChecked ? prev.filter(id => id !== doc.id) : [...prev, doc.id]
                                                     )
                                                 }}
-                                                className="rounded border-input"
                                             />
                                             <span className="truncate">{doc.title}</span>
                                         </label>
@@ -369,15 +382,16 @@ export default function QuizPage() {
 
                         <div className="space-y-2">
                             <label className="text-sm font-medium">Anzahl Fragen</label>
-                            <select
-                                value={questionCount}
-                                onChange={(e) => setQuestionCount(Number(e.target.value))}
-                                className="w-full border rounded-md px-3 py-2 text-sm bg-background"
-                            >
-                                {[3, 5, 10, 15, 20].map((n) => (
-                                    <option key={n} value={n}>{n}</option>
-                                ))}
-                            </select>
+                            <Select value={String(questionCount)} onValueChange={(v) => setQuestionCount(Number(v))}>
+                                <SelectTrigger className="w-full">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {[3, 5, 10, 15, 20].map((n) => (
+                                        <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
 
                         <div className="space-y-2">
@@ -388,11 +402,9 @@ export default function QuizPage() {
                                         key={type.value}
                                         className="flex items-center gap-2.5 text-sm cursor-pointer"
                                     >
-                                        <input
-                                            type="checkbox"
+                                        <Checkbox
                                             checked={questionTypes.includes(type.value)}
-                                            onChange={() => toggleQuestionType(type.value)}
-                                            className="rounded border-input"
+                                            onCheckedChange={() => toggleQuestionType(type.value)}
                                         />
                                         <span>{type.label}</span>
                                     </label>

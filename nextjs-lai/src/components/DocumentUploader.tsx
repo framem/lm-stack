@@ -2,13 +2,19 @@
 
 import { useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Upload, FileText, ClipboardPaste, X } from 'lucide-react'
+import { toast } from 'sonner'
+import { Upload, FileText, ClipboardPaste, X, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/src/components/ui/button'
 import { Input } from '@/src/components/ui/input'
 import { Textarea } from '@/src/components/ui/textarea'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/src/components/ui/tabs'
-import { Progress } from '@/src/components/ui/progress'
 import { Card, CardContent } from '@/src/components/ui/card'
+import {
+    PipelineProgress,
+    createSteps,
+    advanceStep,
+    completeSteps,
+} from '@/src/components/PipelineProgress'
 
 interface ProgressEvent {
     type: 'progress' | 'complete' | 'error'
@@ -20,6 +26,20 @@ interface ProgressEvent {
     error?: string
 }
 
+const UPLOAD_STEP_DEFS = [
+    { key: 'document', label: 'Lernmaterial speichern' },
+    { key: 'chunking', label: 'Abschnitte vorbereiten' },
+    { key: 'embedding', label: 'Abschnitte einbetten' },
+]
+
+// Map backend step names to pipeline step keys
+const UPLOAD_STEP_MAP: Record<string, string> = {
+    document: 'document',
+    chunking: 'chunking',
+    saving: 'chunking',
+    embedding: 'embedding',
+}
+
 interface DocumentUploaderProps {
     onSuccess?: (documentId: string) => void
 }
@@ -27,6 +47,7 @@ interface DocumentUploaderProps {
 export function DocumentUploader({ onSuccess }: DocumentUploaderProps) {
     const router = useRouter()
     const fileInputRef = useRef<HTMLInputElement>(null)
+    const stepTimesRef = useRef<Record<string, number>>({})
     const [file, setFile] = useState<File | null>(null)
     const [title, setTitle] = useState('')
     const [pasteText, setPasteText] = useState('')
@@ -35,8 +56,8 @@ export function DocumentUploader({ onSuccess }: DocumentUploaderProps) {
     const [pasteSubject, setPasteSubject] = useState('')
     const [dragOver, setDragOver] = useState(false)
     const [uploading, setUploading] = useState(false)
-    const [progressValue, setProgressValue] = useState(0)
-    const [progressDetail, setProgressDetail] = useState('')
+    const [pipelineSteps, setPipelineSteps] = useState(createSteps(UPLOAD_STEP_DEFS))
+    const [completed, setCompleted] = useState(false)
     const [error, setError] = useState('')
 
     const handleDrop = useCallback((e: React.DragEvent) => {
@@ -78,19 +99,23 @@ export function DocumentUploader({ onSuccess }: DocumentUploaderProps) {
 
                 const event: ProgressEvent = JSON.parse(dataMatch[1])
 
-                if (event.type === 'progress') {
-                    setProgressValue(event.progress || 0)
-                    setProgressDetail(event.detail || '')
+                if (event.type === 'progress' && event.step) {
+                    const pipelineKey = UPLOAD_STEP_MAP[event.step]
+                    if (pipelineKey) {
+                        const detail = event.step === 'embedding' ? event.detail : undefined
+                        setPipelineSteps(prev => advanceStep(prev, pipelineKey, detail, stepTimesRef.current))
+                    }
                 } else if (event.type === 'complete') {
-                    setProgressValue(100)
-                    setProgressDetail('Fertig!')
+                    setPipelineSteps(prev => completeSteps(prev, stepTimesRef.current))
+                    setCompleted(true)
+                    toast.success('Lernmaterial erfolgreich verarbeitet!')
                     setTimeout(() => {
                         if (onSuccess && event.documentId) {
                             onSuccess(event.documentId)
                         } else {
                             router.push(`/learn/documents/${event.documentId}`)
                         }
-                    }, 500)
+                    }, 800)
                 } else if (event.type === 'error') {
                     setError(event.error || 'Unbekannter Fehler')
                     setUploading(false)
@@ -103,7 +128,9 @@ export function DocumentUploader({ onSuccess }: DocumentUploaderProps) {
         if (!file) return
         setUploading(true)
         setError('')
-        setProgressValue(0)
+        setPipelineSteps(createSteps(UPLOAD_STEP_DEFS))
+        stepTimesRef.current = {}
+        setCompleted(false)
 
         const formData = new FormData()
         formData.append('file', file)
@@ -134,7 +161,9 @@ export function DocumentUploader({ onSuccess }: DocumentUploaderProps) {
         if (!pasteText.trim()) return
         setUploading(true)
         setError('')
-        setProgressValue(0)
+        setPipelineSteps(createSteps(UPLOAD_STEP_DEFS))
+        stepTimesRef.current = {}
+        setCompleted(false)
 
         try {
             const response = await fetch('/api/documents', {
@@ -166,11 +195,19 @@ export function DocumentUploader({ onSuccess }: DocumentUploaderProps) {
             <Card>
                 <CardContent className="space-y-4">
                     <div className="flex items-center gap-3">
-                        <Upload className="h-5 w-5 animate-pulse text-primary" />
-                        <span className="font-medium">Verarbeitung läuft...</span>
+                        {completed ? (
+                            <>
+                                <CheckCircle2 className="h-5 w-5 text-green-500" />
+                                <span className="font-medium">Verarbeitung abgeschlossen!</span>
+                            </>
+                        ) : (
+                            <>
+                                <Upload className="h-5 w-5 animate-pulse text-primary" />
+                                <span className="font-medium">Verarbeitung läuft...</span>
+                            </>
+                        )}
                     </div>
-                    <Progress value={progressValue} />
-                    <p className="text-sm text-muted-foreground">{progressDetail}</p>
+                    <PipelineProgress steps={pipelineSteps} />
                     {error && (
                         <p className="text-sm text-destructive">{error}</p>
                     )}

@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
+import { toast } from 'sonner'
 import {
     Settings,
     FileText,
@@ -14,8 +15,39 @@ import {
 } from 'lucide-react'
 import { Button } from '@/src/components/ui/button'
 import { Badge } from '@/src/components/ui/badge'
-import { Progress } from '@/src/components/ui/progress'
+import { Checkbox } from '@/src/components/ui/checkbox'
 import { Skeleton } from '@/src/components/ui/skeleton'
+import {
+    PipelineProgress,
+    createSteps,
+    advanceStep,
+    completeSteps,
+    type PipelineStep,
+} from '@/src/components/PipelineProgress'
+
+const IMPORT_STEP_DEFS = [
+    { key: 'document', label: 'Datei lesen' },
+    { key: 'chunking', label: 'Abschnitte vorbereiten' },
+    { key: 'embedding', label: 'Abschnitte einbetten' },
+]
+
+const IMPORT_STEP_MAP: Record<string, string> = {
+    document: 'document',
+    chunking: 'chunking',
+    embedding: 'embedding',
+}
+
+const REFRESH_STEP_DEFS = [
+    { key: 'cleanup', label: 'Alte Chunks entfernen' },
+    { key: 'chunking', label: 'Abschnitte vorbereiten' },
+    { key: 'embedding', label: 'Abschnitte einbetten' },
+]
+
+const REFRESH_STEP_MAP: Record<string, string> = {
+    cleanup: 'cleanup',
+    chunking: 'chunking',
+    embedding: 'embedding',
+}
 
 interface RefreshableDoc {
     id: string
@@ -63,8 +95,10 @@ export default function AdminPage() {
     // Import state
     const [phase, setPhase] = useState<Phase>('idle')
     const [currentFile, setCurrentFile] = useState('')
-    const [currentDetail, setCurrentDetail] = useState('')
-    const [fileProgress, setFileProgress] = useState(0) // 0-100 across all files
+    const [importFileIndex, setImportFileIndex] = useState(0)
+    const [importFileTotal, setImportFileTotal] = useState(0)
+    const [importSteps, setImportSteps] = useState<PipelineStep[]>([])
+    const importStepTimesRef = useRef<Record<string, number>>({})
     const [results, setResults] = useState<ImportResult[]>([])
 
     // Refresh state
@@ -72,8 +106,10 @@ export default function AdminPage() {
     const [refreshSelected, setRefreshSelected] = useState<Set<string>>(new Set())
     const [refreshPhase, setRefreshPhase] = useState<Phase>('idle')
     const [refreshCurrentDoc, setRefreshCurrentDoc] = useState('')
-    const [refreshDetail, setRefreshDetail] = useState('')
-    const [refreshProgress, setRefreshProgress] = useState(0)
+    const [refreshDocIndex, setRefreshDocIndex] = useState(0)
+    const [refreshDocTotal, setRefreshDocTotal] = useState(0)
+    const [refreshSteps, setRefreshSteps] = useState<PipelineStep[]>([])
+    const refreshStepTimesRef = useRef<Record<string, number>>({})
     const [refreshResults, setRefreshResults] = useState<RefreshResult[]>([])
 
     const fetchFiles = useCallback(async () => {
@@ -146,9 +182,10 @@ export default function AdminPage() {
         if (selected.size === 0) return
         setPhase('importing')
         setResults([])
-        setFileProgress(0)
         setCurrentFile('')
-        setCurrentDetail('')
+        setImportSteps([])
+        setImportFileIndex(0)
+        setImportFileTotal(0)
 
         const filesToImport = Array.from(selected)
 
@@ -185,13 +222,21 @@ export default function AdminPage() {
                         switch (event.type) {
                             case 'file_start':
                                 setCurrentFile(event.file)
-                                setCurrentDetail('Wird verarbeitet...')
-                                setFileProgress(Math.round((event.index / event.total) * 100))
+                                setImportFileIndex(event.index + 1)
+                                setImportFileTotal(event.total)
+                                setImportSteps(createSteps(IMPORT_STEP_DEFS))
+                                importStepTimesRef.current = {}
                                 break
-                            case 'progress':
-                                setCurrentDetail(event.detail || event.step)
+                            case 'progress': {
+                                const key = IMPORT_STEP_MAP[event.step]
+                                if (key) {
+                                    const detail = event.step === 'embedding' ? event.detail : undefined
+                                    setImportSteps(prev => advanceStep(prev, key, detail, importStepTimesRef.current))
+                                }
                                 break
+                            }
                             case 'file_complete':
+                                setImportSteps(prev => completeSteps(prev, importStepTimesRef.current))
                                 setResults(prev => [...prev, { file: event.file, status: 'imported' }])
                                 break
                             case 'file_skip':
@@ -200,11 +245,14 @@ export default function AdminPage() {
                             case 'file_error':
                                 setResults(prev => [...prev, { file: event.file, status: 'error', error: event.error }])
                                 break
-                            case 'batch_complete':
-                                setFileProgress(100)
+                            case 'batch_complete': {
                                 setCurrentFile('')
-                                setCurrentDetail('')
+                                const imported = (event.results as ImportResult[]).filter((r: ImportResult) => r.status === 'imported').length
+                                if (imported > 0) {
+                                    toast.success(`${imported} Datei${imported !== 1 ? 'en' : ''} erfolgreich importiert!`)
+                                }
                                 break
+                            }
                         }
                     } catch {
                         // ignore malformed SSE lines
@@ -222,6 +270,7 @@ export default function AdminPage() {
         setPhase('idle')
         setResults([])
         setSelected(new Set())
+        setImportSteps([])
         setLoading(true)
         fetchFiles()
     }
@@ -247,9 +296,10 @@ export default function AdminPage() {
         if (refreshSelected.size === 0) return
         setRefreshPhase('importing')
         setRefreshResults([])
-        setRefreshProgress(0)
         setRefreshCurrentDoc('')
-        setRefreshDetail('')
+        setRefreshSteps([])
+        setRefreshDocIndex(0)
+        setRefreshDocTotal(0)
 
         try {
             const res = await fetch('/api/admin/refresh', {
@@ -284,23 +334,34 @@ export default function AdminPage() {
                         switch (event.type) {
                             case 'doc_start':
                                 setRefreshCurrentDoc(event.title)
-                                setRefreshDetail('Wird verarbeitet...')
-                                setRefreshProgress(Math.round((event.index / event.total) * 100))
+                                setRefreshDocIndex(event.index + 1)
+                                setRefreshDocTotal(event.total)
+                                setRefreshSteps(createSteps(REFRESH_STEP_DEFS))
+                                refreshStepTimesRef.current = {}
                                 break
-                            case 'progress':
-                                setRefreshDetail(event.detail || event.step)
+                            case 'progress': {
+                                const key = REFRESH_STEP_MAP[event.step]
+                                if (key) {
+                                    const detail = event.step === 'embedding' ? event.detail : undefined
+                                    setRefreshSteps(prev => advanceStep(prev, key, detail, refreshStepTimesRef.current))
+                                }
                                 break
+                            }
                             case 'doc_complete':
+                                setRefreshSteps(prev => completeSteps(prev, refreshStepTimesRef.current))
                                 setRefreshResults(prev => [...prev, { id: event.id, title: event.title, status: 'refreshed' }])
                                 break
                             case 'doc_error':
                                 setRefreshResults(prev => [...prev, { id: event.id, title: event.title || event.id, status: 'error', error: event.error }])
                                 break
-                            case 'batch_complete':
-                                setRefreshProgress(100)
+                            case 'batch_complete': {
                                 setRefreshCurrentDoc('')
-                                setRefreshDetail('')
+                                const refreshed = (event.results as RefreshResult[]).filter((r: RefreshResult) => r.status === 'refreshed').length
+                                if (refreshed > 0) {
+                                    toast.success(`${refreshed} Dokument${refreshed !== 1 ? 'e' : ''} erfolgreich aktualisiert!`)
+                                }
                                 break
+                            }
                         }
                     } catch {
                         // ignore malformed SSE lines
@@ -318,6 +379,7 @@ export default function AdminPage() {
         setRefreshPhase('idle')
         setRefreshResults([])
         setRefreshSelected(new Set())
+        setRefreshSteps([])
         fetchRefreshDocs()
     }
 
@@ -367,14 +429,16 @@ export default function AdminPage() {
                 <div className="rounded-lg border p-4 space-y-3">
                     <div className="flex items-center gap-2 text-sm font-medium">
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        Importiere...
+                        {importFileTotal > 0
+                            ? `Datei ${importFileIndex} von ${importFileTotal}`
+                            : 'Importiere...'}
                     </div>
-                    <Progress value={fileProgress} />
                     {currentFile && (
                         <p className="text-sm text-muted-foreground truncate">
-                            {currentFile} — {currentDetail}
+                            {currentFile}
                         </p>
                     )}
+                    {importSteps.length > 0 && <PipelineProgress steps={importSteps} />}
                 </div>
             )}
 
@@ -424,14 +488,16 @@ export default function AdminPage() {
                         <div className="rounded-lg border p-4 space-y-3">
                             <div className="flex items-center gap-2 text-sm font-medium">
                                 <Loader2 className="h-4 w-4 animate-spin" />
-                                Aktualisiere...
+                                {refreshDocTotal > 0
+                                    ? `Dokument ${refreshDocIndex} von ${refreshDocTotal}`
+                                    : 'Aktualisiere...'}
                             </div>
-                            <Progress value={refreshProgress} />
                             {refreshCurrentDoc && (
                                 <p className="text-sm text-muted-foreground truncate">
-                                    {refreshCurrentDoc} — {refreshDetail}
+                                    {refreshCurrentDoc}
                                 </p>
                             )}
+                            {refreshSteps.length > 0 && <PipelineProgress steps={refreshSteps} />}
                         </div>
                     )}
 
@@ -488,11 +554,9 @@ export default function AdminPage() {
                                         key={doc.id}
                                         className="flex items-center gap-3 px-4 py-3 hover:bg-muted/50 cursor-pointer transition-colors"
                                     >
-                                        <input
-                                            type="checkbox"
-                                            className="h-4 w-4 rounded border-border accent-primary"
+                                        <Checkbox
                                             checked={refreshSelected.has(doc.id)}
-                                            onChange={() => toggleRefreshDoc(doc.id)}
+                                            onCheckedChange={() => toggleRefreshDoc(doc.id)}
                                         />
                                         <span className="flex-1 text-sm truncate">{doc.title}</span>
                                         <Badge variant="secondary" className="text-xs font-normal">
@@ -592,13 +656,10 @@ function FileGroup({
     return (
         <div className="space-y-2">
             <label className="text-sm font-medium flex items-center gap-2 text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
-                <input
-                    type="checkbox"
-                    className="h-4 w-4 rounded border-border accent-primary"
-                    checked={allSelected}
-                    ref={(el) => { if (el) el.indeterminate = someSelected }}
+                <Checkbox
+                    checked={someSelected ? 'indeterminate' : allSelected}
                     disabled={selectable.length === 0}
-                    onChange={() => onToggleGroup(selectable.map(f => f.relativePath))}
+                    onCheckedChange={() => onToggleGroup(selectable.map(f => f.relativePath))}
                 />
                 {icon}
                 {label}
@@ -613,12 +674,10 @@ function FileGroup({
                                 : 'hover:bg-muted/50 cursor-pointer'
                         }`}
                     >
-                        <input
-                            type="checkbox"
-                            className="h-4 w-4 rounded border-border accent-primary"
+                        <Checkbox
                             checked={selected.has(file.relativePath)}
                             disabled={file.alreadyImported}
-                            onChange={() => onToggle(file.relativePath)}
+                            onCheckedChange={() => onToggle(file.relativePath)}
                         />
                         <span className="flex-1 text-sm truncate">{file.fileName}</span>
                         <Badge variant="secondary" className="text-xs font-normal">

@@ -1,11 +1,11 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/src/lib/prisma'
 import { chunkDocument } from '@/src/lib/chunking'
-import { createEmbedding } from '@/src/lib/llm'
+import { createEmbeddingsBatchWithProgress } from '@/src/lib/llm'
 import {
     deleteChunksByDocument,
     createChunks,
-    saveChunkEmbedding,
+    saveChunkEmbeddingsBatch,
     getDocumentsWithChunkCount,
 } from '@/src/data-access/documents'
 
@@ -81,21 +81,31 @@ export async function POST(request: NextRequest) {
                             select: { id: true, content: true },
                         })
 
-                        // Generate embeddings
-                        for (let j = 0; j < savedChunks.length; j++) {
-                            send({
-                                type: 'progress',
-                                id: doc.id,
-                                step: 'embedding',
-                                detail: `Lernabschnitt ${j + 1}/${savedChunks.length} wird erstellt...`,
-                            })
+                        // Generate embeddings in batches with progress
+                        send({
+                            type: 'progress',
+                            id: doc.id,
+                            step: 'embedding',
+                            detail: `${savedChunks.length} Lernabschnitte werden eingebettet...`,
+                        })
 
-                            try {
-                                const embedding = await createEmbedding(savedChunks[j].content)
-                                await saveChunkEmbedding(savedChunks[j].id, embedding)
-                            } catch (embeddingError) {
-                                console.error(`Embedding failed for chunk ${j} of ${doc.title}:`, embeddingError)
-                            }
+                        try {
+                            const texts = savedChunks.map(c => c.content)
+                            const embeddings = await createEmbeddingsBatchWithProgress(texts, (done, total) => {
+                                send({
+                                    type: 'progress',
+                                    id: doc.id,
+                                    step: 'embedding',
+                                    detail: `Einbettung: ${done} / ${total} Abschnitte`,
+                                })
+                            })
+                            const batch = savedChunks.map((c, j) => ({
+                                chunkId: c.id,
+                                embedding: embeddings[j],
+                            }))
+                            await saveChunkEmbeddingsBatch(batch)
+                        } catch (embeddingError) {
+                            console.error(`Batch embedding failed for ${doc.title}:`, embeddingError)
                         }
 
                         send({ type: 'doc_complete', id: doc.id, title: doc.title, chunkCount: chunks.length })

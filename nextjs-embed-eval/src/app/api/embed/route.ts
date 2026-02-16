@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { getEmbeddingModelById, updateModelEmbedDuration } from '@/src/data-access/embedding-models'
 import { getAllChunks } from '@/src/data-access/source-texts'
 import { getTestPhrases } from '@/src/data-access/test-phrases'
-import { saveChunkEmbeddingsBatch, savePhraseEmbeddingsBatch } from '@/src/data-access/embeddings'
+import { saveChunkEmbeddingsBatch, savePhraseEmbeddingsBatch, getChunkEmbeddingHashes } from '@/src/data-access/embeddings'
 import { createEmbeddings, type EmbeddingModelConfig } from '@/src/lib/embedding'
 
 const BATCH_SIZE = 50
@@ -48,8 +48,27 @@ export async function GET(request: NextRequest) {
             const phase = `${model.name} — ${SCOPE_LABELS[scope]}`
 
             try {
-                const chunks = scope !== 'phrases' ? await getAllChunks() : []
+                const allChunks = scope !== 'phrases' ? await getAllChunks() : []
                 const phrases = scope !== 'chunks' ? await getTestPhrases() : []
+
+                // Filter out chunks whose embedding is already up-to-date
+                let chunks = allChunks
+                let skippedChunks = 0
+                if (allChunks.length > 0) {
+                    const existingHashes = await getChunkEmbeddingHashes(allChunks.map(c => c.id), modelId)
+                    chunks = allChunks.filter(c => {
+                        const existingHash = existingHashes.get(c.id)
+                        if (existingHash && c.contentHash && existingHash === c.contentHash) {
+                            skippedChunks++
+                            return false
+                        }
+                        return true
+                    })
+                    if (skippedChunks > 0) {
+                        send({ type: 'progress', current: 0, total: 0, phase, message: `${skippedChunks} Chunks aus Cache übersprungen` })
+                    }
+                }
+
                 const total = chunks.length + phrases.length
                 let current = 0
                 const startTime = Date.now()
@@ -64,7 +83,7 @@ export async function GET(request: NextRequest) {
                     try {
                         const embeddings = await createEmbeddings(batch.map(c => c.content), config, 'document')
                         await saveChunkEmbeddingsBatch(
-                            batch.map((chunk, idx) => ({ chunkId: chunk.id, embedding: embeddings[idx] })),
+                            batch.map((chunk, idx) => ({ chunkId: chunk.id, embedding: embeddings[idx], contentHash: chunk.contentHash ?? undefined })),
                             modelId
                         )
                     } catch (err) {
@@ -101,6 +120,7 @@ export async function GET(request: NextRequest) {
                     type: 'complete',
                     data: {
                         chunksEmbedded: chunks.length,
+                        chunksSkipped: skippedChunks,
                         phrasesEmbedded: phrases.length,
                         totalDurationMs,
                     },

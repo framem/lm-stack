@@ -19,6 +19,15 @@ import {
 import { Card, CardContent } from '@/src/components/ui/card'
 import { Button } from '@/src/components/ui/button'
 import { Badge } from '@/src/components/ui/badge'
+import { Input } from '@/src/components/ui/input'
+import { Textarea } from '@/src/components/ui/textarea'
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/src/components/ui/select'
 import {
     Tooltip,
     TooltipContent,
@@ -45,9 +54,9 @@ import {
 import {
     getFlashcards,
     getDueFlashcardCount,
-    generateFlashcards,
     createFlashcard,
     deleteFlashcard,
+    deleteFlashcardsByDocument,
 } from '@/src/actions/flashcards'
 import { getDocuments } from '@/src/actions/documents'
 
@@ -96,6 +105,7 @@ export default function FlashcardsPage() {
     const [genDocId, setGenDocId] = useState('')
     const [genCount, setGenCount] = useState(10)
     const [generating, setGenerating] = useState(false)
+    const [genProgress, setGenProgress] = useState<{ generated: number; total: number } | null>(null)
 
     // Manual create dialog
     const [createOpen, setCreateOpen] = useState(false)
@@ -105,8 +115,10 @@ export default function FlashcardsPage() {
     const [createContext, setCreateContext] = useState('')
     const [creating, setCreating] = useState(false)
 
-    // Delete confirmation
+    // Delete confirmation (single card)
     const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
+    // Delete confirmation (all cards for a document)
+    const [deleteDocTarget, setDeleteDocTarget] = useState<{ id: string; title: string; count: number } | null>(null)
 
     useEffect(() => {
         loadData()
@@ -132,15 +144,52 @@ export default function FlashcardsPage() {
     async function handleGenerate() {
         if (!genDocId) return
         setGenerating(true)
+        setGenProgress({ generated: 0, total: genCount })
+
         try {
-            const result = await generateFlashcards(genDocId, genCount)
-            toast.success(`${result.count} Karteikarten generiert`)
-            setGenOpen(false)
-            await loadData()
+            const res = await fetch('/api/flashcards/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ documentId: genDocId, count: genCount }),
+            })
+
+            if (!res.ok) {
+                const err = await res.json()
+                throw new Error(err.error || 'Fehler beim Generieren')
+            }
+
+            const reader = res.body!.getReader()
+            const decoder = new TextDecoder()
+            let buffer = ''
+
+            while (true) {
+                const { done, value } = await reader.read()
+                if (done) break
+
+                buffer += decoder.decode(value, { stream: true })
+                const lines = buffer.split('\n')
+                buffer = lines.pop() || ''
+
+                for (const line of lines) {
+                    if (!line.startsWith('data: ')) continue
+                    const data = JSON.parse(line.slice(6))
+
+                    if (data.type === 'progress') {
+                        setGenProgress({ generated: data.generated, total: data.total })
+                    } else if (data.type === 'complete') {
+                        toast.success(`${data.generated} Karteikarten generiert`)
+                        setGenOpen(false)
+                        await loadData()
+                    } else if (data.type === 'error') {
+                        throw new Error(data.message)
+                    }
+                }
+            }
         } catch (err) {
             toast.error(err instanceof Error ? err.message : 'Fehler beim Generieren')
         } finally {
             setGenerating(false)
+            setGenProgress(null)
         }
     }
 
@@ -172,6 +221,20 @@ export default function FlashcardsPage() {
             toast.error('Karteikarte konnte nicht gelöscht werden.')
         } finally {
             setDeleteTarget(null)
+        }
+    }
+
+    async function confirmDeleteByDocument() {
+        if (!deleteDocTarget) return
+        try {
+            const deleted = await deleteFlashcardsByDocument(deleteDocTarget.id)
+            setFlashcards((prev) => prev.filter((c) => c.document.id !== deleteDocTarget.id))
+            setDueCount((prev) => Math.max(0, prev - deleted))
+            toast.success(`${deleted} Karteikarte${deleted !== 1 ? 'n' : ''} gelöscht`)
+        } catch {
+            toast.error('Karteikarten konnten nicht gelöscht werden.')
+        } finally {
+            setDeleteDocTarget(null)
         }
     }
 
@@ -331,11 +394,25 @@ export default function FlashcardsPage() {
             <TooltipProvider>
             {[...grouped.entries()].map(([docId, group]) => (
                 <section key={docId} className="space-y-3">
-                    <h2 className="text-lg font-semibold flex items-center gap-2">
-                        <FileText className="h-4 w-4" />
-                        {group.title}
-                        <Badge variant="secondary">{group.cards.length}</Badge>
-                    </h2>
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-lg font-semibold flex items-center gap-2">
+                            <FileText className="h-4 w-4" />
+                            {group.title}
+                            <Badge variant="secondary">{group.cards.length}</Badge>
+                        </h2>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <button
+                                    type="button"
+                                    onClick={() => setDeleteDocTarget({ id: docId, title: group.title, count: group.cards.length })}
+                                    className="p-1.5 rounded hover:bg-destructive/10 transition-colors"
+                                >
+                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                </button>
+                            </TooltipTrigger>
+                            <TooltipContent>Alle Karten zu diesem Thema löschen</TooltipContent>
+                        </Tooltip>
+                    </div>
                     <div className="grid gap-3 sm:grid-cols-2">
                         {group.cards.map((card) => {
                             const isDue = card.progress && new Date(card.progress.nextReviewAt) <= new Date()
@@ -425,44 +502,58 @@ export default function FlashcardsPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-4">
                         <div className="space-y-2">
                             <label className="text-sm font-medium">Lernmaterial</label>
-                            <select
-                                value={genDocId}
-                                onChange={(e) => setGenDocId(e.target.value)}
-                                className="w-full border rounded-md px-3 py-2 text-sm bg-background"
-                            >
-                                <option value="">Bitte wählen...</option>
-                                {documents.map((doc) => (
-                                    <option key={doc.id} value={doc.id}>{doc.title}</option>
-                                ))}
-                            </select>
+                            <Select value={genDocId} onValueChange={setGenDocId}>
+                                <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Bitte wählen..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {documents.map((doc) => (
+                                        <SelectItem key={doc.id} value={doc.id}>{doc.title}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
                         <div className="space-y-2">
                             <label className="text-sm font-medium">Anzahl Karten</label>
-                            <select
-                                value={genCount}
-                                onChange={(e) => setGenCount(Number(e.target.value))}
-                                className="w-full border rounded-md px-3 py-2 text-sm bg-background"
-                            >
-                                {[5, 10, 15, 20].map((n) => (
-                                    <option key={n} value={n}>{n}</option>
-                                ))}
-                            </select>
+                            <Select value={String(genCount)} onValueChange={(v) => setGenCount(Number(v))}>
+                                <SelectTrigger className="w-full">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {[5, 10, 15, 20].map((n) => (
+                                        <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
                     </div>
-                    <Button
-                        onClick={handleGenerate}
-                        disabled={!genDocId || generating}
-                        className="w-full"
-                    >
-                        {generating ? (
-                            <>
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                                Generiere...
-                            </>
-                        ) : (
-                            'Generieren'
-                        )}
-                    </Button>
+                    {generating && genProgress ? (
+                        <div className="space-y-2">
+                            <div className="flex items-center justify-between text-sm">
+                                <span className="flex items-center gap-2">
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    Generiere Karteikarten…
+                                </span>
+                                <span className="text-muted-foreground tabular-nums">
+                                    {genProgress.generated} / {genProgress.total}
+                                </span>
+                            </div>
+                            <div className="h-2 rounded-full bg-muted overflow-hidden">
+                                <div
+                                    className="h-full rounded-full bg-primary transition-all duration-300"
+                                    style={{ width: `${Math.max(2, (genProgress.generated / genProgress.total) * 100)}%` }}
+                                />
+                            </div>
+                        </div>
+                    ) : (
+                        <Button
+                            onClick={handleGenerate}
+                            disabled={!genDocId}
+                            className="w-full"
+                        >
+                            Generieren
+                        </Button>
+                    )}
                 </DialogContent>
             </Dialog>
 
@@ -478,43 +569,39 @@ export default function FlashcardsPage() {
                     <div className="space-y-4">
                         <div className="space-y-2">
                             <label className="text-sm font-medium">Lernmaterial</label>
-                            <select
-                                value={createDocId}
-                                onChange={(e) => setCreateDocId(e.target.value)}
-                                className="w-full border rounded-md px-3 py-2 text-sm bg-background"
-                            >
-                                <option value="">Bitte wählen...</option>
-                                {documents.map((doc) => (
-                                    <option key={doc.id} value={doc.id}>{doc.title}</option>
-                                ))}
-                            </select>
+                            <Select value={createDocId} onValueChange={setCreateDocId}>
+                                <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Bitte wählen..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {documents.map((doc) => (
+                                        <SelectItem key={doc.id} value={doc.id}>{doc.title}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
                         <div className="space-y-2">
                             <label className="text-sm font-medium">Vorderseite (Frage/Begriff)</label>
-                            <input
-                                type="text"
+                            <Input
                                 value={createFront}
                                 onChange={(e) => setCreateFront(e.target.value)}
-                                className="w-full border rounded-md px-3 py-2 text-sm bg-background"
                                 placeholder="z.B. Was ist Photosynthese?"
                             />
                         </div>
                         <div className="space-y-2">
                             <label className="text-sm font-medium">Rückseite (Antwort/Definition)</label>
-                            <textarea
+                            <Textarea
                                 value={createBack}
                                 onChange={(e) => setCreateBack(e.target.value)}
-                                className="w-full border rounded-md px-3 py-2 text-sm bg-background min-h-[80px] resize-y"
+                                className="min-h-20 resize-y"
                                 placeholder="z.B. Der Prozess, bei dem Pflanzen Lichtenergie in chemische Energie umwandeln."
                             />
                         </div>
                         <div className="space-y-2">
                             <label className="text-sm font-medium">Kontext (optional)</label>
-                            <input
-                                type="text"
+                            <Input
                                 value={createContext}
                                 onChange={(e) => setCreateContext(e.target.value)}
-                                className="w-full border rounded-md px-3 py-2 text-sm bg-background"
                                 placeholder="z.B. Kapitel 3: Biologie der Pflanzen"
                             />
                         </div>
@@ -536,7 +623,7 @@ export default function FlashcardsPage() {
                 </DialogContent>
             </Dialog>
 
-            {/* Delete confirmation */}
+            {/* Delete confirmation (single card) */}
             <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
@@ -549,6 +636,30 @@ export default function FlashcardsPage() {
                         <AlertDialogCancel>Abbrechen</AlertDialogCancel>
                         <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
                             Löschen
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Delete confirmation (all cards for a document) */}
+            <AlertDialog open={!!deleteDocTarget} onOpenChange={(open) => { if (!open) setDeleteDocTarget(null) }}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Alle Karteikarten löschen?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {deleteDocTarget && (
+                                <>
+                                    Alle {deleteDocTarget.count} Karteikarte{deleteDocTarget.count !== 1 ? 'n' : ''} zu
+                                    {' '}<span className="font-medium">{deleteDocTarget.title}</span> und
+                                    deren Lernfortschritt werden unwiderruflich gelöscht.
+                                </>
+                            )}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmDeleteByDocument} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                            Alle löschen
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { validateFile, parseDocument } from '@/src/lib/document-parser'
 import { chunkDocument } from '@/src/lib/chunking'
-import { createEmbedding } from '@/src/lib/llm'
-import { createDocument, createChunks, saveChunkEmbedding } from '@/src/data-access/documents'
+import { createEmbeddingsBatchWithProgress } from '@/src/lib/llm'
+import { createDocument, createChunks, saveChunkEmbeddingsBatch } from '@/src/data-access/documents'
 import { prisma } from '@/src/lib/prisma'
 
 // POST /api/documents - Upload file or paste text, process pipeline with SSE progress
@@ -110,19 +110,22 @@ export async function POST(request: NextRequest) {
                         select: { id: true, content: true },
                     })
 
-                    // Step 4: Generate embeddings
-                    for (let i = 0; i < savedChunks.length; i++) {
-                        const chunk = savedChunks[i]
-                        const progress = 50 + Math.round((i / savedChunks.length) * 45)
-                        sendProgress('embedding', progress, `Lernabschnitt ${i + 1}/${savedChunks.length} wird erstellt...`)
+                    // Step 4: Generate embeddings in batches with progress
+                    sendProgress('embedding', 55, `${savedChunks.length} Lernabschnitte werden eingebettet...`)
 
-                        try {
-                            const embedding = await createEmbedding(chunk.content)
-                            await saveChunkEmbedding(chunk.id, embedding)
-                        } catch (embeddingError) {
-                            console.error(`Embedding failed for chunk ${i}:`, embeddingError)
-                            // Continue with other chunks even if one fails
-                        }
+                    try {
+                        const texts = savedChunks.map(c => c.content)
+                        const embeddings = await createEmbeddingsBatchWithProgress(texts, (done, total) => {
+                            const pct = 55 + Math.round((done / total) * 40)
+                            sendProgress('embedding', pct, `Einbettung: ${done} / ${total} Abschnitte`)
+                        })
+                        const batch = savedChunks.map((c, i) => ({
+                            chunkId: c.id,
+                            embedding: embeddings[i],
+                        }))
+                        await saveChunkEmbeddingsBatch(batch)
+                    } catch (embeddingError) {
+                        console.error('Batch embedding failed:', embeddingError)
                     }
 
                     // Done

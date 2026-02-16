@@ -21,7 +21,8 @@ import {
 import {
     selectRepresentativeChunks,
     distributeQuestions,
-    generateMcQuestions,
+    generateSingleChoiceQuestions,
+    generateMultipleChoiceQuestions,
     generateFreetextQuestions,
     generateTruefalseQuestions,
     type QuestionToSave,
@@ -84,17 +85,17 @@ export async function getDocumentProgress() {
 export async function generateQuiz(
     documentId: string,
     questionCount: number = 5,
-    questionTypes: string[] = ['mc']
+    questionTypes: string[] = ['singleChoice']
 ) {
     if (!documentId) {
         throw new Error('Lernmaterial-ID ist erforderlich.')
     }
 
-    const validTypes = ['mc', 'freetext', 'truefalse']
-    const types = (Array.isArray(questionTypes) ? questionTypes : ['mc'])
+    const validTypes = ['singleChoice', 'multipleChoice', 'freetext', 'truefalse']
+    const types = (Array.isArray(questionTypes) ? questionTypes : ['singleChoice'])
         .filter((t: string) => validTypes.includes(t))
     if (types.length === 0) {
-        throw new Error('Mindestens ein gültiger Fragetyp ist erforderlich (mc, freetext, truefalse).')
+        throw new Error('Mindestens ein gültiger Fragetyp ist erforderlich (singleChoice, multi, freetext, truefalse).')
     }
 
     const count = Math.min(Math.max(Number(questionCount), 1), 20)
@@ -119,9 +120,9 @@ export async function generateQuiz(
     const allQuestions: QuestionToSave[] = []
     const generationTasks: Promise<void>[] = []
 
-    if (distribution['mc']) {
+    if (distribution['singleChoice']) {
         generationTasks.push(
-            generateMcQuestions(contextText, distribution['mc']).then((qs) => {
+            generateSingleChoiceQuestions(contextText, distribution['singleChoice']).then((qs) => {
                 for (const q of qs) {
                     allQuestions.push({
                         questionText: q.questionText,
@@ -129,7 +130,25 @@ export async function generateQuiz(
                         correctIndex: q.correctIndex,
                         explanation: q.explanation,
                         sourceSnippet: q.sourceSnippet,
-                        questionType: 'mc',
+                        questionType: 'singleChoice',
+                    })
+                }
+            })
+        )
+    }
+
+    if (distribution['multipleChoice']) {
+        generationTasks.push(
+            generateMultipleChoiceQuestions(contextText, distribution['multipleChoice']).then((qs) => {
+                for (const q of qs) {
+                    allQuestions.push({
+                        questionText: q.questionText,
+                        options: q.options,
+                        correctIndex: null,
+                        correctIndices: q.correctIndices,
+                        explanation: q.explanation,
+                        sourceSnippet: q.sourceSnippet,
+                        questionType: 'multipleChoice',
                     })
                 }
             })
@@ -186,6 +205,7 @@ export async function generateQuiz(
         questionText: q.questionText,
         options: q.options,
         correctIndex: q.correctIndex,
+        correctIndices: q.correctIndices,
         correctAnswer: q.correctAnswer,
         explanation: q.explanation,
         sourceChunkId: selectedChunks[i]?.id,
@@ -201,13 +221,10 @@ export async function generateQuiz(
 
 // ── Evaluate a quiz answer ──
 
-// Strip <think>...</think> blocks, returning reasoning and cleaned text
-function extractReasoning(text: string): { reasoning: string; text: string } {
-    const matches = [...text.matchAll(/<think>([\s\S]*?)<\/think>/g)]
-    const reasoning = matches.map(m => m[1].trim()).filter(Boolean).join('\n\n')
-    const cleaned = text.replace(/<think>[\s\S]*?<\/think>/g, '').trim()
-    return { reasoning, text: cleaned }
-}
+const explanationSchema = z.object({
+    explanation: z.string().describe('Erklärung warum die gewählte Antwort falsch und die korrekte richtig ist, mit Zitat aus der Quelle'),
+    reasoning: z.string().optional().describe('Optionaler Denkprozess Schritt für Schritt'),
+})
 
 // Evaluate mc/truefalse questions by comparing selectedIndex to correctIndex
 async function evaluateSelection(
@@ -228,29 +245,24 @@ async function evaluateSelection(
     let reasoning: string | undefined
 
     if (!isCorrect) {
-        const { text, reasoning: nativeReasoning } = await generateText({
+        const { output } = await generateText({
             model: getModel(),
-            prompt: `Der Benutzer hat eine Multiple-Choice-Frage falsch beantwortet.
+            system: 'Du bist ein Lernassistent. Erkläre falsche Quizantworten kurz und verständlich auf Deutsch.',
+            output: Output.object({ schema: explanationSchema }),
+            prompt: `Der Benutzer hat folgende Frage falsch beantwortet.
 
 Frage: ${question.questionText}
-
 Gewählte Antwort (falsch): ${options[selectedIndex]}
 Korrekte Antwort: ${options[question.correctIndex!]}
+${question.sourceSnippet ? `\nQuelltext: "${question.sourceSnippet}"` : ''}
 
-${question.sourceSnippet ? `Quelle: "${question.sourceSnippet}"` : ''}
-
-Erkläre kurz und verständlich:
-1. Warum die gewählte Antwort falsch ist
-2. Warum die korrekte Antwort richtig ist
-3. Zitiere relevante Stellen aus dem Quelltext`,
+Schreibe in "explanation" einen kurzen Absatz, der erklärt:
+- Warum die gewählte Antwort falsch ist
+- Warum die korrekte Antwort richtig ist
+- Zitiere relevante Stellen aus dem Quelltext`,
         })
-        // Native reasoning (models with built-in reasoning) or <think> tag fallback
-        const extracted = extractReasoning(text)
-        explanation = extracted.text
-        const nativeText = nativeReasoning
-            ?.map((r) => r.text)
-            .join('\n\n')
-        reasoning = nativeText || extracted.reasoning || undefined
+        explanation = output?.explanation
+        reasoning = output?.reasoning
     } else {
         explanation = question.explanation ?? undefined
     }
@@ -273,10 +285,71 @@ Erkläre kurz und verständlich:
     }
 }
 
+// Evaluate multi-select questions by comparing sorted index arrays
+async function evaluateMultipleChoiceSelection(
+    question: {
+        id: string
+        questionText: string
+        options: unknown
+        correctIndices?: unknown
+        explanation: string | null
+        sourceSnippet: string | null
+    },
+    selectedIndices: number[],
+) {
+    const options = question.options as string[]
+    const correctIndices = (question.correctIndices as number[] | undefined) ?? []
+    const sortedSelected = [...selectedIndices].sort()
+    const sortedCorrect = [...correctIndices].sort()
+    const isCorrect = sortedSelected.length === sortedCorrect.length
+        && sortedSelected.every((v, i) => v === sortedCorrect[i])
+
+    let explanation: string | undefined
+
+    if (!isCorrect) {
+        const correctLabels = sortedCorrect.map(i => options[i]).join(', ')
+        const selectedLabels = sortedSelected.map(i => options[i]).join(', ')
+        const { output } = await generateText({
+            model: getModel(),
+            system: 'Du bist ein Lernassistent. Erkläre falsche Quizantworten kurz und verständlich auf Deutsch.',
+            output: Output.object({ schema: explanationSchema }),
+            prompt: `Der Benutzer hat folgende Frage falsch beantwortet (Multiple Choice mit mehreren richtigen Antworten).
+
+Frage: ${question.questionText}
+Gewählte Antworten (falsch): ${selectedLabels}
+Korrekte Antworten: ${correctLabels}
+${question.sourceSnippet ? `\nQuelltext: "${question.sourceSnippet}"` : ''}
+
+Schreibe in "explanation" einen kurzen Absatz, der erklärt:
+- Welche Auswahl falsch war und welche fehlte
+- Warum die korrekten Antworten richtig sind
+- Zitiere relevante Stellen aus dem Quelltext`,
+        })
+        explanation = output?.explanation
+    } else {
+        explanation = question.explanation ?? undefined
+    }
+
+    const attempt = await dbRecordAttempt(
+        question.id, null, isCorrect, explanation,
+        undefined, undefined, undefined, selectedIndices,
+    )
+
+    await upsertQuestionProgress(question.id, isCorrect)
+
+    return {
+        isCorrect,
+        correctIndices,
+        explanation,
+        sourceSnippet: question.sourceSnippet ?? undefined,
+        attemptId: attempt.id,
+    }
+}
+
 // Evaluate freetext questions via LLM comparison
 const freetextEvalSchema = z.object({
-    correct: z.enum(['yes', 'partly', 'no']),
-    feedback: z.string(),
+    correct: z.enum(['yes', 'partly', 'no']).describe('yes = inhaltlich korrekt, partly = teilweise korrekt, no = falsch'),
+    feedback: z.string().describe('Ein kurzer Feedbacksatz auf Deutsch'),
 })
 
 async function evaluateFreetext(
@@ -290,28 +363,23 @@ async function evaluateFreetext(
 ) {
     const { output } = await generateText({
         model: getModel(),
+        system: 'Du bewertest Freitext-Antworten. Vergleiche die Benutzerantwort inhaltlich (nicht wörtlich) mit der richtigen Antwort.',
         output: Output.object({ schema: freetextEvalSchema }),
-        prompt: `Prüfe ob die Antwort des Benutzers inhaltlich zur richtigen Antwort passt.
-
-Beispiele:
-Richtig: "€5,00 pro Berichtseite" | Benutzer: "5€ pro Seite" → correct: "yes" (gleicher Betrag, gleiche Bedeutung)
-Richtig: "Berlin" | Benutzer: "berlin" → correct: "yes" (gleiche Stadt)
-Richtig: "3 Monate" | Benutzer: "12 Wochen" → correct: "yes" (gleicher Zeitraum)
-Richtig: "Die Erde kreist um die Sonne" | Benutzer: "Der Mond" → correct: "no" (falsch)
-Richtig: "Vertrag läuft 2 Jahre mit 5% Rabatt" | Benutzer: "2 Jahre" → correct: "partly" (Rabatt fehlt)
+        prompt: `Beispiele:
+Richtig: "5,00 Euro pro Berichtseite" | Benutzer: "5 Euro pro Seite" -> correct: "yes" (gleicher Betrag)
+Richtig: "Berlin" | Benutzer: "berlin" -> correct: "yes" (Groß-/Kleinschreibung egal)
+Richtig: "3 Monate" | Benutzer: "12 Wochen" -> correct: "yes" (gleicher Zeitraum)
+Richtig: "Die Erde kreist um die Sonne" | Benutzer: "Der Mond" -> correct: "no" (falsch)
+Richtig: "Vertrag läuft 2 Jahre mit 5% Rabatt" | Benutzer: "2 Jahre" -> correct: "partly" (Rabatt fehlt)
 
 Jetzt bewerte:
 Richtige Antwort: "${question.correctAnswer ?? 'Unbekannt'}"
-Antwort des Benutzers: "${freeTextAnswer}"
-
-correct: "yes", "partly" oder "no"
-feedback: Ein kurzer Satz auf Deutsch.`,
+Antwort des Benutzers: "${freeTextAnswer}"`,
     })
 
     const scoreMap = { yes: 1.0, partly: 0.5, no: 0.0 } as const
     const freeTextScore = output ? scoreMap[output.correct] ?? 0 : 0
-    const rawFeedback = output?.feedback ?? 'Bewertung konnte nicht verarbeitet werden.'
-    const freeTextFeedback = extractReasoning(rawFeedback).text || rawFeedback
+    const freeTextFeedback = output?.feedback ?? 'Bewertung konnte nicht verarbeitet werden.'
 
     const isCorrect = freeTextScore >= 0.5
 
@@ -336,6 +404,7 @@ export async function evaluateAnswer(
     questionId: string,
     selectedIndex?: number | null,
     freeTextAnswer?: string,
+    selectedIndices?: number[],
 ) {
     if (!questionId) {
         throw new Error('Frage-ID ist erforderlich.')
@@ -353,9 +422,15 @@ export async function evaluateAnswer(
     const questionType = question.questionType
 
     // Validate: mc and truefalse require selectedIndex
-    if ((questionType === 'mc' || questionType === 'truefalse') &&
+    if ((questionType === 'singleChoice' || questionType === 'truefalse') &&
         (selectedIndex === undefined || selectedIndex === null)) {
         throw new Error('Ausgewählter Index ist für diesen Fragetyp erforderlich.')
+    }
+
+    // Validate: multi requires selectedIndices
+    if (questionType === 'multipleChoice' &&
+        (!selectedIndices || selectedIndices.length === 0)) {
+        throw new Error('Mindestens eine Auswahl ist für diesen Fragetyp erforderlich.')
     }
 
     // Validate: freetext requires freeTextAnswer
@@ -371,6 +446,10 @@ export async function evaluateAnswer(
     // Evaluate based on question type
     if (questionType === 'freetext') {
         return evaluateFreetext(question, sanitizedFreeText!)
+    }
+
+    if (questionType === 'multipleChoice') {
+        return evaluateMultipleChoiceSelection(question, selectedIndices!)
     }
 
     // MC or truefalse evaluation

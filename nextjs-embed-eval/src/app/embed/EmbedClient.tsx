@@ -38,11 +38,13 @@ interface Model {
 
 interface EmbedClientProps {
     models: Model[]
+    totalChunkCount: number
+    totalPhraseCount: number
 }
 
 type EmbedResult = { chunkSize?: number; chunkOverlap?: number; totalChunks?: number; modelsProcessed?: number; chunksEmbedded: number; phrasesEmbedded: number; totalDurationMs: number }
 
-export function EmbedClient({ models }: EmbedClientProps) {
+export function EmbedClient({ models, totalChunkCount, totalPhraseCount }: EmbedClientProps) {
     const router = useRouter()
     const [selectedModelId, setSelectedModelId] = useState('')
     const [lastEmbedModelId, setLastEmbedModelId] = useState<string | null>(null)
@@ -254,8 +256,8 @@ export function EmbedClient({ models }: EmbedClientProps) {
                         <div className="flex gap-2 text-sm">
                             <Badge variant="outline">{selectedModel.dimensions}d</Badge>
                             <span className="text-muted-foreground">
-                                {selectedModel.chunkEmbeddingCount} Chunk-Embeddings,{' '}
-                                {selectedModel.phraseEmbeddingCount} Phrasen-Embeddings vorhanden
+                                {selectedModel.chunkEmbeddingCount}/{totalChunkCount} Chunk-Embeddings,{' '}
+                                {selectedModel.phraseEmbeddingCount}/{totalPhraseCount} Phrasen-Embeddings
                             </span>
                         </div>
                     )}
@@ -325,7 +327,7 @@ export function EmbedClient({ models }: EmbedClientProps) {
                                     <Badge variant="secondary">{model.provider}</Badge>
                                 </div>
                                 <div className="text-sm text-muted-foreground text-right">
-                                    <div>{model.chunkEmbeddingCount} Chunks, {model.phraseEmbeddingCount} Phrasen</div>
+                                    <div>{model.chunkEmbeddingCount}/{totalChunkCount} Chunks, {model.phraseEmbeddingCount}/{totalPhraseCount} Phrasen</div>
                                     {model.lastEmbedDurationMs != null && model.lastEmbedDurationMs > 0 && (
                                         <div>
                                             {formatDuration(model.lastEmbedDurationMs)}

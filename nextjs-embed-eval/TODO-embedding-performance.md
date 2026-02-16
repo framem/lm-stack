@@ -5,19 +5,6 @@ Validiert gegen den aktuellen Code-Stand (2026-02-16).
 
 ---
 
-## P0 — Kritisch (größter Speedup)
-
-### Ollama: Echtes Batch-Embedding statt sequentieller Fake-Batches
-- **Status:** OFFEN
-- **Problem:** `ai-sdk-ollama` Provider implementiert `doEmbed()` als sequentielle `for`-Schleife — jeder Text wird einzeln per HTTP an Ollama geschickt, obwohl Ollama's `/api/embed` Endpoint `input: string[]` (echtes Batching) unterstützt. `embedMany` bringt bei Ollama keinen Speedup.
-- **Beweis:** `node_modules/ai-sdk-ollama/dist/index.js` — `for (const value of values) { await client.embed({ input: value }) }`
-- **Hinweis:** Bei LM Studio (OpenAI-compatible) funktioniert Batching korrekt (`input: values` als Array).
-- **Lösung:** Für Ollama direkt `POST /api/embed` mit `{ input: string[] }` aufrufen, statt über den AI SDK Provider zu gehen. Fallback auf `embedMany` für LM Studio / andere OpenAI-kompatible Provider.
-- **Erwarteter Speedup:** 5–20x für Ollama
-- **Dateien:** `src/lib/embedding.ts`
-
----
-
 ## P1 — Hoch
 
 ### GET → POST für alle Embed/Evaluate-Routes
@@ -49,12 +36,11 @@ Validiert gegen den aktuellen Code-Stand (2026-02-16).
 
 ## P2 — Mittel
 
-### Embedding-Caching (unveränderte Chunks überspringen)
-- **Status:** OFFEN
-- **Problem:** Bei Re-Embedding werden ALLE Chunks neu eingebettet, auch wenn sich Inhalt seit dem letzten Run nicht geändert hat.
-- **Lösung:** Content-Hash (`SHA-256` des Chunk-Contents) auf `TextChunk` speichern. Vor Embedding prüfen, ob `ChunkEmbedding` für gleichen `chunkId + modelId` mit gleichem Hash existiert → überspringen.
-- **Erwarteter Speedup:** 0–100% je nach Szenario (typisch 80–90% Skip bei kleinen Textänderungen)
-- **Dateien:** `prisma/schema/source.prisma`, `src/data-access/embeddings.ts`, Route-Handler
+### ~~Embedding-Caching (unveränderte Chunks überspringen)~~ ✅
+- **Status:** ERLEDIGT
+- SHA-256 `contentHash` auf `TextChunk` und `ChunkEmbedding`
+- Alle 4 Embed-Routes (`embed`, `embed-all`, `rechunk-embed`, `grid-search`) prüfen vor Embedding ob Hash übereinstimmt → überspringen
+- **Dateien:** `prisma/schema/source.prisma`, `prisma/schema/embedding.prisma`, `src/data-access/source-texts.ts`, `src/data-access/embeddings.ts`, Route-Handler
 
 ### SSE-Heartbeat gegen Proxy-Timeouts
 - **Status:** OFFEN

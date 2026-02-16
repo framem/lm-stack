@@ -14,6 +14,7 @@ import {
     createFlashcards as dbCreateFlashcards,
     upsertFlashcardProgress as dbUpsertFlashcardProgress,
     deleteFlashcard as dbDeleteFlashcard,
+    deleteFlashcardsByDocument as dbDeleteFlashcardsByDocument,
 } from '@/src/data-access/flashcards'
 import { revalidatePath } from 'next/cache'
 
@@ -60,18 +61,11 @@ export async function createFlashcard(
 
 // ── AI-generate flashcards from document ──
 
-// Strip <think>...</think> blocks
-function stripThinkTags(text: string): string {
-    return text.replace(/<think>[\s\S]*?<\/think>/g, '').trim()
-}
-
-const flashcardSchema = z.object({
-    cards: z.array(z.object({
-        front: z.string(),
-        back: z.string(),
-        context: z.string().optional(),
-        sourceSection: z.number(),
-    })),
+const flashcardElementSchema = z.object({
+    front: z.string().describe('Kurze Frage, Begriff oder Konzept'),
+    back: z.string().describe('Antwort, Definition oder Erklärung'),
+    context: z.string().optional().describe('Optionales Zitat aus dem Quelltext'),
+    sourceSection: z.number().describe('Abschnittsnummer (1-basiert)'),
 })
 
 export async function generateFlashcards(documentId: string, count: number = 10) {
@@ -91,44 +85,29 @@ export async function generateFlashcards(documentId: string, count: number = 10)
         .map((c, i) => `[Abschnitt ${i + 1}]\n${c.content}`)
         .join('\n\n---\n\n')
 
-    const { output, text } = await generateText({
+    const { output } = await generateText({
         model: getModel(),
-        output: Output.object({ schema: flashcardSchema }),
-        prompt: `Erstelle genau ${clampedCount} Karteikarten basierend auf dem folgenden Text.
-Der Text ist in ${selectedChunks.length} nummerierte Abschnitte unterteilt.
+        system: 'Du erstellst Karteikarten auf Deutsch basierend auf Lerntexten.',
+        output: Output.array({ element: flashcardElementSchema }),
+        prompt: `Erstelle genau ${clampedCount} Karteikarten aus dem folgenden Text (${selectedChunks.length} Abschnitte).
 
-Jede Karteikarte soll:
-- front: Eine Frage, ein Begriff oder ein Konzept (kurz und prägnant)
-- back: Die Antwort, Definition oder Erklärung
-- context: (optional) Ein kurzer Kontextsatz aus dem Quelltext, der beim Verständnis hilft
-- sourceSection: Die Nummer des Abschnitts (1-${selectedChunks.length}), aus dem die Karte stammt
+Anforderungen:
+- front: Kurze Frage oder Begriff (max. 1 Satz)
+- back: Präzise Antwort oder Erklärung
+- sourceSection: Abschnittsnummer (1 bis ${selectedChunks.length})
+- Gleichmäßig über alle Abschnitte verteilen
 
-Fokussiere dich auf:
-- Wichtige Begriffe und Definitionen
-- Kernkonzepte und Zusammenhänge
-- Faktenwissen (Zahlen, Daten, Namen)
-- Praxisrelevantes Wissen
-
-Verteile die Karten möglichst gleichmäßig über alle Abschnitte.
-Antworte ausschließlich mit gültigem JSON.
+Fokus: Definitionen, Kernkonzepte, Fakten (Zahlen, Daten, Namen), Praxiswissen
 
 Text:
 ${contextText}`,
     })
 
-    let cards = output?.cards
-    if (!cards || cards.length === 0) {
-        // Try to parse from raw text as fallback
-        try {
-            const cleaned = stripThinkTags(text)
-            const parsed = JSON.parse(cleaned)
-            cards = flashcardSchema.parse(parsed).cards
-        } catch {
-            throw new Error('Das LLM konnte keine gültigen Karteikarten generieren.')
-        }
+    if (!output || output.length === 0) {
+        throw new Error('Das LLM konnte keine gültigen Karteikarten generieren.')
     }
 
-    const dataToSave = cards.slice(0, clampedCount).map((card) => {
+    const dataToSave = output.slice(0, clampedCount).map((card) => {
         // Map 1-based sourceSection back to the selected chunk
         const idx = Math.max(0, Math.min((card.sourceSection || 1) - 1, selectedChunks.length - 1))
         return {
@@ -162,4 +141,13 @@ export async function deleteFlashcard(id: string) {
     if (!id) throw new Error('Karteikarten-ID ist erforderlich.')
     await dbDeleteFlashcard(id)
     revalidatePath('/learn/flashcards')
+}
+
+// ── Delete all flashcards for a document ──
+
+export async function deleteFlashcardsByDocument(documentId: string) {
+    if (!documentId) throw new Error('Lernmaterial-ID ist erforderlich.')
+    const result = await dbDeleteFlashcardsByDocument(documentId)
+    revalidatePath('/learn/flashcards')
+    return result.count
 }

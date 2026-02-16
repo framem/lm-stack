@@ -1,13 +1,18 @@
-import { NextRequest } from 'next/server'
-import { getEmbeddingModels, getEmbeddingModelById, updateModelEmbedDuration } from '@/src/data-access/embedding-models'
-import { getSourceTexts, deleteChunksBySourceText, createChunks, updateSourceText } from '@/src/data-access/source-texts'
-import { getTestPhrases } from '@/src/data-access/test-phrases'
-import { getAllChunks, getChunksBySourceText } from '@/src/data-access/source-texts'
-import { getPhrasesForRemapping, remapPhraseToChunk } from '@/src/data-access/test-phrases'
-import { saveChunkEmbeddingsBatch, savePhraseEmbeddingsBatch } from '@/src/data-access/embeddings'
-import { chunkText, DEFAULT_TARGET_TOKENS, DEFAULT_OVERLAP_TOKENS, type ChunkStrategy } from '@/src/lib/chunking'
-import { chunkTextSemantic } from '@/src/lib/semantic-chunking'
-import { createEmbeddings, type EmbeddingModelConfig } from '@/src/lib/embedding'
+import {NextRequest} from 'next/server'
+import {getEmbeddingModelById, getEmbeddingModels, updateModelEmbedDuration} from '@/src/data-access/embedding-models'
+import {
+    createChunks,
+    deleteChunksBySourceText,
+    getAllChunks,
+    getChunksBySourceText,
+    getSourceTexts,
+    updateSourceText
+} from '@/src/data-access/source-texts'
+import {getPhrasesForRemapping, getTestPhrases, remapPhraseToChunk} from '@/src/data-access/test-phrases'
+import {saveChunkEmbeddingsBatch, savePhraseEmbeddingsBatch} from '@/src/data-access/embeddings'
+import {type ChunkStrategy, chunkText, DEFAULT_OVERLAP_TOKENS, DEFAULT_TARGET_TOKENS} from '@/src/lib/chunking'
+import {chunkTextSemantic} from '@/src/lib/semantic-chunking'
+import {createEmbeddings, type EmbeddingModelConfig} from '@/src/lib/embedding'
 
 const BATCH_SIZE = 50
 
@@ -232,7 +237,7 @@ export async function GET(request: NextRequest) {
                         try {
                             const embeddings = await createEmbeddings(batch.map(c => c.content), config, 'document')
                             await saveChunkEmbeddingsBatch(
-                                batch.map((chunk, idx) => ({ chunkId: chunk.id, embedding: embeddings[idx] })),
+                                batch.map((chunk, idx) => ({ chunkId: chunk.id, embedding: embeddings[idx], contentHash: chunk.contentHash ?? undefined })),
                                 model.id
                             )
                             totalChunksEmbedded += batch.length

@@ -14,8 +14,10 @@ interface QuestionResult {
     options: string[] | null
     questionIndex: number
     correctIndex: number | null
+    correctIndices?: number[]
     isCorrect: boolean
     selectedIndex: number | null
+    selectedIndices?: number[]
     explanation?: string
     sourceSnippet?: string
     questionType?: string
@@ -34,6 +36,7 @@ interface QuizResultData {
         questionText: string
         options: string[] | null
         correctIndex: number | null
+        correctIndices?: number[] | null
         questionIndex: number
         explanation?: string
         sourceSnippet?: string
@@ -41,6 +44,7 @@ interface QuizResultData {
         correctAnswer?: string
         attempts: {
             selectedIndex: number | null
+            selectedIndices?: number[] | null
             isCorrect: boolean
             explanation?: string
             freeTextAnswer?: string
@@ -99,8 +103,10 @@ export default function QuizResultsPage({ params }: { params: Promise<{ id: stri
             options: q.options,
             questionIndex: q.questionIndex,
             correctIndex: q.correctIndex,
+            correctIndices: (q.correctIndices as number[] | null) ?? undefined,
             isCorrect: lastAttempt?.isCorrect ?? false,
             selectedIndex: lastAttempt?.selectedIndex ?? null,
+            selectedIndices: (lastAttempt?.selectedIndices as number[] | null) ?? undefined,
             explanation: lastAttempt?.explanation ?? q.explanation,
             sourceSnippet: q.sourceSnippet,
             questionType: q.questionType,

@@ -39,7 +39,7 @@ vi.mock('@/src/data-access/quiz', () => ({
                         options: ['A', 'B', 'C', 'D'],
                         correctIndex: 0,
                         questionIndex: 0,
-                        questionType: 'mc',
+                        questionType: 'singleChoice',
                     },
                 ],
             })
@@ -82,27 +82,25 @@ vi.mock('@/src/lib/prisma', () => ({
 vi.mock('ai', () => ({
     Output: {
         object: vi.fn(() => 'mock-output-schema'),
+        array: vi.fn(() => 'mock-output-array'),
     },
     generateText: vi.fn(() => Promise.resolve({
-        output: {
-            questions: [
-                {
-                    questionText: 'What is in the first section?',
-                    options: ['Answer A', 'Answer B', 'Answer C', 'Answer D'],
-                    correctIndex: 0,
-                    explanation: 'Because the first section states...',
-                    sourceSnippet: 'First section of the document.',
-                },
-                {
-                    questionText: 'What is in the second section?',
-                    options: ['X', 'Y', 'Z', 'W'],
-                    correctIndex: 1,
-                    explanation: 'Because...',
-                    sourceSnippet: 'Second section of the document.',
-                },
-            ],
-        },
-        text: 'Die gewählte Antwort ist falsch, weil...',
+        output: [
+            {
+                questionText: 'What is in the first section?',
+                options: ['Answer A', 'Answer B', 'Answer C', 'Answer D'],
+                correctIndex: 0,
+                explanation: 'Because the first section states...',
+                sourceSnippet: 'First section of the document.',
+            },
+            {
+                questionText: 'What is in the second section?',
+                options: ['X', 'Y', 'Z', 'W'],
+                correctIndex: 1,
+                explanation: 'Because...',
+                sourceSnippet: 'Second section of the document.',
+            },
+        ],
     })),
 }))
 
@@ -129,19 +127,19 @@ describe('generateQuiz server action', () => {
     it('should throw when documentId is missing', async () => {
         const { generateQuiz } = await import('@/src/actions/quiz')
 
-        await expect(generateQuiz('', 5, ['mc'])).rejects.toThrow('Lernmaterial-ID ist erforderlich.')
+        await expect(generateQuiz('', 5, ['singleChoice'])).rejects.toThrow('Lernmaterial-ID ist erforderlich.')
     })
 
     it('should throw when document does not exist', async () => {
         const { generateQuiz } = await import('@/src/actions/quiz')
 
-        await expect(generateQuiz('nonexistent', 5, ['mc'])).rejects.toThrow('Lernmaterial nicht gefunden.')
+        await expect(generateQuiz('nonexistent', 5, ['singleChoice'])).rejects.toThrow('Lernmaterial nicht gefunden.')
     })
 
     it('should generate a quiz for a valid document', async () => {
         const { generateQuiz } = await import('@/src/actions/quiz')
 
-        const result = await generateQuiz('doc-1', 2, ['mc'])
+        const result = await generateQuiz('doc-1', 2, ['singleChoice'])
 
         expect(result.quizId).toBe('quiz-1')
     })
@@ -204,11 +202,11 @@ describe('evaluateAnswer server action', () => {
             correctAnswer: null,
             explanation: 'A is correct because...',
             sourceSnippet: 'Source text',
-            questionType: 'mc',
+            questionType: 'singleChoice',
         })
 
         const { evaluateAnswer } = await import('@/src/actions/quiz')
-        const result = await evaluateAnswer('q-1', 0)
+        const result = await evaluateAnswer('q-1', 0) as { isCorrect: boolean; correctIndex: number }
 
         expect(result.isCorrect).toBe(true)
         expect(result.correctIndex).toBe(0)
@@ -223,11 +221,17 @@ describe('evaluateAnswer server action', () => {
             correctAnswer: null,
             explanation: 'A is correct because...',
             sourceSnippet: 'Source text',
-            questionType: 'mc',
+            questionType: 'singleChoice',
         })
 
+        // Override mock for evaluation (Output.object returns an object, not an array)
+        const { generateText } = await import('ai')
+        vi.mocked(generateText).mockResolvedValueOnce({
+            output: { explanation: 'Die gewählte Antwort ist falsch, weil...' },
+        } as never)
+
         const { evaluateAnswer } = await import('@/src/actions/quiz')
-        const result = await evaluateAnswer('q-1', 2)
+        const result = await evaluateAnswer('q-1', 2) as { isCorrect: boolean; correctIndex: number; explanation: string }
 
         expect(result.isCorrect).toBe(false)
         expect(result.correctIndex).toBe(0)

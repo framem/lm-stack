@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import Image from "next/image";
 import { usePathname, useSearchParams, useRouter } from 'next/navigation'
@@ -66,7 +66,8 @@ export function AppSidebar() {
     const pathname = usePathname()
     const searchParams = useSearchParams()
     const router = useRouter()
-    const { theme, setTheme } = useTheme()
+    const { resolvedTheme, setTheme } = useTheme()
+    const mounted = useSyncExternalStore(() => () => {}, () => true, () => false)
     const activeSessionId = searchParams.get('sessionId')
     const [sessions, setSessions] = useState<SessionItem[]>([])
 
@@ -78,6 +79,7 @@ export function AppSidebar() {
             router.push('/learn/chat')
         }
     }
+
 
     // Fetch sessions on mount and whenever a new session is created
     useEffect(() => {
@@ -231,12 +233,12 @@ export function AppSidebar() {
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton
-                            tooltip={theme === 'dark' ? 'Hellmodus' : 'Dunkelmodus'}
-                            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                            tooltip={mounted ? (resolvedTheme === 'dark' ? 'Hellmodus' : 'Dunkelmodus') : 'Design'}
+                            onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
                         >
                             <Sun className="size-4 rotate-0 scale-100 transition-transform dark:-rotate-90 dark:scale-0" />
                             <Moon className="absolute size-4 rotate-90 scale-0 transition-transform dark:rotate-0 dark:scale-100" />
-                            <span>{theme === 'dark' ? 'Hellmodus' : 'Dunkelmodus'}</span>
+                            <span>{mounted ? (resolvedTheme === 'dark' ? 'Hellmodus' : 'Dunkelmodus') : 'Design'}</span>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem>

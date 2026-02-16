@@ -109,6 +109,11 @@ export async function deleteFlashcard(id: string) {
     return prisma.flashcard.delete({ where: { id } })
 }
 
+// Delete all flashcards for a document
+export async function deleteFlashcardsByDocument(documentId: string) {
+    return prisma.flashcard.deleteMany({ where: { documentId } })
+}
+
 // Count flashcards (total)
 export async function getFlashcardCount() {
     return prisma.flashcard.count()

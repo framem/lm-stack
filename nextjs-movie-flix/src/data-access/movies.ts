@@ -171,6 +171,22 @@ export async function saveMovieEmbedding(movieId: string, embedding: number[]): 
     )
 }
 
+export async function saveMovieEmbeddings(movieIds: string[], embeddings: number[][]): Promise<void> {
+    const ids = movieIds
+    const vectors = embeddings.map(e => `[${e.join(',')}]`)
+    await prisma.$executeRawUnsafe(
+        `UPDATE "Movie" SET embedding = v.vec::vector
+         FROM unnest($1::text[], $2::text[]) AS v(id, vec)
+         WHERE "Movie".id = v.id`,
+        ids,
+        vectors,
+    )
+}
+
+export async function resetAllEmbeddings(): Promise<void> {
+    await prisma.$executeRaw`UPDATE "Movie" SET embedding = NULL`
+}
+
 export function buildEmbeddingText(movie: Movie): string {
     const parts: string[] = []
     if (movie.seriesTitle) parts.push(movie.seriesTitle)

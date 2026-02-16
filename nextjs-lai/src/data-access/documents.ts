@@ -116,9 +116,25 @@ export async function saveChunkEmbedding(chunkId: string, embedding: number[]) {
 export async function saveChunkEmbeddingsBatch(
     embeddings: { chunkId: string; embedding: number[] }[]
 ) {
-    for (const { chunkId, embedding } of embeddings) {
-        await saveChunkEmbedding(chunkId, embedding)
-    }
+    if (embeddings.length === 0) return
+
+    // Build a single UPDATE using VALUES list for batch efficiency
+    const values = embeddings.map(
+        (_, i) => `($${i * 2 + 1}, $${i * 2 + 2}::vector)`
+    ).join(', ')
+
+    const params = embeddings.flatMap(({ chunkId, embedding }) => [
+        chunkId,
+        `[${embedding.join(',')}]`,
+    ])
+
+    await prisma.$queryRawUnsafe(
+        `UPDATE "DocumentChunk" AS c
+         SET embedding = v.emb
+         FROM (VALUES ${values}) AS v(id, emb)
+         WHERE c.id = v.id`,
+        ...params
+    )
 }
 
 // ---- Similarity search ----

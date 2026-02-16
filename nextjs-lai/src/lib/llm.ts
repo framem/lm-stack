@@ -1,4 +1,4 @@
-import { createGateway, embed } from 'ai'
+import { createGateway, embed, embedMany } from 'ai'
 import { createOllama } from 'ai-sdk-ollama'
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 
@@ -59,4 +59,35 @@ export async function createEmbedding(text: string): Promise<number[]> {
     const model = getEmbeddingModel()
     const { embedding } = await embed({ model, value: text })
     return embedding
+}
+
+export async function createEmbeddingsBatch(texts: string[]): Promise<number[][]> {
+    if (texts.length === 0) return []
+    const model = getEmbeddingModel()
+    const { embeddings } = await embedMany({ model, values: texts })
+    return embeddings
+}
+
+const EMBEDDING_BATCH_SIZE = 50
+
+/**
+ * Process embeddings in smaller batches, calling onProgress after each batch.
+ * Returns the full array of embeddings in the original order.
+ */
+export async function createEmbeddingsBatchWithProgress(
+    texts: string[],
+    onProgress: (done: number, total: number) => void,
+): Promise<number[][]> {
+    if (texts.length === 0) return []
+    const model = getEmbeddingModel()
+    const allEmbeddings: number[][] = []
+
+    for (let i = 0; i < texts.length; i += EMBEDDING_BATCH_SIZE) {
+        const slice = texts.slice(i, i + EMBEDDING_BATCH_SIZE)
+        const { embeddings } = await embedMany({ model, values: slice })
+        allEmbeddings.push(...embeddings)
+        onProgress(Math.min(i + EMBEDDING_BATCH_SIZE, texts.length), texts.length)
+    }
+
+    return allEmbeddings
 }

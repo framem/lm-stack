@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useCallback, useRef } from 'react'
+import { highlightPhrase } from '@/src/lib/highlight'
 import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/card'
 import { Badge } from '@/src/components/ui/badge'
 import { Button } from '@/src/components/ui/button'
@@ -24,6 +25,11 @@ interface Model {
     name: string
     provider: string
     dimensions: number
+}
+
+interface SourceText {
+    id: string
+    title: string
 }
 
 interface GridConfig {
@@ -144,51 +150,19 @@ function formatDuration(ms: number): string {
     return `${minutes} min ${remainingSeconds} s`
 }
 
-// ---- Highlight helper ----
-
-/**
- * Highlights occurrences of `phrase` within `content`.
- * Normalizes whitespace for matching, shows context around the match.
- */
-function highlightPhrase(content: string, phrase: string): React.ReactNode {
-    if (!phrase) return content.slice(0, 150) + (content.length > 150 ? '...' : '')
-
-    const normalized = content.replace(/\s+/g, ' ')
-    const normalizedPhrase = phrase.replace(/\s+/g, ' ')
-    const idx = normalized.toLowerCase().indexOf(normalizedPhrase.toLowerCase())
-
-    if (idx === -1) {
-        return content.length > 150 ? content.slice(0, 150) + '...' : content
-    }
-
-    const matchEnd = idx + normalizedPhrase.length
-    const ctxBefore = 60
-    const ctxAfter = 60
-    const start = Math.max(0, idx - ctxBefore)
-    const end = Math.min(normalized.length, matchEnd + ctxAfter)
-
-    return (
-        <>
-            {start > 0 && '...'}
-            {normalized.slice(start, idx)}
-            <mark className="bg-yellow-200 dark:bg-yellow-900/60 rounded px-0.5">
-                {normalized.slice(idx, matchEnd)}
-            </mark>
-            {normalized.slice(matchEnd, end)}
-            {end < normalized.length && '...'}
-        </>
-    )
-}
-
 // ---- Component ----
 
 interface GridSearchClientProps {
     models: Model[]
+    sourceTexts: SourceText[]
 }
 
-export function GridSearchClient({ models }: GridSearchClientProps) {
+export function GridSearchClient({ models, sourceTexts }: GridSearchClientProps) {
     // Config state
     const [selectedModelId, setSelectedModelId] = useState('')
+    const [selectedSourceIds, setSelectedSourceIds] = useState<Set<string>>(
+        () => new Set(sourceTexts.map(st => st.id))
+    )
     const [selectedSizes, setSelectedSizes] = useState<Set<number>>(new Set(DEFAULT_SIZES))
     const [selectedOverlaps, setSelectedOverlaps] = useState<Set<number>>(new Set(DEFAULT_OVERLAPS))
     const [selectedStrategies, setSelectedStrategies] = useState<Set<ChunkStrategy>>(new Set(DEFAULT_STRATEGIES))
@@ -247,6 +221,23 @@ export function GridSearchClient({ models }: GridSearchClientProps) {
             else next.add(strategy)
             return next
         })
+    }
+
+    function toggleSourceText(id: string) {
+        setSelectedSourceIds(prev => {
+            const next = new Set(prev)
+            if (next.has(id)) next.delete(id)
+            else next.add(id)
+            return next
+        })
+    }
+
+    function toggleAllSourceTexts() {
+        setSelectedSourceIds(prev =>
+            prev.size === sourceTexts.length
+                ? new Set()
+                : new Set(sourceTexts.map(st => st.id))
+        )
     }
 
     // Sort handler
@@ -308,7 +299,10 @@ export function GridSearchClient({ models }: GridSearchClientProps) {
         const sizes = Array.from(selectedSizes).sort((a, b) => a - b).join(',')
         const overlaps = Array.from(selectedOverlaps).sort((a, b) => a - b).join(',')
         const strats = Array.from(selectedStrategies).join(',')
-        const url = `/api/grid-search?modelId=${selectedModelId}&chunkSizes=${sizes}&chunkOverlaps=${overlaps}&strategies=${strats}`
+        const sourceParam = selectedSourceIds.size < sourceTexts.length && selectedSourceIds.size > 0
+            ? `&sourceTextIds=${Array.from(selectedSourceIds).join(',')}`
+            : ''
+        const url = `/api/grid-search?modelId=${selectedModelId}&chunkSizes=${sizes}&chunkOverlaps=${overlaps}&strategies=${strats}${sourceParam}`
 
         fetch(url, { signal: controller.signal })
             .then(async (response) => {
@@ -380,7 +374,7 @@ export function GridSearchClient({ models }: GridSearchClientProps) {
                 setIsRunning(false)
                 if (timerRef.current) clearInterval(timerRef.current)
             })
-    }, [selectedModelId, selectedSizes, selectedOverlaps, selectedStrategies, totalCombinations])
+    }, [selectedModelId, selectedSizes, selectedOverlaps, selectedStrategies, selectedSourceIds, sourceTexts.length, totalCombinations])
 
     // Abort
     function abort() {
@@ -440,6 +434,48 @@ export function GridSearchClient({ models }: GridSearchClientProps) {
                             onValueChange={setSelectedModelId}
                         />
                     </div>
+
+                    {/* Source texts */}
+                    {sourceTexts.length > 0 && (
+                        <div>
+                            <label className="text-sm font-medium mb-2 block">Quelltexte</label>
+                            <div className="flex flex-wrap gap-2">
+                                <label
+                                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border cursor-pointer text-sm transition-colors ${
+                                        selectedSourceIds.size === sourceTexts.length
+                                            ? 'bg-primary text-primary-foreground border-primary'
+                                            : 'bg-background border-input hover:bg-accent'
+                                    }`}
+                                >
+                                    <input
+                                        type="checkbox"
+                                        className="sr-only"
+                                        checked={selectedSourceIds.size === sourceTexts.length}
+                                        onChange={toggleAllSourceTexts}
+                                    />
+                                    Alle
+                                </label>
+                                {sourceTexts.map(st => (
+                                    <label
+                                        key={st.id}
+                                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border cursor-pointer text-sm transition-colors ${
+                                            selectedSourceIds.has(st.id)
+                                                ? 'bg-primary text-primary-foreground border-primary'
+                                                : 'bg-background border-input hover:bg-accent'
+                                        }`}
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            className="sr-only"
+                                            checked={selectedSourceIds.has(st.id)}
+                                            onChange={() => toggleSourceText(st.id)}
+                                        />
+                                        {st.title}
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
                     {/* Chunk sizes */}
                     <div>
@@ -524,7 +560,7 @@ export function GridSearchClient({ models }: GridSearchClientProps) {
                     <div className="flex items-center gap-4 pt-2">
                         <Button
                             onClick={startSearch}
-                            disabled={!selectedModelId || totalCombinations === 0 || isRunning}
+                            disabled={!selectedModelId || totalCombinations === 0 || selectedSourceIds.size === 0 || isRunning}
                         >
                             <Play className="h-4 w-4 mr-2" />
                             Grid-Search starten

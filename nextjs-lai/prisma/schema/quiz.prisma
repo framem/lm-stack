@@ -15,13 +15,14 @@ model QuizQuestion {
   quizId        String
   questionText  String
   options       Json?
-  correctIndex  Int?
-  correctAnswer String?
+  correctIndex   Int?
+  correctIndices Json?
+  correctAnswer  String?
   explanation   String?
   sourceChunkId String?
   sourceSnippet String?
   questionIndex Int
-  questionType  String  @default("mc")
+  questionType  String  @default("singleChoice")
 
   quiz        Quiz           @relation(fields: [quizId], references: [id], onDelete: Cascade)
   sourceChunk DocumentChunk? @relation(fields: [sourceChunkId], references: [id], onDelete: SetNull)
@@ -35,6 +36,7 @@ model QuizAttempt {
   id               String   @id @default(cuid())
   questionId       String
   selectedIndex    Int?
+  selectedIndices  Json?
   isCorrect        Boolean
   explanation      String?
   freeTextAnswer   String?

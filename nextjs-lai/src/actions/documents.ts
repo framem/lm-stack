@@ -9,7 +9,8 @@ import {
     getSubjects as fetchSubjects,
 } from '@/src/data-access/documents'
 import { getModel } from '@/src/lib/llm'
-import { generateText } from 'ai'
+import { generateText, Output } from 'ai'
+import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 
 // List all documents with chunk counts
@@ -49,35 +50,38 @@ export async function renameDocument(id: string, title: string) {
     revalidatePath(`/learn/documents/${id}`)
 }
 
-// Strip <think>...</think> blocks that some models (e.g. Qwen3) emit
-function stripThinkTags(text: string): string {
-    return text.replace(/<think>[\s\S]*?<\/think>/g, '').trim()
-}
-
 // Suggest a clean title for a document using LLM
 export async function suggestTitle(rawTitle: string): Promise<string> {
     const trimmed = rawTitle.trim()
     if (!trimmed) throw new Error('Titel darf nicht leer sein.')
 
-    const { text } = await generateText({
+    const titleSchema = z.object({
+        title: z.string().describe('Bereinigter, lesbarer Dokumenttitel ohne Dateiendungen oder Kodierungen'),
+    })
+
+    const { output } = await generateText({
         model: getModel(),
         temperature: 0,
         maxOutputTokens: 120,
-        system: `Du bist ein Dokumenttitel-Bereiniger. Du bekommst einen rohen Dokumenttitel (oft aus einem Dateinamen abgeleitet) und gibst einen sauberen, lesbaren Titel zurück.
+        output: Output.object({ schema: titleSchema }),
+        system: `Du bereinigst rohe Dokumenttitel und gibst saubere, lesbare Titel zurück.
 
 Regeln:
-- Ersetze Underscores (_), Bindestriche zwischen Wörtern und %20 durch Leerzeichen
-- Dekodiere URL-kodierte Zeichen (z.B. %C3%BC → ü, ae → ä, oe → ö, ue → ü, ss → ß wenn sinnvoll)
+- Ersetze Underscores, Bindestriche und %20 durch Leerzeichen
+- Dekodiere URL-kodierte Zeichen (z.B. %C3%BC → ü, ae → ä, oe → ö, ue → ü)
 - Entferne Dateiendungen (.pdf, .docx, .txt, .md)
-- Entferne überflüssige Präfixe wie "Copy of", "final_", "v2_", Nummerierungen wie "(1)"
-- Behalte die korrekte Groß-/Kleinschreibung der Sprache bei (Deutsch: nur Nomen und Satzanfang groß; Englisch: Title Case)
-- Bekannte Eigennamen, Marken und Abkürzungen bleiben unverändert (z.B. "VW", "BMW", "PM", "Volkswagen")
-- Gib NUR den bereinigten Titel zurück — keine Anführungszeichen, keine Erklärung, kein zusätzlicher Text`,
+- Entferne Präfixe wie "Copy of", "final_", "v2_", "(1)"
+- Korrekte Groß-/Kleinschreibung beibehalten
+- Eigennamen und Abkürzungen unverändert lassen (VW, BMW, PM)
+
+Beispiele:
+- "final_Projektbericht_VW_2024%20(1).pdf" -> "Projektbericht VW 2024"
+- "meeting-notes_Q3.docx" -> "Meeting Notes Q3"
+- "PM_Elli_praesentiert_ersten_intelligenten_Stromtarif" -> "PM Elli präsentiert ersten intelligenten Stromtarif"`,
         prompt: trimmed,
     })
 
-    const cleaned = stripThinkTags(text).replace(/^["']|["']$/g, '')
-    return cleaned || trimmed
+    return output?.title || trimmed
 }
 
 // Update document metadata (subject, tags)

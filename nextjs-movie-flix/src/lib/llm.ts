@@ -1,4 +1,4 @@
-import { createGateway, embed } from 'ai'
+import { createGateway, embed, embedMany } from 'ai'
 import { createOllama } from 'ai-sdk-ollama'
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 
@@ -55,4 +55,10 @@ export async function createEmbedding(text: string): Promise<number[]> {
     const model = getEmbeddingModel()
     const { embedding } = await embed({ model, value: text })
     return embedding
+}
+
+export async function createEmbeddings(texts: string[]): Promise<number[][]> {
+    const model = getEmbeddingModel()
+    const { embeddings } = await embedMany({ model, values: texts })
+    return embeddings
 }

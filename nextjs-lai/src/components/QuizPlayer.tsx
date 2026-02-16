@@ -6,6 +6,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/src/comp
 import { RadioGroup, RadioGroupItem } from '@/src/components/ui/radio-group'
 import { Button } from '@/src/components/ui/button'
 import { Badge } from '@/src/components/ui/badge'
+import { Checkbox } from '@/src/components/ui/checkbox'
 import { Progress } from '@/src/components/ui/progress'
 import { Textarea } from '@/src/components/ui/textarea'
 import { CheckCircle2, XCircle, Loader2 } from 'lucide-react'
@@ -27,6 +28,7 @@ interface Question {
 interface AnswerResult {
     isCorrect: boolean
     correctIndex: number | null
+    correctIndices?: number[]
     explanation?: string
     reasoning?: string
     freeTextScore?: number
@@ -43,7 +45,8 @@ interface QuizPlayerProps {
 }
 
 const TYPE_LABELS: Record<string, string> = {
-    mc: 'Multiple Choice',
+    singleChoice: 'Single Choice',
+    multipleChoice: 'Multiple Choice',
     freetext: 'Freitext',
     truefalse: 'Wahr/Falsch',
 }
@@ -54,17 +57,20 @@ export function QuizPlayer({ quizTitle, questions, onComplete }: QuizPlayerProps
     const [freeTextAnswer, setFreeTextAnswer] = useState('')
     const [result, setResult] = useState<AnswerResult | null>(null)
     const [results, setResults] = useState<Map<string, AnswerResult>>(new Map())
+    const [selectedIndices, setSelectedIndices] = useState<number[]>([])
     const [submitting, setSubmitting] = useState(false)
-    const [answerHistory, setAnswerHistory] = useState<Map<number, { selectedIndex: number | null; freeTextAnswer: string; result: AnswerResult | null }>>(new Map())
+    const [answerHistory, setAnswerHistory] = useState<Map<number, { selectedIndex: number | null; selectedIndices: number[]; freeTextAnswer: string; result: AnswerResult | null }>>(new Map())
 
     const currentQuestion = questions[currentIndex]
     const isLastQuestion = currentIndex === questions.length - 1
     const progress = ((currentIndex + (result ? 1 : 0)) / questions.length) * 100
     const isFreetext = currentQuestion?.questionType === 'freetext'
+    const isMultipleChoice = currentQuestion?.questionType === 'multipleChoice'
 
     async function handleSubmit() {
         if (!currentQuestion) return
-        if (!isFreetext && selectedIndex === null) return
+        if (isMultipleChoice && selectedIndices.length === 0) return
+        if (!isMultipleChoice && !isFreetext && selectedIndex === null) return
         if (isFreetext && !freeTextAnswer.trim()) return
 
         setSubmitting(true)
@@ -72,8 +78,9 @@ export function QuizPlayer({ quizTitle, questions, onComplete }: QuizPlayerProps
         try {
             const data = await evaluateAnswer(
                 currentQuestion.id,
-                isFreetext ? null : selectedIndex,
+                isFreetext || isMultipleChoice ? null : selectedIndex,
                 isFreetext ? freeTextAnswer : undefined,
+                isMultipleChoice ? selectedIndices : undefined,
             ) as AnswerResult
             setResult(data)
 
@@ -91,7 +98,7 @@ export function QuizPlayer({ quizTitle, questions, onComplete }: QuizPlayerProps
         // Save current state to history
         setAnswerHistory(prev => {
             const next = new Map(prev)
-            next.set(currentIndex, { selectedIndex, freeTextAnswer, result })
+            next.set(currentIndex, { selectedIndex, selectedIndices, freeTextAnswer, result })
             return next
         })
 
@@ -104,6 +111,7 @@ export function QuizPlayer({ quizTitle, questions, onComplete }: QuizPlayerProps
         const nextState = answerHistory.get(nextIndex)
         setCurrentIndex(nextIndex)
         setSelectedIndex(nextState?.selectedIndex ?? null)
+        setSelectedIndices(nextState?.selectedIndices ?? [])
         setFreeTextAnswer(nextState?.freeTextAnswer ?? '')
         setResult(nextState?.result ?? null)
     }
@@ -112,7 +120,7 @@ export function QuizPlayer({ quizTitle, questions, onComplete }: QuizPlayerProps
         // Save current empty state
         setAnswerHistory(prev => {
             const next = new Map(prev)
-            next.set(currentIndex, { selectedIndex: null, freeTextAnswer: '', result: null })
+            next.set(currentIndex, { selectedIndex: null, selectedIndices: [], freeTextAnswer: '', result: null })
             return next
         })
 
@@ -131,6 +139,7 @@ export function QuizPlayer({ quizTitle, questions, onComplete }: QuizPlayerProps
         }
         setCurrentIndex(i => i + 1)
         setSelectedIndex(null)
+        setSelectedIndices([])
         setFreeTextAnswer('')
         setResult(null)
     }
@@ -140,7 +149,7 @@ export function QuizPlayer({ quizTitle, questions, onComplete }: QuizPlayerProps
         // Save current state
         setAnswerHistory(prev => {
             const next = new Map(prev)
-            next.set(currentIndex, { selectedIndex, freeTextAnswer, result })
+            next.set(currentIndex, { selectedIndex, selectedIndices, freeTextAnswer, result })
             return next
         })
 
@@ -148,6 +157,7 @@ export function QuizPlayer({ quizTitle, questions, onComplete }: QuizPlayerProps
         const prevState = answerHistory.get(prevIndex)
         setCurrentIndex(prevIndex)
         setSelectedIndex(prevState?.selectedIndex ?? null)
+        setSelectedIndices(prevState?.selectedIndices ?? [])
         setFreeTextAnswer(prevState?.freeTextAnswer ?? '')
         setResult(prevState?.result ?? null)
     }
@@ -157,7 +167,9 @@ export function QuizPlayer({ quizTitle, questions, onComplete }: QuizPlayerProps
     const options = currentQuestion.options
     const canSubmit = isFreetext
         ? !!freeTextAnswer.trim()
-        : selectedIndex !== null
+        : isMultipleChoice
+            ? selectedIndices.length > 0
+            : selectedIndex !== null
 
     return (
         <div className="space-y-6">
@@ -188,8 +200,52 @@ export function QuizPlayer({ quizTitle, questions, onComplete }: QuizPlayerProps
                     </div>
                 </CardHeader>
                 <CardContent>
+                    {/* Multi: show Checkboxes */}
+                    {isMultipleChoice && options && options.length > 0 && (
+                        <div className="space-y-2">
+                            {options.map((option, i) => {
+                                const correctSet = result?.correctIndices ?? []
+                                const isSelected = selectedIndices.includes(i)
+                                let itemClass = ''
+                                if (result && correctSet.length > 0) {
+                                    if (correctSet.includes(i)) {
+                                        itemClass = 'border-green-500 bg-green-50 dark:bg-green-950'
+                                    } else if (isSelected) {
+                                        itemClass = 'border-red-500 bg-red-50 dark:bg-red-950'
+                                    }
+                                }
+
+                                return (
+                                    <label
+                                        key={i}
+                                        className={`flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors hover:bg-accent ${itemClass}`}
+                                    >
+                                        <Checkbox
+                                            checked={isSelected}
+                                            onCheckedChange={() => {
+                                                if (!result) {
+                                                    setSelectedIndices(prev =>
+                                                        prev.includes(i) ? prev.filter(x => x !== i) : [...prev, i]
+                                                    )
+                                                }
+                                            }}
+                                            disabled={!!result}
+                                        />
+                                        <span className="text-sm">{option}</span>
+                                        {result && correctSet.includes(i) && (
+                                            <CheckCircle2 className="h-4 w-4 text-green-600 ml-auto" />
+                                        )}
+                                        {result && isSelected && !correctSet.includes(i) && (
+                                            <XCircle className="h-4 w-4 text-red-600 ml-auto" />
+                                        )}
+                                    </label>
+                                )
+                            })}
+                        </div>
+                    )}
+
                     {/* MC / True-False: show RadioGroup */}
-                    {options && options.length > 0 && (
+                    {!isMultipleChoice && options && options.length > 0 && (
                         <RadioGroup
                             value={selectedIndex !== null ? String(selectedIndex) : ''}
                             onValueChange={(v) => {

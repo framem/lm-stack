@@ -1,12 +1,37 @@
 import { prisma } from '@/src/lib/prisma'
 
+// ---- Total counts (model-independent) ----
+
+export async function getTotalChunkCount() {
+    return prisma.textChunk.count()
+}
+
+export async function getTotalPhraseCount() {
+    return prisma.testPhrase.count()
+}
+
 // ---- Chunk Embeddings ----
 
-export async function saveChunkEmbedding(chunkId: string, modelId: string, embedding: number[]) {
+/**
+ * Get existing content hashes for chunk embeddings of a given model.
+ * Returns a Map<chunkId, contentHash>.
+ */
+export async function getChunkEmbeddingHashes(
+    chunkIds: string[],
+    modelId: string
+): Promise<Map<string, string | null>> {
+    const rows = await prisma.chunkEmbedding.findMany({
+        where: { modelId, chunkId: { in: chunkIds } },
+        select: { chunkId: true, contentHash: true },
+    })
+    return new Map(rows.map(r => [r.chunkId, r.contentHash]))
+}
+
+export async function saveChunkEmbedding(chunkId: string, modelId: string, embedding: number[], hash?: string) {
     return prisma.chunkEmbedding.upsert({
         where: { chunkId_modelId: { chunkId, modelId } },
-        update: { embedding },
-        create: { chunkId, modelId, embedding, durationMs: 0 },
+        update: { embedding, contentHash: hash ?? null },
+        create: { chunkId, modelId, embedding, durationMs: 0, contentHash: hash ?? null },
     })
 }
 
@@ -20,7 +45,7 @@ export async function deleteChunkEmbeddingsByModel(modelId: string) {
 
 // Batch: delete + createMany in a single transaction (faster than individual upserts)
 export async function saveChunkEmbeddingsBatch(
-    items: Array<{ chunkId: string; embedding: number[] }>,
+    items: Array<{ chunkId: string; embedding: number[]; contentHash?: string }>,
     modelId: string
 ) {
     return prisma.$transaction([
@@ -36,6 +61,7 @@ export async function saveChunkEmbeddingsBatch(
                 modelId,
                 embedding: i.embedding,
                 durationMs: 0,
+                contentHash: i.contentHash ?? null,
             })),
         }),
     ])

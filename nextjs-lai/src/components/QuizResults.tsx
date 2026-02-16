@@ -14,8 +14,10 @@ interface QuestionResult {
     options: string[] | null
     questionIndex: number
     correctIndex: number | null
+    correctIndices?: number[]
     isCorrect: boolean
     selectedIndex: number | null
+    selectedIndices?: number[]
     explanation?: string
     sourceSnippet?: string
     questionType?: string
@@ -33,13 +35,14 @@ interface QuizResultsProps {
 }
 
 const TYPE_LABELS: Record<string, string> = {
-    mc: 'Multiple Choice',
+    singleChoice: 'Single Choice',
+    multipleChoice: 'Multiple Choice',
     freetext: 'Freitext',
     truefalse: 'Wahr/Falsch',
 }
 
 export function QuizResults({ quizTitle, documentTitle, results, onRetry }: QuizResultsProps) {
-    // Scoring: freetext = weighted freeTextScore (0-1), mc/truefalse = binary (0 or 1)
+    // Scoring: freetext = weighted freeTextScore (0-1), singleChoice/truefalse = binary (0 or 1)
     const totalCount = results.length
     const totalScore = results.reduce((sum, r) => {
         if (r.questionType === 'freetext') {
@@ -104,24 +107,43 @@ export function QuizResults({ quizTitle, documentTitle, results, onRetry }: Quiz
                             </div>
                         </CardHeader>
                         <CardContent className="space-y-3">
-                            {/* MC / True-False: show options */}
+                            {/* MC / True-False / Multi: show options */}
                             {result.options && result.options.length > 0 && (
                                 <div className="space-y-1">
                                     {result.options.map((option, optIdx) => {
+                                        const isMultipleChoice = result.questionType === 'multipleChoice'
+                                        const correctSet = isMultipleChoice ? (result.correctIndices ?? []) : []
+                                        const selectedSet = isMultipleChoice ? (result.selectedIndices ?? []) : []
+
                                         let className = 'text-sm p-2 rounded border'
-                                        if (result.correctIndex !== null && optIdx === result.correctIndex) {
-                                            className += ' border-green-500 bg-green-50 dark:bg-green-950'
-                                        } else if (result.selectedIndex !== null && optIdx === result.selectedIndex && !result.isCorrect) {
-                                            className += ' border-red-500 bg-red-50 dark:bg-red-950'
+                                        if (isMultipleChoice) {
+                                            if (correctSet.includes(optIdx)) {
+                                                className += ' border-green-500 bg-green-50 dark:bg-green-950'
+                                            } else if (selectedSet.includes(optIdx)) {
+                                                className += ' border-red-500 bg-red-50 dark:bg-red-950'
+                                            }
+                                        } else {
+                                            if (result.correctIndex !== null && optIdx === result.correctIndex) {
+                                                className += ' border-green-500 bg-green-50 dark:bg-green-950'
+                                            } else if (result.selectedIndex !== null && optIdx === result.selectedIndex && !result.isCorrect) {
+                                                className += ' border-red-500 bg-red-50 dark:bg-red-950'
+                                            }
                                         }
+
+                                        const showCheck = isMultipleChoice
+                                            ? correctSet.includes(optIdx)
+                                            : (result.correctIndex !== null && optIdx === result.correctIndex)
+                                        const showX = isMultipleChoice
+                                            ? (selectedSet.includes(optIdx) && !correctSet.includes(optIdx))
+                                            : (result.selectedIndex !== null && optIdx === result.selectedIndex && !result.isCorrect && result.correctIndex !== null && optIdx !== result.correctIndex)
 
                                         return (
                                             <div key={optIdx} className={className}>
                                                 <div className="flex items-center gap-2">
-                                                    {result.correctIndex !== null && optIdx === result.correctIndex && (
+                                                    {showCheck && (
                                                         <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
                                                     )}
-                                                    {result.selectedIndex !== null && optIdx === result.selectedIndex && !result.isCorrect && result.correctIndex !== null && optIdx !== result.correctIndex && (
+                                                    {showX && (
                                                         <XCircle className="h-4 w-4 text-red-600 shrink-0" />
                                                     )}
                                                     <span>{option}</span>

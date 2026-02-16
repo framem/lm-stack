@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "next dev -p 3001",
     "build": "next build",
-    "start": "next start -p 3001",
+    "start": "next start",
     "lint": "eslint .",
     "seed:models": "npx tsx prisma/sampleData/seed-embedding-models.ts",
     "prisma:generate": "prisma generate",

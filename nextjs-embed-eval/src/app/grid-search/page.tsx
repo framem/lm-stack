@@ -2,10 +2,14 @@ export const dynamic = 'force-dynamic'
 
 import { Navigation } from '@/src/components/Navigation'
 import { getEmbeddingModels } from '@/src/data-access/embedding-models'
+import { getSourceTexts } from '@/src/data-access/source-texts'
 import { GridSearchClient } from './GridSearchClient'
 
 export default async function GridSearchPage() {
-    const models = await getEmbeddingModels()
+    const [models, sourceTexts] = await Promise.all([
+        getEmbeddingModels(),
+        getSourceTexts(),
+    ])
 
     return (
         <div className="min-h-screen">
@@ -17,7 +21,10 @@ export default async function GridSearchPage() {
                         Automatisch verschiedene Chunk-Konfigurationen testen und die beste finden
                     </p>
                 </div>
-                <GridSearchClient models={models} />
+                <GridSearchClient
+                    models={models}
+                    sourceTexts={sourceTexts.map(st => ({ id: st.id, title: st.title }))}
+                />
             </main>
         </div>
     )

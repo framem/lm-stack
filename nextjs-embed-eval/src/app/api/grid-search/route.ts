@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { getEmbeddingModelById } from '@/src/data-access/embedding-models'
 import { getSourceTexts, deleteChunksBySourceText, createChunks, updateSourceText, getAllChunks, getChunksBySourceText } from '@/src/data-access/source-texts'
 import { getTestPhrases, getPhrasesForRemapping, remapPhraseToChunk, getTestPhrasesWithEmbeddings } from '@/src/data-access/test-phrases'
-import { saveChunkEmbedding, savePhraseEmbedding, getPhraseEmbeddingVector } from '@/src/data-access/embeddings'
+import { saveChunkEmbedding, savePhraseEmbedding, getPhraseEmbeddingVector, getChunkEmbeddingHashes } from '@/src/data-access/embeddings'
 import { createEvalRun, updateEvalRun, createEvalResult } from '@/src/data-access/evaluation'
 import { chunkText, type ChunkStrategy } from '@/src/lib/chunking'
 import { createEmbeddings, type EmbeddingModelConfig } from '@/src/lib/embedding'
@@ -87,8 +87,12 @@ function findBestChunkMatch(
  * Re-chunk all source texts with the given config.
  * Returns the total number of new chunks created.
  */
-async function rechunkAllTexts(config: GridConfig): Promise<number> {
-    const sourceTexts = await getSourceTexts()
+async function rechunkAllTexts(config: GridConfig, sourceTextIds?: string[]): Promise<number> {
+    let sourceTexts = await getSourceTexts()
+    if (sourceTextIds) {
+        const idSet = new Set(sourceTextIds)
+        sourceTexts = sourceTexts.filter(st => idSet.has(st.id))
+    }
     let totalNewChunks = 0
 
     for (const st of sourceTexts) {
@@ -156,10 +160,35 @@ async function embedAll(
     modelConfig: EmbeddingModelConfig,
     modelId: string,
     send: (data: Record<string, unknown>) => void,
-    configLabel: string
+    configLabel: string,
+    sourceTextIds?: string[]
 ): Promise<void> {
-    const chunks = await getAllChunks()
-    const phrases = await getTestPhrases()
+    let allChunks = await getAllChunks()
+    let phrases = await getTestPhrases()
+
+    if (sourceTextIds) {
+        const idSet = new Set(sourceTextIds)
+        allChunks = allChunks.filter(c => idSet.has(c.sourceTextId))
+        phrases = phrases.filter(p => p.sourceTextId && idSet.has(p.sourceTextId))
+    }
+
+    // Filter out cached chunks
+    let chunks = allChunks
+    let skippedChunks = 0
+    if (allChunks.length > 0) {
+        const existingHashes = await getChunkEmbeddingHashes(allChunks.map(c => c.id), modelId)
+        chunks = allChunks.filter(c => {
+            const existingHash = existingHashes.get(c.id)
+            if (existingHash && c.contentHash && existingHash === c.contentHash) {
+                skippedChunks++
+                return false
+            }
+            return true
+        })
+        if (skippedChunks > 0) {
+            send({ type: 'progress', message: `${configLabel} — ${skippedChunks} Chunks aus Cache übersprungen` })
+        }
+    }
 
     // Embed chunks in batches
     for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
@@ -167,7 +196,7 @@ async function embedAll(
         try {
             const embeddings = await createEmbeddings(batch.map(c => c.content), modelConfig, 'document')
             await Promise.all(
-                batch.map((chunk, idx) => saveChunkEmbedding(chunk.id, modelId, embeddings[idx]))
+                batch.map((chunk, idx) => saveChunkEmbedding(chunk.id, modelId, embeddings[idx], chunk.contentHash ?? undefined))
             )
         } catch (err) {
             send({
@@ -226,15 +255,22 @@ async function runEvaluation(
     config: GridConfig,
     send: (data: Record<string, unknown>) => void,
     configLabel: string,
+    sourceTextIds?: string[]
 ): Promise<{ metrics: GridMetrics; runId: string; totalPhrases: number; totalChunks: number; details: PhraseDetail[] }> {
-    const phrases = await getTestPhrasesWithEmbeddings(modelId)
+    let phrases = await getTestPhrasesWithEmbeddings(modelId)
+    if (sourceTextIds) {
+        const idSet = new Set(sourceTextIds)
+        phrases = phrases.filter(p => p.sourceTextId && idSet.has(p.sourceTextId))
+    }
     const phrasesWithExpected = phrases.filter(p => p.expectedChunkId)
 
     if (phrasesWithExpected.length === 0) {
         throw new Error('Keine Suchphrasen mit erwartetem Chunk gefunden.')
     }
 
-    const totalChunks = await prisma.textChunk.count()
+    const totalChunks = sourceTextIds
+        ? await prisma.textChunk.count({ where: { sourceTextId: { in: sourceTextIds } } })
+        : await prisma.textChunk.count()
 
     const run = await createEvalRun({
         modelId,
@@ -352,6 +388,12 @@ export async function GET(request: NextRequest) {
     const strategies = (request.nextUrl.searchParams.get('strategies') || 'sentence')
         .split(',').filter(Boolean) as ChunkStrategy[]
 
+    // Parse optional source text filter
+    const sourceTextIdsParam = request.nextUrl.searchParams.get('sourceTextIds')
+    const sourceTextIds = sourceTextIdsParam
+        ? sourceTextIdsParam.split(',').filter(Boolean)
+        : undefined
+
     // Build all combinations
     const configs: GridConfig[] = []
     for (const size of chunkSizes) {
@@ -402,7 +444,7 @@ export async function GET(request: NextRequest) {
 
                     // Step 1: Re-chunk
                     send({ type: 'progress', message: `${configLabel} — Texte neu chunken...` })
-                    const totalChunks = await rechunkAllTexts(config)
+                    const totalChunks = await rechunkAllTexts(config, sourceTextIds)
                     send({ type: 'progress', message: `${configLabel} — ${totalChunks} Chunks erstellt` })
 
                     // Step 2: Remap phrases
@@ -412,11 +454,11 @@ export async function GET(request: NextRequest) {
 
                     // Step 3: Embed
                     send({ type: 'progress', message: `${configLabel} — Embeddings erstellen...` })
-                    await embedAll(modelConfig, modelId, send, configLabel)
+                    await embedAll(modelConfig, modelId, send, configLabel, sourceTextIds)
 
                     // Step 4: Evaluate
                     send({ type: 'progress', message: `${configLabel} — Evaluierung starten...` })
-                    const evalResult = await runEvaluation(modelId, config, send, configLabel)
+                    const evalResult = await runEvaluation(modelId, config, send, configLabel, sourceTextIds)
 
                     const result: GridResult & { details: PhraseDetail[] } = {
                         config,

@@ -86,7 +86,7 @@ describe('addQuestions', () => {
                     sourceChunkId: undefined,
                     sourceSnippet: 'AI is...',
                     questionIndex: 0,
-                    questionType: 'mc',
+                    questionType: 'singleChoice',
                 },
                 {
                     quizId: 'quiz-1',
@@ -98,7 +98,7 @@ describe('addQuestions', () => {
                     sourceChunkId: undefined,
                     sourceSnippet: undefined,
                     questionIndex: 1,
-                    questionType: 'mc',
+                    questionType: 'singleChoice',
                 },
             ],
         })
