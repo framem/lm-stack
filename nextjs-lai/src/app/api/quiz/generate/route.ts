@@ -154,8 +154,8 @@ export async function POST(request: NextRequest) {
 
                     // Create quiz in DB
                     const quizTitle = validDocs.length === 1
-                        ? validDocs[0].title
-                        : `${validDocs.length} Lernmaterialien`
+                        ? `Quiz – ${validDocs[0].title}`
+                        : `Quiz – ${validDocs.length} Lernmaterialien`
                     const quiz = await createQuiz(quizTitle, documentIds[0])
 
                     // Save questions with correct indices
