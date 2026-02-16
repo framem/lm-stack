@@ -7,6 +7,7 @@ import { Loader2, ArrowLeft } from 'lucide-react'
 import { Button } from '@/src/components/ui/button'
 import { QuizResults } from '@/src/components/QuizResults'
 import { getQuizResults } from '@/src/actions/quiz'
+import { getQuestionIdsWithFlashcards } from '@/src/actions/flashcards'
 
 interface QuestionResult {
     id: string
@@ -58,6 +59,7 @@ export default function QuizResultsPage({ params }: { params: Promise<{ id: stri
     const { id } = use(params)
     const router = useRouter()
     const [data, setData] = useState<QuizResultData | null>(null)
+    const [savedQuestionIds, setSavedQuestionIds] = useState<string[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
 
@@ -69,6 +71,9 @@ export default function QuizResultsPage({ params }: { params: Promise<{ id: stri
                     throw new Error('Ergebnisse konnten nicht geladen werden.')
                 }
                 setData(result as QuizResultData)
+                const questionIds = result.questions.map((q) => q.id)
+                const saved = await getQuestionIdsWithFlashcards(questionIds)
+                setSavedQuestionIds(saved)
             } catch (err) {
                 setError(err instanceof Error ? err.message : 'Fehler beim Laden der Ergebnisse.')
             } finally {
@@ -131,6 +136,7 @@ export default function QuizResultsPage({ params }: { params: Promise<{ id: stri
                 documentTitle={data.document.title}
                 results={results}
                 onRetry={() => router.push(`/learn/quiz/${id}`)}
+                initialSavedIds={savedQuestionIds}
             />
 
             <div className="flex gap-2">

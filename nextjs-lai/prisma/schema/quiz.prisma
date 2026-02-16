@@ -28,6 +28,7 @@ model QuizQuestion {
   sourceChunk DocumentChunk? @relation(fields: [sourceChunkId], references: [id], onDelete: SetNull)
   attempts    QuizAttempt[]
   progress    QuestionProgress?
+  flashcards  Flashcard[]
 
   @@index([quizId])
 }

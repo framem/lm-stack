@@ -7,6 +7,7 @@ interface CreateFlashcardInput {
     back: string
     context?: string
     chunkId?: string
+    sourceQuestionId?: string
 }
 
 // Create a single flashcard
@@ -112,6 +113,17 @@ export async function deleteFlashcard(id: string) {
 // Delete all flashcards for a document
 export async function deleteFlashcardsByDocument(documentId: string) {
     return prisma.flashcard.deleteMany({ where: { documentId } })
+}
+
+// Get question IDs that already have flashcards created from them
+export async function getQuestionIdsWithFlashcards(questionIds: string[]) {
+    if (questionIds.length === 0) return []
+    const rows = await prisma.flashcard.findMany({
+        where: { sourceQuestionId: { in: questionIds } },
+        select: { sourceQuestionId: true },
+        distinct: ['sourceQuestionId'],
+    })
+    return rows.map((r) => r.sourceQuestionId!).filter(Boolean)
 }
 
 // Count flashcards (total)

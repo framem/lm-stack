@@ -16,6 +16,7 @@ import {
     upsertFlashcardProgress as dbUpsertFlashcardProgress,
     deleteFlashcard as dbDeleteFlashcard,
     deleteFlashcardsByDocument as dbDeleteFlashcardsByDocument,
+    getQuestionIdsWithFlashcards as dbGetQuestionIdsWithFlashcards,
 } from '@/src/data-access/flashcards'
 import { revalidatePath } from 'next/cache'
 
@@ -173,10 +174,17 @@ export async function createFlashcardFromQuestion(questionId: string) {
         back,
         context: question.sourceSnippet || undefined,
         chunkId: question.sourceChunkId || undefined,
+        sourceQuestionId: questionId,
     })
 
     revalidatePath('/learn/flashcards')
     return card
+}
+
+// ── Check which questions already have flashcards ──
+
+export async function getQuestionIdsWithFlashcards(questionIds: string[]) {
+    return dbGetQuestionIdsWithFlashcards(questionIds)
 }
 
 // ── Delete a flashcard ──

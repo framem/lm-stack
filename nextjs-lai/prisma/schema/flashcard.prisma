@@ -1,15 +1,17 @@
 model Flashcard {
-  id         String   @id @default(cuid())
-  documentId String
-  front      String
-  back       String
-  context    String?
-  chunkId    String?
-  createdAt  DateTime @default(now())
+  id               String   @id @default(cuid())
+  documentId       String
+  front            String
+  back             String
+  context          String?
+  chunkId          String?
+  sourceQuestionId String?
+  createdAt        DateTime @default(now())
 
-  document Document       @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  chunk    DocumentChunk? @relation(fields: [chunkId], references: [id])
-  progress FlashcardProgress?
+  document       Document       @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  chunk          DocumentChunk? @relation(fields: [chunkId], references: [id])
+  sourceQuestion QuizQuestion?  @relation(fields: [sourceQuestionId], references: [id], onDelete: SetNull)
+  progress       FlashcardProgress?
 }
 
 model FlashcardProgress {

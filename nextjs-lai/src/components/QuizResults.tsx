@@ -35,6 +35,7 @@ interface QuizResultsProps {
     documentTitle: string
     results: QuestionResult[]
     onRetry?: () => void
+    initialSavedIds?: string[]
 }
 
 const TYPE_LABELS: Record<string, string> = {
@@ -44,8 +45,8 @@ const TYPE_LABELS: Record<string, string> = {
     truefalse: 'Wahr/Falsch',
 }
 
-export function QuizResults({ quizTitle, documentTitle, results, onRetry }: QuizResultsProps) {
-    const [savedIds, setSavedIds] = useState<Set<string>>(new Set())
+export function QuizResults({ quizTitle, documentTitle, results, onRetry, initialSavedIds = [] }: QuizResultsProps) {
+    const [savedIds, setSavedIds] = useState<Set<string>>(() => new Set(initialSavedIds))
     const [savingId, setSavingId] = useState<string | null>(null)
 
     async function handleSaveAsFlashcard(questionId: string) {
