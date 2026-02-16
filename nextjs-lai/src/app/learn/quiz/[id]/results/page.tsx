@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { Loader2, ArrowLeft } from 'lucide-react'
 import { Button } from '@/src/components/ui/button'
 import { QuizResults } from '@/src/components/QuizResults'
+import { QuizRecommendations } from '@/src/components/QuizRecommendations'
 import { getQuizResults } from '@/src/actions/quiz'
 import { getQuestionIdsWithFlashcards } from '@/src/actions/flashcards'
 
@@ -41,6 +42,8 @@ interface QuizResultData {
         questionIndex: number
         explanation?: string
         sourceSnippet?: string
+        sourceChunkId?: string | null
+        sourceChunk?: { chunkIndex: number } | null
         questionType?: string
         correctAnswer?: string
         attempts: {
@@ -122,6 +125,33 @@ export default function QuizResultsPage({ params }: { params: Promise<{ id: stri
         }
     })
 
+    // Compute weak topics from incorrect answers
+    const weakTopicMap = new Map<string, { documentId: string; documentTitle: string; chunkIndex: number | null; incorrectCount: number }>()
+    for (const q of data.questions) {
+        const lastAttempt = q.attempts[0]
+        if (!lastAttempt) continue
+        const isFreetext = q.questionType === 'freetext'
+        const isIncorrect = isFreetext
+            ? (lastAttempt.freeTextScore ?? 0) < 0.5
+            : !lastAttempt.isCorrect
+        if (!isIncorrect) continue
+
+        const chunkIndex = q.sourceChunk?.chunkIndex ?? null
+        const key = `${data.document.id}-${chunkIndex}`
+        const existing = weakTopicMap.get(key)
+        if (existing) {
+            existing.incorrectCount++
+        } else {
+            weakTopicMap.set(key, {
+                documentId: data.document.id,
+                documentTitle: data.document.title,
+                chunkIndex,
+                incorrectCount: 1,
+            })
+        }
+    }
+    const weakTopics = [...weakTopicMap.values()].sort((a, b) => b.incorrectCount - a.incorrectCount)
+
     return (
         <div className="p-6 max-w-2xl mx-auto space-y-4">
             <Button asChild variant="ghost" size="sm">
@@ -138,6 +168,8 @@ export default function QuizResultsPage({ params }: { params: Promise<{ id: stri
                 onRetry={() => router.push(`/learn/quiz/${id}`)}
                 initialSavedIds={savedQuestionIds}
             />
+
+            <QuizRecommendations weakTopics={weakTopics} />
 
             <div className="flex gap-2">
                 <Button asChild>

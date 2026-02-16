@@ -9,6 +9,7 @@ import {
     ChevronRight,
     Ellipsis,
     FileText,
+    GraduationCap,
     HelpCircle,
     Home,
     Layers,
@@ -61,6 +62,7 @@ const navItems = [
     { href: '/learn/documents', label: 'Lernmaterial', icon: FileText },
     { href: '/learn/quiz', label: 'Quiz', icon: HelpCircle },
     { href: '/learn/flashcards', label: 'Karteikarten', icon: Layers },
+    { href: '/learn/session', label: 'Lern-Session', icon: GraduationCap },
     { href: '/learn/stats', label: 'Statistiken', icon: BarChart3 },
 ]
 

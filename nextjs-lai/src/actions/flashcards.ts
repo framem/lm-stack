@@ -20,6 +20,7 @@ import {
     getQuestionIdsWithFlashcards as dbGetQuestionIdsWithFlashcards,
 } from '@/src/data-access/flashcards'
 import { revalidatePath } from 'next/cache'
+import { recordActivity } from '@/src/data-access/user-stats'
 
 // ── List flashcards ──
 
@@ -161,6 +162,9 @@ export async function reviewFlashcard(flashcardId: string, quality: number) {
 
     await dbUpsertFlashcardProgress(flashcardId, quality)
     revalidatePath('/learn/flashcards')
+
+    // Track activity for streaks (fire-and-forget)
+    recordActivity().catch(console.error)
 }
 
 // ── Create flashcard from a quiz question ──

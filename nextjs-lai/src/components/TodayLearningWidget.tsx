@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Layers, HelpCircle, BookOpen, ArrowRight } from 'lucide-react'
+import { Layers, HelpCircle, BookOpen, ArrowRight, GraduationCap } from 'lucide-react'
 import { Card, CardContent } from '@/src/components/ui/card'
 import { Button } from '@/src/components/ui/button'
 import { Badge } from '@/src/components/ui/badge'
@@ -58,8 +58,16 @@ export function TodayLearningWidget({
                 )}
 
                 <div className="flex flex-wrap items-center gap-2">
-                    {dueFlashcards > 0 && (
+                    {totalDue > 0 && (
                         <Button asChild size="sm">
+                            <Link href="/learn/session">
+                                <GraduationCap className="h-4 w-4" />
+                                Lern-Session starten
+                            </Link>
+                        </Button>
+                    )}
+                    {dueFlashcards > 0 && (
+                        <Button asChild size="sm" variant="outline">
                             <Link href="/learn/flashcards/study">
                                 <Layers className="h-4 w-4" />
                                 Karteikarten lernen

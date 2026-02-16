@@ -7,6 +7,7 @@ import {
   Database,
   MessageSquare,
   HelpCircle,
+  Layers,
   TrendingUp,
 } from "lucide-react";
 
@@ -63,9 +64,9 @@ const edgeTypes = { animated: Edge.Animated };
 
 //  Layout (fan-out after step 2):
 //
-//                        ┌── KI-Chat ──┐
-//  Hochladen → Analyse ─┤              ├─ Fortschritt
-//                        └── Quiz ─────┘
+//                        ┌── KI-Chat ───────┐
+//  Hochladen → Analyse ─┤── Karteikarten ──├─ Fortschritt
+//                        └── Quiz ──────────┘
 
 const X_GAP = 250;
 const Y_OFFSET = 110;
@@ -112,6 +113,19 @@ const nodes: FlowNode<WorkflowNodeData>[] = [
     },
   },
   {
+    id: "flashcards",
+    type: "workflow",
+    position: { x: X_GAP * 2, y: Y_MID },
+    data: {
+      step: 3,
+      title: "Karteikarten",
+      icon: Layers,
+      description: "Inhalte mit Spaced Repetition nachhaltig einprägen",
+      hasTarget: true,
+      hasSource: true,
+    },
+  },
+  {
     id: "quiz",
     type: "workflow",
     position: { x: X_GAP * 2, y: Y_MID + Y_OFFSET },
@@ -142,8 +156,10 @@ const nodes: FlowNode<WorkflowNodeData>[] = [
 const edges: FlowEdge[] = [
   { id: "upload-analyse", source: "upload", target: "analyse", type: "animated" },
   { id: "analyse-chat", source: "analyse", target: "chat", type: "animated" },
+  { id: "analyse-flashcards", source: "analyse", target: "flashcards", type: "animated" },
   { id: "analyse-quiz", source: "analyse", target: "quiz", type: "animated" },
   { id: "chat-progress", source: "chat", target: "progress", type: "animated" },
+  { id: "flashcards-progress", source: "flashcards", target: "progress", type: "animated" },
   { id: "quiz-progress", source: "quiz", target: "progress", type: "animated" },
 ];
 

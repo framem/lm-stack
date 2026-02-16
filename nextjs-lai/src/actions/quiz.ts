@@ -28,6 +28,7 @@ import {
     generateTruefalseQuestions,
     type QuestionToSave,
 } from '@/src/lib/quiz-generation'
+import { recordActivity } from '@/src/data-access/user-stats'
 
 // ── List all quizzes ──
 
@@ -451,16 +452,19 @@ export async function evaluateAnswer(
         : undefined
 
     // Evaluate based on question type
+    let evalResult
     if (questionType === 'freetext') {
-        return evaluateFreetext(question, sanitizedFreeText!)
+        evalResult = await evaluateFreetext(question, sanitizedFreeText!)
+    } else if (questionType === 'multipleChoice') {
+        evalResult = await evaluateMultipleChoiceSelection(question, selectedIndices!)
+    } else {
+        evalResult = await evaluateSelection(question, selectedIndex!, sanitizedFreeText)
     }
 
-    if (questionType === 'multipleChoice') {
-        return evaluateMultipleChoiceSelection(question, selectedIndices!)
-    }
+    // Track activity for streaks (fire-and-forget)
+    recordActivity().catch(console.error)
 
-    // MC or truefalse evaluation
-    return evaluateSelection(question, selectedIndex!, sanitizedFreeText)
+    return evalResult
 }
 
 // ── Review queue actions ──

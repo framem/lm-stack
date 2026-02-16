@@ -7,11 +7,14 @@ import {getDocuments} from '@/src/data-access/documents'
 import {getSessions} from '@/src/data-access/chat'
 import {getDocumentProgress, getDueReviewCount, getQuizzes} from '@/src/data-access/quiz'
 import {getDueFlashcardCount, getFlashcardCount, getFlashcardDocumentProgress} from '@/src/data-access/flashcards'
+import {getOrCreateUserStats} from '@/src/data-access/user-stats'
 import {LearningProgress} from '@/src/components/LearningProgress'
 import {TodayLearningWidget} from '@/src/components/TodayLearningWidget'
+import {StreakDisplay} from '@/src/components/StreakDisplay'
+import {OnboardingTrigger} from '@/src/components/OnboardingTrigger'
 
 export default async function DashboardPage() {
-    const [documents, sessions, quizzes, quizProgress, flashcardProgress, dueQuizReviews, dueFlashcardReviews, totalFlashcards] = await Promise.all([
+    const [documents, sessions, quizzes, quizProgress, flashcardProgress, dueQuizReviews, dueFlashcardReviews, totalFlashcards, userStats] = await Promise.all([
         getDocuments(),
         getSessions(),
         getQuizzes(),
@@ -20,6 +23,7 @@ export default async function DashboardPage() {
         getDueReviewCount(),
         getDueFlashcardCount(),
         getFlashcardCount(),
+        getOrCreateUserStats(),
     ])
 
     // Merge quiz and flashcard progress per document
@@ -84,6 +88,9 @@ export default async function DashboardPage() {
                     Willkommen bei LAI — deiner KI-gestützten Lernplattform
                 </p>
             </div>
+
+            {/* Onboarding wizard for new users */}
+            {isNewUser && <OnboardingTrigger />}
 
             {/* Onboarding for new users */}
             {isNewUser && (
@@ -151,6 +158,16 @@ export default async function DashboardPage() {
                         title: weakestDocument.documentTitle,
                         percentage: weakestDocument.percentage,
                     } : undefined}
+                />
+            )}
+
+            {/* Streak display */}
+            {!isNewUser && (
+                <StreakDisplay
+                    currentStreak={userStats.currentStreak}
+                    longestStreak={userStats.longestStreak}
+                    dailyGoal={userStats.dailyGoal}
+                    dailyProgress={userStats.dailyProgress}
                 />
             )}
 

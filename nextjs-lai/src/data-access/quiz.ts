@@ -246,6 +246,9 @@ export async function getDueQuestions(limit: number = 20) {
             quiz: {
                 select: { id: true, title: true, document: { select: { id: true, title: true } } },
             },
+            progress: {
+                select: { nextReviewAt: true },
+            },
         },
         take: limit,
         orderBy: {
@@ -285,6 +288,9 @@ export async function getQuizResults(quizId: string) {
                     attempts: {
                         orderBy: { createdAt: 'desc' },
                         take: 1,
+                    },
+                    sourceChunk: {
+                        select: { chunkIndex: true },
                     },
                 },
             },
