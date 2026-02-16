@@ -1,0 +1,51 @@
+model TestPhrase {
+  id              String   @id @default(cuid())
+  phrase          String
+  expectedChunkId String?
+  sourceTextId    String?
+  expectedContent String?
+  category        String?
+  createdAt       DateTime @default(now())
+  expectedChunk    TextChunk?        @relation("ExpectedChunk", fields: [expectedChunkId], references: [id], onDelete: SetNull)
+  sourceText       SourceText?       @relation(fields: [sourceTextId], references: [id], onDelete: SetNull)
+  phraseEmbeddings PhraseEmbedding[]
+  evalResults      EvalResult[]
+  @@index([sourceTextId])
+}
+
+model EvalRun {
+  id             String   @id @default(cuid())
+  modelId        String
+  rerankerId     String?
+  createdAt      DateTime @default(now())
+  avgSimilarity  Float?
+  topKAccuracy1  Float?
+  topKAccuracy3  Float?
+  topKAccuracy5  Float?
+  mrrScore       Float?
+  ndcgScore      Float?
+  chunkSize      Int?
+  chunkOverlap   Int?
+  chunkStrategy  String?
+  totalChunks    Int?
+  totalPhrases   Int?
+  matryoshkaDim  Int?
+  model    EmbeddingModel  @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  reranker RerankerModel?  @relation(fields: [rerankerId], references: [id], onDelete: SetNull)
+  results  EvalResult[]
+  @@index([modelId])
+  @@index([modelId, chunkSize, chunkOverlap])
+}
+
+model EvalResult {
+  id                String   @id @default(cuid())
+  runId             String
+  phraseId          String
+  retrievedChunkIds String[]
+  similarities      Float[]
+  expectedChunkRank Int?
+  isHit             Boolean
+  run    EvalRun    @relation(fields: [runId], references: [id], onDelete: Cascade)
+  phrase TestPhrase @relation(fields: [phraseId], references: [id], onDelete: Cascade)
+  @@index([runId])
+}

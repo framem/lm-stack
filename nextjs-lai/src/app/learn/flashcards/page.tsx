@@ -168,7 +168,7 @@ export default function FlashcardsPage() {
             await deleteFlashcard(deleteTarget)
             setFlashcards((prev) => prev.filter((c) => c.id !== deleteTarget))
             setDueCount((prev) => Math.max(0, prev - 1))
-        } catch (err) {
+        } catch {
             toast.error('Karteikarte konnte nicht gelöscht werden.')
         } finally {
             setDeleteTarget(null)

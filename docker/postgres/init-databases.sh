@@ -12,4 +12,11 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" <<-EOSQL
     -- Enable pgvector extension in the lai database
     \c lai
     CREATE EXTENSION IF NOT EXISTS vector;
+
+    SELECT 'CREATE DATABASE embed_eval'
+    WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'embed_eval')\gexec
+
+    -- Enable pgvector extension in the embed_eval database
+    \c embed_eval
+    CREATE EXTENSION IF NOT EXISTS vector;
 EOSQL

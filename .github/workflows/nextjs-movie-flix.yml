@@ -1,0 +1,32 @@
+name: Next.js Movie-Flix CI
+
+on:
+  push:
+    paths:
+      - 'nextjs-movie-flix/**'
+      - '.github/workflows/nextjs-movie-flix.yml'
+  pull_request:
+    paths:
+      - 'nextjs-movie-flix/**'
+      - '.github/workflows/nextjs-movie-flix.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: nextjs-movie-flix
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: nextjs-movie-flix/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run test
