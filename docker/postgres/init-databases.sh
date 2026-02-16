@@ -19,4 +19,11 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" <<-EOSQL
     -- Enable pgvector extension in the embed_eval database
     \c embed_eval
     CREATE EXTENSION IF NOT EXISTS vector;
+
+    SELECT 'CREATE DATABASE movie_flix'
+    WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'movie_flix')\gexec
+
+    -- Enable pgvector extension in the movie_flix database
+    \c movie_flix
+    CREATE EXTENSION IF NOT EXISTS vector;
 EOSQL
