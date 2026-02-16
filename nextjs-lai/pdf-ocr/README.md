@@ -1,5 +1,12 @@
 # PDF zu Markdown Konverter mit OCR
 
+> **DEPRECATED:** Diese Funktionalität wurde nach TypeScript migriert und ist jetzt direkt in die Next.js-App integriert.
+> Siehe `src/lib/ocr.ts` und `src/lib/pdf-to-image.ts`.
+> Tesseract wurde komplett entfernt — moderne Vision-LLMs (z.B. Qwen2.5-VL) übernehmen die OCR direkt.
+> Konfiguration über `VISION_MODEL` env var in `.env`.
+
+---
+
 Extrahiert Text aus PDF-Dateien (einschließlich gescannter Dokumente) mit Tesseract OCR, optionaler LLM Vision und KI-basierter Text-Bereinigung.
 
 ## Features

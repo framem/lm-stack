@@ -15,9 +15,10 @@ export async function POST(request: NextRequest) {
         let fileName: string | undefined
         let fileType: string
         let fileSize: number | undefined
-        let textContent: string
+        let textContent: string | undefined
         let pageBreaks: number[] | undefined
         let subject: string | undefined
+        let fileForParsing: File | undefined
 
         if (contentType.includes('multipart/form-data')) {
             // File upload via FormData
@@ -39,15 +40,15 @@ export async function POST(request: NextRequest) {
                 )
             }
 
-            const parsed = await parseDocument(file)
             title = (formData.get('title') as string) || file.name.replace(/\.[^.]+$/, '')
             fileName = file.name
             fileType = file.type
             fileSize = file.size
-            textContent = parsed.text
-            pageBreaks = parsed.pageBreaks
             const rawSubject = formData.get('subject') as string | null
             if (rawSubject?.trim()) subject = rawSubject.trim()
+
+            // Parsing is deferred into the SSE stream so OCR progress can be streamed
+            fileForParsing = file
         } else {
             // JSON text paste
             const body = await request.json()
@@ -76,20 +77,31 @@ export async function POST(request: NextRequest) {
                 }
 
                 try {
-                    // Step 1: Save document
-                    sendProgress('document', 10, 'Lernmaterial wird gespeichert...')
+                    // Step 1: Parse document (with OCR progress if applicable)
+                    if (fileForParsing) {
+                        sendProgress('parsing', 5, 'Lernmaterial wird analysiert...')
+                        const parsed = await parseDocument(fileForParsing, (current, total, stage) => {
+                            const pct = 5 + Math.round((current / total) * 20) // 5–25%
+                            sendProgress('ocr', pct, stage)
+                        })
+                        textContent = parsed.text
+                        pageBreaks = parsed.pageBreaks
+                    }
+
+                    // Step 2: Save document
+                    sendProgress('document', 30, 'Lernmaterial wird gespeichert...')
                     const doc = await createDocument({
                         title,
                         fileName,
                         fileType,
                         fileSize,
-                        content: textContent,
+                        content: textContent!,
                         subject,
                     })
 
-                    // Step 2: Chunk the text
-                    sendProgress('chunking', 30, 'Text wird in Abschnitte unterteilt...')
-                    const chunks = chunkDocument({ text: textContent, pageBreaks })
+                    // Step 3: Chunk the text
+                    sendProgress('chunking', 35, 'Text wird in Abschnitte unterteilt...')
+                    const chunks = chunkDocument({ text: textContent!, pageBreaks })
 
                     if (chunks.length === 0) {
                         sendProgress('done', 100, 'Lernmaterial gespeichert (keine Abschnitte erstellt).')
@@ -100,7 +112,7 @@ export async function POST(request: NextRequest) {
                         return
                     }
 
-                    // Step 3: Save chunks to database
+                    // Step 4: Save chunks to database
                     sendProgress('saving', 40, 'Lernabschnitte werden erstellt...')
                     await createChunks(doc.id, chunks)
 
@@ -111,7 +123,7 @@ export async function POST(request: NextRequest) {
                         select: { id: true, content: true },
                     })
 
-                    // Step 4: Generate embeddings in batches with progress
+                    // Step 5: Generate embeddings in batches with progress
                     sendProgress('embedding', 55, `${savedChunks.length} Lernabschnitte werden eingebettet...`)
 
                     try {

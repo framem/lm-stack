@@ -35,6 +35,32 @@ export function getModel() {
     }
 }
 
+export function getVisionModel() {
+    const visionModelName = process.env.VISION_MODEL
+    if (!visionModelName) return null
+
+    const visionProv: LLMProvider = (process.env.VISION_PROVIDER as LLMProvider) || provider
+    const visionProvUrl = process.env.VISION_PROVIDER_URL || process.env.LLM_PROVIDER_URL
+
+    switch (visionProv) {
+        case 'gateway': {
+            const gw = createGateway({ apiKey: process.env.AI_GATEWAY_API_KEY })
+            return gw.languageModel(visionModelName)
+        }
+        case 'lmstudio': {
+            const baseURL = visionProvUrl || 'http://localhost:1234/v1'
+            const lmstudio = createOpenAICompatible({ name: 'lmstudio', baseURL })
+            return lmstudio.chatModel(visionModelName)
+        }
+        case 'ollama':
+        default: {
+            const baseURL = visionProvUrl || 'http://localhost:11434'
+            const ollama = createOllama({ baseURL })
+            return ollama(visionModelName)
+        }
+    }
+}
+
 export function getEmbeddingModel() {
     switch (embeddingProvider) {
         case 'gateway': {

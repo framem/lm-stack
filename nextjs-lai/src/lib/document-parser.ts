@@ -1,5 +1,7 @@
 import { PDFParse } from 'pdf-parse'
 import mammoth from 'mammoth'
+import { isOcrEnabled, performOcr, cleanupOcrText } from './ocr'
+import { convertPdfToImages } from './pdf-to-image'
 
 export interface ParsedDocument {
     text: string
@@ -33,13 +35,18 @@ export function validateFile(file: File): { valid: boolean; error?: string } {
 
 /**
  * Extract text content from a file based on its MIME type.
+ * For PDFs, pages with little/no embedded text are automatically OCR'd
+ * when a vision model is configured (VISION_MODEL env var).
  */
-export async function parseDocument(file: File): Promise<ParsedDocument> {
+export async function parseDocument(
+    file: File,
+    onOcrProgress?: (current: number, total: number, stage: string) => void,
+): Promise<ParsedDocument> {
     const buffer = Buffer.from(await file.arrayBuffer())
 
     switch (file.type) {
         case 'application/pdf':
-            return parsePdf(buffer)
+            return parsePdf(buffer, onOcrProgress)
         case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
             return parseDocx(buffer)
         case 'text/plain':
@@ -50,11 +57,63 @@ export async function parseDocument(file: File): Promise<ParsedDocument> {
     }
 }
 
-async function parsePdf(buffer: Buffer): Promise<ParsedDocument> {
+/** Minimum characters on a page before we consider it "has text". */
+const OCR_THRESHOLD = 50
+
+async function parsePdf(
+    buffer: Buffer,
+    onOcrProgress?: (current: number, total: number, stage: string) => void,
+): Promise<ParsedDocument> {
     const parser = new PDFParse({ data: buffer })
     const result = await parser.getText()
 
-    // v2 provides per-page text via result.pages[{text, num}]
+    // Collect per-page text
+    const pageTexts: string[] = result.pages.map((p: { text: string }) => p.text)
+
+    // Determine which pages need OCR
+    if (isOcrEnabled()) {
+        const ocrPageIndices = pageTexts
+            .map((text, i) => ({ text, index: i }))
+            .filter((p) => p.text.trim().length < OCR_THRESHOLD)
+            .map((p) => p.index)
+
+        if (ocrPageIndices.length > 0) {
+            // Render only the pages that need OCR (1-based page numbers)
+            const pageNumbers = ocrPageIndices.map((i) => i + 1)
+            const images = await convertPdfToImages(buffer, { pages: pageNumbers })
+
+            for (let i = 0; i < images.length; i++) {
+                const { page, image } = images[i]
+                onOcrProgress?.(
+                    i + 1,
+                    images.length,
+                    `OCR-Erkennung: Seite ${page} von ${result.total}`,
+                )
+
+                let ocrText = await performOcr(image, page)
+                if (ocrText) {
+                    ocrText = await cleanupOcrText(ocrText)
+                    pageTexts[page - 1] = ocrText
+                }
+            }
+
+            // Rebuild text and page breaks from (possibly updated) per-page texts
+            const pageBreaks: number[] = []
+            let offset = 0
+            for (const text of pageTexts) {
+                offset += text.length
+                pageBreaks.push(offset)
+            }
+
+            return {
+                text: pageTexts.join('\n\n'),
+                pageCount: result.total,
+                pageBreaks,
+            }
+        }
+    }
+
+    // No OCR needed — return the original extracted text
     const pageBreaks: number[] = []
     let offset = 0
     for (const page of result.pages) {
