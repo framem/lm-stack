@@ -6,6 +6,9 @@ model Flashcard {
   context          String?
   chunkId          String?
   sourceQuestionId String?
+  isVocabulary     Boolean  @default(false)
+  exampleSentence  String?
+  partOfSpeech     String?
   createdAt        DateTime @default(now())
 
   document       Document       @relation(fields: [documentId], references: [id], onDelete: Cascade)

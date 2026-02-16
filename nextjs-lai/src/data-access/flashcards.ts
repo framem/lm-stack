@@ -8,6 +8,9 @@ interface CreateFlashcardInput {
     context?: string
     chunkId?: string
     sourceQuestionId?: string
+    isVocabulary?: boolean
+    exampleSentence?: string
+    partOfSpeech?: string
 }
 
 // Create a single flashcard
@@ -129,6 +132,55 @@ export async function getQuestionIdsWithFlashcards(questionIds: string[]) {
 // Count flashcards (total)
 export async function getFlashcardCount() {
     return prisma.flashcard.count()
+}
+
+// Get vocabulary flashcards, optionally filtered by document
+export async function getVocabularyFlashcards(documentId?: string) {
+    return prisma.flashcard.findMany({
+        where: {
+            isVocabulary: true,
+            ...(documentId ? { documentId } : {}),
+        },
+        include: {
+            document: { select: { id: true, title: true, subject: true } },
+            progress: true,
+        },
+        orderBy: { createdAt: 'desc' },
+    })
+}
+
+// Get due vocabulary flashcards
+export async function getDueVocabularyFlashcards(limit: number = 20) {
+    return prisma.flashcard.findMany({
+        where: {
+            isVocabulary: true,
+            OR: [
+                { progress: null },
+                { progress: { nextReviewAt: { lte: new Date() } } },
+            ],
+        },
+        include: {
+            document: { select: { id: true, title: true } },
+            chunk: { select: { id: true, content: true, chunkIndex: true } },
+            progress: true,
+        },
+        take: limit,
+        orderBy: { createdAt: 'asc' },
+    })
+}
+
+// Count due vocabulary flashcards
+export async function getDueVocabularyCount() {
+    const [newCards, dueCards] = await Promise.all([
+        prisma.flashcard.count({ where: { isVocabulary: true, progress: null } }),
+        prisma.flashcard.count({
+            where: {
+                isVocabulary: true,
+                progress: { nextReviewAt: { lte: new Date() } },
+            },
+        }),
+    ])
+    return newCards + dueCards
 }
 
 // Aggregate flashcard progress per document (for dashboard chart)

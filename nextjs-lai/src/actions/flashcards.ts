@@ -18,6 +18,9 @@ import {
     deleteFlashcard as dbDeleteFlashcard,
     deleteFlashcardsByDocument as dbDeleteFlashcardsByDocument,
     getQuestionIdsWithFlashcards as dbGetQuestionIdsWithFlashcards,
+    getVocabularyFlashcards as dbGetVocabularyFlashcards,
+    getDueVocabularyFlashcards as dbGetDueVocabularyFlashcards,
+    getDueVocabularyCount as dbGetDueVocabularyCount,
 } from '@/src/data-access/flashcards'
 import { revalidatePath } from 'next/cache'
 import { recordActivity } from '@/src/data-access/user-stats'
@@ -78,6 +81,15 @@ const flashcardElementSchema = z.object({
     sourceSection: z.number().describe('Abschnittsnummer (1-basiert)'),
 })
 
+const vocabFlashcardElementSchema = z.object({
+    front: z.string().describe('Das Wort, die Phrase oder der Begriff'),
+    back: z.string().describe('Die Übersetzung, Definition oder Erklärung'),
+    context: z.string().optional().describe('Optionales Zitat aus dem Quelltext'),
+    sourceSection: z.number().describe('Abschnittsnummer (1-basiert)'),
+    exampleSentence: z.string().optional().describe('Ein Beispielsatz mit dem Wort'),
+    partOfSpeech: z.string().optional().describe('Wortart: Verb, Nomen, Adjektiv, Adverb, etc.'),
+})
+
 export async function generateFlashcards(documentId: string, count: number = 10) {
     if (!documentId) throw new Error('Lernmaterial-ID ist erforderlich.')
 
@@ -99,7 +111,7 @@ export async function generateFlashcards(documentId: string, count: number = 10)
     const isVocab = contentType === 'vocabulary'
 
     const systemPrompt = isVocab
-        ? 'Du erstellst Vokabel-Karteikarten. Erstelle pro Wort oder Phrase genau eine Karteikarte.'
+        ? 'Du erstellst Vokabel-Karteikarten. Erstelle pro Wort oder Phrase genau eine Karteikarte. Gib wenn möglich einen Beispielsatz und die Wortart an.'
         : 'Du erstellst Karteikarten auf Deutsch basierend auf Lerntexten.'
     const userPrompt = isVocab
         ? `Der folgende Text ist eine Vokabelliste. Erstelle pro Eintrag (Wort, Phrase oder Begriff) genau eine Karteikarte.
@@ -107,6 +119,8 @@ export async function generateFlashcards(documentId: string, count: number = 10)
 Anforderungen:
 - front: Das Wort, die Phrase oder der Begriff
 - back: Die Übersetzung, Definition oder Erklärung
+- exampleSentence: Ein Beispielsatz, der das Wort verwendet (optional)
+- partOfSpeech: Wortart (Verb, Nomen, Adjektiv, etc.) (optional)
 - sourceSection: Abschnittsnummer (1 bis ${selectedChunks.length})
 - Ignoriere Leerzeilen und Überschriften
 
@@ -124,6 +138,38 @@ Fokus: Definitionen, Kernkonzepte, Fakten (Zahlen, Daten, Namen), Praxiswissen
 
 Text:
 ${contextText}`
+
+    if (isVocab) {
+        const { output } = await generateText({
+            model: getModel(),
+            system: systemPrompt,
+            output: Output.array({ element: vocabFlashcardElementSchema }),
+            prompt: userPrompt,
+        })
+
+        if (!output || output.length === 0) {
+            throw new Error('Das LLM konnte keine gültigen Karteikarten generieren.')
+        }
+
+        const dataToSave = output.slice(0, clampedCount).map((card) => {
+            const idx = Math.max(0, Math.min((card.sourceSection || 1) - 1, selectedChunks.length - 1))
+            return {
+                documentId,
+                front: card.front,
+                back: card.back,
+                context: card.context || undefined,
+                chunkId: selectedChunks[idx].id,
+                isVocabulary: true,
+                exampleSentence: card.exampleSentence || undefined,
+                partOfSpeech: card.partOfSpeech || undefined,
+            }
+        })
+
+        await dbCreateFlashcards(dataToSave)
+        revalidatePath('/learn/flashcards')
+        revalidatePath('/learn/vocabulary')
+        return { count: dataToSave.length }
+    }
 
     const { output } = await generateText({
         model: getModel(),
@@ -232,4 +278,18 @@ export async function deleteFlashcardsByDocument(documentId: string) {
     const result = await dbDeleteFlashcardsByDocument(documentId)
     revalidatePath('/learn/flashcards')
     return result.count
+}
+
+// ── Vocabulary-specific actions ──
+
+export async function getVocabularyFlashcards(documentId?: string) {
+    return dbGetVocabularyFlashcards(documentId)
+}
+
+export async function getDueVocabularyFlashcards() {
+    return dbGetDueVocabularyFlashcards()
+}
+
+export async function getDueVocabularyCount() {
+    return dbGetDueVocabularyCount()
 }

@@ -9,13 +9,16 @@ import {
     ChevronRight,
     Ellipsis,
     FileText,
+    FolderOpen,
     GraduationCap,
     HelpCircle,
     Home,
+    Languages,
     Layers,
     MessageSquare,
     Moon,
     Plus,
+    Route,
     Settings,
     Sun,
     Trash2,
@@ -59,10 +62,13 @@ interface SessionItem {
 // Main navigation items (without Chat — handled separately)
 const navItems = [
     { href: '/learn', label: 'Dashboard', icon: Home },
+    { href: '/learn/subjects', label: 'Fächer', icon: FolderOpen },
     { href: '/learn/documents', label: 'Lernmaterial', icon: FileText },
     { href: '/learn/quiz', label: 'Quiz', icon: HelpCircle },
     { href: '/learn/flashcards', label: 'Karteikarten', icon: Layers },
+    { href: '/learn/vocabulary', label: 'Vokabeltrainer', icon: Languages },
     { href: '/learn/session', label: 'Lern-Session', icon: GraduationCap },
+    { href: '/learn/paths', label: 'Lernpfad', icon: Route },
     { href: '/learn/stats', label: 'Statistiken', icon: BarChart3 },
 ]
 

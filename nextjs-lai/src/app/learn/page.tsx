@@ -12,6 +12,7 @@ import {LearningProgress} from '@/src/components/LearningProgress'
 import {TodayLearningWidget} from '@/src/components/TodayLearningWidget'
 import {StreakDisplay} from '@/src/components/StreakDisplay'
 import {OnboardingTrigger} from '@/src/components/OnboardingTrigger'
+import {NextStepWidget} from '@/src/components/NextStepWidget'
 
 export default async function DashboardPage() {
     const [documents, sessions, quizzes, quizProgress, flashcardProgress, dueQuizReviews, dueFlashcardReviews, totalFlashcards, userStats] = await Promise.all([
@@ -159,6 +160,11 @@ export default async function DashboardPage() {
                         percentage: weakestDocument.percentage,
                     } : undefined}
                 />
+            )}
+
+            {/* Next step recommendation */}
+            {!isNewUser && progress.length > 0 && (
+                <NextStepWidget />
             )}
 
             {/* Streak display */}
