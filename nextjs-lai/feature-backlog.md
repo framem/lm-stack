@@ -1,7 +1,7 @@
 # Feature-Backlog: nextjs-LAI
 
 > Erstellt am 17.02.2026 durch Agenten-Team-Analyse (UX/UI-Designer, Devils Advocate, Next.js-Experte, Lerner-Persona "Maria")
-> **Letzte Aktualisierung:** 17.02.2026 — Tasks #5 und #9 abgeschlossen (10/18 erledigt)
+> **Letzte Aktualisierung:** 17.02.2026 — Tasks #5, #6 und #9 abgeschlossen (11/18 erledigt, 61%)
 
 ---
 
@@ -58,20 +58,20 @@
 
 ## Implementierungs-Status
 
-**✅ Abgeschlossen (10/18):**
+**✅ Abgeschlossen (11/18):**
 - ~~#1 Sprachlern-Onboarding~~ (`OnboardingWizard.tsx`)
 - ~~#2 Konversations-Evaluationen persistieren~~ (DB-Modell, API, Stats-Integration)
 - ~~#3 CEFR-Fortschrittsanzeige~~ (`CefrProgressRing.tsx`, Dashboard)
 - ~~#4 Szenario-Beschreibungen auf Deutsch~~ (Bug-Fix: nur Gespräch wechselt Sprache)
 - ~~#5 "Jetzt lernen"-Block~~ (Prominenter Aktionsblock mit 3 großen Buttons auf Dokumentendetailseite)
-- ~~#6 Karteikarten löschbar~~ (Editieren fehlt noch → #6 bleibt teilweise offen)
+- ~~#6 Karteikarten editierbar~~ (Löschen und Editieren vollständig implementiert)
 - ~~#7 Health-Check aus Layout~~ (Client-Polling via `/api/health`, kein Blocking mehr)
 - ~~#8 Dashboard vereinfachen~~ (TodayActionWidget kombiniert, Stat-Badges kompakt, Quick Actions kontextbasiert)
 - ~~#9 Qualitätsfeedback nach Upload~~ (Metriken-Panel mit Abschnitte/Wörter/Tokens)
 - ~~#12 Navigation konsolidieren~~ (Neue `/learn/progress`-Seite mit Tabs, Redirects von alten URLs)
 
-**⚠️ Teilweise umgesetzt (1/18):**
-- #6 Karteikarten editierbar — Löschen funktioniert, Editieren fehlt
+**⚠️ Teilweise umgesetzt (0/18):**
+- (keine)
 
 **❌ Noch komplett offen (7/18):**
 - **Quick Wins:** #10, #14
