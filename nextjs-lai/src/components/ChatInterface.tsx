@@ -489,7 +489,7 @@ export function ChatInterface({ sessionId, documentId, mode = 'learning', scenar
                     messages: msgPayload,
                     scenario,
                     language: scenarioLanguage,
-                    sessionId: currentSessionId, // Include sessionId to persist evaluation
+                    sessionId: activeSessionId, // Include sessionId to persist evaluation
                 }),
             })
             if (!res.ok) throw new Error('Fehler')

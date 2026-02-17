@@ -15,7 +15,7 @@ import {
 import { Card, CardContent } from '@/src/components/ui/card'
 import { Button } from '@/src/components/ui/button'
 import { Badge } from '@/src/components/ui/badge'
-import { getVocabularyFlashcards, getDueVocabularyCount } from '@/src/actions/flashcards'
+import { getVocabularyFlashcards, getDueVocabularyCount, getVocabularyLanguages } from '@/src/actions/flashcards'
 
 interface VocabCard {
     id: string
@@ -35,16 +35,20 @@ export function VocabContent() {
     const [dueCount, setDueCount] = useState(0)
     const [loading, setLoading] = useState(true)
     const [filterDoc, setFilterDoc] = useState<string | null>(null)
+    const [filterLanguage, setFilterLanguage] = useState<string | null>(null)
+    const [languages, setLanguages] = useState<string[]>([])
 
     useEffect(() => {
         async function load() {
             try {
-                const [vocabCards, due] = await Promise.all([
-                    getVocabularyFlashcards(),
+                const [vocabCards, due, langs] = await Promise.all([
+                    getVocabularyFlashcards(undefined, filterLanguage ?? undefined),
                     getDueVocabularyCount(),
+                    getVocabularyLanguages(),
                 ])
                 setCards(vocabCards as unknown as VocabCard[])
                 setDueCount(due)
+                setLanguages(langs)
             } catch (err) {
                 console.error('Failed to load vocabulary:', err)
             } finally {
@@ -52,7 +56,7 @@ export function VocabContent() {
             }
         }
         load()
-    }, [])
+    }, [filterLanguage])
 
     if (loading) {
         return (
@@ -172,28 +176,59 @@ export function VocabContent() {
                         </Button>
                     </div>
 
-                    {/* Filter pills */}
-                    {docGroups.size > 1 && (
-                        <div className="flex flex-wrap gap-2">
-                            <button
-                                onClick={() => setFilterDoc(null)}
-                                className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
-                                    !filterDoc ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'
-                                }`}
-                            >
-                                Alle
-                            </button>
-                            {[...docGroups.entries()].map(([docId, group]) => (
+                    {/* Language filter pills */}
+                    {languages.length > 1 && (
+                        <div className="space-y-2">
+                            <p className="text-sm font-medium text-muted-foreground">Sprache</p>
+                            <div className="flex flex-wrap gap-2">
                                 <button
-                                    key={docId}
-                                    onClick={() => setFilterDoc(docId)}
+                                    onClick={() => setFilterLanguage(null)}
                                     className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
-                                        filterDoc === docId ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'
+                                        !filterLanguage ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'
                                     }`}
                                 >
-                                    {group.title} ({group.cards.length})
+                                    Alle Sprachen
                                 </button>
-                            ))}
+                                {languages.map((lang) => (
+                                    <button
+                                        key={lang}
+                                        onClick={() => setFilterLanguage(lang)}
+                                        className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
+                                            filterLanguage === lang ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'
+                                        }`}
+                                    >
+                                        {lang}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Filter pills */}
+                    {docGroups.size > 1 && (
+                        <div className="space-y-2">
+                            <p className="text-sm font-medium text-muted-foreground">Vokabelset</p>
+                            <div className="flex flex-wrap gap-2">
+                                <button
+                                    onClick={() => setFilterDoc(null)}
+                                    className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
+                                        !filterDoc ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'
+                                    }`}
+                                >
+                                    Alle Sets
+                                </button>
+                                {[...docGroups.entries()].map(([docId, group]) => (
+                                    <button
+                                        key={docId}
+                                        onClick={() => setFilterDoc(docId)}
+                                        className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
+                                            filterDoc === docId ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'
+                                        }`}
+                                    >
+                                        {group.title} ({group.cards.length})
+                                    </button>
+                                ))}
+                            </div>
                         </div>
                     )}
 

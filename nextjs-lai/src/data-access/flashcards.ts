@@ -143,12 +143,13 @@ export async function getFlashcardCount() {
     return prisma.flashcard.count()
 }
 
-// Get vocabulary flashcards, optionally filtered by document
-export async function getVocabularyFlashcards(documentId?: string) {
+// Get vocabulary flashcards, optionally filtered by document or language
+export async function getVocabularyFlashcards(documentId?: string, language?: string) {
     return prisma.flashcard.findMany({
         where: {
             isVocabulary: true,
             ...(documentId ? { documentId } : {}),
+            ...(language ? { document: { subject: language, fileType: 'language-set' } } : {}),
         },
         include: {
             document: { select: { id: true, title: true, subject: true } },
@@ -232,4 +233,27 @@ export async function getFlashcardDocumentProgress() {
             percentage,
         }
     })
+}
+
+// Get distinct languages from vocabulary documents (language-set documents)
+export async function getVocabularyLanguages() {
+    const docs = await prisma.document.findMany({
+        where: {
+            fileType: 'language-set',
+            flashcards: {
+                some: {
+                    isVocabulary: true,
+                },
+            },
+        },
+        select: {
+            subject: true,
+        },
+        distinct: ['subject'],
+        orderBy: {
+            subject: 'asc',
+        },
+    })
+
+    return docs.map(d => d.subject).filter((s): s is string => s !== null)
 }

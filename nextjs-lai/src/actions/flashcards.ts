@@ -22,6 +22,7 @@ import {
     getVocabularyFlashcards as dbGetVocabularyFlashcards,
     getDueVocabularyFlashcards as dbGetDueVocabularyFlashcards,
     getDueVocabularyCount as dbGetDueVocabularyCount,
+    getVocabularyLanguages as dbGetVocabularyLanguages,
 } from '@/src/data-access/flashcards'
 import { revalidatePath } from 'next/cache'
 import { revalidateFlashcards, revalidateUserStats } from '@/src/lib/dashboard-cache'
@@ -318,8 +319,8 @@ export async function deleteFlashcardsByDocument(documentId: string) {
 
 // ── Vocabulary-specific actions ──
 
-export async function getVocabularyFlashcards(documentId?: string) {
-    return dbGetVocabularyFlashcards(documentId)
+export async function getVocabularyFlashcards(documentId?: string, language?: string) {
+    return dbGetVocabularyFlashcards(documentId, language)
 }
 
 export async function getDueVocabularyFlashcards() {
@@ -328,4 +329,8 @@ export async function getDueVocabularyFlashcards() {
 
 export async function getDueVocabularyCount() {
     return dbGetDueVocabularyCount()
+}
+
+export async function getVocabularyLanguages() {
+    return dbGetVocabularyLanguages()
 }
