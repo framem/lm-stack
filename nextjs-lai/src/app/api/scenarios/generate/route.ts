@@ -3,7 +3,7 @@ import { generateAndSaveScenario } from '@/src/actions/generated-scenarios'
 import type { Language } from '@/src/lib/conversation-scenarios'
 
 const VALID_LANGUAGES: Language[] = ['de', 'en', 'es']
-const VALID_DIFFICULTIES = ['beginner', 'intermediate', 'advanced']
+const VALID_DIFFICULTIES = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2']
 
 // POST /api/scenarios/generate - Generate a conversation scenario
 export async function POST(request: NextRequest) {
