@@ -446,6 +446,38 @@ SIEMPRE responde en español. NO corrijas al huésped, solo continúa la convers
     },
 ]
 
-export function getScenario(key: string): ConversationScenario | undefined {
-    return SCENARIOS.find((s) => s.key === key)
+/**
+ * Hybrid lookup: check hardcoded scenarios first, then the database for generated ones.
+ * Generated scenarios only have one language, so all translation keys map to the same content.
+ */
+export async function getScenario(key: string): Promise<ConversationScenario | undefined> {
+    // Fast path: check hardcoded scenarios first
+    const hardcoded = SCENARIOS.find((s) => s.key === key)
+    if (hardcoded) return hardcoded
+
+    // Fallback: check database for generated scenarios
+    const { getGeneratedScenarioByKey } = await import('@/src/data-access/generated-scenarios')
+    const generated = await getGeneratedScenarioByKey(key)
+    if (!generated) return undefined
+
+    // Transform single-language DB model into ConversationScenario shape
+    const lang = generated.language as Language
+    const translation = {
+        title: generated.title,
+        description: generated.description,
+        systemPrompt: generated.systemPrompt,
+        suggestions: generated.suggestions,
+    }
+
+    return {
+        key: generated.key,
+        difficulty: generated.difficulty,
+        icon: generated.icon,
+        translations: {
+            de: translation,
+            en: translation,
+            es: translation,
+            // All languages map to the same content since generated scenarios are single-language
+        },
+    }
 }

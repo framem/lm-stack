@@ -7,6 +7,7 @@ import {
     updateDocument as patchDocument,
     deleteDocument as removeDocument,
     getSubjects as fetchSubjects,
+    hasChunksWithoutEmbeddings as checkChunksWithoutEmbeddings,
 } from '@/src/data-access/documents'
 import { getModel } from '@/src/lib/llm'
 import { generateText, Output } from 'ai'
@@ -102,4 +103,9 @@ export async function deleteDocument(id: string) {
     revalidatePath('/learn/documents')
     revalidatePath('/learn/quiz')
     revalidateDocuments()
+}
+
+// Check if a document has chunks without embeddings
+export async function hasChunksWithoutEmbeddings(documentId: string): Promise<boolean> {
+    return checkChunksWithoutEmbeddings(documentId)
 }

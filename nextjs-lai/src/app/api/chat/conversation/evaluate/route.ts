@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
             )
         }
 
-        const scenarioDef = getScenario(scenario)
+        const scenarioDef = await getScenario(scenario)
         if (!scenarioDef) {
             return Response.json({ error: 'Unbekanntes Szenario.' }, { status: 400 })
         }

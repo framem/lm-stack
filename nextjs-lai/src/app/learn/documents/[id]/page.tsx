@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { FileText, Trash2, Pencil, ArrowLeft, Check, X, Loader2, ChevronDown, ChevronRight, List, MessageSquare, Brain, CreditCard } from 'lucide-react'
+import { FileText, Trash2, Pencil, ArrowLeft, Check, X, Loader2, ChevronDown, ChevronRight, List, MessageSquare, Brain, CreditCard, RefreshCw } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { Button } from '@/src/components/ui/button'
@@ -32,7 +32,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/src/components/ui/alert-dialog'
-import { getDocument, deleteDocument, renameDocument } from '@/src/actions/documents'
+import { getDocument, deleteDocument, renameDocument, hasChunksWithoutEmbeddings } from '@/src/actions/documents'
 import { formatDate } from '@/src/lib/utils'
 
 interface TocSection {
@@ -78,6 +78,8 @@ export default function DocumentDetailPage() {
     const [extractingTopics, setExtractingTopics] = useState(false)
     const [activeTab, setActiveTab] = useState('content')
     const chunkViewerRef = useRef<ChunkViewerHandle>(null)
+    const [hasEmbeddingIssues, setHasEmbeddingIssues] = useState(false)
+    const [regeneratingEmbeddings, setRegeneratingEmbeddings] = useState(false)
 
     const fetchDocument = useCallback(async () => {
         try {
@@ -90,6 +92,10 @@ export default function DocumentDetailPage() {
             if (toc && Array.isArray(toc) && toc.length > 0) {
                 setTocSections(toc)
             }
+
+            // Check if document has chunks without embeddings
+            const needsEmbeddings = await hasChunksWithoutEmbeddings(params.id)
+            setHasEmbeddingIssues(needsEmbeddings)
         } catch {
             setError('Lernmaterial nicht gefunden.')
         } finally {
@@ -177,6 +183,55 @@ export default function DocumentDetailPage() {
             toast.error('Themenextraktion fehlgeschlagen.')
         } finally {
             setExtractingTopics(false)
+        }
+    }
+
+    async function handleRegenerateEmbeddings() {
+        setRegeneratingEmbeddings(true)
+        try {
+            const res = await fetch(`/api/documents/${params.id}/regenerate-embeddings`, { method: 'POST' })
+            if (!res.ok) throw new Error('Fehler')
+
+            const reader = res.body?.getReader()
+            const decoder = new TextDecoder()
+
+            if (!reader) {
+                throw new Error('Stream nicht verfügbar')
+            }
+
+            let regeneratedCount = 0
+
+            while (true) {
+                const { done, value } = await reader.read()
+                if (done) break
+
+                const chunk = decoder.decode(value, { stream: true })
+                const lines = chunk.split('\n').filter(line => line.trim().startsWith('data:'))
+
+                for (const line of lines) {
+                    try {
+                        const data = JSON.parse(line.replace(/^data:\s*/, ''))
+
+                        if (data.type === 'complete') {
+                            regeneratedCount = data.regeneratedCount ?? 0
+                            if (regeneratedCount > 0) {
+                                setHasEmbeddingIssues(false)
+                                toast.success(data.message || 'Embeddings erfolgreich regeneriert.')
+                            } else {
+                                toast.info(data.message || 'Alle Abschnitte haben bereits Embeddings.')
+                            }
+                        } else if (data.type === 'error') {
+                            toast.error(data.error || 'Regenerierung fehlgeschlagen.')
+                        }
+                    } catch {
+                        // Ignore parse errors for partial chunks
+                    }
+                }
+            }
+        } catch {
+            toast.error('Embedding-Regenerierung fehlgeschlagen.')
+        } finally {
+            setRegeneratingEmbeddings(false)
         }
     }
 
@@ -338,6 +393,37 @@ export default function DocumentDetailPage() {
                 </TabsList>
 
                 <TabsContent value="content" className="space-y-6 mt-4">
+                    {/* Embedding Recovery Warning */}
+                    {hasEmbeddingIssues && (
+                        <Card className="bg-yellow-500/10 border-yellow-500/30">
+                            <CardContent className="p-4">
+                                <div className="flex items-start justify-between gap-4">
+                                    <div className="flex-1">
+                                        <h3 className="font-semibold text-yellow-600 dark:text-yellow-400 mb-1">
+                                            Fehlende Embeddings erkannt
+                                        </h3>
+                                        <p className="text-sm text-muted-foreground">
+                                            Einige Lernabschnitte haben keine Einbettungen. Dies kann die Funktionalität von Chat und Quiz beeinträchtigen.
+                                        </p>
+                                    </div>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={handleRegenerateEmbeddings}
+                                        disabled={regeneratingEmbeddings}
+                                        className="shrink-0"
+                                    >
+                                        {regeneratingEmbeddings ? (
+                                            <><Loader2 className="h-4 w-4 animate-spin" /> Regeneriere...</>
+                                        ) : (
+                                            <><RefreshCw className="h-4 w-4" /> Embeddings regenerieren</>
+                                        )}
+                                    </Button>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
+
                     {/* Summary */}
                     <div className="space-y-3">
                         <div className="flex items-center justify-between">

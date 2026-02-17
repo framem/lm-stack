@@ -1,7 +1,7 @@
 # Feature-Backlog: nextjs-LAI
 
 > Erstellt am 17.02.2026 durch Agenten-Team-Analyse (UX/UI-Designer, Devils Advocate, Next.js-Experte, Lerner-Persona "Maria")
-> **Letzte Aktualisierung:** 17.02.2026 — Task #11 abgeschlossen (13/18 erledigt, 72%)
+> **Letzte Aktualisierung:** 17.02.2026 — Task #17 abgeschlossen (15/18 erledigt, 83%)
 
 ---
 
@@ -31,7 +31,7 @@
 
 ---
 
-## Offene Features (5/18)
+## Offene Features (3/18)
 
 | # | Status | Feature | Vorgeschlagen von | Priorität | Aufwand | Journey |
 |---|--------|---------|-------------------|-----------|---------|---------|
@@ -46,10 +46,10 @@
 | 11 | ✅ | ~~**Documents-Seite → Server Component** — `searchParams`-basiert statt Client-seitigem `useEffect`~~ | NJS | **Sollte** | Mittel | J2 |
 | 12 | ✅ | ~~**Navigation konsolidieren** — Wissenslandkarte + Lernpfad + Statistiken zusammenführen~~ | DA, UX | **Sollte** | Mittel | Beide |
 | 13 | ❌ | **Szenario-Fortschritt persistent speichern** — Badge "geübt/nicht geübt", bester Score pro Szenario | UX, Maria | **Sollte** | Mittel | J1 |
-| 14 | ❌ | **Embedding-Recovery** — Button "Embeddings regenerieren" für Dokumente ohne Embeddings | NJS | **Nice-to-have** | Klein | J2 |
+| 14 | ✅ | ~~**Embedding-Recovery** — Button "Embeddings regenerieren" für Dokumente ohne Embeddings~~ | NJS | **Nice-to-have** | Klein | J2 |
 | 15 | ❌ | **Mobile Bottom-Tab-Navigation** — Top 4 Items als Tab-Bar auf Smartphone | UX | **Nice-to-have** | Mittel | Beide |
 | 16 | ❌ | **Karteikarten ohne Dokument-Zuordnung** — Freie manuelle Karten erlauben | Maria | **Nice-to-have** | Klein | J2 |
-| 17 | ❌ | **Mehr/dynamische Konversationsszenarien** — KI-generierte Szenarien statt nur 6 statische | DA | **Nice-to-have** | Groß | J1 |
+| 17 | ✅ | ~~**Mehr/dynamische Konversationsszenarien** — KI-generierte Szenarien statt nur 6 statische~~ | DA | **Nice-to-have** | Groß | J1 |
 | 18 | ❌ | **Strukturierter Lernpfad für Sprachen** — Automatische A1→A2→B1 Progression | DA, Maria | **Nice-to-have** | Groß | J1 |
 
 **Legende:** DA = Devils Advocate, UX = UX-Designer, NJS = Next.js-Experte, Maria = Lerner-Persona, J1 = Journey 1, J2 = Journey 2
@@ -58,7 +58,7 @@
 
 ## Implementierungs-Status
 
-**✅ Abgeschlossen (13/18):**
+**✅ Abgeschlossen (15/18):**
 - ~~#1 Sprachlern-Onboarding~~ (`OnboardingWizard.tsx`)
 - ~~#2 Konversations-Evaluationen persistieren~~ (DB-Modell, API, Stats-Integration)
 - ~~#3 CEFR-Fortschrittsanzeige~~ (`CefrProgressRing.tsx`, Dashboard)
@@ -71,22 +71,24 @@
 - ~~#10 Sprachfilter für Vokabeln~~ (Filter-Pills nach Sprache auf Vokabeltrainer-Seite, nutzt Document.subject)
 - ~~#11 Documents-Seite → Server Component~~ (URL-basiertes Filtering via `searchParams`, debounced Search, kein `useEffect`)
 - ~~#12 Navigation konsolidieren~~ (Neue `/learn/progress`-Seite mit Tabs, Redirects von alten URLs)
+- ~~#14 Embedding-Recovery~~ (Warning-Card + "Embeddings regenerieren"-Button auf Dokumentendetailseite)
+- ~~#17 Mehr/dynamische Konversationsszenarien~~ (LLM-generierte Szenarien mit ScenarioGenerator-UI, hybrid static+DB retrieval)
 
 **⚠️ Teilweise umgesetzt (0/18):**
 - (keine)
 
-**❌ Noch komplett offen (5/18):**
-- **Quick Wins:** #14
-- **Größere Features:** #13, #15-18
+**❌ Noch komplett offen (3/18):**
+- **Quick Wins:** (keine mehr)
+- **Größere Features:** #13, #15-16, #18
 
 ## Quick Wins (Klein + Must-have/Sollte)
 
 ~~Features #4, #5, #6, #7, #8, #9, #10 sind mit geringem Aufwand umsetzbar und haben sofortigen Impact.~~
 
-**✅ Erledigt:** #4 (Szenario-Beschreibungen), #5 ("Jetzt lernen"-Block), #7 (Health-Check), #9 (Upload-Qualitätsfeedback), #10 (Sprachfilter)
+**✅ Erledigt:** #4 (Szenario-Beschreibungen), #5 ("Jetzt lernen"-Block), #7 (Health-Check), #9 (Upload-Qualitätsfeedback), #10 (Sprachfilter), #14 (Embedding-Recovery)
 
 **Noch offen mit geringem Aufwand:**
-- #14 Embedding-Recovery-Button
+- (keine mehr)
 
 ---
 

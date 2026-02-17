@@ -72,6 +72,16 @@ export async function deleteDocument(id: string) {
     return prisma.document.delete({ where: { id } })
 }
 
+export async function hasChunksWithoutEmbeddings(documentId: string): Promise<boolean> {
+    const count = await prisma.documentChunk.count({
+        where: {
+            documentId,
+            embedding: null,
+        },
+    })
+    return count > 0
+}
+
 // ---- Document listing for refresh ----
 
 export async function getDocumentsWithChunkCount() {

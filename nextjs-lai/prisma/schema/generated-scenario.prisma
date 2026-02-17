@@ -1,0 +1,23 @@
+model GeneratedScenario {
+  id        String   @id @default(cuid())
+  userId    String?  @default("default")
+
+  // Scenario identity
+  key        String   @unique // URL-safe slug, e.g. "baeckerei-besuch"
+  language   String            // "de", "en", "es"
+  difficulty String            // CEFR level, e.g. "A1", "B2"
+  icon       String            // emoji
+
+  // Content (single language, not multi-translation like hardcoded scenarios)
+  title        String
+  description  String
+  systemPrompt String
+  suggestions  String[] @default([])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([language])
+  @@index([difficulty])
+}

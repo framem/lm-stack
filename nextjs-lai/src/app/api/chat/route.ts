@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
 
         if (isConversation && scenario) {
             // Conversation mode: use scenario system prompt, skip RAG
-            const scenarioDef = getScenario(scenario)
+            const scenarioDef = await getScenario(scenario)
             if (!scenarioDef) {
                 return new Response(
                     JSON.stringify({ error: 'Unbekanntes Szenario.' }),
