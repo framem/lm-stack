@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { FileText, Trash2, Pencil, ArrowLeft, Check, X, Loader2, ChevronDown, ChevronRight, List } from 'lucide-react'
+import { FileText, Trash2, Pencil, ArrowLeft, Check, X, Loader2, ChevronDown, ChevronRight, List, MessageSquare, Brain, CreditCard } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { Button } from '@/src/components/ui/button'
@@ -76,6 +76,7 @@ export default function DocumentDetailPage() {
     const [generatingToc, setGeneratingToc] = useState(false)
     const [tocOpen, setTocOpen] = useState(true)
     const [extractingTopics, setExtractingTopics] = useState(false)
+    const [activeTab, setActiveTab] = useState('content')
     const chunkViewerRef = useRef<ChunkViewerHandle>(null)
 
     const fetchDocument = useCallback(async () => {
@@ -268,8 +269,67 @@ export default function DocumentDetailPage() {
                 </Button>
             </div>
 
+            {/* "Jetzt lernen" Action Block */}
+            <Card className="bg-gradient-to-br from-primary/5 via-primary/3 to-background border-primary/20">
+                <CardContent className="p-6">
+                    <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                        <Brain className="h-5 w-5 text-primary" />
+                        Jetzt lernen
+                    </h2>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {/* Quiz Button */}
+                        <Button
+                            variant="outline"
+                            size="lg"
+                            className="h-auto flex flex-col items-center gap-3 p-6 hover:bg-primary/10 hover:border-primary transition-all"
+                            onClick={() => setActiveTab('quizzes')}
+                        >
+                            <div className="p-3 rounded-full bg-blue-500/10 text-blue-500">
+                                <Brain className="h-8 w-8" />
+                            </div>
+                            <div className="text-center">
+                                <div className="font-semibold text-base mb-1">Quiz starten</div>
+                                <div className="text-xs text-muted-foreground">Wissen überprüfen</div>
+                            </div>
+                        </Button>
+
+                        {/* Flashcards Button */}
+                        <Button
+                            variant="outline"
+                            size="lg"
+                            className="h-auto flex flex-col items-center gap-3 p-6 hover:bg-primary/10 hover:border-primary transition-all"
+                            onClick={() => setActiveTab('flashcards')}
+                        >
+                            <div className="p-3 rounded-full bg-purple-500/10 text-purple-500">
+                                <CreditCard className="h-8 w-8" />
+                            </div>
+                            <div className="text-center">
+                                <div className="font-semibold text-base mb-1">Karteikarten üben</div>
+                                <div className="text-xs text-muted-foreground">Mit Spaced Repetition</div>
+                            </div>
+                        </Button>
+
+                        {/* Chat Button */}
+                        <Button
+                            variant="outline"
+                            size="lg"
+                            className="h-auto flex flex-col items-center gap-3 p-6 hover:bg-primary/10 hover:border-primary transition-all"
+                            onClick={() => setActiveTab('chat')}
+                        >
+                            <div className="p-3 rounded-full bg-green-500/10 text-green-500">
+                                <MessageSquare className="h-8 w-8" />
+                            </div>
+                            <div className="text-center">
+                                <div className="font-semibold text-base mb-1">Mit Dokument chatten</div>
+                                <div className="text-xs text-muted-foreground">Fragen stellen</div>
+                            </div>
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
+
             {/* Tabs */}
-            <Tabs defaultValue="content">
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
                 <TabsList variant="line">
                     <TabsTrigger value="content">Inhalt</TabsTrigger>
                     <TabsTrigger value="chat">Chat</TabsTrigger>

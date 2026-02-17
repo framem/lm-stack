@@ -108,7 +108,14 @@ export async function POST(request: NextRequest) {
                     if (chunks.length === 0) {
                         sendProgress('done', 100, 'Lernmaterial gespeichert (keine Abschnitte erstellt).')
                         controller.enqueue(
-                            encoder.encode(`data: ${JSON.stringify({ type: 'complete', documentId: doc.id, chunkCount: 0 })}\n\n`)
+                            encoder.encode(`data: ${JSON.stringify({
+                                type: 'complete',
+                                documentId: doc.id,
+                                chunkCount: 0,
+                                totalWords: 0,
+                                avgWordsPerChunk: 0,
+                                avgTokensPerChunk: 0
+                            })}\n\n`)
                         )
                         controller.close()
                         return
@@ -143,10 +150,26 @@ export async function POST(request: NextRequest) {
                         console.error('Batch embedding failed:', embeddingError)
                     }
 
+                    // Calculate quality metrics
+                    const totalWords = chunks.reduce((sum, chunk) => {
+                        const wordCount = chunk.content.trim().split(/\s+/).length
+                        return sum + wordCount
+                    }, 0)
+                    const avgWordsPerChunk = chunks.length > 0 ? Math.round(totalWords / chunks.length) : 0
+                    const totalTokens = chunks.reduce((sum, chunk) => sum + (chunk.tokenCount || 0), 0)
+                    const avgTokensPerChunk = chunks.length > 0 ? Math.round(totalTokens / chunks.length) : 0
+
                     // Done
                     sendProgress('done', 100, 'Verarbeitung abgeschlossen!')
                     controller.enqueue(
-                        encoder.encode(`data: ${JSON.stringify({ type: 'complete', documentId: doc.id, chunkCount: chunks.length })}\n\n`)
+                        encoder.encode(`data: ${JSON.stringify({
+                            type: 'complete',
+                            documentId: doc.id,
+                            chunkCount: chunks.length,
+                            totalWords,
+                            avgWordsPerChunk,
+                            avgTokensPerChunk
+                        })}\n\n`)
                     )
 
                     // Fire-and-forget: generate summary and TOC in background

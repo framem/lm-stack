@@ -15,6 +15,7 @@ import {
     createFlashcard as dbCreateFlashcard,
     createFlashcards as dbCreateFlashcards,
     upsertFlashcardProgress as dbUpsertFlashcardProgress,
+    updateFlashcard as dbUpdateFlashcard,
     deleteFlashcard as dbDeleteFlashcard,
     deleteFlashcardsByDocument as dbDeleteFlashcardsByDocument,
     getQuestionIdsWithFlashcards as dbGetQuestionIdsWithFlashcards,
@@ -64,6 +65,28 @@ export async function createFlashcard(
 
     const card = await dbCreateFlashcard({
         documentId,
+        front: front.trim(),
+        back: back.trim(),
+        context: context?.trim() || undefined,
+    })
+
+    revalidatePath('/learn/flashcards')
+    return card
+}
+
+// ── Update a flashcard ──
+
+export async function updateFlashcard(
+    id: string,
+    front: string,
+    back: string,
+    context?: string,
+) {
+    if (!id) throw new Error('Karteikarten-ID ist erforderlich.')
+    if (!front.trim()) throw new Error('Vorderseite darf nicht leer sein.')
+    if (!back.trim()) throw new Error('Rückseite darf nicht leer sein.')
+
+    const card = await dbUpdateFlashcard(id, {
         front: front.trim(),
         back: back.trim(),
         context: context?.trim() || undefined,

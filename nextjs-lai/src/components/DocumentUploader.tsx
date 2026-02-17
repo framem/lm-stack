@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Upload, FileText, ClipboardPaste, X, CheckCircle2 } from 'lucide-react'
+import { Upload, FileText, ClipboardPaste, X, CheckCircle2, FileCheck, Hash, Type, Zap } from 'lucide-react'
 import { Button } from '@/src/components/ui/button'
 import { Input } from '@/src/components/ui/input'
 import { Textarea } from '@/src/components/ui/textarea'
@@ -23,7 +23,17 @@ interface ProgressEvent {
     detail?: string
     documentId?: string
     chunkCount?: number
+    totalWords?: number
+    avgWordsPerChunk?: number
+    avgTokensPerChunk?: number
     error?: string
+}
+
+interface QualityMetrics {
+    chunkCount: number
+    totalWords: number
+    avgWordsPerChunk: number
+    avgTokensPerChunk: number
 }
 
 const UPLOAD_STEP_DEFS = [
@@ -59,6 +69,8 @@ export function DocumentUploader({ onSuccess }: DocumentUploaderProps) {
     const [pipelineSteps, setPipelineSteps] = useState(createSteps(UPLOAD_STEP_DEFS))
     const [completed, setCompleted] = useState(false)
     const [error, setError] = useState('')
+    const [qualityMetrics, setQualityMetrics] = useState<QualityMetrics | null>(null)
+    const [completedDocumentId, setCompletedDocumentId] = useState<string | null>(null)
 
     const handleDrop = useCallback((e: React.DragEvent) => {
         e.preventDefault()
@@ -108,14 +120,28 @@ export function DocumentUploader({ onSuccess }: DocumentUploaderProps) {
                 } else if (event.type === 'complete') {
                     setPipelineSteps(prev => completeSteps(prev, stepTimesRef.current))
                     setCompleted(true)
+                    setCompletedDocumentId(event.documentId || null)
+
+                    // Capture quality metrics if available
+                    if (event.chunkCount !== undefined) {
+                        setQualityMetrics({
+                            chunkCount: event.chunkCount,
+                            totalWords: event.totalWords || 0,
+                            avgWordsPerChunk: event.avgWordsPerChunk || 0,
+                            avgTokensPerChunk: event.avgTokensPerChunk || 0,
+                        })
+                    }
+
                     toast.success('Lernmaterial erfolgreich verarbeitet!')
+
+                    // Navigate after showing quality feedback (3 seconds)
                     setTimeout(() => {
                         if (onSuccess && event.documentId) {
                             onSuccess(event.documentId)
                         } else {
                             router.push(`/learn/documents/${event.documentId}`)
                         }
-                    }, 800)
+                    }, 3000)
                 } else if (event.type === 'error') {
                     setError(event.error || 'Da ist was schiefgelaufen – nicht mal die KI weiß, was.')
                     setUploading(false)
@@ -131,6 +157,8 @@ export function DocumentUploader({ onSuccess }: DocumentUploaderProps) {
         setPipelineSteps(createSteps(UPLOAD_STEP_DEFS))
         stepTimesRef.current = {}
         setCompleted(false)
+        setQualityMetrics(null)
+        setCompletedDocumentId(null)
 
         const formData = new FormData()
         formData.append('file', file)
@@ -164,6 +192,8 @@ export function DocumentUploader({ onSuccess }: DocumentUploaderProps) {
         setPipelineSteps(createSteps(UPLOAD_STEP_DEFS))
         stepTimesRef.current = {}
         setCompleted(false)
+        setQualityMetrics(null)
+        setCompletedDocumentId(null)
 
         try {
             const response = await fetch('/api/documents', {
@@ -192,27 +222,112 @@ export function DocumentUploader({ onSuccess }: DocumentUploaderProps) {
 
     if (uploading) {
         return (
-            <Card>
-                <CardContent className="space-y-4">
-                    <div className="flex items-center gap-3">
-                        {completed ? (
-                            <>
-                                <CheckCircle2 className="h-5 w-5 text-green-500" />
-                                <span className="font-medium">Verarbeitung abgeschlossen!</span>
-                            </>
-                        ) : (
-                            <>
-                                <Upload className="h-5 w-5 animate-pulse text-primary" />
-                                <span className="font-medium">Verarbeitung läuft...</span>
-                            </>
+            <div className="space-y-4">
+                <Card>
+                    <CardContent className="space-y-4">
+                        <div className="flex items-center gap-3">
+                            {completed ? (
+                                <>
+                                    <CheckCircle2 className="h-5 w-5 text-green-500" />
+                                    <span className="font-medium">Verarbeitung abgeschlossen!</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Upload className="h-5 w-5 animate-pulse text-primary" />
+                                    <span className="font-medium">Verarbeitung läuft...</span>
+                                </>
+                            )}
+                        </div>
+                        <PipelineProgress steps={pipelineSteps} />
+                        {error && (
+                            <p className="text-sm text-destructive">{error}</p>
                         )}
-                    </div>
-                    <PipelineProgress steps={pipelineSteps} />
-                    {error && (
-                        <p className="text-sm text-destructive">{error}</p>
-                    )}
-                </CardContent>
-            </Card>
+                    </CardContent>
+                </Card>
+
+                {/* Quality Feedback Panel */}
+                {completed && qualityMetrics && (
+                    <Card className="border-green-500/30 bg-green-500/5">
+                        <CardContent className="pt-6 space-y-4">
+                            <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
+                                <FileCheck className="h-5 w-5" />
+                                <h3 className="font-semibold">Qualitätsprüfung</h3>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {/* Chunk Count */}
+                                <div className="flex items-start gap-3 p-3 rounded-lg bg-background/50">
+                                    <div className="p-2 rounded-md bg-blue-500/10 text-blue-500">
+                                        <Hash className="h-4 w-4" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-2xl font-bold">{qualityMetrics.chunkCount}</p>
+                                        <p className="text-sm text-muted-foreground">
+                                            {qualityMetrics.chunkCount === 1 ? 'Abschnitt erkannt' : 'Abschnitte erkannt'}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* Average Words */}
+                                <div className="flex items-start gap-3 p-3 rounded-lg bg-background/50">
+                                    <div className="p-2 rounded-md bg-purple-500/10 text-purple-500">
+                                        <Type className="h-4 w-4" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-2xl font-bold">{qualityMetrics.avgWordsPerChunk}</p>
+                                        <p className="text-sm text-muted-foreground">Ø Wörter pro Abschnitt</p>
+                                    </div>
+                                </div>
+
+                                {/* Average Tokens */}
+                                {qualityMetrics.avgTokensPerChunk > 0 && (
+                                    <div className="flex items-start gap-3 p-3 rounded-lg bg-background/50">
+                                        <div className="p-2 rounded-md bg-green-500/10 text-green-500">
+                                            <Zap className="h-4 w-4" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-2xl font-bold">{qualityMetrics.avgTokensPerChunk}</p>
+                                            <p className="text-sm text-muted-foreground">Ø Tokens pro Abschnitt</p>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Total Words */}
+                                <div className="flex items-start gap-3 p-3 rounded-lg bg-background/50">
+                                    <div className="p-2 rounded-md bg-orange-500/10 text-orange-500">
+                                        <FileText className="h-4 w-4" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-2xl font-bold">{qualityMetrics.totalWords.toLocaleString('de-DE')}</p>
+                                        <p className="text-sm text-muted-foreground">Wörter insgesamt</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col items-center gap-2 pt-2">
+                                <p className="text-sm text-muted-foreground text-center">
+                                    Weiterleitung zur Dokumentansicht in wenigen Sekunden...
+                                </p>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                        if (completedDocumentId) {
+                                            if (onSuccess) {
+                                                onSuccess(completedDocumentId)
+                                            } else {
+                                                router.push(`/learn/documents/${completedDocumentId}`)
+                                            }
+                                        }
+                                    }}
+                                >
+                                    Jetzt zum Dokument
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
+            </div>
         )
     }
 

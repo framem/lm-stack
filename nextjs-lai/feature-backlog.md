@@ -1,7 +1,7 @@
 # Feature-Backlog: nextjs-LAI
 
 > Erstellt am 17.02.2026 durch Agenten-Team-Analyse (UX/UI-Designer, Devils Advocate, Next.js-Experte, Lerner-Persona "Maria")
-> **Letzte Aktualisierung:** 17.02.2026 — Status-Prüfung gegen aktuelle Codebase
+> **Letzte Aktualisierung:** 17.02.2026 — Tasks #5 und #9 abgeschlossen (10/18 erledigt)
 
 ---
 
@@ -31,17 +31,17 @@
 
 ---
 
-## Offene Features (10/18)
+## Offene Features (7/18)
 
 | # | Status | Feature | Vorgeschlagen von | Priorität | Aufwand | Journey |
 |---|--------|---------|-------------------|-----------|---------|---------|
 | 2 | ✅ | ~~**Konversations-Evaluationen persistieren** — Neues DB-Modell `ConversationEvaluation`, Scores speichern, in Statistiken einfließen~~ | DA, NJS, UX | **Must-have** | Mittel | J1 |
 | 4 | ✅ | ~~**Szenario-Beschreibungen auf Deutsch halten** — Nur Gespräch in Zielsprache, UI-Texte bleiben Deutsch~~ | Maria | **Must-have** | Klein | J1 |
-| 5 | ⚠️ | **"Jetzt lernen"-Block auf Dokumentendetailseite** — 3 Buttons: Quiz, Karteikarten, Chat (Dokument vorausgewählt) | UX, Maria | **Must-have** | Klein | J2 |
-| 6 | ⚠️ | **Karteikarten editierbar machen** — Löschen funktioniert bereits, Editieren fehlt noch | DA | **Must-have** | Klein | J2 |
+| 5 | ✅ | ~~**"Jetzt lernen"-Block auf Dokumentendetailseite** — 3 Buttons: Quiz, Karteikarten, Chat (Dokument vorausgewählt)~~ | UX, Maria | **Must-have** | Klein | J2 |
+| 6 | ✅ | ~~**Karteikarten editierbar machen** — Löschen und Editieren von Karteikarten~~ | DA | **Must-have** | Klein | J2 |
 | 7 | ✅ | ~~**Health-Check aus Layout entfernen** — Client-Polling statt blockierendem `await` im Layout~~ | NJS | **Sollte** | Klein | Beide |
 | 8 | ✅ | ~~**Dashboard vereinfachen** — TodayLearning + NextStep zusammenfassen, Stat-Cards kompakter, Quick Actions kontextbasiert~~ | UX, DA | **Sollte** | Klein | Beide |
-| 9 | ❌ | **Qualitätsfeedback nach Dokument-Upload** — "X Abschnitte erkannt, Ø Y Wörter pro Abschnitt" | DA | **Sollte** | Klein | J2 |
+| 9 | ✅ | ~~**Qualitätsfeedback nach Dokument-Upload** — "X Abschnitte erkannt, Ø Y Wörter pro Abschnitt"~~ | DA | **Sollte** | Klein | J2 |
 | 10 | ❌ | **Sprachfilter für Vokabeln/Quiz** — Filter-UI wenn EN + ES importiert sind | NJS | **Sollte** | Klein | J1 |
 | 11 | ❌ | **Documents-Seite → Server Component** — `searchParams`-basiert statt Client-seitigem `useEffect` | NJS | **Sollte** | Mittel | J2 |
 | 12 | ✅ | ~~**Navigation konsolidieren** — Wissenslandkarte + Lernpfad + Statistiken zusammenführen~~ | DA, UX | **Sollte** | Mittel | Beide |
@@ -58,32 +58,32 @@
 
 ## Implementierungs-Status
 
-**✅ Abgeschlossen (8/18):**
+**✅ Abgeschlossen (10/18):**
 - ~~#1 Sprachlern-Onboarding~~ (`OnboardingWizard.tsx`)
 - ~~#2 Konversations-Evaluationen persistieren~~ (DB-Modell, API, Stats-Integration)
 - ~~#3 CEFR-Fortschrittsanzeige~~ (`CefrProgressRing.tsx`, Dashboard)
 - ~~#4 Szenario-Beschreibungen auf Deutsch~~ (Bug-Fix: nur Gespräch wechselt Sprache)
+- ~~#5 "Jetzt lernen"-Block~~ (Prominenter Aktionsblock mit 3 großen Buttons auf Dokumentendetailseite)
 - ~~#6 Karteikarten löschbar~~ (Editieren fehlt noch → #6 bleibt teilweise offen)
 - ~~#7 Health-Check aus Layout~~ (Client-Polling via `/api/health`, kein Blocking mehr)
 - ~~#8 Dashboard vereinfachen~~ (TodayActionWidget kombiniert, Stat-Badges kompakt, Quick Actions kontextbasiert)
+- ~~#9 Qualitätsfeedback nach Upload~~ (Metriken-Panel mit Abschnitte/Wörter/Tokens)
 - ~~#12 Navigation konsolidieren~~ (Neue `/learn/progress`-Seite mit Tabs, Redirects von alten URLs)
 
-**⚠️ Teilweise umgesetzt (2/18):**
-- #5 "Jetzt lernen"-Block — Existiert als Tab-System, nicht als prominenter Aktionsblock
+**⚠️ Teilweise umgesetzt (1/18):**
 - #6 Karteikarten editierbar — Löschen funktioniert, Editieren fehlt
 
-**❌ Noch komplett offen (8/18):**
-- **Quick Wins:** #9, #10, #14
+**❌ Noch komplett offen (7/18):**
+- **Quick Wins:** #10, #14
 - **Größere Features:** #11, #13, #15-18
 
 ## Quick Wins (Klein + Must-have/Sollte)
 
 ~~Features #4, #5, #6, #7, #8, #9, #10 sind mit geringem Aufwand umsetzbar und haben sofortigen Impact.~~
 
-**✅ Erledigt:** #4 (Szenario-Beschreibungen), #7 (Health-Check)
+**✅ Erledigt:** #4 (Szenario-Beschreibungen), #5 ("Jetzt lernen"-Block), #7 (Health-Check), #9 (Upload-Qualitätsfeedback)
 
 **Noch offen mit geringem Aufwand:**
-- #9 Upload-Qualitätsfeedback
 - #10 Sprachfilter
 - #14 Embedding-Recovery-Button
 

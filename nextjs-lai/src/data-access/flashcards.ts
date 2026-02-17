@@ -109,6 +109,14 @@ export async function upsertFlashcardProgress(flashcardId: string, quality: numb
     })
 }
 
+// Update a flashcard
+export async function updateFlashcard(id: string, data: Partial<Pick<CreateFlashcardInput, 'front' | 'back' | 'context'>>) {
+    return prisma.flashcard.update({
+        where: { id },
+        data,
+    })
+}
+
 // Delete a flashcard
 export async function deleteFlashcard(id: string) {
     return prisma.flashcard.delete({ where: { id } })

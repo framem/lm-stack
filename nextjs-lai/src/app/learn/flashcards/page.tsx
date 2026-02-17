@@ -15,6 +15,7 @@ import {
     Clock,
     Info,
     X,
+    Pencil,
 } from 'lucide-react'
 import { Card, CardContent } from '@/src/components/ui/card'
 import { Button } from '@/src/components/ui/button'
@@ -55,6 +56,7 @@ import {
     getFlashcards,
     getDueFlashcardCount,
     createFlashcard,
+    updateFlashcard,
     deleteFlashcard,
     deleteFlashcardsByDocument,
 } from '@/src/actions/flashcards'
@@ -117,6 +119,14 @@ export default function FlashcardsPage() {
     const [createBack, setCreateBack] = useState('')
     const [createContext, setCreateContext] = useState('')
     const [creating, setCreating] = useState(false)
+
+    // Edit dialog
+    const [editOpen, setEditOpen] = useState(false)
+    const [editCardId, setEditCardId] = useState('')
+    const [editFront, setEditFront] = useState('')
+    const [editBack, setEditBack] = useState('')
+    const [editContext, setEditContext] = useState('')
+    const [editing, setEditing] = useState(false)
 
     // Delete confirmation (single card)
     const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
@@ -213,6 +223,33 @@ export default function FlashcardsPage() {
             toast.error(err instanceof Error ? err.message : 'Fehler beim Erstellen')
         } finally {
             setCreating(false)
+        }
+    }
+
+    function openEditDialog(card: FlashcardItem) {
+        setEditCardId(card.id)
+        setEditFront(card.front)
+        setEditBack(card.back)
+        setEditContext(card.context || '')
+        setEditOpen(true)
+    }
+
+    async function handleEdit() {
+        if (!editCardId || !editFront.trim() || !editBack.trim()) return
+        setEditing(true)
+        try {
+            await updateFlashcard(editCardId, editFront, editBack, editContext || undefined)
+            toast.success('Karteikarte aktualisiert')
+            setEditOpen(false)
+            setEditCardId('')
+            setEditFront('')
+            setEditBack('')
+            setEditContext('')
+            await loadData()
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : 'Fehler beim Aktualisieren')
+        } finally {
+            setEditing(false)
         }
     }
 
@@ -518,13 +555,24 @@ export default function FlashcardsPage() {
                                         <p className="text-xs text-muted-foreground italic">{card.context}</p>
                                     )}
                                 </CardContent>
-                                <button
-                                    type="button"
-                                    onClick={() => setDeleteTarget(card.id)}
-                                    className="absolute top-2 right-2 p-1.5 rounded opacity-0 group-hover:opacity-100 hover:bg-destructive/10 transition-opacity"
-                                >
-                                    <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                                </button>
+                                <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button
+                                        type="button"
+                                        onClick={() => openEditDialog(card)}
+                                        className="p-1.5 rounded hover:bg-accent transition-colors"
+                                        aria-label="Karteikarte bearbeiten"
+                                    >
+                                        <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setDeleteTarget(card.id)}
+                                        className="p-1.5 rounded hover:bg-destructive/10 transition-colors"
+                                        aria-label="Karteikarte löschen"
+                                    >
+                                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                                    </button>
+                                </div>
                             </Card>
                             )
                         })}
@@ -661,6 +709,59 @@ export default function FlashcardsPage() {
                             </>
                         ) : (
                             'Erstellen'
+                        )}
+                    </Button>
+                </DialogContent>
+            </Dialog>
+
+            {/* Edit dialog */}
+            <Dialog open={editOpen} onOpenChange={setEditOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Karteikarte bearbeiten</DialogTitle>
+                        <DialogDescription>
+                            Bearbeite die Inhalte der Karteikarte.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Vorderseite (Frage/Begriff)</label>
+                            <Input
+                                value={editFront}
+                                onChange={(e) => setEditFront(e.target.value)}
+                                placeholder="z.B. Was ist Photosynthese?"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Rückseite (Antwort/Definition)</label>
+                            <Textarea
+                                value={editBack}
+                                onChange={(e) => setEditBack(e.target.value)}
+                                className="min-h-20 resize-y"
+                                placeholder="z.B. Der Prozess, bei dem Pflanzen Lichtenergie in chemische Energie umwandeln."
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Kontext (optional)</label>
+                            <Input
+                                value={editContext}
+                                onChange={(e) => setEditContext(e.target.value)}
+                                placeholder="z.B. Kapitel 3: Biologie der Pflanzen"
+                            />
+                        </div>
+                    </div>
+                    <Button
+                        onClick={handleEdit}
+                        disabled={!editFront.trim() || !editBack.trim() || editing}
+                        className="w-full"
+                    >
+                        {editing ? (
+                            <>
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                Aktualisiere...
+                            </>
+                        ) : (
+                            'Speichern'
                         )}
                     </Button>
                 </DialogContent>
