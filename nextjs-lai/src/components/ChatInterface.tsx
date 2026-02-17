@@ -8,6 +8,8 @@ import { BookOpen, FileText, Loader2, ChevronDown, CornerDownLeft, Check, AlertT
 import { getSession, getChatSuggestions, toggleBookmark } from '@/src/actions/chat'
 import { getDocuments, getSubjects } from '@/src/actions/documents'
 import type { ConversationEvaluation } from '@/src/app/api/chat/conversation/evaluate/route'
+import { TTSButton } from '@/src/components/TTSButton'
+import { getConversationTTSLang } from '@/src/lib/language-utils'
 import {
     Sheet,
     SheetContent,
@@ -588,6 +590,17 @@ export function ChatInterface({ sessionId, documentId, mode = 'learning', scenar
                                         </div>
                                     )}
 
+                                    {/* Extract full text from message for TTS */}
+                                    {(() => {
+                                        const messageText = message.parts
+                                            .filter((p): p is { type: 'text'; text: string } => p.type === 'text')
+                                            .map((p) => extractThinkBlocks(p.text).text)
+                                            .filter(Boolean)
+                                            .join(' ')
+                                        // Store in message object for later use
+                                        ;(message as any)._fullText = messageText
+                                    })()}
+
                                     {message.parts.map((part, i) => {
                                         if (part.type === 'reasoning') return null
                                         if (part.type === 'text') {
@@ -625,6 +638,14 @@ export function ChatInterface({ sessionId, documentId, mode = 'learning', scenar
 
                                     {message.role === 'assistant' && (
                                         <div className="flex items-center gap-2">
+                                            {/* TTS Button for conversation mode */}
+                                            {isConversation && scenarioLanguage && (message as any)._fullText && (
+                                                <TTSButton
+                                                    text={(message as any)._fullText}
+                                                    lang={getConversationTTSLang(scenarioLanguage)}
+                                                    size="sm"
+                                                />
+                                            )}
                                             {message.metadata?.sources && message.metadata.sources.length > 0 && (
                                                 <Sources>
                                                     <SourcesTrigger count={message.metadata.sources.length}>
@@ -661,6 +682,17 @@ export function ChatInterface({ sessionId, documentId, mode = 'learning', scenar
                                             >
                                                 <Bookmark className={`h-4 w-4 ${bookmarkedIds.has(message.id) ? 'fill-current' : ''}`} />
                                             </button>
+                                        </div>
+                                    )}
+
+                                    {/* Actions for user messages in conversation mode */}
+                                    {message.role === 'user' && isConversation && scenarioLanguage && (message as any)._fullText && (
+                                        <div className="flex items-center gap-2 justify-end">
+                                            <TTSButton
+                                                text={(message as any)._fullText}
+                                                lang={getConversationTTSLang(scenarioLanguage)}
+                                                size="sm"
+                                            />
                                         </div>
                                     )}
                                 </div>
@@ -702,7 +734,11 @@ export function ChatInterface({ sessionId, documentId, mode = 'learning', scenar
                   <div className="max-w-3xl mx-auto w-full">
                     <PromptInput onSubmit={handleSubmit}>
                         <PromptInputBody>
-                            <PromptInputTextarea placeholder={isConversation ? 'Schreibe auf Deutsch...' : 'Stelle eine Frage zu deinem Lernmaterial...'} />
+                            <PromptInputTextarea placeholder={isConversation
+                                ? (scenarioLanguage === 'en' ? 'Schreibe auf Englisch...'
+                                   : scenarioLanguage === 'es' ? 'Schreibe auf Spanisch...'
+                                   : 'Schreibe auf Deutsch...')
+                                : 'Stelle eine Frage zu deinem Lernmaterial...'} />
                         </PromptInputBody>
                         <PromptInputFooter>
                             <PromptInputTools>
