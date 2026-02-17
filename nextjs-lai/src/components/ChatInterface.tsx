@@ -485,7 +485,12 @@ export function ChatInterface({ sessionId, documentId, mode = 'learning', scenar
             const res = await fetch('/api/chat/conversation/evaluate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ messages: msgPayload, scenario, scenarioLanguage }),
+                body: JSON.stringify({
+                    messages: msgPayload,
+                    scenario,
+                    language: scenarioLanguage,
+                    sessionId: currentSessionId, // Include sessionId to persist evaluation
+                }),
             })
             if (!res.ok) throw new Error('Fehler')
             const data = await res.json()

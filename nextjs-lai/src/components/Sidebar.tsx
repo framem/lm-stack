@@ -28,6 +28,7 @@ import {
     Settings,
     Sun,
     Trash2,
+    TrendingUp,
     X,
 } from 'lucide-react'
 import {
@@ -82,12 +83,10 @@ const learnItems = [
 
 const manageItems = [
     { href: '/learn/documents', label: 'Lernmaterial', icon: FileText },
-    { href: '/learn/stats', label: 'Statistiken', icon: BarChart3 },
 ]
 
 const progressItems = [
-    { href: '/learn/knowledge-map', label: 'Wissenslandkarte', icon: Map },
-    { href: '/learn/paths', label: 'Lernpfad', icon: Route },
+    { href: '/learn/progress', label: 'Fortschritt', icon: TrendingUp },
 ]
 
 interface SubjectItem {

@@ -100,7 +100,7 @@ const features = [
     title: "Fortschritt & Lernanalyse",
     description:
       "Sieh auf einen Blick, wo du stehst — mit Streaks, Wissensstand-Tracking und Empfehlungen für deine nächsten Schritte.",
-    href: "/learn/stats",
+    href: "/learn/progress",
     accent: "blue" as const,
   },
   {

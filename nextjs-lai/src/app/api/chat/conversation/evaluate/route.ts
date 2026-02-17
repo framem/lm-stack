@@ -3,6 +3,7 @@ import { generateText, Output } from 'ai'
 import { z } from 'zod'
 import { getModel } from '@/src/lib/llm'
 import { getScenario } from '@/src/lib/conversation-scenarios'
+import { createConversationEvaluation } from '@/src/data-access/conversation-evaluation'
 
 const evaluationSchema = z.object({
     grammar: z.number().min(1).max(10).describe('Grammar score 1-10'),
@@ -32,10 +33,11 @@ export type ConversationEvaluation = z.infer<typeof evaluationSchema>
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json()
-        const { messages, scenario, language } = body as {
+        const { messages, scenario, language, sessionId } = body as {
             messages: { role: string; content: string }[]
             scenario: string
             language?: string
+            sessionId?: string
         }
 
         if (!messages || messages.length < 2) {
@@ -83,6 +85,25 @@ Sei ermutigend, aber ehrlich. Passe die Erwartungen an das CEFR-Niveau an.`,
         })
 
         if (output) {
+            // Save evaluation to database if sessionId is provided
+            if (sessionId) {
+                try {
+                    await createConversationEvaluation({
+                        sessionId,
+                        scenarioKey: scenario,
+                        language: lang,
+                        grammarScore: output.grammar,
+                        vocabularyScore: output.vocabulary,
+                        communicationScore: output.communication,
+                        corrections: output.corrections,
+                        feedback: output.overallFeedback,
+                    })
+                } catch (dbError) {
+                    console.error('Failed to save evaluation to database:', dbError)
+                    // Don't fail the request if DB save fails, still return evaluation
+                }
+            }
+
             return Response.json(output)
         }
 

@@ -20,10 +20,9 @@ import {
 } from '@/src/lib/dashboard-cache'
 import {Badge} from '@/src/components/ui/badge'
 import {LearningProgress} from '@/src/components/LearningProgress'
-import {TodayLearningWidget} from '@/src/components/TodayLearningWidget'
+import {TodayActionWidget} from '@/src/components/TodayActionWidget'
 import {StreakDisplay} from '@/src/components/StreakDisplay'
 import {OnboardingTrigger} from '@/src/components/OnboardingTrigger'
-import {NextStepWidget} from '@/src/components/NextStepWidget'
 import {CefrProgressRing} from '@/src/components/CefrProgressRing'
 
 export default async function DashboardPage() {
@@ -163,9 +162,9 @@ export default async function DashboardPage() {
                 </Card>
             )}
 
-            {/* Today learning widget */}
+            {/* Combined today action widget (merges TodayLearning + NextStep) */}
             {!isNewUser && (
-                <TodayLearningWidget
+                <TodayActionWidget
                     dueFlashcards={dueFlashcardReviews}
                     dueQuizReviews={dueQuizReviews}
                     weakestDocument={weakestDocument ? {
@@ -213,11 +212,6 @@ export default async function DashboardPage() {
                 <CefrProgressRing progress={cefrProgress} />
             )}
 
-            {/* Next step recommendation */}
-            {!isNewUser && progress.length > 0 && (
-                <NextStepWidget />
-            )}
-
             {/* Streak display */}
             {!isNewUser && (
                 <StreakDisplay
@@ -229,119 +223,112 @@ export default async function DashboardPage() {
                 />
             )}
 
-            {/* Stats - only show when user has data */}
+            {/* Compact stats badges - only show when user has data */}
             {!isNewUser && (
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">
-                            Lernmaterial
-                        </CardTitle>
-                        <FileText className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{documents.length}</div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">
-                            Chat-Sessions
-                        </CardTitle>
-                        <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{sessions.length}</div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">
-                            Quizze
-                        </CardTitle>
-                        <HelpCircle className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{quizzes.length}</div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">
-                            Karteikarten
-                        </CardTitle>
-                        <Layers className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{totalFlashcards}</div>
-                    </CardContent>
-                </Card>
-            </div>
+                <div className="flex flex-wrap items-center gap-3">
+                    <Badge variant="outline" className="gap-1.5 px-3 py-1.5">
+                        <FileText className="h-3.5 w-3.5" />
+                        <span className="font-semibold">{documents.length}</span>
+                        <span className="text-muted-foreground">Dokumente</span>
+                    </Badge>
+                    <Badge variant="outline" className="gap-1.5 px-3 py-1.5">
+                        <MessageSquare className="h-3.5 w-3.5" />
+                        <span className="font-semibold">{sessions.length}</span>
+                        <span className="text-muted-foreground">Chat-Sessions</span>
+                    </Badge>
+                    <Badge variant="outline" className="gap-1.5 px-3 py-1.5">
+                        <HelpCircle className="h-3.5 w-3.5" />
+                        <span className="font-semibold">{quizzes.length}</span>
+                        <span className="text-muted-foreground">Quizze</span>
+                    </Badge>
+                    <Badge variant="outline" className="gap-1.5 px-3 py-1.5">
+                        <Layers className="h-3.5 w-3.5" />
+                        <span className="font-semibold">{totalFlashcards}</span>
+                        <span className="text-muted-foreground">Karteikarten</span>
+                    </Badge>
+                </div>
             )}
 
-            {/* Quick Actions */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <Link href="/learn/documents">
-                    <Card className="hover:bg-accent transition-colors cursor-pointer h-full">
-                        <CardContent className="flex items-center gap-4 p-6">
-                            <div className="p-3 rounded-lg bg-primary/10">
-                                <FileText className="h-6 w-6 text-primary" />
-                            </div>
-                            <div>
-                                <h3 className="font-semibold">Lernmaterial verwalten</h3>
-                                <p className="text-sm text-muted-foreground">
-                                    Lernmaterial hochladen, verwalten und durchsuchen
-                                </p>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </Link>
-                <Link href="/learn/chat">
-                    <Card className="hover:bg-accent transition-colors cursor-pointer h-full">
-                        <CardContent className="flex items-center gap-4 p-6">
-                            <div className="p-3 rounded-lg bg-primary/10">
-                                <MessageSquare className="h-6 w-6 text-primary" />
-                            </div>
-                            <div>
-                                <h3 className="font-semibold">Chat starten</h3>
-                                <p className="text-sm text-muted-foreground">
-                                    Fragen zu deinem Lernmaterial stellen
-                                </p>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </Link>
-                <Link href="/learn/quiz">
-                    <Card className="hover:bg-accent transition-colors cursor-pointer h-full">
-                        <CardContent className="flex items-center gap-4 p-6">
-                            <div className="p-3 rounded-lg bg-primary/10">
-                                <HelpCircle className="h-6 w-6 text-primary" />
-                            </div>
-                            <div>
-                                <h3 className="font-semibold">Quiz starten</h3>
-                                <p className="text-sm text-muted-foreground">
-                                    Wissen mit Quizfragen testen
-                                </p>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </Link>
-                <Link href="/learn/flashcards">
-                    <Card className="hover:bg-accent transition-colors cursor-pointer h-full">
-                        <CardContent className="flex items-center gap-4 p-6">
-                            <div className="p-3 rounded-lg bg-primary/10">
-                                <Layers className="h-6 w-6 text-primary" />
-                            </div>
-                            <div>
-                                <h3 className="font-semibold">Karteikarten lernen</h3>
-                                <p className="text-sm text-muted-foreground">
-                                    Karteikarten erstellen und wiederholen
-                                </p>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </Link>
-            </div>
+            {/* Context-based Quick Actions - show most relevant actions based on user state */}
+            {!isNewUser && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Show upload if user has few documents */}
+                    {documents.length < 3 && (
+                        <Link href="/learn/documents">
+                            <Card className="hover:bg-accent transition-colors cursor-pointer h-full">
+                                <CardContent className="flex items-center gap-4 p-6">
+                                    <div className="p-3 rounded-lg bg-primary/10">
+                                        <Upload className="h-6 w-6 text-primary" />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-semibold">Material hochladen</h3>
+                                        <p className="text-sm text-muted-foreground">
+                                            Weitere Lernunterlagen hinzufügen
+                                        </p>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </Link>
+                    )}
+
+                    {/* Show quiz if user has documents but few quizzes */}
+                    {documents.length > 0 && quizzes.length < documents.length * 2 && (
+                        <Link href="/learn/quiz">
+                            <Card className="hover:bg-accent transition-colors cursor-pointer h-full">
+                                <CardContent className="flex items-center gap-4 p-6">
+                                    <div className="p-3 rounded-lg bg-primary/10">
+                                        <HelpCircle className="h-6 w-6 text-primary" />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-semibold">Quiz erstellen</h3>
+                                        <p className="text-sm text-muted-foreground">
+                                            Teste dein Wissen mit Quizfragen
+                                        </p>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </Link>
+                    )}
+
+                    {/* Show flashcards if user has few flashcards */}
+                    {documents.length > 0 && totalFlashcards < 20 && (
+                        <Link href="/learn/flashcards">
+                            <Card className="hover:bg-accent transition-colors cursor-pointer h-full">
+                                <CardContent className="flex items-center gap-4 p-6">
+                                    <div className="p-3 rounded-lg bg-primary/10">
+                                        <Layers className="h-6 w-6 text-primary" />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-semibold">Karteikarten erstellen</h3>
+                                        <p className="text-sm text-muted-foreground">
+                                            Erstelle Karteikarten aus Lernmaterial
+                                        </p>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </Link>
+                    )}
+
+                    {/* Show chat if user hasn't used it much */}
+                    {documents.length > 0 && sessions.length < 5 && (
+                        <Link href="/learn/chat">
+                            <Card className="hover:bg-accent transition-colors cursor-pointer h-full">
+                                <CardContent className="flex items-center gap-4 p-6">
+                                    <div className="p-3 rounded-lg bg-primary/10">
+                                        <MessageSquare className="h-6 w-6 text-primary" />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-semibold">Fragen stellen</h3>
+                                        <p className="text-sm text-muted-foreground">
+                                            Chatte mit KI über dein Material
+                                        </p>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </Link>
+                    )}
+                </div>
+            )}
 
             {/* Learning progress dashboard */}
             {(progress.length > 0 || totalFlashcards > 0) && (
