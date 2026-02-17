@@ -21,13 +21,15 @@ import { RadioGroup, RadioGroupItem } from '@/src/components/ui/radio-group'
 import { getDailyPracticeItems } from '@/src/actions/session'
 import { reviewFlashcard } from '@/src/actions/flashcards'
 import { evaluateAnswer } from '@/src/actions/quiz'
+import { TTSButton } from '@/src/components/TTSButton'
+import { detectLanguageFromSubject } from '@/src/lib/language-utils'
 
 interface FlashcardData {
     id: string
     front: string
     back: string
     context?: string | null
-    document?: { id: string; title: string } | null
+    document?: { id: string; title: string; subject?: string | null } | null
 }
 
 interface QuizData {
@@ -94,7 +96,22 @@ export default function DailyPracticePage() {
     }, [])
 
     const currentItem = items[currentIndex]
-    const progressPercent = items.length > 0 ? ((currentIndex + (completed ? 1 : 0)) / items.length) * 100 : 0
+    const progressPercent = items.length > 0 ? ((currentIndex + 1) / items.length) * 100 : 0
+
+    // Detect language from flashcard subjects
+    const detectedLang = (() => {
+        const flashcardItem = items.find((item) => item.type === 'flashcard')
+        if (flashcardItem && 'document' in flashcardItem.data) {
+            const subject = (flashcardItem.data as FlashcardData).document?.subject
+            const ttsLang = detectLanguageFromSubject(subject)
+            // Map BCP-47 to simple language code
+            if (ttsLang.startsWith('es')) return 'es'
+            if (ttsLang.startsWith('en')) return 'en'
+            if (ttsLang.startsWith('fr')) return 'fr'
+            if (ttsLang.startsWith('it')) return 'it'
+        }
+        return 'de'
+    })()
 
     const resetState = useCallback(() => {
         setFlipped(false)
@@ -168,7 +185,7 @@ export default function DailyPracticePage() {
                 </div>
                 <div className="flex flex-col sm:flex-row justify-center gap-3">
                     <Button asChild>
-                        <Link href={`/learn/conversation?scenario=${suggestion.key}`}>
+                        <Link href={`/learn/conversation?scenario=${suggestion.key}&language=${detectedLang}`}>
                             <MessageSquare className="h-4 w-4" />
                             {suggestion.icon} {suggestion.label} üben
                         </Link>
@@ -209,7 +226,7 @@ export default function DailyPracticePage() {
                             Übe eine kurze Konversation, um dein Sprechen zu verbessern.
                         </p>
                         <Button asChild>
-                            <Link href={`/learn/conversation?scenario=${suggestion.key}`}>
+                            <Link href={`/learn/conversation?scenario=${suggestion.key}&language=${detectedLang}`}>
                                 {suggestion.icon} {suggestion.label}
                                 <Badge variant="secondary" className="ml-2 text-xs">{suggestion.level}</Badge>
                             </Link>
@@ -280,7 +297,13 @@ export default function DailyPracticePage() {
                         <div className={`relative transition-transform duration-500 [transform-style:preserve-3d] ${flipped ? '[transform:rotateY(180deg)]' : ''}`}>
                             <Card className="[backface-visibility:hidden] min-h-[180px]">
                                 <CardContent className="flex flex-col items-center justify-center min-h-[180px] p-8 text-center">
-                                    <p className="text-xl font-semibold">{(currentItem.data as FlashcardData).front}</p>
+                                    <div className="flex items-center gap-2">
+                                        <p className="text-xl font-semibold">{(currentItem.data as FlashcardData).front}</p>
+                                        <TTSButton
+                                            text={(currentItem.data as FlashcardData).front}
+                                            lang={detectLanguageFromSubject((currentItem.data as FlashcardData).document?.subject)}
+                                        />
+                                    </div>
                                     {!flipped && (
                                         <p className="text-sm text-muted-foreground mt-4">Klicken zum Umdrehen</p>
                                     )}
@@ -288,7 +311,14 @@ export default function DailyPracticePage() {
                             </Card>
                             <Card className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)] min-h-[180px]">
                                 <CardContent className="flex flex-col items-center justify-center min-h-[180px] p-8 text-center">
-                                    <p className="text-xs text-muted-foreground mb-2 italic">{(currentItem.data as FlashcardData).front}</p>
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <p className="text-xs text-muted-foreground italic">{(currentItem.data as FlashcardData).front}</p>
+                                        <TTSButton
+                                            text={(currentItem.data as FlashcardData).front}
+                                            lang={detectLanguageFromSubject((currentItem.data as FlashcardData).document?.subject)}
+                                            size="sm"
+                                        />
+                                    </div>
                                     <p className="text-lg">{(currentItem.data as FlashcardData).back}</p>
                                 </CardContent>
                             </Card>

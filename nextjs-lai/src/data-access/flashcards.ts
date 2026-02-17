@@ -29,7 +29,7 @@ export async function getFlashcards(documentId?: string) {
     return prisma.flashcard.findMany({
         where: documentId ? { documentId } : undefined,
         include: {
-            document: { select: { id: true, title: true } },
+            document: { select: { id: true, title: true, subject: true } },
             chunk: { select: { id: true, content: true, chunkIndex: true } },
             progress: true,
         },
@@ -58,7 +58,7 @@ export async function getDueFlashcards(limit: number = 20) {
             ],
         },
         include: {
-            document: { select: { id: true, title: true } },
+            document: { select: { id: true, title: true, subject: true } },
             chunk: { select: { id: true, content: true, chunkIndex: true } },
             progress: true,
         },

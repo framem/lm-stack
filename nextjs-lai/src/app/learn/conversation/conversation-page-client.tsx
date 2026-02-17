@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/src/components/ui/card'
 import { Badge } from '@/src/components/ui/badge'
 import { Button } from '@/src/components/ui/button'
@@ -62,9 +62,36 @@ function toConversationScenario(record: GeneratedScenarioRecord): ConversationSc
 
 export function ConversationPageClient({ bestEvaluations, generatedScenarios }: ConversationPageClientProps) {
     const router = useRouter()
+    const searchParams = useSearchParams()
     const [activeScenario, setActiveScenario] = useState<ConversationScenario | null>(null)
     const [selectedLanguage, setSelectedLanguage] = useState<Language>('de')
     const [showGenerator, setShowGenerator] = useState(false)
+
+    // Auto-select scenario and language from URL params
+    useEffect(() => {
+        const scenarioKey = searchParams.get('scenario')
+        const languageParam = searchParams.get('language') as Language | null
+
+        if (scenarioKey && languageParam) {
+            // Set language first
+            setSelectedLanguage(languageParam)
+
+            // Find the scenario in standard scenarios
+            const standardScenario = SCENARIOS.find((s) => s.key === scenarioKey)
+            if (standardScenario) {
+                setActiveScenario(standardScenario)
+                return
+            }
+
+            // Find in generated scenarios
+            const generatedScenario = generatedScenarios.find(
+                (s) => s.key === scenarioKey && s.language === languageParam
+            )
+            if (generatedScenario) {
+                setActiveScenario(toConversationScenario(generatedScenario))
+            }
+        }
+    }, [searchParams, generatedScenarios])
 
     if (activeScenario) {
         const translation = activeScenario.translations[selectedLanguage]
@@ -74,7 +101,10 @@ export function ConversationPageClient({ bestEvaluations, generatedScenarios }: 
                     <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => setActiveScenario(null)}
+                        onClick={() => {
+                            setActiveScenario(null)
+                            router.push('/learn/conversation')
+                        }}
                     >
                         <ArrowLeft className="h-4 w-4" />
                         Zurück
