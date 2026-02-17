@@ -4,7 +4,7 @@ export const esA1: LanguageSet = {
     id: 'es-a1',
     title: 'Spanisch A1 Grundwortschatz',
     subject: 'Spanisch',
-    description: 'Grundlegende spanische Vokabeln für Anfänger — Alltagswörter, Verben mit Konjugation und Beispielsätzen. Validiert gegen die Goethe-Zertifikat A1 Wortliste.',
+    description: 'Grundlegende spanische Vokabeln für Anfänger — Alltagswörter, Verben mit Konjugation und Beispielsätzen. Orientiert am Plan Curricular del Instituto Cervantes (PCIC) A1.',
     level: 'A1',
     categories: [
         // ── 1. Begrüßung & Höflichkeit ──

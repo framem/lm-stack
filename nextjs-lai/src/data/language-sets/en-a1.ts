@@ -4,7 +4,7 @@ export const enA1: LanguageSet = {
     id: 'en-a1',
     title: 'Englisch A1 Grundwortschatz',
     subject: 'Englisch',
-    description: 'Grundlegende englische Vokabeln für Anfänger — Alltagswörter, Verben mit Konjugation und Beispielsätzen. Validiert gegen die Goethe-Zertifikat A1 Wortliste.',
+    description: 'Grundlegende englische Vokabeln für Anfänger — Alltagswörter, Verben mit Konjugation und Beispielsätzen. Orientiert am Cambridge CEFR A1 (Pre-A1 Starters / Key).',
     level: 'A1',
     categories: [
         // ── 1. Begrüßung & Höflichkeit ──
