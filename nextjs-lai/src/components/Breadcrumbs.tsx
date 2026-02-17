@@ -5,40 +5,62 @@ import Link from 'next/link'
 import { ChevronRight } from 'lucide-react'
 import { useBreadcrumb } from '@/src/contexts/BreadcrumbContext'
 
+// Static titles for dynamic language-set segments (avoids importing full vocab data)
+const LANGUAGE_SET_TITLES: Record<string, string> = {
+    'es-a1': 'Spanisch A1 Grundwortschatz',
+    'en-a1': 'Englisch A1 Grundwortschatz',
+    'es-a2': 'Spanisch A2 Grundwortschatz',
+    'en-a2': 'Englisch A2 Grundwortschatz',
+}
+
 const ROUTE_LABELS: Record<string, string> = {
     '/learn': 'Dashboard',
-    '/learn/documents': 'Lernmaterial',
-    '/learn/chat': 'Chat',
-    '/learn/quiz': 'Quiz',
     '/learn/admin': 'Admin',
+    '/learn/chat': 'Chat',
+    '/learn/conversation': 'Konversation',
+    '/learn/daily': 'Tagesaufgabe',
+    '/learn/documents': 'Lernmaterial',
+    '/learn/flashcards': 'Karteikarten',
+    '/learn/flashcards/study': 'Lernen',
+    '/learn/knowledge-map': 'Wissenskarte',
+    '/learn/paths': 'Lernpfade',
+    '/learn/placement-test': 'Einstufungstest',
+    '/learn/plan': 'Lernplan',
+    '/learn/progress': 'Fortschritt',
+    '/learn/quiz': 'Quiz',
+    '/learn/quiz/review': 'Auswertung',
+    '/learn/session': 'Lern-Session',
+    '/learn/stats': 'Statistiken',
+    '/learn/subjects': 'Fächer',
+    '/learn/vocabulary': 'Vokabeltrainer',
+    '/learn/vocabulary/sets': 'Sets',
+    '/learn/vocabulary/study': 'Üben',
 }
 
 export function Breadcrumbs() {
     const pathname = usePathname()
     const { currentPageTitle } = useBreadcrumb()
 
-    // Build breadcrumb segments from pathname
+    const parts = pathname.split('/').filter(Boolean) // ['learn', 'vocabulary', 'sets', 'es-a1']
+    const isRootLearn = pathname === '/learn'
+
     const segments: { label: string; href: string }[] = []
 
-    if (pathname === '/learn') {
+    if (isRootLearn) {
         segments.push({ label: 'Dashboard', href: '/learn' })
     } else {
-        // Find the matching route label
-        const parts = pathname.split('/').filter(Boolean) // e.g. ['learn', 'documents', 'abc123']
+        // Walk path segments, skip dynamic (no label found) and skip /learn itself
         let currentPath = ''
         for (const part of parts) {
             currentPath += `/${part}`
-            const label = ROUTE_LABELS[currentPath]
+            if (currentPath === '/learn') continue // suppress "Dashboard" for sub-pages
+            const label = ROUTE_LABELS[currentPath] ?? LANGUAGE_SET_TITLES[part]
             if (label) {
                 segments.push({ label, href: currentPath })
             }
+            // Other dynamic segments (no label) are skipped;
+            // they appear via currentPageTitle if the page sets it
         }
-        // If we're on a detail page (e.g. /learn/documents/[id] or /learn/quiz/[id]),
-        // don't add the dynamic segment — the page title will show in the page itself
-    }
-
-    if (segments.length === 0) {
-        return <span className="text-sm text-muted-foreground">LAI</span>
     }
 
     return (
