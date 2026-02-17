@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Flame, Target, Trophy, Pencil, Check } from 'lucide-react'
+import { Flame, Target, Trophy, Pencil, Check, Zap } from 'lucide-react'
 import { Card, CardContent } from '@/src/components/ui/card'
 import { Progress } from '@/src/components/ui/progress'
 import { Button } from '@/src/components/ui/button'
@@ -13,6 +13,7 @@ interface StreakDisplayProps {
     longestStreak: number
     dailyGoal: number
     dailyProgress: number
+    totalXp?: number
 }
 
 export function StreakDisplay({
@@ -20,6 +21,7 @@ export function StreakDisplay({
     longestStreak,
     dailyGoal,
     dailyProgress,
+    totalXp = 0,
 }: StreakDisplayProps) {
     const [editing, setEditing] = useState(false)
     const [goalInput, setGoalInput] = useState(String(dailyGoal))
@@ -69,6 +71,17 @@ export function StreakDisplay({
                             )}
                         </div>
                     </div>
+
+                    {/* XP counter */}
+                    {totalXp > 0 && (
+                        <div className="flex items-center gap-2">
+                            <Zap className="h-5 w-5 text-yellow-500" />
+                            <div>
+                                <span className="text-lg font-bold">{totalXp.toLocaleString('de-DE')}</span>
+                                <span className="text-xs text-muted-foreground ml-1">XP</span>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Daily goal progress */}
                     <div className="flex-1 space-y-2">

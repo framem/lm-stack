@@ -8,7 +8,8 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/src
 import { Button } from '@/src/components/ui/button'
 import { Badge } from '@/src/components/ui/badge'
 import { Progress } from '@/src/components/ui/progress'
-import { CheckCircle2, XCircle, Layers, Loader2 } from 'lucide-react'
+import { CheckCircle2, XCircle, Layers, Loader2, Trophy } from 'lucide-react'
+import { Confetti } from '@/src/components/Confetti'
 import { createFlashcardFromQuestion } from '@/src/actions/flashcards'
 import { isFreetextLikeType } from '@/src/lib/quiz-types'
 
@@ -25,10 +26,23 @@ interface QuestionResult {
     explanation?: string
     sourceSnippet?: string
     questionType?: string
+    difficulty?: number
     freeTextAnswer?: string
     freeTextScore?: number
     freeTextFeedback?: string
     correctAnswer?: string
+}
+
+const DIFFICULTY_LABELS: Record<number, string> = {
+    1: 'Grundwissen',
+    2: 'Verständnis',
+    3: 'Transfer',
+}
+
+const DIFFICULTY_COLORS: Record<number, string> = {
+    1: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400',
+    2: 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400',
+    3: 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-400',
 }
 
 interface QuizResultsProps {
@@ -77,8 +91,12 @@ export function QuizResults({ quizTitle, documentTitle, results, onRetry, initia
     }, 0)
     const percentage = totalCount > 0 ? Math.round((totalScore / totalCount) * 100) : 0
 
+    const isGreatResult = percentage >= 80
+
     return (
         <div className="space-y-6">
+            <Confetti active={isGreatResult} />
+
             {/* Summary card */}
             <Card>
                 <CardHeader>
@@ -87,10 +105,20 @@ export function QuizResults({ quizTitle, documentTitle, results, onRetry, initia
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="text-center">
+                        {isGreatResult && (
+                            <div className="flex justify-center mb-2">
+                                <Trophy className="h-8 w-8 text-yellow-500" />
+                            </div>
+                        )}
                         <p className="text-4xl font-bold">{percentage}%</p>
                         <p className="text-muted-foreground">
                             {totalScore % 1 === 0 ? totalScore : totalScore.toFixed(1)} von {totalCount} Punkten erreicht
                         </p>
+                        {isGreatResult && (
+                            <p className="text-sm font-medium text-green-600 dark:text-green-400 mt-1">
+                                Hervorragend! Weiter so!
+                            </p>
+                        )}
                     </div>
                     <Progress value={percentage} className="h-3" />
                     {onRetry && (
@@ -127,6 +155,11 @@ export function QuizResults({ quizTitle, documentTitle, results, onRetry, initia
                                 {result.questionType && (
                                     <Badge variant="outline" className="text-xs font-normal text-muted-foreground">
                                         {TYPE_LABELS[result.questionType] ?? result.questionType}
+                                    </Badge>
+                                )}
+                                {result.difficulty && result.difficulty > 0 && (
+                                    <Badge className={`text-xs font-normal border-0 ${DIFFICULTY_COLORS[result.difficulty] ?? ''}`}>
+                                        {DIFFICULTY_LABELS[result.difficulty] ?? `Stufe ${result.difficulty}`}
                                     </Badge>
                                 )}
                             </div>

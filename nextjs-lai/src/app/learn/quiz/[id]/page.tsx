@@ -13,6 +13,7 @@ interface Question {
     options: string[] | null
     questionIndex: number
     questionType?: string
+    difficulty?: number
 }
 
 interface QuizData {

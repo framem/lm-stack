@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { FileText, Plus, Search, FolderOpen, Loader2 } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { FileText, Plus, Search, FolderOpen, Loader2, HelpCircle, Layers, CheckCircle2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { DocumentCard } from '@/src/components/DocumentCard'
 import { DocumentUploader } from '@/src/components/DocumentUploader'
@@ -41,11 +42,13 @@ interface DocumentSummary {
 }
 
 export default function DocumentsPage() {
+    const router = useRouter()
     const [documents, setDocuments] = useState<DocumentSummary[]>([])
     const [totalCount, setTotalCount] = useState(0)
     const [loading, setLoading] = useState(true)
     const [searching, setSearching] = useState(false)
     const [uploadOpen, setUploadOpen] = useState(false)
+    const [postUploadDocId, setPostUploadDocId] = useState<string | null>(null)
     const [search, setSearch] = useState('')
     const [subjects, setSubjects] = useState<string[]>([])
     const [activeSubject, setActiveSubject] = useState<string | null>(null)
@@ -128,12 +131,13 @@ export default function DocumentsPage() {
         }
     }
 
-    function handleUploadSuccess() {
+    function handleUploadSuccess(documentId: string) {
         setUploadOpen(false)
         setSearch('')
         setActiveSubject(null)
         fetchDocuments()
         fetchSubjects()
+        setPostUploadDocId(documentId)
     }
 
     if (loading) {
@@ -277,6 +281,61 @@ export default function DocumentsPage() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* Post-upload CTA */}
+            <Dialog open={!!postUploadDocId} onOpenChange={(open) => { if (!open) setPostUploadDocId(null) }}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-green-500/10">
+                            <CheckCircle2 className="h-6 w-6 text-green-500" />
+                        </div>
+                        <DialogTitle className="text-center">Dokument verarbeitet!</DialogTitle>
+                        <DialogDescription className="text-center">
+                            Dein Lernmaterial wurde erfolgreich verarbeitet. Was möchtest du als nächstes tun?
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-3 pt-2">
+                        <Button
+                            variant="default"
+                            className="w-full justify-start gap-3 h-auto py-3"
+                            onClick={() => {
+                                router.push(`/learn/quiz?generate=${postUploadDocId}`)
+                                setPostUploadDocId(null)
+                            }}
+                        >
+                            <HelpCircle className="h-5 w-5 shrink-0" />
+                            <div className="text-left">
+                                <div className="font-semibold">Quiz erstellen</div>
+                                <div className="text-xs opacity-80">Wissen mit automatisch generierten Fragen testen</div>
+                            </div>
+                        </Button>
+                        <Button
+                            variant="outline"
+                            className="w-full justify-start gap-3 h-auto py-3"
+                            onClick={() => {
+                                router.push(`/learn/flashcards?generate=${postUploadDocId}`)
+                                setPostUploadDocId(null)
+                            }}
+                        >
+                            <Layers className="h-5 w-5 shrink-0" />
+                            <div className="text-left">
+                                <div className="font-semibold">Karteikarten generieren</div>
+                                <div className="text-xs text-muted-foreground">Automatisch Karteikarten aus dem Dokument erstellen</div>
+                            </div>
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            className="w-full text-muted-foreground"
+                            onClick={() => {
+                                router.push(`/learn/documents/${postUploadDocId}`)
+                                setPostUploadDocId(null)
+                            }}
+                        >
+                            Dokument ansehen
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }

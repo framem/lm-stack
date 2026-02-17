@@ -1,0 +1,31 @@
+model StudyPlan {
+  id          String   @id @default(cuid())
+  userId      String?  @default("default")
+  title       String
+  examDate    DateTime
+  documentIds String[] @default([])
+  status      String   @default("active") // "active" | "completed" | "archived"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tasks StudyTask[]
+
+  @@index([userId])
+}
+
+model StudyTask {
+  id          String    @id @default(cuid())
+  planId      String
+  date        DateTime  @db.Date
+  topic       String
+  description String?
+  taskType    String    // "quiz" | "flashcards" | "review" | "read"
+  documentId  String?
+  status      String    @default("pending") // "pending" | "done" | "skipped"
+  completedAt DateTime?
+
+  plan StudyPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@index([planId])
+  @@index([date])
+}

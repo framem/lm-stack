@@ -12,6 +12,7 @@ import { getModel } from '@/src/lib/llm'
 import { generateText, Output } from 'ai'
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
+import { revalidateDocuments } from '@/src/lib/dashboard-cache'
 
 // List all documents with chunk counts
 export async function getDocuments() {
@@ -100,4 +101,5 @@ export async function deleteDocument(id: string) {
     await removeDocument(id)
     revalidatePath('/learn/documents')
     revalidatePath('/learn/quiz')
+    revalidateDocuments()
 }

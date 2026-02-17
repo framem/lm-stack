@@ -1,9 +1,11 @@
 model ChatSession {
   id         String   @id @default(cuid())
+  userId     String?  @default("default")
   title      String?
   documentId String?
   mode       String   @default("learning") // "learning" | "conversation"
   scenario   String?                       // scenario key (e.g. "restaurant")
+  language   String?                       // language for conversation evaluation (e.g. "de", "en", "es")
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
@@ -11,6 +13,7 @@ model ChatSession {
   messages ChatMessage[]
 
   @@index([documentId])
+  @@index([userId])
 }
 
 model ChatMessage {

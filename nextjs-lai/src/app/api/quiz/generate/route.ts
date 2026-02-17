@@ -22,7 +22,8 @@ import { generateVocabQuizQuestions, type VocabFlashcard } from '@/src/lib/vocab
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json()
-        const { documentId, documentIds: rawDocumentIds, questionCount = 5, questionTypes = ['singleChoice'] } = body
+        const { documentId, documentIds: rawDocumentIds, questionCount = 5, questionTypes = ['singleChoice'], difficulty = 1 } = body
+        const diffLevel = (Math.min(Math.max(Number(difficulty), 1), 3)) as 1 | 2 | 3
 
         // Support both single documentId and multiple documentIds
         const documentIds: string[] = rawDocumentIds && Array.isArray(rawDocumentIds) && rawDocumentIds.length > 0
@@ -122,52 +123,52 @@ export async function POST(request: NextRequest) {
                                     if (typeCount === 0) continue
 
                                     if (type === 'singleChoice') {
-                                        const qs = await generateSingleChoiceQuestions(contextText, typeCount)
+                                        const qs = await generateSingleChoiceQuestions(contextText, typeCount, diffLevel)
                                         for (const q of qs) {
-                                            allQuestions.push({ questionText: q.questionText, options: q.options, correctIndex: q.correctIndex, explanation: q.explanation, sourceSnippet: q.sourceSnippet, questionType: 'singleChoice' })
+                                            allQuestions.push({ questionText: q.questionText, options: q.options, correctIndex: q.correctIndex, explanation: q.explanation, sourceSnippet: q.sourceSnippet, questionType: 'singleChoice', difficulty: diffLevel })
                                             send({ type: 'progress', generated: allQuestions.length, total: count })
                                         }
                                     } else if (type === 'multipleChoice') {
-                                        const qs = await generateMultipleChoiceQuestions(contextText, typeCount)
+                                        const qs = await generateMultipleChoiceQuestions(contextText, typeCount, diffLevel)
                                         for (const q of qs) {
-                                            allQuestions.push({ questionText: q.questionText, options: q.options, correctIndex: null, correctIndices: q.correctIndices, explanation: q.explanation, sourceSnippet: q.sourceSnippet, questionType: 'multipleChoice' })
+                                            allQuestions.push({ questionText: q.questionText, options: q.options, correctIndex: null, correctIndices: q.correctIndices, explanation: q.explanation, sourceSnippet: q.sourceSnippet, questionType: 'multipleChoice', difficulty: diffLevel })
                                             send({ type: 'progress', generated: allQuestions.length, total: count })
                                         }
                                     } else if (type === 'freetext') {
-                                        const qs = await generateFreetextQuestions(contextText, typeCount)
+                                        const qs = await generateFreetextQuestions(contextText, typeCount, diffLevel)
                                         for (const q of qs) {
-                                            allQuestions.push({ questionText: q.questionText, options: null, correctIndex: null, correctAnswer: q.correctAnswer, explanation: q.explanation, sourceSnippet: q.sourceSnippet, questionType: 'freetext' })
+                                            allQuestions.push({ questionText: q.questionText, options: null, correctIndex: null, correctAnswer: q.correctAnswer, explanation: q.explanation, sourceSnippet: q.sourceSnippet, questionType: 'freetext', difficulty: diffLevel })
                                             send({ type: 'progress', generated: allQuestions.length, total: count })
                                         }
                                     } else if (type === 'truefalse') {
-                                        const qs = await generateTruefalseQuestions(contextText, typeCount)
+                                        const qs = await generateTruefalseQuestions(contextText, typeCount, diffLevel)
                                         for (const q of qs) {
-                                            allQuestions.push({ questionText: q.questionText, options: ['Wahr', 'Falsch'], correctIndex: q.correctAnswer === 'wahr' ? 0 : 1, correctAnswer: q.correctAnswer, explanation: q.explanation, sourceSnippet: q.sourceSnippet, questionType: 'truefalse' })
+                                            allQuestions.push({ questionText: q.questionText, options: ['Wahr', 'Falsch'], correctIndex: q.correctAnswer === 'wahr' ? 0 : 1, correctAnswer: q.correctAnswer, explanation: q.explanation, sourceSnippet: q.sourceSnippet, questionType: 'truefalse', difficulty: diffLevel })
                                             send({ type: 'progress', generated: allQuestions.length, total: count })
                                         }
                                     } else if (type === 'cloze') {
-                                        const qs = await generateClozeQuestions(contextText, typeCount)
+                                        const qs = await generateClozeQuestions(contextText, typeCount, diffLevel)
                                         for (const q of qs) {
-                                            allQuestions.push({ questionText: q.questionText, options: null, correctIndex: null, correctAnswer: q.correctAnswer, explanation: q.explanation, sourceSnippet: q.sourceSnippet, questionType: 'cloze' })
+                                            allQuestions.push({ questionText: q.questionText, options: null, correctIndex: null, correctAnswer: q.correctAnswer, explanation: q.explanation, sourceSnippet: q.sourceSnippet, questionType: 'cloze', difficulty: diffLevel })
                                             send({ type: 'progress', generated: allQuestions.length, total: count })
                                         }
                                     } else if (type === 'fillInBlanks') {
-                                        const qs = await generateFillInBlanksQuestions(contextText, typeCount)
+                                        const qs = await generateFillInBlanksQuestions(contextText, typeCount, diffLevel)
                                         for (const q of qs) {
-                                            allQuestions.push({ questionText: q.questionText, options: null, correctIndex: null, correctAnswer: JSON.stringify(q.correctAnswers), explanation: q.explanation, sourceSnippet: q.sourceSnippet, questionType: 'fillInBlanks' })
+                                            allQuestions.push({ questionText: q.questionText, options: null, correctIndex: null, correctAnswer: JSON.stringify(q.correctAnswers), explanation: q.explanation, sourceSnippet: q.sourceSnippet, questionType: 'fillInBlanks', difficulty: diffLevel })
                                             send({ type: 'progress', generated: allQuestions.length, total: count })
                                         }
                                     } else if (type === 'conjugation') {
-                                        const qs = await generateConjugationQuestions(contextText, typeCount)
+                                        const qs = await generateConjugationQuestions(contextText, typeCount, diffLevel)
                                         for (const q of qs) {
-                                            allQuestions.push({ questionText: `Konjugiere «${q.verb}» (= ${q.translation}) im ${q.tense}`, options: q.persons, correctIndex: null, correctAnswer: JSON.stringify(q.forms), explanation: q.explanation, sourceSnippet: q.sourceSnippet, questionType: 'conjugation' })
+                                            allQuestions.push({ questionText: `Konjugiere «${q.verb}» (= ${q.translation}) im ${q.tense}`, options: q.persons, correctIndex: null, correctAnswer: JSON.stringify(q.forms), explanation: q.explanation, sourceSnippet: q.sourceSnippet, questionType: 'conjugation', difficulty: diffLevel })
                                             send({ type: 'progress', generated: allQuestions.length, total: count })
                                         }
                                     } else if (type === 'sentenceOrder') {
-                                        const qs = await generateSentenceOrderQuestions(contextText, typeCount)
+                                        const qs = await generateSentenceOrderQuestions(contextText, typeCount, diffLevel)
                                         for (const q of qs) {
                                             const words = q.correctSentence.split(/\s+/)
-                                            allQuestions.push({ questionText: 'Bringe die Wörter in die richtige Reihenfolge:', options: shuffle(words), correctIndex: null, correctAnswer: q.correctSentence, explanation: q.explanation, sourceSnippet: q.sourceSnippet, questionType: 'sentenceOrder' })
+                                            allQuestions.push({ questionText: 'Bringe die Wörter in die richtige Reihenfolge:', options: shuffle(words), correctIndex: null, correctAnswer: q.correctSentence, explanation: q.explanation, sourceSnippet: q.sourceSnippet, questionType: 'sentenceOrder', difficulty: diffLevel })
                                             send({ type: 'progress', generated: allQuestions.length, total: count })
                                         }
                                     }
@@ -200,6 +201,7 @@ export async function POST(request: NextRequest) {
                         sourceSnippet: q.sourceSnippet,
                         questionIndex: i,
                         questionType: q.questionType,
+                        difficulty: q.difficulty ?? diffLevel,
                     }))
 
                     await addQuestions(quiz.id, questionsToSave)

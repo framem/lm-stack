@@ -1,5 +1,6 @@
 model Quiz {
   id         String   @id @default(cuid())
+  userId     String?  @default("default")
   title      String
   documentId String
   createdAt  DateTime @default(now())
@@ -8,6 +9,7 @@ model Quiz {
   questions QuizQuestion[]
 
   @@index([documentId])
+  @@index([userId])
 }
 
 model QuizQuestion {
@@ -23,6 +25,7 @@ model QuizQuestion {
   sourceSnippet String?
   questionIndex Int
   questionType  String  @default("singleChoice")
+  difficulty    Int     @default(1) // 1=Grundwissen, 2=Verständnis, 3=Transfer
 
   quiz        Quiz           @relation(fields: [quizId], references: [id], onDelete: Cascade)
   sourceChunk DocumentChunk? @relation(fields: [sourceChunkId], references: [id], onDelete: SetNull)

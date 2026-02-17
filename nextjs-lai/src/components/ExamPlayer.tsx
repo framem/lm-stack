@@ -40,6 +40,19 @@ interface Question {
     options: string[] | null
     questionIndex: number
     questionType?: string
+    difficulty?: number
+}
+
+const DIFFICULTY_LABELS: Record<number, string> = {
+    1: 'Grundwissen',
+    2: 'Verständnis',
+    3: 'Transfer',
+}
+
+const DIFFICULTY_COLORS: Record<number, string> = {
+    1: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400',
+    2: 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400',
+    3: 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-400',
 }
 
 interface ExamAnswer {
@@ -219,6 +232,11 @@ export function ExamPlayer({ quizId, quizTitle, questions, timeLimit, subject }:
                                         {question.questionType && (
                                             <Badge variant="secondary" className="text-xs">
                                                 {TYPE_LABELS[question.questionType] ?? question.questionType}
+                                            </Badge>
+                                        )}
+                                        {question.difficulty && question.difficulty > 0 && (
+                                            <Badge className={`text-xs font-normal border-0 ${DIFFICULTY_COLORS[question.difficulty] ?? ''}`}>
+                                                {DIFFICULTY_LABELS[question.difficulty] ?? `Stufe ${question.difficulty}`}
                                             </Badge>
                                         )}
                                         {ttsText && ttsLang && (

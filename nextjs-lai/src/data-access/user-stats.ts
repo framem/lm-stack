@@ -1,4 +1,5 @@
 import { prisma } from '@/src/lib/prisma'
+import { XP_VALUES } from '@/src/lib/badges'
 
 // Singleton pattern: get or create the single UserStats record
 // Returns dailyProgress as 0 if lastProgressDate is not today
@@ -17,7 +18,7 @@ export async function getOrCreateUserStats() {
 }
 
 // Record a learning activity (quiz answer or flashcard review)
-export async function recordActivity() {
+export async function recordActivity(xpGain: number = XP_VALUES.flashcardReview) {
     const stats = await getOrCreateUserStats()
     const now = new Date()
     const today = toDateString(now)
@@ -32,11 +33,13 @@ export async function recordActivity() {
     dailyProgress++
 
     let currentStreak = stats.currentStreak
+    let xpBonus = 0
     if (lastActivity === today) {
         // Same day — only increment progress
     } else if (lastActivity === toDateString(addDays(now, -1))) {
         // Yesterday — continue streak
         currentStreak++
+        xpBonus += XP_VALUES.streakDay
     } else {
         // Gap or first activity — start new streak
         currentStreak = 1
@@ -44,12 +47,18 @@ export async function recordActivity() {
 
     const longestStreak = Math.max(stats.longestStreak, currentStreak)
 
+    // Bonus XP for reaching daily goal
+    if (dailyProgress === stats.dailyGoal) {
+        xpBonus += XP_VALUES.dailyGoalReached
+    }
+
     return prisma.userStats.update({
         where: { id: stats.id },
         data: {
             currentStreak,
             longestStreak,
             dailyProgress,
+            totalXp: (stats.totalXp ?? 0) + xpGain + xpBonus,
             lastActivityDate: now,
             lastProgressDate: now,
         },

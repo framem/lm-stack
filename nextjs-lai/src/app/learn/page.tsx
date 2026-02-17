@@ -1,32 +1,44 @@
 export const dynamic = 'force-dynamic'
 
 import Link from 'next/link'
-import {ArrowRight, FileText, HelpCircle, Layers, MessageSquare, Sparkles, TrendingUp, Upload} from 'lucide-react'
+import {ArrowRight, BookOpen, CalendarDays, Check, FileText, HelpCircle, Layers, MessageSquare, RotateCcw, Sparkles, TrendingUp, Upload} from 'lucide-react'
 import {Card, CardContent, CardHeader, CardTitle} from '@/src/components/ui/card'
 import {Button} from '@/src/components/ui/button'
 import {formatDate} from '@/src/lib/utils'
-import {getDocuments} from '@/src/data-access/documents'
-import {getSessions} from '@/src/data-access/chat'
-import {getDocumentProgress, getDueReviewCount, getQuizzes} from '@/src/data-access/quiz'
-import {getDueFlashcardCount, getFlashcardCount, getFlashcardDocumentProgress} from '@/src/data-access/flashcards'
-import {getOrCreateUserStats} from '@/src/data-access/user-stats'
+import {
+    getCachedDocuments,
+    getCachedSessions,
+    getCachedQuizzes,
+    getCachedDocumentProgress,
+    getCachedFlashcardDocumentProgress,
+    getCachedDueReviewCount,
+    getCachedDueFlashcardCount,
+    getCachedFlashcardCount,
+    getCachedUserStats,
+    getCachedCefrProgress,
+    getCachedTodayTasks,
+} from '@/src/lib/dashboard-cache'
+import {Badge} from '@/src/components/ui/badge'
 import {LearningProgress} from '@/src/components/LearningProgress'
 import {TodayLearningWidget} from '@/src/components/TodayLearningWidget'
 import {StreakDisplay} from '@/src/components/StreakDisplay'
 import {OnboardingTrigger} from '@/src/components/OnboardingTrigger'
 import {NextStepWidget} from '@/src/components/NextStepWidget'
+import {CefrProgressRing} from '@/src/components/CefrProgressRing'
 
 export default async function DashboardPage() {
-    const [documents, sessions, quizzes, quizProgress, flashcardProgress, dueQuizReviews, dueFlashcardReviews, totalFlashcards, userStats] = await Promise.all([
-        getDocuments(),
-        getSessions(),
-        getQuizzes(),
-        getDocumentProgress(),
-        getFlashcardDocumentProgress(),
-        getDueReviewCount(),
-        getDueFlashcardCount(),
-        getFlashcardCount(),
-        getOrCreateUserStats(),
+    const [documents, sessions, quizzes, quizProgress, flashcardProgress, dueQuizReviews, dueFlashcardReviews, totalFlashcards, userStats, cefrProgress, todayTasks] = await Promise.all([
+        getCachedDocuments(),
+        getCachedSessions(),
+        getCachedQuizzes(),
+        getCachedDocumentProgress(),
+        getCachedFlashcardDocumentProgress(),
+        getCachedDueReviewCount(),
+        getCachedDueFlashcardCount(),
+        getCachedFlashcardCount(),
+        getCachedUserStats(),
+        getCachedCefrProgress(),
+        getCachedTodayTasks(),
     ])
 
     // Merge quiz and flashcard progress per document
@@ -164,6 +176,43 @@ export default async function DashboardPage() {
                 />
             )}
 
+            {/* Today's study plan tasks */}
+            {todayTasks.length > 0 && (
+                <Card>
+                    <CardContent className="p-4">
+                        <div className="flex items-center justify-between mb-3">
+                            <h3 className="text-sm font-semibold flex items-center gap-2">
+                                <CalendarDays className="h-4 w-4" />
+                                Heutiger Lernplan
+                            </h3>
+                            <Link href="/learn/plan">
+                                <button type="button" className="text-xs text-primary hover:underline">Zum Plan</button>
+                            </Link>
+                        </div>
+                        <div className="space-y-1.5">
+                            {todayTasks.map((task) => {
+                                const isDone = task.status === 'done'
+                                const Icon = task.taskType === 'quiz' ? HelpCircle
+                                    : task.taskType === 'flashcards' ? Layers
+                                    : task.taskType === 'review' ? RotateCcw
+                                    : BookOpen
+                                return (
+                                    <div key={task.id} className={`flex items-center gap-2.5 text-sm ${isDone ? 'opacity-50 line-through' : ''}`}>
+                                        {isDone ? <Check className="h-3.5 w-3.5 text-emerald-500 shrink-0" /> : <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+                                        <span className="truncate">{task.description ?? task.topic}</span>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* CEFR progress tracker */}
+            {!isNewUser && (
+                <CefrProgressRing progress={cefrProgress} />
+            )}
+
             {/* Next step recommendation */}
             {!isNewUser && progress.length > 0 && (
                 <NextStepWidget />
@@ -176,6 +225,7 @@ export default async function DashboardPage() {
                     longestStreak={userStats.longestStreak}
                     dailyGoal={userStats.dailyGoal}
                     dailyProgress={userStats.dailyProgress}
+                    totalXp={(userStats as { totalXp?: number }).totalXp ?? 0}
                 />
             )}
 

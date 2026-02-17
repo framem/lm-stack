@@ -6,6 +6,7 @@ import { createDocument, createChunks, saveChunkEmbeddingsBatch } from '@/src/da
 import { prisma } from '@/src/lib/prisma'
 import { generateAndSaveSummary } from '@/src/lib/summary'
 import { generateAndSaveToc } from '@/src/lib/toc-extraction'
+import { revalidateDocuments } from '@/src/lib/dashboard-cache'
 
 // POST /api/documents - Upload file or paste text, process pipeline with SSE progress
 export async function POST(request: NextRequest) {
@@ -151,6 +152,7 @@ export async function POST(request: NextRequest) {
                     // Fire-and-forget: generate summary and TOC in background
                     generateAndSaveSummary(doc.id).catch(console.error)
                     generateAndSaveToc(doc.id).catch(console.error)
+                    revalidateDocuments()
                 } catch (error) {
                     console.error('Pipeline error:', error)
                     const message = error instanceof Error ? error.message : 'Unbekannter Fehler'

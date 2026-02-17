@@ -1,5 +1,6 @@
 model Document {
   id              String   @id @default(cuid())
+  userId          String?  @default("default")
   title           String
   fileName        String?
   fileType        String
@@ -17,6 +18,8 @@ model Document {
   quizzes      Quiz[]
   flashcards   Flashcard[]
   topics       Topic[]
+
+  @@index([userId])
 }
 
 model DocumentChunk {

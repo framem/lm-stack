@@ -8,6 +8,7 @@ const evaluationSchema = z.object({
     grammar: z.number().min(1).max(10).describe('Grammar score 1-10'),
     vocabulary: z.number().min(1).max(10).describe('Vocabulary score 1-10'),
     communication: z.number().min(1).max(10).describe('Communication effectiveness score 1-10'),
+    overallScore: z.number().min(1).max(10).describe('Overall performance score 1-10'),
     overallFeedback: z.string().describe('Overall feedback in German, 2-4 sentences'),
     corrections: z.array(
         z.object({
@@ -15,7 +16,14 @@ const evaluationSchema = z.object({
             corrected: z.string().describe('Corrected version'),
             explanation: z.string().describe('Brief explanation of the error in German'),
         })
-    ).describe('Specific corrections for errors found'),
+    ).describe('Specific corrections for errors found (max 5)'),
+    newVocabulary: z.array(
+        z.object({
+            word: z.string().describe('New or noteworthy word/phrase used by the learner'),
+            translation: z.string().describe('German translation or explanation'),
+        })
+    ).describe('Noteworthy vocabulary the learner used or should learn (max 5)'),
+    tips: z.array(z.string()).describe('2-3 concrete tips for improvement in German'),
 })
 
 export type ConversationEvaluation = z.infer<typeof evaluationSchema>
@@ -24,9 +32,10 @@ export type ConversationEvaluation = z.infer<typeof evaluationSchema>
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json()
-        const { messages, scenario } = body as {
+        const { messages, scenario, language } = body as {
             messages: { role: string; content: string }[]
             scenario: string
+            language?: string
         }
 
         if (!messages || messages.length < 2) {
@@ -41,6 +50,9 @@ export async function POST(request: NextRequest) {
             return Response.json({ error: 'Unbekanntes Szenario.' }, { status: 400 })
         }
 
+        const lang = (language ?? 'de') as 'de' | 'en' | 'es'
+        const t = scenarioDef.translations[lang] ?? scenarioDef.translations.de
+
         const conversationText = messages
             .map((m) => `${m.role === 'user' ? 'Lernender' : 'KI-Partner'}: ${m.content}`)
             .join('\n\n')
@@ -48,18 +60,25 @@ export async function POST(request: NextRequest) {
         const { output } = await generateText({
             model: getModel(),
             output: Output.object({ schema: evaluationSchema }),
-            system: `Du bist ein erfahrener Deutschlehrer, der Konversationsübungen bewertet. Bewerte die Leistung des Lernenden fair und konstruktiv.
+            system: `Du bist ein erfahrener Sprachlehrer, der Konversationsübungen bewertet. Bewerte die Leistung des Lernenden fair und konstruktiv.
 
-Szenario: ${scenarioDef.title} (${scenarioDef.difficulty})
-Beschreibung: ${scenarioDef.description}
+Szenario: ${t.title} (${scenarioDef.difficulty})
+Beschreibung: ${t.description}
+Sprache: ${lang === 'de' ? 'Deutsch' : lang === 'en' ? 'Englisch' : 'Spanisch'}
 
 Bewertungskriterien:
-- Grammatik (1-10): Korrekte Satzstruktur, Konjugation, Kasus, Artikel
-- Wortschatz (1-10): Vielfalt und Angemessenheit der verwendeten Wörter
-- Kommunikation (1-10): Wie gut der Lernende sein Ziel erreicht hat, Natürlichkeit des Gesprächs
+- Grammatik (1-10): Korrekte Satzstruktur, Konjugation, Kasus/Genus, Artikel
+- Wortschatz (1-10): Vielfalt und Angemessenheit der verwendeten Wörter für das Niveau ${scenarioDef.difficulty}
+- Kommunikation (1-10): Wie gut der Lernende sein kommunikatives Ziel erreicht hat, Natürlichkeit
+- Gesamtnote (1-10): Gewichteter Durchschnitt aller Kriterien
 
-Gib konstruktives Feedback auf Deutsch. Sei ermutigend, aber ehrlich.
-Wenn Fehler vorhanden sind, zeige die wichtigsten Korrekturen (max. 5).`,
+Gib konstruktives Feedback auf Deutsch:
+1. overallFeedback: 2-4 Sätze Zusammenfassung
+2. corrections: Die wichtigsten Grammatik-/Wortwahlfehler mit Erklärung (max 5)
+3. newVocabulary: Bemerkenswerte Vokabeln, die der Lernende korrekt benutzt hat ODER die er lernen sollte (max 5)
+4. tips: 2-3 konkrete, umsetzbare Tipps zur Verbesserung
+
+Sei ermutigend, aber ehrlich. Passe die Erwartungen an das CEFR-Niveau an.`,
             prompt: `Bewerte die folgende Konversationsübung:\n\n${conversationText}`,
         })
 

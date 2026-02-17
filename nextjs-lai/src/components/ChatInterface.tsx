@@ -61,6 +61,8 @@ interface ChatInterfaceProps {
     scenario?: string
     scenarioTitle?: string
     scenarioDescription?: string
+    scenarioLanguage?: 'de' | 'en' | 'es'
+    scenarioSuggestions?: string[]
     onSessionCreated?: (sessionId: string, title: string) => void
 }
 
@@ -171,34 +173,59 @@ function EvaluationCard({ evaluation }: { evaluation: ConversationEvaluation }) 
         return 'text-red-600 dark:text-red-400'
     }
 
+    const scoreBarColor = (score: number) => {
+        if (score >= 8) return 'bg-green-500'
+        if (score >= 5) return 'bg-yellow-500'
+        return 'bg-red-500'
+    }
+
+    const overallScore = (evaluation as { overallScore?: number }).overallScore
+        ?? Math.round((evaluation.grammar + evaluation.vocabulary + evaluation.communication) / 3)
+
     return (
         <div className="rounded-lg border border-border bg-card p-4 space-y-4">
-            <div className="flex items-center gap-2 font-semibold">
-                <ClipboardCheck className="h-5 w-5 text-primary" />
-                <span>Bewertung</span>
+            {/* Header with overall score */}
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 font-semibold">
+                    <ClipboardCheck className="h-5 w-5 text-primary" />
+                    <span>Bewertung</span>
+                </div>
+                <div className={`text-2xl font-bold ${scoreColor(overallScore)}`}>
+                    {overallScore}/10
+                </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
+            {/* Score bars */}
+            <div className="space-y-2">
                 {[
                     { label: 'Grammatik', score: evaluation.grammar },
                     { label: 'Wortschatz', score: evaluation.vocabulary },
                     { label: 'Kommunikation', score: evaluation.communication },
                 ].map(({ label, score }) => (
-                    <div key={label} className="text-center">
-                        <div className={`text-2xl font-bold ${scoreColor(score)}`}>{score}/10</div>
-                        <div className="text-xs text-muted-foreground">{label}</div>
+                    <div key={label} className="space-y-0.5">
+                        <div className="flex items-center justify-between text-xs">
+                            <span className="text-muted-foreground">{label}</span>
+                            <span className={`font-semibold ${scoreColor(score)}`}>{score}/10</span>
+                        </div>
+                        <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                            <div
+                                className={`h-full rounded-full transition-all duration-500 ${scoreBarColor(score)}`}
+                                style={{ width: `${score * 10}%` }}
+                            />
+                        </div>
                     </div>
                 ))}
             </div>
 
             <p className="text-sm">{evaluation.overallFeedback}</p>
 
+            {/* Corrections */}
             {evaluation.corrections.length > 0 && (
                 <div className="space-y-2">
                     <p className="text-sm font-medium">Korrekturen:</p>
                     {evaluation.corrections.map((c, i) => (
                         <div key={i} className="rounded-md bg-muted p-2.5 text-sm space-y-1">
-                            <div className="flex items-start gap-2">
+                            <div className="flex items-start gap-2 flex-wrap">
                                 <span className="text-red-500 line-through">{c.original}</span>
                                 <span className="text-muted-foreground">→</span>
                                 <span className="text-green-600 dark:text-green-400 font-medium">{c.corrected}</span>
@@ -208,12 +235,48 @@ function EvaluationCard({ evaluation }: { evaluation: ConversationEvaluation }) 
                     ))}
                 </div>
             )}
+
+            {/* New vocabulary */}
+            {(evaluation as { newVocabulary?: { word: string; translation: string }[] }).newVocabulary &&
+             (evaluation as { newVocabulary: { word: string; translation: string }[] }).newVocabulary.length > 0 && (
+                <div className="space-y-2">
+                    <p className="text-sm font-medium">Vokabeln:</p>
+                    <div className="flex flex-wrap gap-2">
+                        {(evaluation as { newVocabulary: { word: string; translation: string }[] }).newVocabulary.map((v, i) => (
+                            <span
+                                key={i}
+                                className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs"
+                                title={v.translation}
+                            >
+                                <span className="font-medium">{v.word}</span>
+                                <span className="text-muted-foreground">— {v.translation}</span>
+                            </span>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Tips */}
+            {(evaluation as { tips?: string[] }).tips &&
+             (evaluation as { tips: string[] }).tips.length > 0 && (
+                <div className="space-y-1.5">
+                    <p className="text-sm font-medium">Tipps zur Verbesserung:</p>
+                    <ul className="space-y-1 text-sm text-muted-foreground">
+                        {(evaluation as { tips: string[] }).tips.map((tip, i) => (
+                            <li key={i} className="flex items-start gap-2">
+                                <span className="text-primary mt-0.5">•</span>
+                                <span>{tip}</span>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
         </div>
     )
 }
 
 // Full chat interface with message list, input, and source detail panel
-export function ChatInterface({ sessionId, documentId, mode = 'learning', scenario, scenarioTitle, scenarioDescription, onSessionCreated }: ChatInterfaceProps) {
+export function ChatInterface({ sessionId, documentId, mode = 'learning', scenario, scenarioTitle, scenarioDescription, scenarioLanguage, scenarioSuggestions, onSessionCreated }: ChatInterfaceProps) {
     const [activeSessionId, setActiveSessionId] = useState(sessionId)
     const [activeSource, setActiveSource] = useState<StoredSource | null>(null)
     const [loadingSession, setLoadingSession] = useState(!!sessionId)
@@ -243,7 +306,9 @@ export function ChatInterface({ sessionId, documentId, mode = 'learning', scenar
         'Erstelle mir eine Übersicht',
         'Was sind die Kernaussagen?',
     ]
-    const [suggestions, setSuggestions] = useState<string[]>(DEFAULT_SUGGESTIONS)
+    const [suggestions, setSuggestions] = useState<string[]>(
+        scenarioSuggestions || DEFAULT_SUGGESTIONS
+    )
 
     useEffect(() => {
         selectedDocumentIdsRef.current = selectedDocumentIds
@@ -420,7 +485,7 @@ export function ChatInterface({ sessionId, documentId, mode = 'learning', scenar
             const res = await fetch('/api/chat/conversation/evaluate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ messages: msgPayload, scenario }),
+                body: JSON.stringify({ messages: msgPayload, scenario, scenarioLanguage }),
             })
             if (!res.ok) throw new Error('Fehler')
             const data = await res.json()

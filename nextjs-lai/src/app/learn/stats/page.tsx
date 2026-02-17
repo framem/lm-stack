@@ -3,12 +3,15 @@ export const dynamic = 'force-dynamic'
 import { BarChart3 } from 'lucide-react'
 import { getDailyActivity, getKnowledgeTrend, getSubjectDistribution } from '@/src/data-access/stats'
 import { StatsCharts } from '@/src/components/StatsCharts'
+import { BadgeShowcase } from '@/src/components/BadgeShowcase'
+import { getEarnedBadges } from '@/src/data-access/badges'
 
 export default async function StatsPage() {
-    const [dailyActivity, knowledgeTrend, subjectDistribution] = await Promise.all([
+    const [dailyActivity, knowledgeTrend, subjectDistribution, earnedBadges] = await Promise.all([
         getDailyActivity(90),
         getKnowledgeTrend(12),
         getSubjectDistribution(),
+        getEarnedBadges(),
     ])
 
     const hasData = dailyActivity.length > 0 || knowledgeTrend.length > 0 || subjectDistribution.length > 0
@@ -24,6 +27,9 @@ export default async function StatsPage() {
                     Überblick über deinen Lernfortschritt und deine Aktivität
                 </p>
             </div>
+
+            {/* Badge showcase */}
+            <BadgeShowcase earnedBadges={earnedBadges} />
 
             {hasData ? (
                 <StatsCharts

@@ -20,12 +20,13 @@ Kontext:
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json()
-        const { messages, sessionId, documentIds, mode, scenario } = body as {
+        const { messages, sessionId, documentIds, mode, scenario, scenarioLanguage } = body as {
             messages: UIMessage[]
             sessionId?: string
             documentIds?: string[]
             mode?: string
             scenario?: string
+            scenarioLanguage?: 'de' | 'en' | 'es'
         }
 
         if (!messages || messages.length === 0) {
@@ -61,7 +62,8 @@ export async function POST(request: NextRequest) {
                     { status: 400, headers: { 'Content-Type': 'application/json' } }
                 )
             }
-            systemPrompt = scenarioDef.systemPrompt
+            const lang = scenarioLanguage || 'de'
+            systemPrompt = scenarioDef.translations[lang].systemPrompt
         } else {
             // Learning mode: RAG pipeline
             contexts = await retrieveContext(userQuery, {

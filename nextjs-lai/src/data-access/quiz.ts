@@ -1,6 +1,7 @@
 import { prisma } from '@/src/lib/prisma'
 import { sm2, quizQualityFromAnswer } from '@/src/lib/spaced-repetition'
 import { isFreetextLikeType } from '@/src/lib/quiz-types'
+import type { DifficultyLevel } from '@/src/lib/quiz-difficulty'
 
 // Types for quiz question creation
 interface CreateQuestionInput {
@@ -14,6 +15,7 @@ interface CreateQuestionInput {
     sourceSnippet?: string
     questionIndex: number
     questionType?: string
+    difficulty?: number
 }
 
 // Create a new quiz for a document
@@ -38,6 +40,7 @@ export async function addQuestions(quizId: string, questions: CreateQuestionInpu
             sourceSnippet: q.sourceSnippet,
             questionIndex: q.questionIndex,
             questionType: q.questionType ?? 'singleChoice',
+            difficulty: q.difficulty ?? 1,
         })),
     })
 }
@@ -275,6 +278,57 @@ export async function getQuizQuestionById(questionId: string) {
             quiz: { select: { documentId: true } },
         },
     })
+}
+
+// Compute recommended difficulty for documents based on past performance
+export async function getRecommendedDifficulty(documentIds: string[]): Promise<DifficultyLevel> {
+    if (documentIds.length === 0) return 1
+
+    const questions = await prisma.quizQuestion.findMany({
+        where: {
+            quiz: { documentId: { in: documentIds } },
+            attempts: { some: {} },
+        },
+        select: {
+            difficulty: true,
+            attempts: {
+                orderBy: { createdAt: 'desc' as const },
+                take: 1,
+                select: {
+                    isCorrect: true,
+                    freeTextScore: true,
+                },
+            },
+            questionType: true,
+        },
+    })
+
+    if (questions.length < 3) return 1
+
+    // Compute accuracy per difficulty level
+    const stats = new Map<number, { correct: number; total: number }>()
+    for (const q of questions) {
+        const a = q.attempts[0]
+        if (!a) continue
+        const d = q.difficulty
+        const entry = stats.get(d) ?? { correct: 0, total: 0 }
+        entry.total++
+        const score = isFreetextLikeType(q.questionType)
+            ? (a.freeTextScore ?? (a.isCorrect ? 1 : 0))
+            : (a.isCorrect ? 1 : 0)
+        entry.correct += score
+        stats.set(d, entry)
+    }
+
+    // Find highest difficulty where accuracy >= 80%, then recommend one level higher
+    let bestMastered = 0
+    for (const [level, { correct, total }] of stats) {
+        if (total >= 2 && (correct / total) >= 0.8) {
+            bestMastered = Math.max(bestMastered, level)
+        }
+    }
+
+    return Math.min(bestMastered + 1, 3) as DifficultyLevel
 }
 
 // Get results for a quiz (all attempts for its questions)

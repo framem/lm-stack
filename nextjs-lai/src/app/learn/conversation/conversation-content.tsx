@@ -1,20 +1,25 @@
 'use client'
 
 import { ChatInterface } from '@/src/components/ChatInterface'
-import type { ConversationScenario } from '@/src/lib/conversation-scenarios'
+import type { ConversationScenario, Language } from '@/src/lib/conversation-scenarios'
 
 interface ConversationContentProps {
     scenario: ConversationScenario
+    language: Language
 }
 
-export function ConversationContent({ scenario }: ConversationContentProps) {
+export function ConversationContent({ scenario, language }: ConversationContentProps) {
+    const translation = scenario.translations[language]
+
     return (
         <div className="flex-1 min-h-0">
             <ChatInterface
                 mode="conversation"
                 scenario={scenario.key}
-                scenarioTitle={scenario.title}
-                scenarioDescription={scenario.description}
+                scenarioTitle={translation.title}
+                scenarioDescription={translation.description}
+                scenarioLanguage={language}
+                scenarioSuggestions={translation.suggestions}
             />
         </div>
     )

@@ -1,6 +1,7 @@
 import { generateText, Output } from 'ai'
 import { z } from 'zod'
 import { getModel } from '@/src/lib/llm'
+import { DIFFICULTY_PROMPTS, type DifficultyLevel } from '@/src/lib/quiz-difficulty'
 
 // ── Output schemas per question type ──
 
@@ -91,6 +92,7 @@ export interface QuestionToSave {
     explanation: string
     sourceSnippet: string
     questionType: string
+    difficulty?: number
 }
 
 // Select representative chunks distributed evenly across the document,
@@ -135,12 +137,15 @@ export function distributeQuestions(total: number, types: string[]): Record<stri
 
 // ── LLM generation per question type ──
 
-export async function generateSingleChoiceQuestions(contextText: string, count: number) {
+export async function generateSingleChoiceQuestions(contextText: string, count: number, difficulty: DifficultyLevel = 1) {
+    const diffPrompt = DIFFICULTY_PROMPTS[difficulty]
     const { output } = await generateText({
         model: getModel(),
         system: 'Du erstellst Single-Choice-Quizfragen auf Deutsch basierend auf Lerntexten.',
         output: Output.array({ element: singleChoiceQuestionSchema }),
         prompt: `Erstelle genau ${count} Single-Choice-Fragen basierend auf dem folgenden Text.
+
+${diffPrompt}
 
 Anforderungen:
 - Jede Frage hat genau 4 Antwortmöglichkeiten
@@ -155,12 +160,15 @@ ${contextText}`,
     return output ?? []
 }
 
-export async function generateFreetextQuestions(contextText: string, count: number) {
+export async function generateFreetextQuestions(contextText: string, count: number, difficulty: DifficultyLevel = 1) {
+    const diffPrompt = DIFFICULTY_PROMPTS[difficulty]
     const { output } = await generateText({
         model: getModel(),
         system: 'Du erstellst Freitext-Quizfragen auf Deutsch basierend auf Lerntexten.',
         output: Output.array({ element: freetextQuestionSchema }),
         prompt: `Erstelle genau ${count} Freitext-Fragen basierend auf dem folgenden Text.
+
+${diffPrompt}
 
 Anforderungen:
 - Offene Fragen, die spezifisches Faktenwissen abfragen (keine Ja/Nein-Fragen)
@@ -174,12 +182,15 @@ ${contextText}`,
     return output ?? []
 }
 
-export async function generateMultipleChoiceQuestions(contextText: string, count: number) {
+export async function generateMultipleChoiceQuestions(contextText: string, count: number, difficulty: DifficultyLevel = 1) {
+    const diffPrompt = DIFFICULTY_PROMPTS[difficulty]
     const { output } = await generateText({
         model: getModel(),
         system: 'Du erstellst Multiple-Choice-Quizfragen (mehrere richtige Antworten) auf Deutsch basierend auf Lerntexten.',
         output: Output.array({ element: multipleChoiceQuestionSchema }),
         prompt: `Erstelle genau ${count} Multiple-Choice-Fragen mit mehreren richtigen Antworten basierend auf dem folgenden Text.
+
+${diffPrompt}
 
 Anforderungen:
 - Jede Frage hat 4-5 Antwortmöglichkeiten
@@ -194,12 +205,15 @@ ${contextText}`,
     return output ?? []
 }
 
-export async function generateTruefalseQuestions(contextText: string, count: number) {
+export async function generateTruefalseQuestions(contextText: string, count: number, difficulty: DifficultyLevel = 1) {
+    const diffPrompt = DIFFICULTY_PROMPTS[difficulty]
     const { output } = await generateText({
         model: getModel(),
         system: 'Du erstellst Wahr-oder-Falsch-Aussagen auf Deutsch basierend auf Lerntexten.',
         output: Output.array({ element: truefalseQuestionSchema }),
         prompt: `Erstelle genau ${count} Wahr-oder-Falsch-Aussagen basierend auf dem folgenden Text.
+
+${diffPrompt}
 
 Anforderungen:
 - Formuliere Aussagen (keine Fragen), die wahr oder falsch sind
@@ -213,12 +227,15 @@ ${contextText}`,
     return output ?? []
 }
 
-export async function generateClozeQuestions(contextText: string, count: number) {
+export async function generateClozeQuestions(contextText: string, count: number, difficulty: DifficultyLevel = 1) {
+    const diffPrompt = DIFFICULTY_PROMPTS[difficulty]
     const { output } = await generateText({
         model: getModel(),
         system: 'Du erstellst Lückentext-Aufgaben auf Deutsch basierend auf Lerntexten.',
         output: Output.array({ element: clozeQuestionSchema }),
         prompt: `Erstelle genau ${count} Lückentext-Aufgaben basierend auf dem folgenden Text.
+
+${diffPrompt}
 
 Anforderungen:
 - Wähle wichtige Sätze aus dem Text und ersetze genau EINEN Schlüsselbegriff durch {{blank}}
@@ -244,12 +261,15 @@ export function shuffle<T>(arr: T[]): T[] {
     return a
 }
 
-export async function generateFillInBlanksQuestions(contextText: string, count: number) {
+export async function generateFillInBlanksQuestions(contextText: string, count: number, difficulty: DifficultyLevel = 1) {
+    const diffPrompt = DIFFICULTY_PROMPTS[difficulty]
     const { output } = await generateText({
         model: getModel(),
         system: 'Du erstellst Lückentext-Aufgaben mit mehreren Lücken auf Deutsch basierend auf Lerntexten.',
         output: Output.array({ element: fillInBlanksQuestionSchema }),
         prompt: `Erstelle genau ${count} Lückentext-Aufgaben mit jeweils 2-3 Lücken basierend auf dem folgenden Text.
+
+${diffPrompt}
 
 Anforderungen:
 - Wähle wichtige Sätze aus dem Text und ersetze genau 2-3 Schlüsselbegriffe durch {{blank}}
@@ -265,12 +285,15 @@ ${contextText}`,
     return output ?? []
 }
 
-export async function generateConjugationQuestions(contextText: string, count: number) {
+export async function generateConjugationQuestions(contextText: string, count: number, difficulty: DifficultyLevel = 1) {
+    const diffPrompt = DIFFICULTY_PROMPTS[difficulty]
     const { output } = await generateText({
         model: getModel(),
         system: 'Du erstellst Konjugationsaufgaben basierend auf Lerntexten. Erkenne Verben im Text und erstelle Konjugationstabellen.',
         output: Output.array({ element: conjugationQuestionSchema }),
         prompt: `Erstelle genau ${count} Konjugationsaufgaben basierend auf dem folgenden Text.
+
+${diffPrompt}
 
 Anforderungen:
 - Identifiziere wichtige Verben im Text
@@ -288,12 +311,15 @@ ${contextText}`,
     return output ?? []
 }
 
-export async function generateSentenceOrderQuestions(contextText: string, count: number) {
+export async function generateSentenceOrderQuestions(contextText: string, count: number, difficulty: DifficultyLevel = 1) {
+    const diffPrompt = DIFFICULTY_PROMPTS[difficulty]
     const { output } = await generateText({
         model: getModel(),
         system: 'Du erstellst Satzordnungs-Aufgaben auf Deutsch basierend auf Lerntexten.',
         output: Output.array({ element: sentenceOrderQuestionSchema }),
         prompt: `Erstelle genau ${count} Satzordnungs-Aufgaben basierend auf dem folgenden Text.
+
+${diffPrompt}
 
 Anforderungen:
 - Wähle wichtige, aussagekräftige Sätze aus dem Text (5-10 Wörter ideal)

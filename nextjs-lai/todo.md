@@ -2,12 +2,152 @@
 
 > Ergebnis des Experten-Workshops (UX-Designer, Devil's Advocate, NextJS-Experte, Nutzer-Interview)
 > Datum: 2026-02-16
+> Update: 2026-02-17 — Agenten-Panel-Review (UX/UI-Designer, Devil's Advocate, NextJS-Experte, Platform-User)
 
 ## Strategische Ausrichtung
 
-**LAI bleibt ein dokumentenbasiertes Lerntool.** Der USP ist: Eigenes Material hochladen (Vorlesungsfolien, Lehrbuecher) und daraus personalisierte Uebungen generieren. Sprachlernen wird als Spezialfall unterstuetzt (Lehrbuch-PDF hochladen -> sprachspezifische Uebungstypen), NICHT als eigener Kurs-Modus (kein Duolingo-Klon).
+**LAI bleibt ein dokumentenbasiertes Lerntool.** Der USP ist: Eigenes Material hochladen (Vorlesungsfolien, Lehrbuecher) und daraus personalisierte Uebungen generieren. Sprachlernen wird als Spezialfall unterstuetzt — nicht als eigener Kurs-Modus (kein Duolingo-Klon), aber mit **Starter-Paketen** fuer Nutzer ohne eigenes Material.
 
-**Kern-Insight aus dem Workshop:** Die Plattform hat starke Einzeltools (Chat, Quiz, Karteikarten), aber es fehlt die intelligente Orchestrierung. Die Tools wissen nichts voneinander.
+**Kern-Insights:**
+- Die Plattform hat starke Einzeltools (Chat, Quiz, Karteikarten), aber es fehlt die intelligente Orchestrierung. Die Tools wissen nichts voneinander.
+- Fuer Sprach-Anfaenger ohne eigenes Material braucht es kuratierte Einstiegsinhalte (Starter-Pakete pro Sprache/Level), die die bestehende Infrastruktur nutzen.
+- Features NICHT streichen (Knowledge Map, Stats, 8 Fragetypen sind effizient implementiert), sondern priorisieren und besser verknuepfen.
+- Audio via Web Speech API ist ein Quick Win ohne neue Dependencies.
+
+---
+
+## Phase 0: UX & Onboarding (aus Review 2026-02-17)
+
+### Sprint 0 — Kritische UX-Verbesserungen
+
+#### ~~0.1 Onboarding personalisieren~~ ✅
+**Konsens: Alle 4 Experten — hoechste Prioritaet**
+- Aufwand: S-M (2-3 Tage)
+- Risiko: Niedrig
+
+**Problem:** Neuer Nutzer landet auf leerem Dashboard. Onboarding-Wizard laedt generisches Beispiel-Dokument ueber Lernmethoden — fuer Sprachlerner oder Fachstudierende irrelevant. Kein "Aha-Moment" in den ersten 30 Sekunden.
+
+**Loesung:**
+- Onboarding fragt: "Was lernst du?" (Fach/Sprache auswaehlen)
+- Starter-Pakete pro Sprache: Vorinstallierte A1-Vokabelsets (existieren bereits als `en-a1`, `es-a1`, `en-a2`, `es-a2` mit CEFR-Validierung) als ein-Klick-Import anbieten
+- Fuer Fachstudierende: Fachspezifische Beispiel-Dokumente statt generischem "Lernmethoden"-Text
+- Danach: Direkter CTA "Jetzt erstes Quiz starten" oder "Karteikarten lernen"
+
+---
+
+#### ~~0.2 Sidebar vereinfachen~~ ✅
+**Konsens: UX-Designer + Platform-User — hohe Prioritaet**
+- Aufwand: S (1-2 Tage)
+- Risiko: Niedrig
+
+**Problem:** 12 gleichwertige Menuepunkte in der Sidebar ueberfordern. Auf Mobile kaum nutzbar.
+
+**Loesung:**
+- Gruppierung in "Lernen" (Quiz, Karteikarten, Vokabeln, Konversation, Session) und "Verwalten" (Dokumente, Faecher, Statistiken)
+- Knowledge Map und Lernpfad unter "Fortschritt" zusammenfassen
+- Mobile: Breakpoint-Fixes (`sm:grid-cols-2 lg:grid-cols-4` statt `md:grid-cols-4`)
+- `text-xs` (10px) durch `text-sm` (14px) ersetzen fuer Touch-Elemente
+
+---
+
+#### ~~0.3 Post-Upload CTA~~ ✅
+- Aufwand: XS (0.5 Tage)
+- Risiko: Niedrig
+
+**Problem:** Nach Dokument-Upload landet der Nutzer auf der Dokument-Liste. Kein naechster Schritt vorgeschlagen.
+
+**Loesung:** Nach erfolgreichem Upload automatisch fragen: "Dokument verarbeitet! Moechtest du jetzt ein Quiz erstellen oder Karteikarten generieren?"
+
+---
+
+#### ~~0.4 CEFR-Fortschritts-Tracker (Sprachlernen)~~ ✅
+- Aufwand: M (2-3 Tage)
+- Risiko: Niedrig
+
+**Problem:** Kein uebergreifender CEFR-Tracker. Nutzer sieht nirgends "Du beherrschst 65% des A1-Wortschatzes".
+
+**Loesung:**
+- Neues Model `LearningGoal` (Zielsprache, CEFR-Level, Deadline)
+- Fortschritts-Berechnung basierend auf Vocab-Coverage (CEFR-Referenzdaten existieren: Goethe A1/A2/B1) + Quiz-Performance
+- CEFR-Fortschrittsring im Dashboard statt generischer Prozentbalken
+- Quellen: Goethe-Institut Wortlisten via DWDS API (bereits eingebaut in `src/data/cefr-reference/`)
+
+---
+
+#### ~~0.5 Daily Practice Flow~~ ✅
+- Aufwand: M (2-3 Tage)
+- Risiko: Niedrig
+
+**Problem:** Kein kuratiertes taegliches Lernformat. Nutzer muss selbst entscheiden, was er macht.
+
+**Loesung:**
+- Mini-Session: 2 faellige Vokabeln + 1 Quiz-Frage + 1 Konversations-Prompt
+- "Heute 5 Minuten lernen"-Button auf dem Dashboard
+- Nutzt bestehende SM-2-Daten fuer Priorisierung (faellige Wiederholungen zuerst)
+
+---
+
+#### ~~0.6 Erfolgs-Feedback und Mini-Gamification~~ ✅
+- Aufwand: S-M (1-2 Tage)
+- Risiko: Niedrig
+
+**Problem:** Richtige Quiz-Antwort zeigt nur gruenen Badge "Richtig". Kein Belohnungsgefuehl. Streak allein reicht nicht fuer Motivation.
+
+**Loesung:**
+- Confetti/Animation bei richtigem Quiz-Ergebnis
+- Meilenstein-Badges: "50 Vokabeln gelernt", "7-Tage-Streak", "Erstes A1-Quiz bestanden"
+- Optional: XP-System (jede Aktivitaet gibt Punkte, sichtbar in Sidebar)
+
+---
+
+#### ~~0.7 Konversations-Feedback~~ ✅
+- Aufwand: M (2-3 Tage)
+- Risiko: Mittel
+
+**Problem:** Nach Konversationsuebung kein strukturiertes Feedback. System-Prompt sagt sogar: "Korrigiere den Gast NICHT." Fuer Lernende kontraproduktiv.
+
+**Loesung:**
+- Nach jeder Session: Evaluation mit erkannten Grammatikfehlern, neuen Vokabeln, Score
+- Evaluation-API existiert (`/api/chat/conversation/evaluate`) — ausfuehrlicheres Feedback generieren
+- `language`-Feld auf `ChatSession` hinzufuegen fuer sprachspezifische Evaluation
+
+---
+
+### Sprint 0.5 — Technische Quick Wins (parallel)
+
+#### ~~pgvector HNSW-Index~~ ✅
+- Aufwand: XS (5 Minuten)
+- **Kritisch fuer Performance bei wachsenden Datenmengen**
+
+```sql
+CREATE INDEX ON "DocumentChunk" USING hnsw (embedding vector_cosine_ops) WITH (m = 16, ef_construction = 64);
+```
+
+#### ~~Dashboard Caching~~ ✅
+- Aufwand: S (1 Tag)
+- Dashboard-Seite fuehrt 9 parallele DB-Queries bei jedem Seitenaufruf aus
+- `next/cache` mit `revalidateTag` fuer Dashboard-Daten (Tags: `documents`, `quizzes`, `flashcards`)
+- `React.cache()` fuer Request-Deduplizierung
+
+#### ~~Error Boundaries pro Modul~~ ✅
+- Aufwand: XS (wenige Stunden)
+- `error.tsx` in `/learn/quiz/`, `/learn/chat/`, `/learn/flashcards/` etc.
+- Freundliche Fehlermeldung wenn LLM nicht erreichbar
+
+#### ~~Lazy Loading schwerer Komponenten~~ ✅
+- Aufwand: XS (wenige Stunden)
+- `next/dynamic` mit `ssr: false` fuer @xyflow/react (Knowledge Map)
+- Reduziert Initial-Bundle um ~50KB+ gzipped
+
+#### ~~Graceful Degradation ohne LLM~~ ✅
+- Aufwand: S (0.5 Tage)
+- Vocab-Quizze und Karteikarten-Review funktionieren ohne LLM (deterministische Generierung)
+- UI klar zeigen, welche Features verfuegbar sind wenn LLM-Server nicht laeuft
+
+#### ~~userId-Feld vorbereiten~~ ✅
+- Aufwand: XS (1 Stunde)
+- `userId String? @default("default")` auf Document, ChatSession, Quiz, Flashcard, UserStats
+- Ermoeglicht spaetere Auth-Integration ohne Schema-Migration
 
 ---
 
@@ -15,7 +155,7 @@
 
 ### Sprint 1 — Quick Wins (parallel umsetzbar)
 
-#### 1.1 Chat-Suche und Lesezeichen
+#### ~~1.1 Chat-Suche und Lesezeichen~~ ✅
 **Konsens: Hoechste Prioritaet aller Experten**
 - Aufwand: S (1-2 Tage)
 - Risiko: Niedrig
@@ -35,7 +175,7 @@
 
 ---
 
-#### 1.2 Pruefungsmodus mit Zeitlimit
+#### ~~1.2 Pruefungsmodus mit Zeitlimit~~ ✅
 **Konsens: Lisas Top 3, niedrigstes Risiko**
 - Aufwand: S-M (2-3 Tage)
 - Risiko: Niedrig
@@ -55,7 +195,7 @@
 
 ---
 
-#### 1.3 Vokabeltrainer mit Kontext und Konjugation (Bonus Quick Win)
+#### ~~1.3 Vokabeltrainer mit Kontext und Konjugation~~ ✅ (Bonus Quick Win)
 - Aufwand: S (0.5-1 Tag)
 - Risiko: Niedrig
 
@@ -72,7 +212,7 @@
 
 ---
 
-#### 1.4 TTS via Web Speech API (Bonus Quick Win)
+#### ~~1.4 TTS via Web Speech API~~ ✅ (Bonus Quick Win)
 - Aufwand: S (wenige Stunden)
 - Risiko: Niedrig
 
@@ -89,7 +229,7 @@
 
 ### Sprint 2 — Adaptive Quiz-Schwierigkeit
 
-#### 2.1 Adaptive Quiz-Schwierigkeit
+#### ~~2.1 Adaptive Quiz-Schwierigkeit~~ ✅
 **Konsens: Lisas #1, UX-Designer #1, alle Experten in Top 3**
 - Aufwand: M (1-2 Wochen)
 - Risiko: Mittel
@@ -115,7 +255,7 @@
 
 ### Sprint 3 — Neue Uebungstypen
 
-#### 3.1 Grammatikuebungen und erweiterte Fragetypen
+#### ~~3.1 Grammatikuebungen und erweiterte Fragetypen~~ ✅
 **Strategie-relevant: Kern der "Ergaenzungs"-Positionierung fuer Sprachlernen**
 - Aufwand: M-L (2-3 Wochen)
 - Risiko: Mittel
@@ -140,7 +280,7 @@
 
 ### Sprint 4 — Zeitbasierter Lernplan
 
-#### 4.1 Zeitbasierter Lernplan mit Pruefungstermin
+#### ~~4.1 Zeitbasierter Lernplan mit Pruefungstermin~~ ✅
 **Lisas wichtigstes Einzelfeature**
 - Aufwand: M-L (2-3 Wochen)
 - Risiko: Mittel
@@ -187,7 +327,7 @@
 - ~~Klickbare Navigation im Document-Viewer~~
 - ~~Grundlage fuer verbesserten Lernplan~~
 
-### 2.4 Einstufungstest (Sprachlernen)
+### ~~2.4 Einstufungstest (Sprachlernen)~~ ✅
 - Aufwand: M
 - Vorgefertigter Fragenpool pro CEFR-Level (seeded)
 - Adaptive Logik: Binaere Suche ueber Niveaus
@@ -202,17 +342,6 @@
 ---
 
 ## Phase 3: Plattform-Erweiterungen (langfristig)
-
-### 3.1 User-System und Authentifizierung
-- Aufwand: L
-- Grundlage fuer ALLE Multi-User-Features
-- `User`-Model, Auth (NextAuth/Lucia), Session-Management
-- Migration aller bestehenden Models um `userId`
-
-### 3.2 Content-Sharing / Lerngruppen
-- Aufwand: XL
-- **Voraussetzung:** User-System (3.1)
-- Gruppen, Berechtigungen, geteilte Quizze/Karteikarten
 
 ### 3.3 Interaktive Schritt-fuer-Schritt-Uebungen
 - Aufwand: L
@@ -230,12 +359,14 @@
 ## Sprint-Uebersicht
 
 ```
-Sprint 1 (Woche 1-2):     Chat-Suche | Pruefungsmodus | Vokabel-Kontext + TTS
-Sprint 2 (Woche 3-4):     Adaptive Quiz-Schwierigkeit
-Sprint 3 (Woche 5-7):     Neue Uebungstypen (Lueckentext, Konjugation, Satzordnung)
-Sprint 4 (Woche 8-10):    Zeitbasierter Lernplan
+Sprint 0 (Woche 0-1):     Onboarding | Sidebar | Post-Upload CTA | CEFR-Tracker | Daily Practice
+Sprint 0.5 (parallel):    HNSW-Index | Dashboard-Cache | Error Boundaries | Lazy Loading | userId
+Sprint 1 (Woche 2-3):     Chat-Suche | Pruefungsmodus | Vokabel-Kontext + TTS
+Sprint 2 (Woche 4-5):     Adaptive Quiz-Schwierigkeit
+Sprint 3 (Woche 6-8):     Neue Uebungstypen (Lueckentext, Konjugation, Satzordnung)
+Sprint 4 (Woche 9-11):    Zeitbasierter Lernplan
 --- Phase 1 abgeschlossen ---
-Phase 2 (Woche 11+):      ✅ KI-Konversation, ✅ Wissenslandkarte, ✅ Inhaltsverzeichnis...
+Phase 2 (Woche 12+):      ✅ KI-Konversation, ✅ Wissenslandkarte, ✅ Inhaltsverzeichnis...
 Phase 3 (spaeter):         User-System, Sharing, Schritt-fuer-Schritt, Visualisierungen
 ```
 
@@ -244,8 +375,12 @@ Phase 3 (spaeter):         User-System, Sharing, Schritt-fuer-Schritt, Visualisi
 | Entscheidung | Begruendung |
 |---|---|
 | Kein eigener Sprachlern-Modus | LAI ist dokumentenbasiert, Sprachlernen als Spezialfall. Nutzerin bestaetigt: "Ergaenzung, nicht Ersatz fuer Duolingo" |
+| Starter-Pakete statt Kurs-Engine | Kuratierte Einstiegsinhalte nutzen bestehende Infrastruktur. Kein Duolingo-Klon, aber kein leeres Dashboard fuer Anfaenger (Konsens aller 4 Experten, Review 2026-02-17) |
+| Features nicht streichen | Knowledge Map, Stats, 8 Fragetypen sind duenn und effizient implementiert (~200-500 Zeilen). Streichen spart kaum Aufwand, zerstoert aber Funktionalitaet (NextJS-Experte, Review 2026-02-17) |
 | Content-Sharing nicht in Phase 1 | Kein User-System vorhanden, XL-Aufwand, Nutzerin: "Nice-to-have, nicht existenziell" |
-| Web Speech API statt lokales TTS | Null Infrastruktur-Aufwand, sofort einsetzbar. Qualitaet akzeptabel fuer MVP |
+| Web Speech API statt lokales TTS | Null Infrastruktur-Aufwand, sofort einsetzbar. Qualitaet akzeptabel fuer MVP. STT (Spracheingabe) nicht priorisieren — zu unzuverlaessig fuer Anfaenger mit Akzent (Devil's Advocate, Review 2026-02-17) |
+| Auth spaeter, userId jetzt vorbereiten | Lern-Flow-Verbesserung hat direkten Impact auf Retention, Auth hat null Impact. Aber `userId @default("default")` jetzt setzen fuer spaetere Migration (Konsens aller 4 Experten, Review 2026-02-17) |
 | Einstufungstest mit Fragenpool statt LLM | Konsistenz und Zuverlaessigkeit wichtiger als Flexibilitaet |
 | Adaptive Schwierigkeit: 3 Stufen statt KI-Tutoring | Klar abgegrenzt, messbar, kein Over-Engineering |
 | Grammatikuebungen: 13B+ Model empfohlen | 7B-Models zu fehleranfaellig bei Sprach-Grammatik |
+| LernpfadGenerator durch Heuristik ersetzen | LLM-basierte Lernempfehlung mit 8B-Model unzuverlaessig. Einfache Heuristik (faellige Wiederholungen > schwache Dokumente > neue Dokumente) ist schneller und deterministisch (Devil's Advocate, Review 2026-02-17) |

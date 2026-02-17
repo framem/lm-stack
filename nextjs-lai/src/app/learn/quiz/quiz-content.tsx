@@ -35,7 +35,8 @@ import {
     AlertDialogTitle,
 } from '@/src/components/ui/alert-dialog'
 import { QuizCard } from '@/src/components/QuizCard'
-import { getQuizzes, deleteQuiz, getDocumentProgress } from '@/src/actions/quiz'
+import { getQuizzes, deleteQuiz, getDocumentProgress, getRecommendedQuizDifficulty } from '@/src/actions/quiz'
+import { DIFFICULTY_LEVELS } from '@/src/lib/quiz-difficulty'
 import { getDocuments, getSubjects } from '@/src/actions/documents'
 import { formatDate } from '@/src/lib/utils'
 import { isFreetextLikeType } from '@/src/lib/quiz-types'
@@ -123,6 +124,8 @@ export function QuizContent() {
     const [generatedCount, setGeneratedCount] = useState(0)
     const [questionCount, setQuestionCount] = useState(5)
     const [questionTypes, setQuestionTypes] = useState<string[]>(['singleChoice', 'multipleChoice', 'freetext', 'truefalse', 'cloze'])
+    const [difficulty, setDifficulty] = useState(1)
+    const [recommendedDifficulty, setRecommendedDifficulty] = useState<number | null>(null)
     const [examMode, setExamMode] = useState(false)
     const [examTimeLimit, setExamTimeLimit] = useState(30)
     const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
@@ -155,6 +158,18 @@ export function QuizContent() {
         load()
     }, [searchParams])
 
+    // Auto-recommend difficulty when selected documents change
+    useEffect(() => {
+        if (selectedDocIds.length === 0) {
+            setRecommendedDifficulty(null)
+            return
+        }
+        getRecommendedQuizDifficulty(selectedDocIds).then((rec) => {
+            setRecommendedDifficulty(rec)
+            setDifficulty(rec)
+        }).catch(() => {})
+    }, [selectedDocIds])
+
     function toggleQuestionType(type: string) {
         setQuestionTypes((prev) =>
             prev.includes(type)
@@ -175,6 +190,7 @@ export function QuizContent() {
                     documentIds: selectedDocIds,
                     questionCount,
                     questionTypes,
+                    difficulty,
                 }),
             })
 
@@ -477,6 +493,50 @@ export function QuizContent() {
                             <p className="text-xs text-muted-foreground">
                                 Pro ausgewähltem Fragetyp wird mindestens eine Frage erstellt. Die Fragen werden möglichst gleichmäßig auf alle Typen verteilt.
                             </p>
+                        </div>
+
+                        {/* Difficulty */}
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Schwierigkeitsstufe</label>
+                            <div className="space-y-1.5">
+                                {DIFFICULTY_LEVELS.map((level) => (
+                                    <label
+                                        key={level.value}
+                                        className={`flex items-center gap-3 p-2.5 rounded-md border cursor-pointer transition-colors ${
+                                            difficulty === level.value
+                                                ? 'border-primary bg-primary/5'
+                                                : 'border-transparent hover:bg-accent'
+                                        }`}
+                                    >
+                                        <input
+                                            type="radio"
+                                            name="difficulty"
+                                            value={level.value}
+                                            checked={difficulty === level.value}
+                                            onChange={() => setDifficulty(level.value)}
+                                            className="sr-only"
+                                        />
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${
+                                                difficulty === level.value
+                                                    ? 'bg-primary text-primary-foreground'
+                                                    : 'bg-muted text-muted-foreground'
+                                            }`}>
+                                                {level.value}
+                                            </span>
+                                            <div>
+                                                <span className="text-sm font-medium">
+                                                    {level.label}
+                                                    {recommendedDifficulty === level.value && (
+                                                        <span className="ml-1.5 text-xs text-emerald-600 dark:text-emerald-400">Empfohlen</span>
+                                                    )}
+                                                </span>
+                                                <p className="text-xs text-muted-foreground">{level.description}</p>
+                                            </div>
+                                        </div>
+                                    </label>
+                                ))}
+                            </div>
                         </div>
 
                         {/* Exam mode */}

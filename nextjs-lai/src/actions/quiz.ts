@@ -38,6 +38,10 @@ import { generateVocabQuizQuestions, type VocabFlashcard } from '@/src/lib/vocab
 import { getFlashcardsByDocument } from '@/src/data-access/flashcards'
 import { normalizedLevenshtein } from '@/src/lib/string-similarity'
 import { recordActivity } from '@/src/data-access/user-stats'
+import { XP_VALUES } from '@/src/lib/badges'
+import { revalidateQuizzes, revalidateUserStats } from '@/src/lib/dashboard-cache'
+import { getRecommendedDifficulty as dbGetRecommendedDifficulty } from '@/src/data-access/quiz'
+import type { DifficultyLevel } from '@/src/lib/quiz-difficulty'
 
 // ── List all quizzes ──
 
@@ -58,6 +62,7 @@ export async function getQuiz(id: string) {
         options: q.options,
         questionIndex: q.questionIndex,
         questionType: q.questionType,
+        difficulty: q.difficulty,
     }))
 
     return {
@@ -102,7 +107,8 @@ export async function getQuizzesByDocument(documentId: string) {
 export async function generateQuiz(
     documentId: string,
     questionCount: number = 5,
-    questionTypes: string[] = ['singleChoice']
+    questionTypes: string[] = ['singleChoice'],
+    difficulty: 1 | 2 | 3 = 1,
 ) {
     if (!documentId) {
         throw new Error('Lernmaterial-ID ist erforderlich.')
@@ -159,9 +165,9 @@ export async function generateQuiz(
 
         if (distribution['singleChoice']) {
             generationTasks.push(
-                generateSingleChoiceQuestions(contextText, distribution['singleChoice']).then((qs) => {
+                generateSingleChoiceQuestions(contextText, distribution['singleChoice'], difficulty).then((qs) => {
                     for (const q of qs) {
-                        allQuestions.push({ questionText: q.questionText, options: q.options, correctIndex: q.correctIndex, explanation: q.explanation, sourceSnippet: q.sourceSnippet, questionType: 'singleChoice' })
+                        allQuestions.push({ questionText: q.questionText, options: q.options, correctIndex: q.correctIndex, explanation: q.explanation, sourceSnippet: q.sourceSnippet, questionType: 'singleChoice', difficulty })
                     }
                 })
             )
@@ -169,9 +175,9 @@ export async function generateQuiz(
 
         if (distribution['multipleChoice']) {
             generationTasks.push(
-                generateMultipleChoiceQuestions(contextText, distribution['multipleChoice']).then((qs) => {
+                generateMultipleChoiceQuestions(contextText, distribution['multipleChoice'], difficulty).then((qs) => {
                     for (const q of qs) {
-                        allQuestions.push({ questionText: q.questionText, options: q.options, correctIndex: null, correctIndices: q.correctIndices, explanation: q.explanation, sourceSnippet: q.sourceSnippet, questionType: 'multipleChoice' })
+                        allQuestions.push({ questionText: q.questionText, options: q.options, correctIndex: null, correctIndices: q.correctIndices, explanation: q.explanation, sourceSnippet: q.sourceSnippet, questionType: 'multipleChoice', difficulty })
                     }
                 })
             )
@@ -179,9 +185,9 @@ export async function generateQuiz(
 
         if (distribution['freetext']) {
             generationTasks.push(
-                generateFreetextQuestions(contextText, distribution['freetext']).then((qs) => {
+                generateFreetextQuestions(contextText, distribution['freetext'], difficulty).then((qs) => {
                     for (const q of qs) {
-                        allQuestions.push({ questionText: q.questionText, options: null, correctIndex: null, correctAnswer: q.correctAnswer, explanation: q.explanation, sourceSnippet: q.sourceSnippet, questionType: 'freetext' })
+                        allQuestions.push({ questionText: q.questionText, options: null, correctIndex: null, correctAnswer: q.correctAnswer, explanation: q.explanation, sourceSnippet: q.sourceSnippet, questionType: 'freetext', difficulty })
                     }
                 })
             )
@@ -189,9 +195,9 @@ export async function generateQuiz(
 
         if (distribution['truefalse']) {
             generationTasks.push(
-                generateTruefalseQuestions(contextText, distribution['truefalse']).then((qs) => {
+                generateTruefalseQuestions(contextText, distribution['truefalse'], difficulty).then((qs) => {
                     for (const q of qs) {
-                        allQuestions.push({ questionText: q.questionText, options: ['Wahr', 'Falsch'], correctIndex: q.correctAnswer === 'wahr' ? 0 : 1, correctAnswer: q.correctAnswer, explanation: q.explanation, sourceSnippet: q.sourceSnippet, questionType: 'truefalse' })
+                        allQuestions.push({ questionText: q.questionText, options: ['Wahr', 'Falsch'], correctIndex: q.correctAnswer === 'wahr' ? 0 : 1, correctAnswer: q.correctAnswer, explanation: q.explanation, sourceSnippet: q.sourceSnippet, questionType: 'truefalse', difficulty })
                     }
                 })
             )
@@ -199,9 +205,9 @@ export async function generateQuiz(
 
         if (distribution['cloze']) {
             generationTasks.push(
-                generateClozeQuestions(contextText, distribution['cloze']).then((qs) => {
+                generateClozeQuestions(contextText, distribution['cloze'], difficulty).then((qs) => {
                     for (const q of qs) {
-                        allQuestions.push({ questionText: q.questionText, options: null, correctIndex: null, correctAnswer: q.correctAnswer, explanation: q.explanation, sourceSnippet: q.sourceSnippet, questionType: 'cloze' })
+                        allQuestions.push({ questionText: q.questionText, options: null, correctIndex: null, correctAnswer: q.correctAnswer, explanation: q.explanation, sourceSnippet: q.sourceSnippet, questionType: 'cloze', difficulty })
                     }
                 })
             )
@@ -209,9 +215,9 @@ export async function generateQuiz(
 
         if (distribution['fillInBlanks']) {
             generationTasks.push(
-                generateFillInBlanksQuestions(contextText, distribution['fillInBlanks']).then((qs) => {
+                generateFillInBlanksQuestions(contextText, distribution['fillInBlanks'], difficulty).then((qs) => {
                     for (const q of qs) {
-                        allQuestions.push({ questionText: q.questionText, options: null, correctIndex: null, correctAnswer: JSON.stringify(q.correctAnswers), explanation: q.explanation, sourceSnippet: q.sourceSnippet, questionType: 'fillInBlanks' })
+                        allQuestions.push({ questionText: q.questionText, options: null, correctIndex: null, correctAnswer: JSON.stringify(q.correctAnswers), explanation: q.explanation, sourceSnippet: q.sourceSnippet, questionType: 'fillInBlanks', difficulty })
                     }
                 })
             )
@@ -219,9 +225,9 @@ export async function generateQuiz(
 
         if (distribution['conjugation']) {
             generationTasks.push(
-                generateConjugationQuestions(contextText, distribution['conjugation']).then((qs) => {
+                generateConjugationQuestions(contextText, distribution['conjugation'], difficulty).then((qs) => {
                     for (const q of qs) {
-                        allQuestions.push({ questionText: `Konjugiere «${q.verb}» (= ${q.translation}) im ${q.tense}`, options: q.persons, correctIndex: null, correctAnswer: JSON.stringify(q.forms), explanation: q.explanation, sourceSnippet: q.sourceSnippet, questionType: 'conjugation' })
+                        allQuestions.push({ questionText: `Konjugiere «${q.verb}» (= ${q.translation}) im ${q.tense}`, options: q.persons, correctIndex: null, correctAnswer: JSON.stringify(q.forms), explanation: q.explanation, sourceSnippet: q.sourceSnippet, questionType: 'conjugation', difficulty })
                     }
                 })
             )
@@ -229,10 +235,10 @@ export async function generateQuiz(
 
         if (distribution['sentenceOrder']) {
             generationTasks.push(
-                generateSentenceOrderQuestions(contextText, distribution['sentenceOrder']).then((qs) => {
+                generateSentenceOrderQuestions(contextText, distribution['sentenceOrder'], difficulty).then((qs) => {
                     for (const q of qs) {
                         const words = q.correctSentence.split(/\s+/)
-                        allQuestions.push({ questionText: 'Bringe die Wörter in die richtige Reihenfolge:', options: shuffle(words), correctIndex: null, correctAnswer: q.correctSentence, explanation: q.explanation, sourceSnippet: q.sourceSnippet, questionType: 'sentenceOrder' })
+                        allQuestions.push({ questionText: 'Bringe die Wörter in die richtige Reihenfolge:', options: shuffle(words), correctIndex: null, correctAnswer: q.correctSentence, explanation: q.explanation, sourceSnippet: q.sourceSnippet, questionType: 'sentenceOrder', difficulty })
                     }
                 })
             )
@@ -260,6 +266,7 @@ export async function generateQuiz(
         sourceSnippet: q.sourceSnippet,
         questionIndex: i,
         questionType: q.questionType,
+        difficulty: q.difficulty ?? difficulty,
     }))
 
     await dbAddQuestions(quiz.id, questionsToSave)
@@ -699,10 +706,18 @@ export async function evaluateAnswer(
         evalResult = await evaluateSelection(question, selectedIndex!, sanitizedFreeText)
     }
 
-    // Track activity for streaks (fire-and-forget)
-    recordActivity().catch(console.error)
+    // Track activity for streaks with XP (fire-and-forget)
+    const xp = XP_VALUES.quizAnswer + (evalResult.isCorrect ? XP_VALUES.quizCorrect : 0)
+    recordActivity(xp).then(() => revalidateUserStats()).catch(console.error)
+    revalidateQuizzes()
 
     return evalResult
+}
+
+// ── Difficulty recommendation ──
+
+export async function getRecommendedQuizDifficulty(documentIds: string[]): Promise<DifficultyLevel> {
+    return dbGetRecommendedDifficulty(documentIds)
 }
 
 // ── Review queue actions ──

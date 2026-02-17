@@ -12,12 +12,25 @@ import {
   ShieldCheck,
 } from "lucide-react";
 
+import dynamic from "next/dynamic";
 import { Button } from "@/src/components/ui/button";
 import { Badge } from "@/src/components/ui/badge";
-import { LaiWorkflow } from "@/src/components/landing/LaiWorkflow";
 import { FeatureCard } from "@/src/components/landing/FeatureCard";
 import { UseCases } from "@/src/components/landing/UseCases";
 import { FAQ } from "@/src/components/landing/FAQ";
+
+// Lazy load LaiWorkflow — uses @xyflow/react (~50KB+ gzipped)
+const LaiWorkflow = dynamic(
+  () => import("@/src/components/landing/LaiWorkflow").then((m) => m.LaiWorkflow),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-full items-center justify-center text-muted-foreground">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    ),
+  },
+);
 
 const heroVariants = {
   hidden: {},

@@ -1,0 +1,12 @@
+model LearningGoal {
+  id          String    @id @default(cuid())
+  userId      String?   @default("default")
+  language    String    // "de", "en", "es"
+  targetLevel String    // "A1", "A2", "B1"
+  deadline    DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([userId, language])
+  @@index([userId])
+}

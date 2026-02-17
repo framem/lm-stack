@@ -7,7 +7,9 @@ import { usePathname, useSearchParams, useRouter } from 'next/navigation'
 import {
     BarChart3,
     Bookmark,
+    CalendarDays,
     ChevronRight,
+    Clock,
     Drama,
     Ellipsis,
     FileText,
@@ -67,18 +69,25 @@ interface SessionItem {
     title: string | null
 }
 
-// Main navigation items (without Chat and Fächer — handled separately)
-const navItems = [
-    { href: '/learn', label: 'Dashboard', icon: Home },
-    { href: '/learn/documents', label: 'Lernmaterial', icon: FileText },
+// Sidebar groups (without Chat and Fächer — handled separately)
+const learnItems = [
+    { href: '/learn/daily', label: 'Tagesübung', icon: Clock },
     { href: '/learn/quiz', label: 'Quiz', icon: HelpCircle },
     { href: '/learn/flashcards', label: 'Karteikarten', icon: Layers },
     { href: '/learn/vocabulary', label: 'Vokabeltrainer', icon: Languages },
     { href: '/learn/conversation', label: 'Konversation', icon: Drama },
-    { href: '/learn/knowledge-map', label: 'Wissenslandkarte', icon: Map },
     { href: '/learn/session', label: 'Lern-Session', icon: GraduationCap },
-    { href: '/learn/paths', label: 'Lernpfad', icon: Route },
+    { href: '/learn/plan', label: 'Lernplan', icon: CalendarDays },
+]
+
+const manageItems = [
+    { href: '/learn/documents', label: 'Lernmaterial', icon: FileText },
     { href: '/learn/stats', label: 'Statistiken', icon: BarChart3 },
+]
+
+const progressItems = [
+    { href: '/learn/knowledge-map', label: 'Wissenslandkarte', icon: Map },
+    { href: '/learn/paths', label: 'Lernpfad', icon: Route },
 ]
 
 interface SubjectItem {
@@ -202,15 +211,59 @@ export function AppSidebar() {
             </SidebarHeader>
 
             <SidebarContent>
-                {/* Main navigation */}
+                {/* Dashboard */}
                 <SidebarGroup>
-                    <SidebarGroupLabel>Navigation</SidebarGroupLabel>
                     <SidebarGroupContent>
                         <SidebarMenu>
-                            {navItems.map((item) => {
-                                const isActive =
-                                    pathname === item.href ||
-                                    (item.href !== '/learn' && pathname.startsWith(item.href))
+                            <SidebarMenuItem>
+                                <SidebarMenuButton
+                                    asChild
+                                    isActive={pathname === '/learn'}
+                                    tooltip="Dashboard"
+                                >
+                                    <Link href="/learn">
+                                        <Home />
+                                        <span>Dashboard</span>
+                                    </Link>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                        </SidebarMenu>
+                    </SidebarGroupContent>
+                </SidebarGroup>
+
+                {/* Lernen */}
+                <SidebarGroup>
+                    <SidebarGroupLabel>Lernen</SidebarGroupLabel>
+                    <SidebarGroupContent>
+                        <SidebarMenu>
+                            {learnItems.map((item) => {
+                                const isActive = pathname === item.href || pathname.startsWith(item.href)
+                                return (
+                                    <SidebarMenuItem key={item.href}>
+                                        <SidebarMenuButton
+                                            asChild
+                                            isActive={isActive}
+                                            tooltip={item.label}
+                                        >
+                                            <Link href={item.href}>
+                                                <item.icon />
+                                                <span>{item.label}</span>
+                                            </Link>
+                                        </SidebarMenuButton>
+                                    </SidebarMenuItem>
+                                )
+                            })}
+                        </SidebarMenu>
+                    </SidebarGroupContent>
+                </SidebarGroup>
+
+                {/* Verwalten */}
+                <SidebarGroup>
+                    <SidebarGroupLabel>Verwalten</SidebarGroupLabel>
+                    <SidebarGroupContent>
+                        <SidebarMenu>
+                            {manageItems.map((item) => {
+                                const isActive = pathname === item.href || pathname.startsWith(item.href)
                                 return (
                                     <SidebarMenuItem key={item.href}>
                                         <SidebarMenuButton
@@ -478,6 +531,32 @@ export function AppSidebar() {
                                     </CollapsibleContent>
                                 </SidebarMenuItem>
                             </Collapsible>
+                        </SidebarMenu>
+                    </SidebarGroupContent>
+                </SidebarGroup>
+
+                {/* Fortschritt */}
+                <SidebarGroup>
+                    <SidebarGroupLabel>Fortschritt</SidebarGroupLabel>
+                    <SidebarGroupContent>
+                        <SidebarMenu>
+                            {progressItems.map((item) => {
+                                const isActive = pathname === item.href || pathname.startsWith(item.href)
+                                return (
+                                    <SidebarMenuItem key={item.href}>
+                                        <SidebarMenuButton
+                                            asChild
+                                            isActive={isActive}
+                                            tooltip={item.label}
+                                        >
+                                            <Link href={item.href}>
+                                                <item.icon />
+                                                <span>{item.label}</span>
+                                            </Link>
+                                        </SidebarMenuButton>
+                                    </SidebarMenuItem>
+                                )
+                            })}
                         </SidebarMenu>
                     </SidebarGroupContent>
                 </SidebarGroup>

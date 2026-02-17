@@ -23,6 +23,7 @@ import {
     getDueVocabularyCount as dbGetDueVocabularyCount,
 } from '@/src/data-access/flashcards'
 import { revalidatePath } from 'next/cache'
+import { revalidateFlashcards, revalidateUserStats } from '@/src/lib/dashboard-cache'
 import { recordActivity } from '@/src/data-access/user-stats'
 
 // ── List flashcards ──
@@ -177,6 +178,7 @@ ${contextText}`
         await dbCreateFlashcards(dataToSave)
         revalidatePath('/learn/flashcards')
         revalidatePath('/learn/vocabulary')
+        revalidateFlashcards()
         return { count: dataToSave.length }
     }
 
@@ -205,6 +207,7 @@ ${contextText}`
 
     await dbCreateFlashcards(dataToSave)
     revalidatePath('/learn/flashcards')
+    revalidateFlashcards()
 
     return { count: dataToSave.length }
 }
@@ -217,9 +220,10 @@ export async function reviewFlashcard(flashcardId: string, quality: number) {
 
     await dbUpsertFlashcardProgress(flashcardId, quality)
     revalidatePath('/learn/flashcards')
+    revalidateFlashcards()
 
     // Track activity for streaks (fire-and-forget)
-    recordActivity().catch(console.error)
+    recordActivity().then(() => revalidateUserStats()).catch(console.error)
 }
 
 // ── Create flashcard from a quiz question ──

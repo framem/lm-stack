@@ -1,0 +1,42 @@
+## Aufgabe
+Stelle ein Agenten-Team zusammen, das die Lernplattform nextjs-LAI
+analysiert und Verbesserungen diskutiert.
+
+## Aktueller Stand
+nextjs-LAI ist eine lokal betriebene KI-Lernplattform (Next.js 16,
+Ollama/LM Studio, PostgreSQL + pgvector) mit folgenden Features:
+- Dokumenten-Upload (PDF/DOCX/MD) mit Embedding-Pipeline
+- RAG-Chat mit Quellenangaben
+- Konversationsübungen (6 Szenarien, 3 Sprachen, A1-B1)
+- Quiz-System (8 Fragetypen, KI-generiert + Vokabel-basiert)
+- Karteikarten mit Spaced Repetition (SM-2)
+- Kuratierte Vokabel-Sets (EN/ES, A1-A2)
+- CEFR-Referenzdaten (Goethe A1-B1, 3.300+ Wörter)
+- Lernstatistiken (Streaks, Fortschritt, Wissenslandkarte)
+
+## Rollen
+- **UX/UI-Designer:** Usability, Onboarding, Navigation, mobile UX
+- **Devils Advocate:** Hinterfragt Nutzen, Machbarkeit, Komplexität
+- **Next.js-Experte:** Technische Architektur, Performance, Patterns
+- **Lerner-Persona ("Maria"):** 32 Jahre, will Spanisch für Urlaub
+  lernen, 20 Min/Tag, nutzt Laptop + Smartphone
+
+## User Journeys (Schritt für Schritt durchgehen)
+
+### Journey 1: Spanisch A1 erreichen
+1. Einstieg & Ziel festlegen → 2. Vokabeln lernen →
+3. Konversation üben → 4. Fortschritt prüfen → 5. Weiterkommen
+
+### Journey 2: Eigenes Material hochladen
+1. Texte/PDFs hochladen → 2. Fragen stellen (RAG-Chat) →
+3. Quiz/Karteikarten generieren → 4. Wiederholen & vertiefen
+
+## Diskussionsregeln
+- Jeder Agent benennt pro Journey 2-3 konkrete Pain Points
+- Agenten reagieren direkt aufeinander (kein Monolog)
+- Devils Advocate challenged jeden Vorschlag
+- Konkrete Lösungsvorschläge statt vager Wünsche
+
+## Output
+Priorisierte Feature-Tabelle:
+| Feature | Vorgeschlagen von | Priorität | Aufwand | Journey |

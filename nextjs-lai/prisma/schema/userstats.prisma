@@ -1,11 +1,15 @@
 model UserStats {
   id               String    @id @default(cuid())
+  userId           String?   @default("default")
   currentStreak    Int       @default(0)
   longestStreak    Int       @default(0)
   lastActivityDate DateTime?
   dailyGoal        Int       @default(10)
   dailyProgress    Int       @default(0)
+  totalXp          Int       @default(0)
   lastProgressDate DateTime?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
+
+  @@index([userId])
 }

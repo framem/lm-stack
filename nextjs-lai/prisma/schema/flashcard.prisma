@@ -1,5 +1,6 @@
 model Flashcard {
   id               String   @id @default(cuid())
+  userId           String?  @default("default")
   documentId       String
   front            String
   back             String
@@ -16,6 +17,8 @@ model Flashcard {
   chunk          DocumentChunk? @relation(fields: [chunkId], references: [id])
   sourceQuestion QuizQuestion?  @relation(fields: [sourceQuestionId], references: [id], onDelete: SetNull)
   progress       FlashcardProgress?
+
+  @@index([userId])
 }
 
 model FlashcardProgress {

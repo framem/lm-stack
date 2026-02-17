@@ -1,11 +1,17 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import dynamic from 'next/dynamic'
 import { Map } from 'lucide-react'
-import { KnowledgeMapChart } from '@/src/components/KnowledgeMapChart'
 import { Skeleton } from '@/src/components/ui/skeleton'
 import type { TopicCompetency } from '@/src/data-access/topics'
 import { getCompetencies, getDocumentList } from './actions'
+
+// Lazy load chart component — uses recharts
+const KnowledgeMapChart = dynamic(
+    () => import('@/src/components/KnowledgeMapChart').then((m) => m.KnowledgeMapChart),
+    { ssr: false, loading: () => <Skeleton className="h-[400px] w-full" /> },
+)
 
 export default function KnowledgeMapPage() {
     const [competencies, setCompetencies] = useState<TopicCompetency[]>([])

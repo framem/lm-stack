@@ -21,16 +21,29 @@ import {
     Loader2,
     ArrowRight,
     XCircle,
+    Languages,
+    BookOpen,
+    GraduationCap,
 } from 'lucide-react'
 import { generateQuiz, evaluateAnswer } from '@/src/actions/quiz'
+import { setLearningGoal } from '@/src/actions/learning-goal'
 
 const STORAGE_KEY_COMPLETED = 'lai_onboarding_completed'
 const STORAGE_KEY_STEP = 'lai_onboarding_step'
 const STORAGE_KEY_DOC_ID = 'lai_onboarding_doc_id'
+const STORAGE_KEY_CHOICE = 'lai_onboarding_choice'
+
+type LearningChoice = 'en' | 'es' | 'subject' | null
+
+// Starter packages mapped to language-set IDs
+const LANGUAGE_STARTERS: Record<string, { label: string; flag: string; setId: string }> = {
+    en: { label: 'Englisch', flag: '🇬🇧', setId: 'en-a1' },
+    es: { label: 'Spanisch', flag: '🇪🇸', setId: 'es-a1' },
+}
 
 const STEPS = [
-    { label: 'Willkommen', icon: Sparkles },
-    { label: 'Lernmaterial', icon: Upload },
+    { label: 'Was lernst du?', icon: Sparkles },
+    { label: 'Starter-Paket', icon: Upload },
     { label: 'Quiz testen', icon: HelpCircle },
     { label: 'Fertig', icon: CheckCircle2 },
 ]
@@ -57,6 +70,10 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
     })
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const [choice, setChoice] = useState<LearningChoice>(() => {
+        if (typeof window === 'undefined') return null
+        return (localStorage.getItem(STORAGE_KEY_CHOICE) as LearningChoice) || null
+    })
     const [documentId, setDocumentId] = useState<string | null>(() => {
         if (typeof window === 'undefined') return null
         return localStorage.getItem(STORAGE_KEY_DOC_ID)
@@ -70,15 +87,20 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
     const [quizScore, setQuizScore] = useState(0)
     const [quizDone, setQuizDone] = useState(false)
 
-    // Persist step
+    // Persist step and choice
     useEffect(() => {
         localStorage.setItem(STORAGE_KEY_STEP, String(step))
     }, [step])
+
+    useEffect(() => {
+        if (choice) localStorage.setItem(STORAGE_KEY_CHOICE, choice)
+    }, [choice])
 
     const markComplete = useCallback(() => {
         localStorage.setItem(STORAGE_KEY_COMPLETED, 'true')
         localStorage.removeItem(STORAGE_KEY_STEP)
         localStorage.removeItem(STORAGE_KEY_DOC_ID)
+        localStorage.removeItem(STORAGE_KEY_CHOICE)
         setOpen(false)
         onComplete()
         router.refresh()
@@ -88,7 +110,56 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
         markComplete()
     }
 
-    // Step 2: Upload seed document
+    function handleChoiceSelect(c: LearningChoice) {
+        setChoice(c)
+    }
+
+    function handleContinueToStep1() {
+        if (!choice) return
+        setStep(1)
+    }
+
+    // Step 1: Import language starter package
+    async function handleImportLanguage() {
+        if (!choice || choice === 'subject') return
+        setLoading(true)
+        setError(null)
+        try {
+            const starter = LANGUAGE_STARTERS[choice]
+            const res = await fetch('/api/admin/languages', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ setId: starter.setId }),
+            })
+            const data = await res.json()
+            if (!res.ok) {
+                if (res.status === 409) {
+                    // Already imported — use existing document
+                    const listRes = await fetch('/api/admin/languages')
+                    const listData = await listRes.json()
+                    const existing = listData.sets?.find((s: { id: string; imported: boolean; documentId: string | null }) => s.id === starter.setId && s.imported)
+                    if (existing?.documentId) {
+                        setDocumentId(existing.documentId)
+                        localStorage.setItem(STORAGE_KEY_DOC_ID, existing.documentId)
+                        setStep(2)
+                        return
+                    }
+                }
+                throw new Error(data.error || 'Import fehlgeschlagen.')
+            }
+            setDocumentId(data.documentId)
+            localStorage.setItem(STORAGE_KEY_DOC_ID, data.documentId)
+            // Auto-create a CEFR learning goal for this language
+            await setLearningGoal({ language: choice!, targetLevel: 'A1' })
+            setStep(2)
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Fehler beim Importieren.')
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    // Step 1: Upload seed document (for subject learners)
     async function handleUploadSeed() {
         setLoading(true)
         setError(null)
@@ -147,14 +218,13 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
         }
     }
 
-    // Step 3: Generate mini quiz
+    // Step 2: Generate mini quiz
     async function handleGenerateQuiz() {
         if (!documentId) return
         setLoading(true)
         setError(null)
         try {
             const { quizId } = await generateQuiz(documentId, 3, ['singleChoice'])
-            // Fetch quiz questions
             const { getQuiz } = await import('@/src/actions/quiz')
             const quiz = await getQuiz(quizId)
             if (!quiz) throw new Error('Quiz konnte nicht geladen werden.')
@@ -197,6 +267,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
     }
 
     const progressPercent = ((step + 1) / STEPS.length) * 100
+    const isLanguage = choice === 'en' || choice === 'es'
 
     return (
         <Dialog open={open} onOpenChange={(v) => { if (!v) handleSkip() }}>
@@ -222,8 +293,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
                             <div key={i} className="flex items-center gap-1">
                                 <div
                                     className={`flex items-center justify-center h-6 w-6 rounded-full text-xs font-bold ${
-                                        i < step ? 'bg-primary text-primary-foreground' :
-                                        i === step ? 'bg-primary text-primary-foreground' :
+                                        i <= step ? 'bg-primary text-primary-foreground' :
                                         'bg-muted text-muted-foreground'
                                     }`}
                                 >
@@ -246,75 +316,159 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
 
                 {/* Step content */}
                 <div className="space-y-4 py-2">
+                    {/* Step 0: What are you learning? */}
                     {step === 0 && (
                         <>
                             <p className="text-sm text-muted-foreground">
-                                Willkommen bei <strong>LAI</strong> — deiner KI-gestützten Lernplattform!
+                                Willkommen bei <strong>LAI</strong>! Was möchtest du lernen?
                             </p>
-                            <p className="text-sm text-muted-foreground">
-                                In wenigen Schritten zeigen wir dir, wie du mit LAI effektiver lernst:
-                            </p>
-                            <ul className="text-sm text-muted-foreground space-y-2 ml-1">
-                                <li className="flex items-center gap-2">
-                                    <Upload className="h-4 w-4 text-primary shrink-0" />
-                                    Lernmaterial hochladen und verarbeiten lassen
-                                </li>
-                                <li className="flex items-center gap-2">
-                                    <HelpCircle className="h-4 w-4 text-primary shrink-0" />
-                                    Dein Wissen mit KI-generierten Quizfragen testen
-                                </li>
-                            </ul>
-                            <Button onClick={() => setStep(1)} className="w-full">
-                                Los geht&apos;s
+                            <div className="grid gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => handleChoiceSelect('en')}
+                                    className={`flex items-center gap-3 rounded-lg border p-4 text-left transition-colors hover:bg-accent ${
+                                        choice === 'en' ? 'border-primary bg-primary/5' : ''
+                                    }`}
+                                >
+                                    <span className="text-2xl">🇬🇧</span>
+                                    <div>
+                                        <p className="font-semibold text-sm">Englisch lernen</p>
+                                        <p className="text-xs text-muted-foreground">
+                                            A1-Starter mit {'>'}200 Vokabeln, Quizzen und Übungen
+                                        </p>
+                                    </div>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => handleChoiceSelect('es')}
+                                    className={`flex items-center gap-3 rounded-lg border p-4 text-left transition-colors hover:bg-accent ${
+                                        choice === 'es' ? 'border-primary bg-primary/5' : ''
+                                    }`}
+                                >
+                                    <span className="text-2xl">🇪🇸</span>
+                                    <div>
+                                        <p className="font-semibold text-sm">Spanisch lernen</p>
+                                        <p className="text-xs text-muted-foreground">
+                                            A1-Starter mit {'>'}200 Vokabeln, Quizzen und Übungen
+                                        </p>
+                                    </div>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => handleChoiceSelect('subject')}
+                                    className={`flex items-center gap-3 rounded-lg border p-4 text-left transition-colors hover:bg-accent ${
+                                        choice === 'subject' ? 'border-primary bg-primary/5' : ''
+                                    }`}
+                                >
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                                        <GraduationCap className="h-5 w-5 text-primary" />
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-sm">Fach / Studium</p>
+                                        <p className="text-xs text-muted-foreground">
+                                            Eigene Unterlagen hochladen — PDF, DOCX oder Markdown
+                                        </p>
+                                    </div>
+                                </button>
+                            </div>
+                            <Button onClick={handleContinueToStep1} disabled={!choice} className="w-full">
+                                Weiter
                                 <ArrowRight className="h-4 w-4" />
                             </Button>
                         </>
                     )}
 
+                    {/* Step 1: Import starter package or upload document */}
                     {step === 1 && (
                         <>
-                            <p className="text-sm text-muted-foreground">
-                                Wir laden ein Beispiel-Lernmaterial über <strong>Lernmethoden und Gedächtnistechniken</strong> für dich.
-                                Damit kannst du alle Funktionen direkt ausprobieren.
-                            </p>
-                            {documentId ? (
-                                <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
-                                    <CheckCircle2 className="h-4 w-4" />
-                                    Beispiel-Dokument wurde geladen!
-                                    <Button size="sm" variant="outline" onClick={() => setStep(2)}>
-                                        Weiter
-                                        <ArrowRight className="h-4 w-4" />
-                                    </Button>
-                                </div>
-                            ) : (
-                                <Button
-                                    onClick={handleUploadSeed}
-                                    disabled={loading}
-                                    className="w-full"
-                                >
-                                    {loading ? (
-                                        <>
-                                            <Loader2 className="h-4 w-4 animate-spin" />
-                                            Wird geladen...
-                                        </>
+                            {isLanguage ? (
+                                <>
+                                    <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                                        <span className="text-2xl">{LANGUAGE_STARTERS[choice!].flag}</span>
+                                        <div>
+                                            <p className="font-semibold text-sm">
+                                                {LANGUAGE_STARTERS[choice!].label} A1 Starter-Paket
+                                            </p>
+                                            <p className="text-xs text-muted-foreground">
+                                                Über 200 Vokabeln mit Beispielsätzen und Konjugationen
+                                            </p>
+                                        </div>
+                                    </div>
+                                    {documentId ? (
+                                        <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
+                                            <CheckCircle2 className="h-4 w-4" />
+                                            Starter-Paket wurde importiert!
+                                            <Button size="sm" variant="outline" onClick={() => setStep(2)}>
+                                                Weiter <ArrowRight className="h-4 w-4" />
+                                            </Button>
+                                        </div>
                                     ) : (
-                                        <>
-                                            <Upload className="h-4 w-4" />
-                                            Beispiel laden
-                                        </>
+                                        <Button
+                                            onClick={handleImportLanguage}
+                                            disabled={loading}
+                                            className="w-full"
+                                        >
+                                            {loading ? (
+                                                <>
+                                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                                    Wird importiert...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Languages className="h-4 w-4" />
+                                                    Starter-Paket importieren
+                                                </>
+                                            )}
+                                        </Button>
                                     )}
-                                </Button>
+                                </>
+                            ) : (
+                                <>
+                                    <p className="text-sm text-muted-foreground">
+                                        Wir laden ein Beispiel-Lernmaterial über <strong>Lernmethoden und Gedächtnistechniken</strong> für dich.
+                                        Damit kannst du alle Funktionen direkt ausprobieren.
+                                    </p>
+                                    {documentId ? (
+                                        <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
+                                            <CheckCircle2 className="h-4 w-4" />
+                                            Beispiel-Dokument wurde geladen!
+                                            <Button size="sm" variant="outline" onClick={() => setStep(2)}>
+                                                Weiter <ArrowRight className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        <Button
+                                            onClick={handleUploadSeed}
+                                            disabled={loading}
+                                            className="w-full"
+                                        >
+                                            {loading ? (
+                                                <>
+                                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                                    Wird geladen...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Upload className="h-4 w-4" />
+                                                    Beispiel laden
+                                                </>
+                                            )}
+                                        </Button>
+                                    )}
+                                </>
                             )}
                         </>
                     )}
 
+                    {/* Step 2: Quiz test */}
                     {step === 2 && (
                         <>
                             {questions.length === 0 && !loading && (
                                 <>
                                     <p className="text-sm text-muted-foreground">
-                                        Jetzt erstellen wir ein kurzes Quiz mit 3 Fragen aus dem Beispiel-Dokument.
-                                        So siehst du, wie das Lernen mit LAI funktioniert.
+                                        {isLanguage
+                                            ? 'Teste dein Wissen mit einem kurzen Vokabel-Quiz aus deinem Starter-Paket.'
+                                            : 'Jetzt erstellen wir ein kurzes Quiz mit 3 Fragen aus dem Beispiel-Dokument.'}
                                     </p>
                                     <Button
                                         onClick={handleGenerateQuiz}
@@ -423,6 +577,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
                         </>
                     )}
 
+                    {/* Step 3: Done */}
                     {step === 3 && (
                         <div className="text-center space-y-4 py-2">
                             <div className="flex justify-center">
@@ -433,13 +588,27 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
                             <div>
                                 <h3 className="font-bold text-lg">Alles eingerichtet!</h3>
                                 <p className="text-sm text-muted-foreground mt-1">
-                                    Du kannst jetzt eigene Lernmaterialien hochladen, Quizze erstellen
-                                    und mit Karteikarten lernen.
+                                    {isLanguage
+                                        ? 'Dein Starter-Paket ist importiert. Starte jetzt mit Vokabeln, Karteikarten oder Konversationsübungen.'
+                                        : 'Du kannst jetzt eigene Lernmaterialien hochladen, Quizze erstellen und mit Karteikarten lernen.'
+                                    }
                                 </p>
                             </div>
-                            <Button onClick={markComplete} className="w-full">
-                                Zum Dashboard
-                            </Button>
+                            {isLanguage ? (
+                                <div className="grid gap-2">
+                                    <Button onClick={() => { markComplete(); router.push('/learn/vocabulary') }} className="w-full">
+                                        <BookOpen className="h-4 w-4" />
+                                        Vokabeln lernen
+                                    </Button>
+                                    <Button variant="outline" onClick={() => { markComplete(); router.push('/learn/conversation') }} className="w-full">
+                                        Konversation üben
+                                    </Button>
+                                </div>
+                            ) : (
+                                <Button onClick={markComplete} className="w-full">
+                                    Zum Dashboard
+                                </Button>
+                            )}
                         </div>
                     )}
                 </div>
