@@ -27,13 +27,21 @@ const SUBJECT_LANG_MAP: Record<string, string> = {
     'Portugiesisch': 'pt-PT',
 }
 
+// Map language-set document titles to their static set IDs
+const LANGUAGE_SET_ID_MAP: Record<string, string> = {
+    'Spanisch A1 Grundwortschatz': 'es-a1',
+    'Englisch A1 Grundwortschatz': 'en-a1',
+    'Spanisch A2 Grundwortschatz': 'es-a2',
+    'Englisch A2 Grundwortschatz': 'en-a2',
+}
+
 interface VocabCard {
     id: string
     front: string
     back: string
     exampleSentence?: string | null
     partOfSpeech?: string | null
-    document?: { id: string; title: string; subject?: string | null } | null
+    document?: { id: string; title: string; subject?: string | null; fileType?: string | null } | null
     progress?: {
         repetitions: number
         nextReviewAt: Date | null
@@ -77,13 +85,14 @@ export function VocabContent() {
     }
 
     // Group cards by document
-    const docGroups = new Map<string, { title: string; subject?: string | null; cards: VocabCard[] }>()
+    const docGroups = new Map<string, { title: string; subject?: string | null; fileType?: string | null; cards: VocabCard[] }>()
     for (const card of cards) {
         const docId = card.document?.id ?? 'unknown'
         if (!docGroups.has(docId)) {
             docGroups.set(docId, {
                 title: card.document?.title ?? 'Unbekannt',
                 subject: card.document?.subject,
+                fileType: card.document?.fileType,
                 cards: [],
             })
         }
@@ -290,17 +299,32 @@ export function VocabContent() {
                                 >
                                     Alle Sets
                                 </button>
-                                {[...docGroups.entries()].map(([docId, group]) => (
-                                    <button
-                                        key={docId}
-                                        onClick={() => setFilterDoc(docId)}
-                                        className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
-                                            filterDoc === docId ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'
-                                        }`}
-                                    >
-                                        {group.title} ({group.cards.length})
-                                    </button>
-                                ))}
+                                {[...docGroups.entries()].map(([docId, group]) => {
+                                    const setId = group.fileType === 'language-set'
+                                        ? LANGUAGE_SET_ID_MAP[group.title]
+                                        : undefined
+                                    return (
+                                        <div key={docId} className="flex items-center gap-1">
+                                            <button
+                                                onClick={() => setFilterDoc(docId)}
+                                                className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
+                                                    filterDoc === docId ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'
+                                                }`}
+                                            >
+                                                {group.title} ({group.cards.length})
+                                            </button>
+                                            {setId && (
+                                                <Link
+                                                    href={`/learn/vocabulary/sets/${setId}`}
+                                                    className="text-muted-foreground hover:text-foreground transition-colors"
+                                                    title="Set-Details anzeigen"
+                                                >
+                                                    ↗
+                                                </Link>
+                                            )}
+                                        </div>
+                                    )
+                                })}
                             </div>
                         </div>
                     )}

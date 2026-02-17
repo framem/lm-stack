@@ -14,7 +14,9 @@ import {
     RefreshCw,
     Languages,
     Trash2,
+    ExternalLink,
 } from 'lucide-react'
+import Link from 'next/link'
 import { Button } from '@/src/components/ui/button'
 import { Badge } from '@/src/components/ui/badge'
 import { Checkbox } from '@/src/components/ui/checkbox'
@@ -548,9 +550,19 @@ export default function AdminPage() {
                                             <Button
                                                 variant="outline"
                                                 size="sm"
+                                                asChild
+                                                className="ml-auto"
+                                            >
+                                                <Link href={`/learn/vocabulary/sets/${set.id}`}>
+                                                    <ExternalLink className="h-3 w-3 mr-1" />
+                                                    Anzeigen
+                                                </Link>
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
                                                 onClick={() => removeLanguageSet(set.id)}
                                                 disabled={removingSet === set.id}
-                                                className="ml-auto"
                                             >
                                                 {removingSet === set.id ? (
                                                     <Loader2 className="h-3 w-3 animate-spin mr-1" />

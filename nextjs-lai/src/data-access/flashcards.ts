@@ -152,7 +152,7 @@ export async function getVocabularyFlashcards(documentId?: string, language?: st
             ...(language ? { document: { subject: language, fileType: 'language-set' } } : {}),
         },
         include: {
-            document: { select: { id: true, title: true, subject: true } },
+            document: { select: { id: true, title: true, subject: true, fileType: true } },
             progress: true,
         },
         orderBy: { createdAt: 'desc' },
