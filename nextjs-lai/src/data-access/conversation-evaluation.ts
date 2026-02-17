@@ -1,4 +1,4 @@
-import { prisma } from '@/prisma/client'
+import { prisma } from '@/src/lib/prisma'
 
 export interface ConversationEvaluationInput {
     sessionId: string
