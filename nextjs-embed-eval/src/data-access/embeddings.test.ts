@@ -51,8 +51,8 @@ describe('saveChunkEmbedding', () => {
 
         expect(mockChunkEmb.upsert).toHaveBeenCalledWith({
             where: { chunkId_modelId: { chunkId: 'chunk-1', modelId: 'model-1' } },
-            update: { embedding },
-            create: { chunkId: 'chunk-1', modelId: 'model-1', embedding, durationMs: 0 },
+            update: { embedding, contentHash: null },
+            create: { chunkId: 'chunk-1', modelId: 'model-1', embedding, durationMs: 0, contentHash: null },
         })
     })
 })
@@ -76,8 +76,8 @@ describe('saveChunkEmbeddingsBatch', () => {
         })
         expect(mockChunkEmb.createMany).toHaveBeenCalledWith({
             data: [
-                { chunkId: 'c1', modelId: 'model-1', embedding: [0.1], durationMs: 0 },
-                { chunkId: 'c2', modelId: 'model-1', embedding: [0.2], durationMs: 0 },
+                { chunkId: 'c1', modelId: 'model-1', embedding: [0.1], durationMs: 0, contentHash: null },
+                { chunkId: 'c2', modelId: 'model-1', embedding: [0.2], durationMs: 0, contentHash: null },
             ],
         })
         expect(mockTransaction).toHaveBeenCalledWith([deletePromise, createPromise])

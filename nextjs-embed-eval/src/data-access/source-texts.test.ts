@@ -147,8 +147,20 @@ describe('createChunks', () => {
 
         expect(mockTextChunk.createMany).toHaveBeenCalledWith({
             data: [
-                { sourceTextId: 'src-1', content: 'First chunk', chunkIndex: 0, tokenCount: 10 },
-                { sourceTextId: 'src-1', content: 'Second chunk', chunkIndex: 1, tokenCount: 15 },
+                {
+                    sourceTextId: 'src-1',
+                    content: 'First chunk',
+                    chunkIndex: 0,
+                    tokenCount: 10,
+                    contentHash: 'd4c3ad047de841268dfa59da3a61873c491bb56fdf52d65e6aa45ece3c70d972',
+                },
+                {
+                    sourceTextId: 'src-1',
+                    content: 'Second chunk',
+                    chunkIndex: 1,
+                    tokenCount: 15,
+                    contentHash: '4dfedc641158b8c314dd07950d12397a47f59ff0276340d8bf43702945773672',
+                },
             ],
         })
     })

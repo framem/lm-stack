@@ -3,6 +3,7 @@
  * Everything stays in-memory — no temp files on disk.
  */
 import { createCanvas } from '@napi-rs/canvas'
+import type { DocumentInitParameters } from 'pdfjs-dist/types/src/display/api'
 
 export interface PageImage {
     page: number
@@ -50,7 +51,7 @@ export async function convertPdfToImages(
     const doc = await pdfjsLib.getDocument({
         data: new Uint8Array(pdfBuffer),
         canvasFactory,
-    } as unknown as pdfjsLib.DocumentInitParameters).promise
+    } as unknown as DocumentInitParameters).promise
 
     const totalPages = doc.numPages
     const targetPages =

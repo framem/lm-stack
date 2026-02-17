@@ -55,7 +55,15 @@ describe('createTestPhrase', () => {
 
         await createTestPhrase(data)
 
-        expect(mockTestPhrase.create).toHaveBeenCalledWith({ data })
+        expect(mockTestPhrase.create).toHaveBeenCalledWith({
+            data: {
+                phrase: 'Testfrage',
+                category: 'factual',
+                expectedContent: 'some content',
+                expectedChunk: { connect: { id: 'chunk-5' } },
+                sourceText: { connect: { id: 'src-1' } },
+            },
+        })
     })
 })
 
@@ -119,7 +127,16 @@ describe('updateTestPhrase', () => {
 
         await updateTestPhrase('p1', data)
 
-        expect(mockTestPhrase.update).toHaveBeenCalledWith({ where: { id: 'p1' }, data })
+        expect(mockTestPhrase.update).toHaveBeenCalledWith({
+            where: { id: 'p1' },
+            data: {
+                category: null,
+                expectedChunk: { disconnect: true },
+                expectedContent: undefined,
+                phrase: undefined,
+                sourceText: undefined,
+            },
+        })
     })
 })
 
@@ -164,7 +181,9 @@ describe('remapPhraseToChunk', () => {
 
         expect(mockTestPhrase.update).toHaveBeenCalledWith({
             where: { id: 'p1' },
-            data: { expectedChunkId: 'new-chunk' },
+            data: {
+                expectedChunk: { connect: { id: 'new-chunk' } },
+            },
         })
     })
 })
