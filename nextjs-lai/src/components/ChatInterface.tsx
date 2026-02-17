@@ -285,7 +285,7 @@ export function ChatInterface({ sessionId, documentId, mode = 'learning', scenar
     const sessionCreatedRef = useRef(false)
     // Track session IDs created during this component's lifetime (to skip reloading)
     const justCreatedSessionRef = useRef<string | null>(null)
-    const prevSessionIdRef = useRef(sessionId)
+    const prevSessionIdRef = useRef<string | undefined>(undefined)
 
     const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set())
 
