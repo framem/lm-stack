@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { FileText, Trash2, Pencil, ArrowLeft, Check, X, Loader2, ChevronDown, ChevronRight, List, MessageSquare, Brain, CreditCard, RefreshCw, Layers, MoreVertical, HelpCircle } from 'lucide-react'
+import { FileText, Trash2, Pencil, Check, X, Loader2, ChevronDown, ChevronRight, List, MessageSquare, Brain, CreditCard, RefreshCw, Layers, MoreVertical, HelpCircle } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { Button } from '@/src/components/ui/button'
@@ -42,6 +42,7 @@ import { getDocument, deleteDocument, renameDocument, hasChunksWithoutEmbeddings
 import { formatDate } from '@/src/lib/utils'
 import { getCompetencies } from '@/src/app/learn/knowledge-map/actions'
 import type { TopicCompetency } from '@/src/data-access/topics'
+import { useBreadcrumb } from '@/src/contexts/BreadcrumbContext'
 
 interface TocSection {
     title: string
@@ -71,6 +72,7 @@ interface DocumentDetail {
 export default function DocumentDetailPage() {
     const params = useParams<{ id: string }>()
     const router = useRouter()
+    const { setCurrentPageTitle } = useBreadcrumb()
     const [document, setDocument] = useState<DocumentDetail | null>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState('')
@@ -100,6 +102,7 @@ export default function DocumentDetailPage() {
             }
             const data = await getDocument(params.id)
             setDocument(data as unknown as DocumentDetail)
+            setCurrentPageTitle((data as unknown as DocumentDetail).title)
             if ((data as unknown as DocumentDetail)?.summary) {
                 setSummaryText((data as unknown as DocumentDetail).summary!)
             }
@@ -138,7 +141,10 @@ export default function DocumentDetailPage() {
 
     useEffect(() => {
         fetchDocument()
-    }, [fetchDocument])
+        return () => {
+            setCurrentPageTitle(null)
+        }
+    }, [fetchDocument, setCurrentPageTitle])
 
     async function handleDelete() {
         setDeleting(true)
@@ -161,6 +167,7 @@ export default function DocumentDetailPage() {
         try {
             await renameDocument(params.id, trimmed)
             setDocument((prev) => prev ? { ...prev, title: trimmed } : prev)
+            setCurrentPageTitle(trimmed)
             setEditing(false)
         } catch {
             toast.error('Umbenennen fehlgeschlagen.')
@@ -285,8 +292,7 @@ export default function DocumentDetailPage() {
             <div className="p-6 max-w-4xl mx-auto text-center space-y-4">
                 <p className="text-destructive">{error || 'Lernmaterial nicht gefunden.'}</p>
                 <Button variant="outline" onClick={() => router.push('/learn/documents')}>
-                    <ArrowLeft className="h-4 w-4" />
-                    Zurück
+                    Zurück zu Lernmaterial
                 </Button>
             </div>
         )
@@ -296,16 +302,7 @@ export default function DocumentDetailPage() {
         <div className="p-6 max-w-4xl mx-auto space-y-6">
             {/* Header */}
             <div className="flex items-start justify-between">
-                <div>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="mb-2"
-                        onClick={() => router.back()}
-                    >
-                        <ArrowLeft className="h-4 w-4" />
-                        Zurück
-                    </Button>
+                <div className="flex-1 min-w-0">
                     {editing ? (
                         <div className="flex items-center gap-2">
                             <Input
@@ -316,7 +313,7 @@ export default function DocumentDetailPage() {
                                     if (e.key === 'Escape') setEditing(false)
                                 }}
                                 autoFocus
-                                className="text-xl font-bold h-10"
+                                className="text-3xl font-bold h-12"
                             />
                             <Button variant="ghost" size="icon-xs" onClick={handleRename}>
                                 <Check className="h-4 w-4 text-green-600" />
@@ -326,8 +323,8 @@ export default function DocumentDetailPage() {
                             </Button>
                         </div>
                     ) : (
-                        <h1 className="text-2xl font-bold flex items-center gap-2 max-w-full min-w-0">
-                            <FileText className="h-6 w-6 shrink-0" />
+                        <h1 className="text-3xl font-bold flex items-center gap-3 max-w-full min-w-0">
+                            <FileText className="h-8 w-8 shrink-0" />
                             <span className="truncate" title={document.title}>{document.title}</span>
                             <Button
                                 variant="ghost"

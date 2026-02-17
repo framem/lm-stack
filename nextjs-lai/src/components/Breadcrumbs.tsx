@@ -3,6 +3,7 @@
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronRight } from 'lucide-react'
+import { useBreadcrumb } from '@/src/contexts/BreadcrumbContext'
 
 const ROUTE_LABELS: Record<string, string> = {
     '/learn': 'Dashboard',
@@ -14,6 +15,7 @@ const ROUTE_LABELS: Record<string, string> = {
 
 export function Breadcrumbs() {
     const pathname = usePathname()
+    const { currentPageTitle } = useBreadcrumb()
 
     // Build breadcrumb segments from pathname
     const segments: { label: string; href: string }[] = []
@@ -44,18 +46,20 @@ export function Breadcrumbs() {
             <Link href="/learn" className="text-muted-foreground hover:text-foreground transition-colors">
                 LAI
             </Link>
-            {segments.map((segment, i) => (
+            {segments.map((segment) => (
                 <span key={segment.href} className="flex items-center gap-1">
                     <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
-                    {i === segments.length - 1 ? (
-                        <span className="font-medium text-foreground">{segment.label}</span>
-                    ) : (
-                        <Link href={segment.href} className="text-muted-foreground hover:text-foreground transition-colors">
-                            {segment.label}
-                        </Link>
-                    )}
+                    <Link href={segment.href} className="text-muted-foreground hover:text-foreground transition-colors">
+                        {segment.label}
+                    </Link>
                 </span>
             ))}
+            {currentPageTitle && (
+                <span className="flex items-center gap-1">
+                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
+                    <span className="font-medium text-foreground">{currentPageTitle}</span>
+                </span>
+            )}
         </nav>
     )
 }

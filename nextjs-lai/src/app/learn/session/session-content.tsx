@@ -31,7 +31,7 @@ interface FlashcardData {
     front: string
     back: string
     context?: string | null
-    document?: { id: string; title: string } | null
+    document?: { id: string; title: string; subject?: string | null } | null
     chunk?: { id: string; content: string; chunkIndex: number } | null
 }
 

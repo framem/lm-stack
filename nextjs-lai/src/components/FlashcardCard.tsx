@@ -1,16 +1,17 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { Card, CardContent } from '@/src/components/ui/card'
 import { Badge } from '@/src/components/ui/badge'
 import { FileText } from 'lucide-react'
 import { TTSButton } from '@/src/components/TTSButton'
+import { detectLanguageFromSubject } from '@/src/lib/language-utils'
 
 interface FlashcardCardProps {
     front: string
     back: string
     context?: string | null
-    document?: { id: string; title: string } | null
+    document?: { id: string; title: string; subject?: string | null } | null
     chunk?: { id: string; content: string; chunkIndex: number } | null
     flipped: boolean
     onFlip: () => void
@@ -35,8 +36,14 @@ export function FlashcardCard({
     className = '',
     onClick,
     onSourceClick,
-    lang = 'de-DE',
+    lang,
 }: FlashcardCardProps) {
+    // Auto-detect language from document subject if not explicitly provided
+    const ttsLang = useMemo(() => {
+        if (lang) return lang
+        return detectLanguageFromSubject(document?.subject)
+    }, [lang, document?.subject])
+
     const handleClick = useCallback(() => {
         if (!flipped) {
             onFlip()
@@ -79,7 +86,7 @@ export function FlashcardCard({
                         <div className="flex items-center gap-3 justify-center">
                             <p className="text-xl font-semibold">{front}</p>
                             <div onClick={(e) => e.stopPropagation()}>
-                                <TTSButton text={front} lang={lang} size="sm" />
+                                <TTSButton text={front} lang={ttsLang} size="sm" />
                             </div>
                         </div>
                         {!flipped && (
@@ -97,7 +104,7 @@ export function FlashcardCard({
                         <div className="flex items-center gap-2 justify-center mb-3">
                             <p className="text-xs text-muted-foreground italic">{front}</p>
                             <div onClick={(e) => e.stopPropagation()}>
-                                <TTSButton text={front} lang={lang} size="sm" />
+                                <TTSButton text={front} lang={ttsLang} size="sm" />
                             </div>
                         </div>
                         <p className="text-lg">{back}</p>
