@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import Link from 'next/link'
-import {ArrowRight, BookOpen, CalendarDays, Check, FileText, HelpCircle, Layers, MessageSquare, RotateCcw, Sparkles, TrendingUp, Upload} from 'lucide-react'
+import {ArrowRight, BookOpen, CalendarDays, Check, FileText, HelpCircle, Layers, MessageSquare, RotateCcw, Sparkles, TrendingUp, Upload, Clock, AlertTriangle} from 'lucide-react'
 import {Card, CardContent, CardHeader, CardTitle} from '@/src/components/ui/card'
 import {Button} from '@/src/components/ui/button'
 import {formatDate} from '@/src/lib/utils'
@@ -19,14 +19,19 @@ import {
     getCachedTodayTasks,
 } from '@/src/lib/dashboard-cache'
 import {Badge} from '@/src/components/ui/badge'
+import {Progress} from '@/src/components/ui/progress'
 import {LearningProgress} from '@/src/components/LearningProgress'
 import {TodayActionWidget} from '@/src/components/TodayActionWidget'
 import {StreakDisplay} from '@/src/components/StreakDisplay'
 import {OnboardingTrigger} from '@/src/components/OnboardingTrigger'
 import {CefrProgressRing} from '@/src/components/CefrProgressRing'
+import {BadgeShowcase} from '@/src/components/BadgeShowcase'
+import {getLearnerProfile} from '@/src/data-access/learning-paths'
+import {generateLearningRecommendation} from '@/src/lib/learning-path-generator'
+import {getEarnedBadges} from '@/src/data-access/badges'
 
 export default async function DashboardPage() {
-    const [documents, sessions, quizzes, quizProgress, flashcardProgress, dueQuizReviews, dueFlashcardReviews, totalFlashcards, userStats, cefrProgress, todayTasks] = await Promise.all([
+    const [documents, sessions, quizzes, quizProgress, flashcardProgress, dueQuizReviews, dueFlashcardReviews, totalFlashcards, userStats, cefrProgress, todayTasks, profile, earnedBadges] = await Promise.all([
         getCachedDocuments(),
         getCachedSessions(),
         getCachedQuizzes(),
@@ -38,7 +43,27 @@ export default async function DashboardPage() {
         getCachedUserStats(),
         getCachedCefrProgress(),
         getCachedTodayTasks(),
+        getLearnerProfile(),
+        getEarnedBadges(),
     ])
+
+    // Generate recommendation if documents exist
+    const recommendation = profile.documents.length > 0
+        ? await generateLearningRecommendation(profile)
+        : null
+
+    // Action labels for recommendations
+    const actionLabels: Record<string, { label: string; icon: typeof HelpCircle; href: (docId: string) => string }> = {
+        quiz: { label: 'Quiz starten', icon: HelpCircle, href: (docId) => `/learn/quiz?documentId=${docId}` },
+        flashcards: { label: 'Karteikarten lernen', icon: Layers, href: () => '/learn/flashcards/study' },
+        review: { label: 'Wiederholung starten', icon: Clock, href: () => '/learn/session' },
+        read: { label: 'Dokument lesen', icon: BookOpen, href: (docId) => `/learn/documents/${docId}` },
+    }
+
+    const recDoc = recommendation
+        ? profile.documents.find((d) => d.documentId === recommendation!.documentId)
+        : null
+    const recAction = recommendation ? actionLabels[recommendation.nextAction] : null
 
     // Merge quiz and flashcard progress per document
     const progressMap = new Map<string, {
@@ -162,6 +187,43 @@ export default async function DashboardPage() {
                 </Card>
             )}
 
+            {/* AI Recommendation */}
+            {!isNewUser && recommendation && recAction && (
+                <Card className="border-primary/30 bg-gradient-to-br from-primary/5 via-background to-orange-500/5">
+                    <CardContent className="p-6 space-y-4">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2.5 rounded-xl bg-primary/10">
+                                <Sparkles className="h-5 w-5 text-primary" />
+                            </div>
+                            <div>
+                                <h2 className="text-lg font-bold">KI-Empfehlung</h2>
+                                {recDoc && (
+                                    <p className="text-sm text-muted-foreground">
+                                        {recDoc.documentTitle}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+
+                        <p className="text-sm">{recommendation.reason}</p>
+
+                        <div className="flex flex-wrap items-center gap-3">
+                            <Button asChild>
+                                <Link href={recAction.href(recommendation.documentId)}>
+                                    <recAction.icon className="h-4 w-4" />
+                                    {recAction.label}
+                                </Link>
+                            </Button>
+                            {recommendation.estimatedMinutes > 0 && (
+                                <Badge variant="secondary">
+                                    ~{recommendation.estimatedMinutes} Min.
+                                </Badge>
+                            )}
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
+
             {/* Combined today action widget (merges TodayLearning + NextStep) */}
             {!isNewUser && (
                 <TodayActionWidget
@@ -221,6 +283,11 @@ export default async function DashboardPage() {
                     dailyProgress={userStats.dailyProgress}
                     totalXp={(userStats as { totalXp?: number }).totalXp ?? 0}
                 />
+            )}
+
+            {/* Badge showcase */}
+            {!isNewUser && earnedBadges.length > 0 && (
+                <BadgeShowcase earnedBadges={earnedBadges} />
             )}
 
             {/* Compact stats badges - only show when user has data */}
@@ -328,6 +395,96 @@ export default async function DashboardPage() {
                         </Link>
                     )}
                 </div>
+            )}
+
+            {/* Top Documents by Priority */}
+            {!isNewUser && profile.prioritizedDocuments.length > 0 && (
+                <section className="space-y-4">
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-lg font-semibold flex items-center gap-2">
+                            <TrendingUp className="h-5 w-5" />
+                            Dokumente nach Priorität
+                        </h2>
+                        <Link href="/learn/progress?tab=path">
+                            <Button variant="ghost" size="sm">
+                                Alle anzeigen <ArrowRight className="h-4 w-4 ml-1" />
+                            </Button>
+                        </Link>
+                    </div>
+                    <div className="space-y-3">
+                        {profile.prioritizedDocuments.slice(0, 5).map((doc, index) => {
+                            const isWeak = doc.avgScore < 50 && doc.totalAttempts > 0
+
+                            // Determine best action per document
+                            const docAction = doc.totalAttempts === 0 && doc.quizCount > 0
+                                ? actionLabels.quiz
+                                : doc.totalAttempts === 0 && doc.flashcardCount > 0
+                                    ? actionLabels.flashcards
+                                    : doc.dueItems > 0 && doc.flashcardCount > 0
+                                        ? actionLabels.flashcards
+                                        : doc.dueItems > 0
+                                            ? actionLabels.review
+                                            : isWeak && doc.quizCount > 0
+                                                ? actionLabels.quiz
+                                                : actionLabels.read
+
+                            return (
+                                <Card key={doc.documentId} className={isWeak ? 'border-orange-500/30' : ''}>
+                                    <CardContent className="p-4">
+                                        <div className="flex items-center justify-between gap-4">
+                                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                                                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-muted text-sm font-bold shrink-0">
+                                                    {index + 1}
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <Link
+                                                            href={`/learn/documents/${doc.documentId}`}
+                                                            className="font-medium truncate hover:underline"
+                                                        >
+                                                            {doc.documentTitle}
+                                                        </Link>
+                                                        {isWeak && (
+                                                            <AlertTriangle className="h-4 w-4 text-orange-500 shrink-0" />
+                                                        )}
+                                                    </div>
+                                                    <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
+                                                        {doc.subject && (
+                                                            <Badge variant="outline" className="text-xs">{doc.subject}</Badge>
+                                                        )}
+                                                        <span>{doc.quizCount} Quizze</span>
+                                                        <span>{doc.flashcardCount} Karteikarten</span>
+                                                        {doc.dueItems > 0 && (
+                                                            <Badge variant="secondary" className="text-xs gap-1">
+                                                                <Clock className="h-3 w-3" />
+                                                                {doc.dueItems} fällig
+                                                            </Badge>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center gap-4 shrink-0">
+                                                <div className="w-32 space-y-1 hidden sm:block">
+                                                    <Progress value={doc.avgScore} className="h-2" />
+                                                    <p className="text-xs text-muted-foreground text-right">
+                                                        {doc.avgScore}%
+                                                    </p>
+                                                </div>
+                                                <Button variant="outline" size="sm" asChild>
+                                                    <Link href={docAction.href(doc.documentId)}>
+                                                        <docAction.icon className="h-4 w-4" />
+                                                        <span className="hidden lg:inline">{docAction.label}</span>
+                                                    </Link>
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            )
+                        })}
+                    </div>
+                </section>
             )}
 
             {/* Learning progress dashboard */}
