@@ -1,7 +1,7 @@
 # Feature-Backlog: nextjs-LAI
 
 > Erstellt am 17.02.2026 durch Agenten-Team-Analyse (UX/UI-Designer, Devils Advocate, Next.js-Experte, Lerner-Persona "Maria")
-> **Letzte Aktualisierung:** 17.02.2026 — Tasks #5, #6 und #9 abgeschlossen (11/18 erledigt, 61%)
+> **Letzte Aktualisierung:** 17.02.2026 — Task #11 abgeschlossen (13/18 erledigt, 72%)
 
 ---
 
@@ -31,7 +31,7 @@
 
 ---
 
-## Offene Features (7/18)
+## Offene Features (5/18)
 
 | # | Status | Feature | Vorgeschlagen von | Priorität | Aufwand | Journey |
 |---|--------|---------|-------------------|-----------|---------|---------|
@@ -42,8 +42,8 @@
 | 7 | ✅ | ~~**Health-Check aus Layout entfernen** — Client-Polling statt blockierendem `await` im Layout~~ | NJS | **Sollte** | Klein | Beide |
 | 8 | ✅ | ~~**Dashboard vereinfachen** — TodayLearning + NextStep zusammenfassen, Stat-Cards kompakter, Quick Actions kontextbasiert~~ | UX, DA | **Sollte** | Klein | Beide |
 | 9 | ✅ | ~~**Qualitätsfeedback nach Dokument-Upload** — "X Abschnitte erkannt, Ø Y Wörter pro Abschnitt"~~ | DA | **Sollte** | Klein | J2 |
-| 10 | ❌ | **Sprachfilter für Vokabeln/Quiz** — Filter-UI wenn EN + ES importiert sind | NJS | **Sollte** | Klein | J1 |
-| 11 | ❌ | **Documents-Seite → Server Component** — `searchParams`-basiert statt Client-seitigem `useEffect` | NJS | **Sollte** | Mittel | J2 |
+| 10 | ✅ | ~~**Sprachfilter für Vokabeln/Quiz** — Filter-UI wenn EN + ES importiert sind~~ | NJS | **Sollte** | Klein | J1 |
+| 11 | ✅ | ~~**Documents-Seite → Server Component** — `searchParams`-basiert statt Client-seitigem `useEffect`~~ | NJS | **Sollte** | Mittel | J2 |
 | 12 | ✅ | ~~**Navigation konsolidieren** — Wissenslandkarte + Lernpfad + Statistiken zusammenführen~~ | DA, UX | **Sollte** | Mittel | Beide |
 | 13 | ❌ | **Szenario-Fortschritt persistent speichern** — Badge "geübt/nicht geübt", bester Score pro Szenario | UX, Maria | **Sollte** | Mittel | J1 |
 | 14 | ❌ | **Embedding-Recovery** — Button "Embeddings regenerieren" für Dokumente ohne Embeddings | NJS | **Nice-to-have** | Klein | J2 |
@@ -58,7 +58,7 @@
 
 ## Implementierungs-Status
 
-**✅ Abgeschlossen (11/18):**
+**✅ Abgeschlossen (13/18):**
 - ~~#1 Sprachlern-Onboarding~~ (`OnboardingWizard.tsx`)
 - ~~#2 Konversations-Evaluationen persistieren~~ (DB-Modell, API, Stats-Integration)
 - ~~#3 CEFR-Fortschrittsanzeige~~ (`CefrProgressRing.tsx`, Dashboard)
@@ -68,23 +68,24 @@
 - ~~#7 Health-Check aus Layout~~ (Client-Polling via `/api/health`, kein Blocking mehr)
 - ~~#8 Dashboard vereinfachen~~ (TodayActionWidget kombiniert, Stat-Badges kompakt, Quick Actions kontextbasiert)
 - ~~#9 Qualitätsfeedback nach Upload~~ (Metriken-Panel mit Abschnitte/Wörter/Tokens)
+- ~~#10 Sprachfilter für Vokabeln~~ (Filter-Pills nach Sprache auf Vokabeltrainer-Seite, nutzt Document.subject)
+- ~~#11 Documents-Seite → Server Component~~ (URL-basiertes Filtering via `searchParams`, debounced Search, kein `useEffect`)
 - ~~#12 Navigation konsolidieren~~ (Neue `/learn/progress`-Seite mit Tabs, Redirects von alten URLs)
 
 **⚠️ Teilweise umgesetzt (0/18):**
 - (keine)
 
-**❌ Noch komplett offen (7/18):**
-- **Quick Wins:** #10, #14
-- **Größere Features:** #11, #13, #15-18
+**❌ Noch komplett offen (5/18):**
+- **Quick Wins:** #14
+- **Größere Features:** #13, #15-18
 
 ## Quick Wins (Klein + Must-have/Sollte)
 
 ~~Features #4, #5, #6, #7, #8, #9, #10 sind mit geringem Aufwand umsetzbar und haben sofortigen Impact.~~
 
-**✅ Erledigt:** #4 (Szenario-Beschreibungen), #5 ("Jetzt lernen"-Block), #7 (Health-Check), #9 (Upload-Qualitätsfeedback)
+**✅ Erledigt:** #4 (Szenario-Beschreibungen), #5 ("Jetzt lernen"-Block), #7 (Health-Check), #9 (Upload-Qualitätsfeedback), #10 (Sprachfilter)
 
 **Noch offen mit geringem Aufwand:**
-- #10 Sprachfilter
 - #14 Embedding-Recovery-Button
 
 ---
