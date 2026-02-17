@@ -6,13 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/ca
 import { Badge } from '@/src/components/ui/badge'
 import { Progress } from '@/src/components/ui/progress'
 import { getSubjectOverview } from '@/src/data-access/subjects'
-import { getSubjects } from '@/src/data-access/documents'
 
 export default async function SubjectsPage() {
-    const [overview, subjects] = await Promise.all([
-        getSubjectOverview(),
-        getSubjects(),
-    ])
+    const overview = await getSubjectOverview()
 
     // Sort by most documents first, then alphabetically
     const sorted = overview.sort((a, b) =>

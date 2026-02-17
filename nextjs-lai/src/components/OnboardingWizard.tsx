@@ -16,7 +16,6 @@ import { RadioGroup, RadioGroupItem } from '@/src/components/ui/radio-group'
 import {
     Sparkles,
     Upload,
-    MessageSquare,
     HelpCircle,
     CheckCircle2,
     Loader2,
@@ -266,7 +265,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
                                 </li>
                             </ul>
                             <Button onClick={() => setStep(1)} className="w-full">
-                                Los geht's
+                                Los geht&apos;s
                                 <ArrowRight className="h-4 w-4" />
                             </Button>
                         </>

@@ -47,11 +47,10 @@ export async function convertPdfToImages(
     const canvasFactory = new NodeCanvasFactory()
 
     // canvasFactory is needed for Node.js rendering but missing from type defs
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const doc = await pdfjsLib.getDocument({
         data: new Uint8Array(pdfBuffer),
         canvasFactory,
-    } as any).promise
+    } as unknown as pdfjsLib.DocumentInitParameters).promise
 
     const totalPages = doc.numPages
     const targetPages =
@@ -73,10 +72,9 @@ export async function convertPdfToImages(
             const context = canvas.getContext('2d')
 
             // canvas: null tells pdfjs to use canvasContext directly
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             await page.render({
                 canvas: null,
-                canvasContext: context as any,
+                canvasContext: context as unknown as CanvasRenderingContext2D,
                 viewport,
             }).promise
 

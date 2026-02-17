@@ -4,7 +4,6 @@ import Link from 'next/link'
 import {
     Route,
     Sparkles,
-    ArrowRight,
     FileText,
     HelpCircle,
     Layers,
@@ -13,7 +12,7 @@ import {
     TrendingUp,
     AlertTriangle,
 } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/card'
+import { Card, CardContent } from '@/src/components/ui/card'
 import { Button } from '@/src/components/ui/button'
 import { Badge } from '@/src/components/ui/badge'
 import { Progress } from '@/src/components/ui/progress'

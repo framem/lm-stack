@@ -104,8 +104,6 @@ export function QuizResults({ quizTitle, documentTitle, results, onRetry, initia
             {/* Individual question results */}
             {results.map((result, i) => {
                 const isFreetextLike = isFreetextLikeType(result.questionType)
-                const isFreetext = result.questionType === 'freetext'
-                const isCloze = result.questionType === 'cloze'
                 const resultBadge = isFreetextLike ? (
                     <Badge variant="outline" className="shrink-0">
                         {Math.round((result.freeTextScore ?? 0) * 100)}%

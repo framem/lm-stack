@@ -18,11 +18,33 @@ export default function KnowledgeMapPage() {
     }, [])
 
     useEffect(() => {
-        setLoading(true)
-        getCompetencies(selectedDocId || undefined)
-            .then(setCompetencies)
-            .catch(() => setCompetencies([]))
-            .finally(() => setLoading(false))
+        let cancelled = false
+
+        const loadData = async () => {
+            if (cancelled) return
+            setLoading(true)
+
+            try {
+                const data = await getCompetencies(selectedDocId || undefined)
+                if (!cancelled) {
+                    setCompetencies(data)
+                }
+            } catch {
+                if (!cancelled) {
+                    setCompetencies([])
+                }
+            } finally {
+                if (!cancelled) {
+                    setLoading(false)
+                }
+            }
+        }
+
+        loadData()
+
+        return () => {
+            cancelled = true
+        }
     }, [selectedDocId])
 
     return (

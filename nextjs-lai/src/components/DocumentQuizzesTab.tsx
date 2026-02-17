@@ -47,7 +47,7 @@ export function DocumentQuizzesTab({ documentId }: DocumentQuizzesTabProps) {
     async function handleGenerate() {
         setGenerating(true)
         try {
-            const result = await generateQuiz(documentId, count, types)
+            await generateQuiz(documentId, count, types)
             setDialogOpen(false)
             // Reload quizzes
             const data = await getQuizzesByDocument(documentId)

@@ -11,6 +11,10 @@ const eslintConfig = [
       "out/**",
       "build/**",
       "next-env.d.ts",
+      "pdf-ocr/.venv/**",
+      "dist/**",
+      "coverage/**",
+      ".turbo/**",
     ],
   },
 ];

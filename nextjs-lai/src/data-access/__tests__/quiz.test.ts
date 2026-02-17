@@ -111,7 +111,7 @@ describe('getQuizWithQuestions', () => {
         const quiz = {
             id: 'quiz-1',
             title: 'Test',
-            document: { id: 'doc-1', title: 'Doc' },
+            document: { id: 'doc-1', title: 'Doc', subject: null },
             questions: [{ id: 'q-1', questionIndex: 0 }],
         }
         mockQuiz.findUnique.mockResolvedValue(quiz)
@@ -122,7 +122,7 @@ describe('getQuizWithQuestions', () => {
             where: { id: 'quiz-1' },
             include: {
                 questions: { orderBy: { questionIndex: 'asc' } },
-                document: { select: { id: true, title: true } },
+                document: { select: { id: true, title: true, subject: true } },
             },
         })
         expect(result).toEqual(quiz)
@@ -237,6 +237,7 @@ describe('getQuizResults', () => {
                     id: 'q-1',
                     questionIndex: 0,
                     attempts: [{ selectedIndex: 0, isCorrect: true }],
+                    sourceChunk: null,
                 },
             ],
         }
@@ -254,6 +255,9 @@ describe('getQuizResults', () => {
                         attempts: {
                             orderBy: { createdAt: 'desc' },
                             take: 1,
+                        },
+                        sourceChunk: {
+                            select: { chunkIndex: true },
                         },
                     },
                 },

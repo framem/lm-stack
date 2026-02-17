@@ -12,7 +12,7 @@ import {
     RotateCcw,
     FolderOpen,
 } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/card'
+import { Card, CardContent } from '@/src/components/ui/card'
 import { Button } from '@/src/components/ui/button'
 import { Badge } from '@/src/components/ui/badge'
 import { getVocabularyFlashcards, getDueVocabularyCount } from '@/src/actions/flashcards'
@@ -75,10 +75,6 @@ export function VocabContent() {
         }
         docGroups.get(docId)!.cards.push(card)
     }
-
-    const filteredCards = filterDoc
-        ? cards.filter((c) => c.document?.id === filterDoc)
-        : cards
 
     const totalCards = cards.length
     const masteredCards = cards.filter((c) => c.progress && c.progress.repetitions >= 3).length

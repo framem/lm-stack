@@ -2,11 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Layers, Loader2, Plus, Play } from 'lucide-react'
+import { Loader2, Plus, Play } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/src/components/ui/button'
 import { Card, CardContent } from '@/src/components/ui/card'
-import { Badge } from '@/src/components/ui/badge'
 import {
     Dialog,
     DialogContent,
@@ -40,6 +39,7 @@ export function DocumentFlashcardsTab({ documentId }: DocumentFlashcardsTabProps
 
     useEffect(() => {
         loadFlashcards()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [documentId])
 
     async function loadFlashcards() {

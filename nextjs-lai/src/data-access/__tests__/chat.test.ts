@@ -27,25 +27,25 @@ beforeEach(() => {
 
 describe('createSession', () => {
     it('should create a session with default values', async () => {
-        const session = { id: 'sess-1', title: null, documentId: null }
+        const session = { id: 'sess-1', title: null, documentId: null, mode: 'learning', scenario: null }
         mockChatSession.create.mockResolvedValue(session)
 
         const result = await createSession()
 
         expect(mockChatSession.create).toHaveBeenCalledWith({
-            data: { title: null, documentId: null },
+            data: { title: null, documentId: null, mode: 'learning', scenario: null },
         })
         expect(result).toEqual(session)
     })
 
     it('should create a session with title and documentId', async () => {
-        const session = { id: 'sess-2', title: 'Test', documentId: 'doc-1' }
+        const session = { id: 'sess-2', title: 'Test', documentId: 'doc-1', mode: 'learning', scenario: null }
         mockChatSession.create.mockResolvedValue(session)
 
         const result = await createSession({ title: 'Test', documentId: 'doc-1' })
 
         expect(mockChatSession.create).toHaveBeenCalledWith({
-            data: { title: 'Test', documentId: 'doc-1' },
+            data: { title: 'Test', documentId: 'doc-1', mode: 'learning', scenario: null },
         })
         expect(result).toEqual(session)
     })

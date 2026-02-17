@@ -21,7 +21,7 @@ export function ExamTimer({ timeLimit, onTimeUp }: ExamTimerProps) {
     const isWarning = remaining <= totalSeconds * 0.2
     const isExpired = remaining <= 0
 
-    const handleTimeUp = useCallback(onTimeUp, [onTimeUp])
+    const handleTimeUp = useCallback(() => onTimeUp(), [onTimeUp])
 
     useEffect(() => {
         if (isExpired) {

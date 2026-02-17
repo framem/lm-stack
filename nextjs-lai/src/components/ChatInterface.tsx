@@ -304,7 +304,7 @@ export function ChatInterface({ sessionId, documentId, mode = 'learning', scenar
             }
             return response
         },
-    }), [onSessionCreated])
+    }), [onSessionCreated, isConversation, scenario])
 
     const { messages, sendMessage, status, setMessages, stop } = useChat<ChatMessage>({
         transport,
@@ -324,7 +324,6 @@ export function ChatInterface({ sessionId, documentId, mode = 'learning', scenar
             }
         }).catch(() => {})
         return () => { cancelled = true }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isEmpty, selectedDocumentIds])
 
     // Handle sessionId prop changes: initial load + sidebar navigation

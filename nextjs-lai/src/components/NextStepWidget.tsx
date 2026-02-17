@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Sparkles, HelpCircle, Layers, Clock, BookOpen, ArrowRight } from 'lucide-react'
+import { Sparkles, HelpCircle, Layers, Clock, BookOpen } from 'lucide-react'
 import { Card, CardContent } from '@/src/components/ui/card'
 import { Button } from '@/src/components/ui/button'
 import { Badge } from '@/src/components/ui/badge'

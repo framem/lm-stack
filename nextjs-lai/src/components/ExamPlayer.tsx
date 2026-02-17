@@ -13,7 +13,6 @@ import { Loader2, Send } from 'lucide-react'
 import { ExamTimer } from '@/src/components/ExamTimer'
 import { evaluateAnswer } from '@/src/actions/quiz'
 import { TTSButton } from '@/src/components/TTSButton'
-import { isFreetextLikeType } from '@/src/lib/quiz-types'
 import { SortableWordChips } from '@/src/components/quiz/SortableWordChips'
 
 // Map document subject to BCP-47 language code for TTS
