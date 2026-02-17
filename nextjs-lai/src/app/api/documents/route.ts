@@ -159,6 +159,24 @@ export async function POST(request: NextRequest) {
                     const totalTokens = chunks.reduce((sum, chunk) => sum + (chunk.tokenCount || 0), 0)
                     const avgTokensPerChunk = chunks.length > 0 ? Math.round(totalTokens / chunks.length) : 0
 
+                    // Step 6: Generate table of contents
+                    sendProgress('toc', 96, 'Inhaltsverzeichnis wird erstellt...')
+                    try {
+                        await generateAndSaveToc(doc.id)
+                    } catch (tocError) {
+                        console.error('TOC generation failed:', tocError)
+                        // Continue even if TOC fails
+                    }
+
+                    // Step 7: Generate summary
+                    sendProgress('summary', 98, 'Zusammenfassung wird erstellt...')
+                    try {
+                        await generateAndSaveSummary(doc.id)
+                    } catch (summaryError) {
+                        console.error('Summary generation failed:', summaryError)
+                        // Continue even if summary fails
+                    }
+
                     // Done
                     sendProgress('done', 100, 'Verarbeitung abgeschlossen!')
                     controller.enqueue(
@@ -172,9 +190,6 @@ export async function POST(request: NextRequest) {
                         })}\n\n`)
                     )
 
-                    // Fire-and-forget: generate summary and TOC in background
-                    generateAndSaveSummary(doc.id).catch(console.error)
-                    generateAndSaveToc(doc.id).catch(console.error)
                     revalidateDocuments()
                 } catch (error) {
                     console.error('Pipeline error:', error)

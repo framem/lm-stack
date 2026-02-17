@@ -47,3 +47,30 @@ export function detectLanguageFromSubject(subject?: string | null): string {
     // Default to German
     return 'de-DE'
 }
+
+/**
+ * Extract CEFR level from subject string
+ * @param subject - Subject name (e.g., 'Spanisch A1', 'Englisch B2')
+ * @returns CEFR level ('A1', 'A2', 'B1', 'B2', 'C1', 'C2') or null
+ */
+export function extractCEFRLevel(subject?: string | null): string | null {
+    if (!subject) return null
+
+    const match = subject.match(/\b([ABC][12])\b/i)
+    return match ? match[1].toUpperCase() : null
+}
+
+/**
+ * Compare CEFR levels (returns true if levelA >= levelB)
+ * @param levelA - First CEFR level (e.g., 'B1')
+ * @param levelB - Second CEFR level (e.g., 'A2')
+ * @returns true if levelA is same or higher than levelB
+ */
+export function compareCEFRLevels(levelA: string, levelB: string): boolean {
+    const order = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2']
+    const indexA = order.indexOf(levelA)
+    const indexB = order.indexOf(levelB)
+
+    if (indexA === -1 || indexB === -1) return false
+    return indexA >= indexB
+}

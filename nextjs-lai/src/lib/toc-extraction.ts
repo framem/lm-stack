@@ -4,7 +4,7 @@ import { getModel } from '@/src/lib/llm'
 import { prisma } from '@/src/lib/prisma'
 import { updateDocument } from '@/src/data-access/documents'
 
-const MAX_CONTEXT_CHARS = 6000
+const MAX_CONTEXT_CHARS = 12000
 
 export interface TocSection {
     title: string
@@ -62,8 +62,46 @@ function extractHeuristic(
         }
     }
 
-    // Only use heuristic if we found enough headings
-    return sections.length >= 3 ? sections : null
+    // Validation: Only use heuristic if we found enough headings AND they start early in the document
+    if (sections.length < 3) return null
+
+    // Check if the first heading starts in the first 30% of chunks
+    const firstHeadingIndex = sections[0].startChunkIndex
+    const maxEarlyIndex = Math.floor(chunks.length * 0.3)
+
+    if (firstHeadingIndex > maxEarlyIndex) {
+        // First heading is too late in the document, likely false positives
+        console.warn(`Heuristic TOC rejected: first heading at chunk ${firstHeadingIndex}/${chunks.length}`)
+        return null
+    }
+
+    return sections
+}
+
+// Sample chunks from beginning, middle, and end to get full document coverage
+function sampleChunks(
+    chunks: { content: string; chunkIndex: number }[],
+    maxChunks: number = 40
+): typeof chunks {
+    if (chunks.length <= maxChunks) return chunks
+
+    const sampledChunks: typeof chunks = []
+    const chunksPerSection = Math.floor(maxChunks / 3)
+
+    // First section (beginning)
+    sampledChunks.push(...chunks.slice(0, chunksPerSection))
+
+    // Middle section
+    const middleStart = Math.floor(chunks.length / 2) - Math.floor(chunksPerSection / 2)
+    sampledChunks.push(...chunks.slice(middleStart, middleStart + chunksPerSection))
+
+    // Last section (end)
+    const endStart = chunks.length - chunksPerSection
+    sampledChunks.push(...chunks.slice(endStart))
+
+    // DON'T sort - keep order as: beginning, middle, end
+    // This ensures the LLM sees chunks from all sections even if MAX_CONTEXT_CHARS is reached
+    return sampledChunks
 }
 
 // LLM-based TOC extraction fallback
@@ -73,8 +111,15 @@ async function extractWithLLM(
     let contextText = ''
     const usedChunks: typeof chunks = []
 
-    for (const chunk of chunks.slice(0, 15)) {
-        const entry = `[Abschnitt ${chunk.chunkIndex}]:\n${chunk.content}`
+    // Sample chunks from across the entire document
+    const sampledChunks = sampleChunks(chunks, 40)
+
+    for (const chunk of sampledChunks) {
+        // Truncate long chunks to fit more samples in the context
+        const truncatedContent = chunk.content.length > 400
+            ? chunk.content.slice(0, 400) + '...'
+            : chunk.content
+        const entry = `[Abschnitt ${chunk.chunkIndex}]:\n${truncatedContent}`
         if (contextText.length + entry.length > MAX_CONTEXT_CHARS) break
         contextText += (contextText ? '\n\n---\n\n' : '') + entry
         usedChunks.push(chunk)
@@ -85,22 +130,26 @@ async function extractWithLLM(
     const { output } = await generateText({
         model: getModel(),
         output: Output.object({ schema: tocSchema }),
-        system: `Du extrahierst die Kapitel- und Abschnittsstruktur (Inhaltsverzeichnis) aus Lerntexten. Identifiziere Überschriften, Kapitel und thematische Abschnitte. Gib die startChunkIndex-Werte als die Abschnittsnummern an, die in eckigen Klammern vor jedem Textblock stehen.`,
-        prompt: `Extrahiere das Inhaltsverzeichnis aus dem folgenden Text. Jeder Textblock ist mit seiner Abschnittsnummer gekennzeichnet [Abschnitt N].\n\n${contextText}`,
+        system: `Du extrahierst die Kapitel- und Abschnittsstruktur (Inhaltsverzeichnis) aus Lerntexten. Identifiziere Überschriften, Kapitel und thematische Abschnitte. Gib die startChunkIndex-Werte als die Abschnittsnummern an, die in eckigen Klammern vor jedem Textblock stehen. WICHTIG: Die Abschnitte können aus verschiedenen Teilen des Dokuments stammen (Anfang, Mitte, Ende).`,
+        prompt: `Extrahiere das Inhaltsverzeichnis aus dem folgenden Text. Jeder Textblock ist mit seiner Abschnittsnummer gekennzeichnet [Abschnitt N]. Die Abschnitte sind aus dem gesamten Dokument gesamplet.\n\n${contextText}`,
     })
 
     return output?.sections ?? []
 }
 
-// Main extraction function: heuristic first, LLM fallback
+// Main extraction function: Always use LLM with sampling for best results
 export async function extractTableOfContents(
     chunks: { content: string; chunkIndex: number }[]
 ): Promise<TocSection[]> {
     if (chunks.length === 0) return []
 
-    const heuristic = extractHeuristic(chunks)
-    if (heuristic) return heuristic
+    // Try heuristic first for very small documents (< 10 chunks)
+    if (chunks.length < 10) {
+        const heuristic = extractHeuristic(chunks)
+        if (heuristic) return heuristic
+    }
 
+    // For larger documents, always use LLM with sampling for full coverage
     return extractWithLLM(chunks)
 }
 

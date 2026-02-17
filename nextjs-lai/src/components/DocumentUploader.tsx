@@ -40,6 +40,8 @@ const UPLOAD_STEP_DEFS = [
     { key: 'document', label: 'Lernmaterial speichern' },
     { key: 'chunking', label: 'Abschnitte vorbereiten' },
     { key: 'embedding', label: 'Abschnitte einbetten' },
+    { key: 'toc', label: 'Inhaltsverzeichnis erstellen' },
+    { key: 'summary', label: 'Zusammenfassung generieren' },
 ]
 
 // Map backend step names to pipeline step keys
@@ -48,6 +50,8 @@ const UPLOAD_STEP_MAP: Record<string, string> = {
     chunking: 'chunking',
     saving: 'chunking',
     embedding: 'embedding',
+    toc: 'toc',
+    summary: 'summary',
 }
 
 interface DocumentUploaderProps {

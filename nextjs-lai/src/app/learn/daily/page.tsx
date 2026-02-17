@@ -22,7 +22,7 @@ import { getDailyPracticeItems } from '@/src/actions/session'
 import { reviewFlashcard } from '@/src/actions/flashcards'
 import { evaluateAnswer } from '@/src/actions/quiz'
 import { TTSButton } from '@/src/components/TTSButton'
-import { detectLanguageFromSubject } from '@/src/lib/language-utils'
+import { detectLanguageFromSubject, extractCEFRLevel, compareCEFRLevels } from '@/src/lib/language-utils'
 
 interface FlashcardData {
     id: string
@@ -98,19 +98,33 @@ export default function DailyPracticePage() {
     const currentItem = items[currentIndex]
     const progressPercent = items.length > 0 ? ((currentIndex + 1) / items.length) * 100 : 0
 
-    // Detect language from flashcard subjects
-    const detectedLang = (() => {
-        const flashcardItem = items.find((item) => item.type === 'flashcard')
-        if (flashcardItem && 'document' in flashcardItem.data) {
-            const subject = (flashcardItem.data as FlashcardData).document?.subject
-            const ttsLang = detectLanguageFromSubject(subject)
-            // Map BCP-47 to simple language code
-            if (ttsLang.startsWith('es')) return 'es'
-            if (ttsLang.startsWith('en')) return 'en'
-            if (ttsLang.startsWith('fr')) return 'fr'
-            if (ttsLang.startsWith('it')) return 'it'
+    // Detect language and CEFR level from flashcard subjects
+    const { detectedLang, userLevel } = (() => {
+        let lang = 'de'
+        let maxLevel: string | null = null
+
+        for (const item of items) {
+            if (item.type === 'flashcard' && 'document' in item.data) {
+                const subject = (item.data as FlashcardData).document?.subject
+
+                // Detect language
+                const ttsLang = detectLanguageFromSubject(subject)
+                if (ttsLang.startsWith('es')) lang = 'es'
+                else if (ttsLang.startsWith('en')) lang = 'en'
+                else if (ttsLang.startsWith('fr')) lang = 'fr'
+                else if (ttsLang.startsWith('it')) lang = 'it'
+
+                // Extract CEFR level
+                const level = extractCEFRLevel(subject)
+                if (level) {
+                    if (!maxLevel || compareCEFRLevels(level, maxLevel)) {
+                        maxLevel = level
+                    }
+                }
+            }
         }
-        return 'de'
+
+        return { detectedLang: lang, userLevel: maxLevel || 'A1' }
     })()
 
     const resetState = useCallback(() => {
@@ -158,8 +172,15 @@ export default function DailyPracticePage() {
         }
     }
 
-    // Pick a random conversation suggestion
-    const suggestion = CONVERSATION_SUGGESTIONS[Math.floor(Date.now() / 86400000) % CONVERSATION_SUGGESTIONS.length]
+    // Filter conversation suggestions by user's CEFR level
+    const suitableScenarios = CONVERSATION_SUGGESTIONS.filter((scenario) => {
+        // Extract highest level from difficulty string (e.g., "A1-A2" → "A2")
+        const levels = scenario.level.match(/[ABC][12]/g)
+        if (!levels) return true // If no level specified, show it
+
+        const scenarioMaxLevel = levels[levels.length - 1] // Take highest level
+        return compareCEFRLevels(userLevel, scenarioMaxLevel)
+    })
 
     if (loading) {
         return (
@@ -183,14 +204,24 @@ export default function DailyPracticePage() {
                         Heute sind keine Wiederholungen fällig. Wie wäre es mit einer Konversationsübung?
                     </p>
                 </div>
-                <div className="flex flex-col sm:flex-row justify-center gap-3">
-                    <Button asChild>
-                        <Link href={`/learn/conversation?scenario=${suggestion.key}&language=${detectedLang}`}>
-                            <MessageSquare className="h-4 w-4" />
-                            {suggestion.icon} {suggestion.label} üben
-                        </Link>
-                    </Button>
-                    <Button variant="outline" asChild>
+                <div className="flex flex-col gap-3 max-w-md mx-auto">
+                    <p className="text-sm text-muted-foreground text-center mb-2">
+                        Wähle ein Szenario zum Üben:
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {suitableScenarios.map((scenario) => (
+                            <Button key={scenario.key} variant="outline" asChild className="h-auto py-3">
+                                <Link href={`/learn/conversation?scenario=${scenario.key}&language=${detectedLang}`}>
+                                    <div className="flex flex-col items-center gap-1">
+                                        <span className="text-2xl">{scenario.icon}</span>
+                                        <span className="text-sm font-medium">{scenario.label}</span>
+                                        <Badge variant="secondary" className="text-xs">{scenario.level}</Badge>
+                                    </div>
+                                </Link>
+                            </Button>
+                        ))}
+                    </div>
+                    <Button variant="ghost" asChild className="mt-2">
                         <Link href="/learn">
                             Zurück zum Dashboard
                         </Link>
@@ -217,20 +248,29 @@ export default function DailyPracticePage() {
 
                 {/* Conversation prompt */}
                 <Card className="border-primary/30 bg-gradient-to-r from-primary/5 to-background">
-                    <CardContent className="p-6 space-y-3">
+                    <CardContent className="p-6 space-y-4">
                         <div className="flex items-center gap-2">
                             <MessageSquare className="h-5 w-5 text-primary" />
-                            <h3 className="font-semibold">Konversation des Tages</h3>
+                            <h3 className="font-semibold">Konversationsübung</h3>
                         </div>
                         <p className="text-sm text-muted-foreground">
                             Übe eine kurze Konversation, um dein Sprechen zu verbessern.
                         </p>
-                        <Button asChild>
-                            <Link href={`/learn/conversation?scenario=${suggestion.key}&language=${detectedLang}`}>
-                                {suggestion.icon} {suggestion.label}
-                                <Badge variant="secondary" className="ml-2 text-xs">{suggestion.level}</Badge>
-                            </Link>
-                        </Button>
+                            <div className="grid grid-cols-2 gap-2">
+                            {suitableScenarios.map((scenario) => (
+                                <Button key={scenario.key} variant="outline" asChild size="sm" className="h-auto py-2">
+                                    <Link href={`/learn/conversation?scenario=${scenario.key}&language=${detectedLang}`}>
+                                        <div className="flex flex-col items-center gap-1 w-full">
+                                            <div className="flex items-center gap-1">
+                                                <span>{scenario.icon}</span>
+                                                <span className="text-sm truncate">{scenario.label}</span>
+                                            </div>
+                                            <Badge variant="secondary" className="text-xs">{scenario.level}</Badge>
+                                        </div>
+                                    </Link>
+                                </Button>
+                            ))}
+                        </div>
                     </CardContent>
                 </Card>
 
