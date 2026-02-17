@@ -23,7 +23,7 @@ import {
     SelectValue,
 } from '@/src/components/ui/select'
 import { Badge } from '@/src/components/ui/badge'
-import { LANGUAGE_LABELS, type Language } from '@/src/lib/conversation-scenarios'
+import { LANGUAGE_LABELS, type Language } from '@/src/lib/conversation-scenarios-constants'
 
 // CEFR difficulty levels
 const DIFFICULTY_LEVELS = [

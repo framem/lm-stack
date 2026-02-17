@@ -1,7 +1,7 @@
 'use client'
 
 import { ChatInterface } from '@/src/components/ChatInterface'
-import type { ConversationScenario, Language } from '@/src/lib/conversation-scenarios'
+import type { ConversationScenario, Language } from '@/src/lib/conversation-scenarios-constants'
 
 interface ConversationContentProps {
     scenario: ConversationScenario

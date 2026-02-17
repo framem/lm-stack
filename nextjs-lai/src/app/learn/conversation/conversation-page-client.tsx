@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/src
 import { Badge } from '@/src/components/ui/badge'
 import { Button } from '@/src/components/ui/button'
 import { ArrowLeft, Languages, Trophy, Sparkles, Plus, Trash2 } from 'lucide-react'
-import { SCENARIOS, LANGUAGE_LABELS, type ConversationScenario, type Language } from '@/src/lib/conversation-scenarios'
+import { SCENARIOS, LANGUAGE_LABELS, type ConversationScenario, type Language } from '@/src/lib/conversation-scenarios-constants'
 import { ConversationContent } from './conversation-content'
 import { ScenarioGenerator } from '@/src/components/ScenarioGenerator'
 import { removeGeneratedScenario } from '@/src/actions/generated-scenarios'
