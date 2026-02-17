@@ -212,17 +212,22 @@ export function ConversationPageClient({ bestEvaluations, generatedScenarios }: 
                         return (
                             <Card
                                 key={scenario.key}
-                                className="cursor-pointer transition-colors hover:bg-accent/30 relative"
+                                className="cursor-pointer transition-colors hover:bg-accent/30 relative flex flex-col"
                                 onClick={() => setActiveScenario(scenario)}
                             >
-                                <CardHeader className="pb-2">
+                                <CardHeader className="pb-2 flex-1">
                                     <CardTitle className="flex items-center gap-2 text-base">
                                         <span className="text-xl">{scenario.icon}</span>
-                                        {germanTranslation.title}
+                                        <span className="flex-1">{germanTranslation.title}</span>
+                                        {hasAttempt && (
+                                            <Badge variant="secondary" className="text-xs">
+                                                Geübt
+                                            </Badge>
+                                        )}
                                     </CardTitle>
                                     <CardDescription>{germanTranslation.description}</CardDescription>
                                 </CardHeader>
-                                <CardContent className="flex gap-2 items-center">
+                                <CardContent className="flex gap-2 items-center mt-auto pt-0">
                                     <Badge variant="secondary">{scenario.difficulty}</Badge>
                                     <Badge variant="outline" className="gap-1">
                                         {LANGUAGE_LABELS[selectedLanguage].flag}
@@ -234,13 +239,6 @@ export function ConversationPageClient({ bestEvaluations, generatedScenarios }: 
                                         </div>
                                     )}
                                 </CardContent>
-                                {hasAttempt && (
-                                    <div className="absolute top-2 right-2">
-                                        <Badge variant="secondary" className="text-xs">
-                                            Geübt
-                                        </Badge>
-                                    </div>
-                                )}
                             </Card>
                         )
                     })}
@@ -272,17 +270,22 @@ export function ConversationPageClient({ bestEvaluations, generatedScenarios }: 
                             return (
                                 <Card
                                     key={record.id}
-                                    className="cursor-pointer transition-colors hover:bg-accent/30 relative"
+                                    className="cursor-pointer transition-colors hover:bg-accent/30 relative flex flex-col"
                                     onClick={() => setActiveScenario(toConversationScenario(record))}
                                 >
-                                    <CardHeader className="pb-2">
+                                    <CardHeader className="pb-2 flex-1">
                                         <CardTitle className="flex items-center gap-2 text-base">
                                             <span className="text-xl">{record.icon}</span>
-                                            {record.title}
+                                            <span className="flex-1">{record.title}</span>
+                                            {hasAttempt && (
+                                                <Badge variant="secondary" className="text-xs">
+                                                    Geübt
+                                                </Badge>
+                                            )}
                                         </CardTitle>
                                         <CardDescription>{record.description}</CardDescription>
                                     </CardHeader>
-                                    <CardContent className="flex gap-2 items-center">
+                                    <CardContent className="flex gap-2 items-center mt-auto pt-0">
                                         <Badge variant="secondary">{record.difficulty}</Badge>
                                         <Badge variant="outline" className="gap-1">
                                             {LANGUAGE_LABELS[record.language as Language]?.flag}
@@ -294,13 +297,6 @@ export function ConversationPageClient({ bestEvaluations, generatedScenarios }: 
                                             </div>
                                         )}
                                     </CardContent>
-                                    {hasAttempt && (
-                                        <div className="absolute top-2 right-2">
-                                            <Badge variant="secondary" className="text-xs">
-                                                Geübt
-                                            </Badge>
-                                        </div>
-                                    )}
                                     <Button
                                         variant="ghost"
                                         size="icon"
