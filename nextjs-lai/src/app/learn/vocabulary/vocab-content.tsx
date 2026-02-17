@@ -333,10 +333,23 @@ export function VocabContent() {
                     <div className="space-y-6">
                         {[...docGroups.entries()]
                             .filter(([docId]) => !filterDoc || filterDoc === docId)
-                            .map(([docId, group]) => (
+                            .map(([docId, group]) => {
+                                const setId = group.fileType === 'language-set'
+                                    ? LANGUAGE_SET_ID_MAP[group.title]
+                                    : undefined
+                                return (
                                 <section key={docId} className="space-y-3">
                                     <div className="flex items-center gap-2">
-                                        <h3 className="font-semibold">{group.title}</h3>
+                                        {setId ? (
+                                            <Link
+                                                href={`/learn/vocabulary/sets/${setId}`}
+                                                className="font-semibold hover:underline"
+                                            >
+                                                {group.title}
+                                            </Link>
+                                        ) : (
+                                            <h3 className="font-semibold">{group.title}</h3>
+                                        )}
                                         {group.subject && (
                                             <Badge variant="outline" className="gap-1">
                                                 <FolderOpen className="h-3 w-3" />
@@ -392,7 +405,8 @@ export function VocabContent() {
                                         })}
                                     </div>
                                 </section>
-                            ))}
+                                )
+                            })}
                     </div>
                 </>
             )}

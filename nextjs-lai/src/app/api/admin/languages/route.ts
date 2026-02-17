@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { languageSets, getLanguageSet } from '@/src/data/language-sets'
 import { createDocument, getDocuments, deleteDocument } from '@/src/data-access/documents'
 import { createFlashcards } from '@/src/data-access/flashcards'
+import { getLearningGoals, upsertLearningGoal } from '@/src/data-access/learning-goal'
 
 // GET — list all language sets with import status
 export async function GET() {
@@ -72,6 +73,13 @@ export async function POST(req: NextRequest) {
     )
 
     await createFlashcards(flashcardData)
+
+    // Auto-set a learning goal if none exists for this language yet
+    const langCode = set.id.split('-')[0] // 'es' from 'es-a1'
+    const existingGoals = await getLearningGoals()
+    if (!existingGoals.some(g => g.language === langCode)) {
+        await upsertLearningGoal({ language: langCode, targetLevel: set.level })
+    }
 
     return NextResponse.json({
         success: true,
