@@ -34,6 +34,12 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/src/components/ui/alert-dialog'
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/src/components/ui/tooltip'
 import { QuizCard } from '@/src/components/QuizCard'
 import { getQuizzes, deleteQuiz, getDocumentProgress, getRecommendedQuizDifficulty } from '@/src/actions/quiz'
 import { DIFFICULTY_LEVELS } from '@/src/lib/quiz-difficulty'
@@ -123,7 +129,7 @@ export function QuizContent() {
     const [generating, setGenerating] = useState(false)
     const [generatedCount, setGeneratedCount] = useState(0)
     const [questionCount, setQuestionCount] = useState(5)
-    const [questionTypes, setQuestionTypes] = useState<string[]>(['singleChoice', 'multipleChoice', 'freetext', 'truefalse', 'cloze'])
+    const [questionTypes, setQuestionTypes] = useState<string[]>(QUESTION_TYPES.map(t => t.value))
     const [difficulty, setDifficulty] = useState(1)
     const [recommendedDifficulty, setRecommendedDifficulty] = useState<number | null>(null)
     const [examMode, setExamMode] = useState(false)
@@ -220,7 +226,20 @@ export function QuizContent() {
                         const url = examMode
                             ? `/learn/quiz/${event.quizId}?mode=exam&timeLimit=${examTimeLimit}`
                             : `/learn/quiz/${event.quizId}`
-                        router.push(url)
+
+                        // Reload quiz list
+                        getQuizzes().then((list) => setQuizzes(list as Quiz[])).catch(console.error)
+
+                        // Close dialog
+                        setDialogOpen(false)
+
+                        // Show success toast with action
+                        toast.success('Quiz erstellt', {
+                            action: {
+                                label: 'Jetzt starten',
+                                onClick: () => router.push(url)
+                            }
+                        })
                         return
                     } else if (event.type === 'error') {
                         throw new Error(event.message)
@@ -475,7 +494,9 @@ export function QuizContent() {
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Fragetypen</label>
+                            <label className="text-sm font-medium">
+                                Fragetypen ({questionTypes.length})
+                            </label>
                             <div className="space-y-2">
                                 {QUESTION_TYPES.map((type) => (
                                     <label
@@ -528,7 +549,21 @@ export function QuizContent() {
                                                 <span className="text-sm font-medium">
                                                     {level.label}
                                                     {recommendedDifficulty === level.value && (
-                                                        <span className="ml-1.5 text-xs text-emerald-600 dark:text-emerald-400">Empfohlen</span>
+                                                        <span className="ml-1.5 text-xs text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1">
+                                                            Empfohlen
+                                                            <TooltipProvider delayDuration={200}>
+                                                                <Tooltip>
+                                                                    <TooltipTrigger asChild>
+                                                                        <HelpCircle className="h-3 w-3 cursor-help" />
+                                                                    </TooltipTrigger>
+                                                                    <TooltipContent className="max-w-xs">
+                                                                        <p className="text-xs">
+                                                                            Basierend auf deiner bisherigen Leistung: Die höchste Stufe mit ≥80% Erfolgsrate, plus eine Stufe höher zur Herausforderung.
+                                                                        </p>
+                                                                    </TooltipContent>
+                                                                </Tooltip>
+                                                            </TooltipProvider>
+                                                        </span>
                                                     )}
                                                 </span>
                                                 <p className="text-xs text-muted-foreground">{level.description}</p>
