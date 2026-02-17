@@ -292,11 +292,30 @@ export function SessionContent() {
     // Active session
     return (
         <div className="p-6 max-w-2xl mx-auto space-y-6">
+            {/* Header */}
+            <div className="text-center space-y-2">
+                <h1 className="text-2xl font-bold flex items-center justify-center gap-2">
+                    <GraduationCap className="h-6 w-6" />
+                    Lern-Session
+                </h1>
+                <p className="text-sm text-muted-foreground flex items-center justify-center gap-3">
+                    <span className="flex items-center gap-1">
+                        <Layers className="h-4 w-4" />
+                        Karteikarten
+                    </span>
+                    <span>+</span>
+                    <span className="flex items-center gap-1">
+                        <HelpCircle className="h-4 w-4" />
+                        Quiz-Fragen
+                    </span>
+                </p>
+            </div>
+
             {/* Progress */}
             <div className="space-y-2">
                 <Progress value={progressPercent} />
                 <div className="flex items-center justify-between text-sm text-muted-foreground">
-                    <span>Lern-Session</span>
+                    <span>Fortschritt</span>
                     <span>{currentIndex + 1} von {totalItems}</span>
                 </div>
             </div>
