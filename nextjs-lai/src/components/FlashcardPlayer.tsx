@@ -2,9 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { Button } from '@/src/components/ui/button'
-import { Card, CardContent } from '@/src/components/ui/card'
 import { Progress } from '@/src/components/ui/progress'
-import { Badge } from '@/src/components/ui/badge'
 import {
     Sheet,
     SheetContent,
@@ -14,6 +12,7 @@ import {
 } from '@/src/components/ui/sheet'
 import { reviewFlashcard } from '@/src/actions/flashcards'
 import { Loader2, FileText, SkipForward } from 'lucide-react'
+import { FlashcardCard } from '@/src/components/FlashcardCard'
 
 interface FlashcardItem {
     id: string
@@ -114,73 +113,17 @@ export function FlashcardPlayer({ cards: initialCards, onComplete }: FlashcardPl
                 </div>
             </div>
 
-            {/* Card with flip animation */}
-            <div
-                className="perspective-1000 cursor-pointer"
-                role="button"
-                tabIndex={0}
-                aria-label={flipped ? 'Karteikarte — Antwortseite' : 'Karteikarte umdrehen'}
-                onClick={handleFlip}
-                onKeyDown={handleKeyDown}
-            >
-                <div
-                    className={`relative transition-transform duration-500 [transform-style:preserve-3d] ${
-                        flipped ? '[transform:rotateY(180deg)]' : ''
-                    }`}
-                    aria-live="polite"
-                >
-                    {/* Front */}
-                    <Card className="[backface-visibility:hidden] min-h-[240px]">
-                        <CardContent className="flex flex-col items-center justify-center min-h-[240px] p-8 text-center">
-                            {card.document && (
-                                <Badge variant="outline" className="mb-4">
-                                    {card.document.title}
-                                </Badge>
-                            )}
-                            <p className="text-xl font-semibold">{card.front}</p>
-                            {!flipped && (
-                                <p className="text-sm text-muted-foreground mt-6">
-                                    Klicken zum Umdrehen
-                                </p>
-                            )}
-                        </CardContent>
-                    </Card>
-
-                    {/* Back */}
-                    <Card className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)] min-h-[240px]">
-                        <CardContent className="flex flex-col items-center justify-center min-h-[240px] p-8 text-center">
-                            {/* Show question as subtle reference on the answer side */}
-                            <p className="text-xs text-muted-foreground mb-3 italic">
-                                {card.front}
-                            </p>
-                            <p className="text-lg">{card.back}</p>
-                            {card.context && (
-                                <p className="text-sm text-muted-foreground mt-4 italic">
-                                    {card.context}
-                                </p>
-                            )}
-                            {card.chunk && (
-                                <button
-                                    type="button"
-                                    onClick={(e) => {
-                                        e.stopPropagation()
-                                        setSourceOpen(true)
-                                    }}
-                                    className="mt-4 pt-3 border-t w-full text-left hover:bg-accent/50 rounded-md p-2 -mx-2 transition-colors cursor-pointer"
-                                >
-                                    <p className="text-xs font-medium text-primary flex items-center gap-1">
-                                        <FileText className="h-3 w-3" />
-                                        Quelle — Abschnitt {card.chunk.chunkIndex + 1}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
-                                        {card.chunk.content}
-                                    </p>
-                                </button>
-                            )}
-                        </CardContent>
-                    </Card>
-                </div>
-            </div>
+            {/* Card with flip animation and TTS */}
+            <FlashcardCard
+                front={card.front}
+                back={card.back}
+                context={card.context}
+                document={card.document}
+                chunk={card.chunk}
+                flipped={flipped}
+                onFlip={handleFlip}
+                onSourceClick={() => setSourceOpen(true)}
+            />
 
             {/* Rating buttons — only visible after flip */}
             {flipped && (

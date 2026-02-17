@@ -24,6 +24,7 @@ import { reviewFlashcard } from '@/src/actions/flashcards'
 import { evaluateAnswer } from '@/src/actions/quiz'
 import { isFreetextLikeType } from '@/src/lib/quiz-types'
 import { SortableWordChips } from '@/src/components/quiz/SortableWordChips'
+import { FlashcardCard } from '@/src/components/FlashcardCard'
 
 interface FlashcardData {
     id: string
@@ -380,51 +381,15 @@ function FlashcardItem({
                 Karteikarte
             </Badge>
 
-            <div
-                className="perspective-1000 cursor-pointer"
-                role="button"
-                tabIndex={0}
-                aria-label={flipped ? 'Karteikarte — Antwortseite' : 'Karteikarte umdrehen'}
-                onClick={() => { if (!flipped) onFlip() }}
-                onKeyDown={(e) => {
-                    if ((e.key === 'Enter' || e.key === ' ') && !flipped) {
-                        e.preventDefault()
-                        onFlip()
-                    }
-                }}
-            >
-                <div
-                    className={`relative transition-transform duration-500 [transform-style:preserve-3d] ${
-                        flipped ? '[transform:rotateY(180deg)]' : ''
-                    }`}
-                >
-                    <Card className="[backface-visibility:hidden] min-h-[200px]">
-                        <CardContent className="flex flex-col items-center justify-center min-h-[200px] p-8 text-center">
-                            {card.document && (
-                                <Badge variant="outline" className="mb-4">
-                                    {card.document.title}
-                                </Badge>
-                            )}
-                            <p className="text-xl font-semibold">{card.front}</p>
-                            {!flipped && (
-                                <p className="text-sm text-muted-foreground mt-6">
-                                    Klicken zum Umdrehen
-                                </p>
-                            )}
-                        </CardContent>
-                    </Card>
-
-                    <Card className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)] min-h-[200px]">
-                        <CardContent className="flex flex-col items-center justify-center min-h-[200px] p-8 text-center">
-                            <p className="text-xs text-muted-foreground mb-3 italic">{card.front}</p>
-                            <p className="text-lg">{card.back}</p>
-                            {card.context && (
-                                <p className="text-sm text-muted-foreground mt-4 italic">{card.context}</p>
-                            )}
-                        </CardContent>
-                    </Card>
-                </div>
-            </div>
+            <FlashcardCard
+                front={card.front}
+                back={card.back}
+                context={card.context}
+                document={card.document}
+                chunk={card.chunk}
+                flipped={flipped}
+                onFlip={onFlip}
+            />
 
             {flipped && (
                 <div className="space-y-3">
