@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { FileText, Trash2, Pencil, ArrowLeft, Check, X, Loader2, ChevronDown, ChevronRight, List, MessageSquare, Brain, CreditCard, RefreshCw } from 'lucide-react'
+import { FileText, Trash2, Pencil, ArrowLeft, Check, X, Loader2, ChevronDown, ChevronRight, List, MessageSquare, Brain, CreditCard, RefreshCw, Layers, MoreVertical, HelpCircle } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { Button } from '@/src/components/ui/button'
@@ -32,8 +32,16 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/src/components/ui/alert-dialog'
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/src/components/ui/dropdown-menu'
 import { getDocument, deleteDocument, renameDocument, hasChunksWithoutEmbeddings } from '@/src/actions/documents'
 import { formatDate } from '@/src/lib/utils'
+import { getCompetencies } from '@/src/app/learn/knowledge-map/actions'
+import type { TopicCompetency } from '@/src/data-access/topics'
 
 interface TocSection {
     title: string
@@ -80,6 +88,8 @@ export default function DocumentDetailPage() {
     const chunkViewerRef = useRef<ChunkViewerHandle>(null)
     const [hasEmbeddingIssues, setHasEmbeddingIssues] = useState(false)
     const [regeneratingEmbeddings, setRegeneratingEmbeddings] = useState(false)
+    const [topics, setTopics] = useState<TopicCompetency[]>([])
+    const [loadingTopics, setLoadingTopics] = useState(true)
 
     const fetchDocument = useCallback(async () => {
         try {
@@ -101,6 +111,9 @@ export default function DocumentDetailPage() {
             // Check if document has chunks without embeddings
             const needsEmbeddings = await hasChunksWithoutEmbeddings(params.id)
             setHasEmbeddingIssues(needsEmbeddings)
+
+            // Load topics for this document
+            loadTopics()
         } catch (err) {
             console.error('Error loading document:', err)
             setError('Lernmaterial nicht gefunden.')
@@ -108,6 +121,20 @@ export default function DocumentDetailPage() {
             setLoading(false)
         }
     }, [params.id])
+
+    const loadTopics = async () => {
+        if (!params.id) return
+        setLoadingTopics(true)
+        try {
+            const competencies = await getCompetencies(params.id)
+            setTopics(competencies)
+        } catch (err) {
+            console.error('Error loading topics:', err)
+            setTopics([])
+        } finally {
+            setLoadingTopics(false)
+        }
+    }
 
     useEffect(() => {
         fetchDocument()
@@ -185,6 +212,8 @@ export default function DocumentDetailPage() {
             if (!res.ok) throw new Error('Fehler')
             const data = await res.json()
             toast.success(`${data.topics?.length ?? 0} Themen extrahiert.`)
+            // Reload topics to show them immediately
+            await loadTopics()
         } catch {
             toast.error('Themenextraktion fehlgeschlagen.')
         } finally {
@@ -319,83 +348,48 @@ export default function DocumentDetailPage() {
                         </span>
                     </div>
                 </div>
-                <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => setShowDeleteDialog(true)}
-                    disabled={deleting}
-                >
-                    <Trash2 className="h-4 w-4" />
-                    {deleting ? 'Wird gelöscht...' : 'Löschen'}
-                </Button>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                            <MoreVertical className="h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                            onClick={() => setShowDeleteDialog(true)}
+                            className="text-destructive focus:text-destructive"
+                            disabled={deleting}
+                        >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            {deleting ? 'Wird gelöscht...' : 'Dokument löschen'}
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
             </div>
-
-            {/* "Jetzt lernen" Action Block */}
-            <Card className="bg-gradient-to-br from-primary/5 via-primary/3 to-background border-primary/20">
-                <CardContent className="p-6">
-                    <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                        <Brain className="h-5 w-5 text-primary" />
-                        Jetzt lernen
-                    </h2>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {/* Quiz Button */}
-                        <Button
-                            variant="outline"
-                            size="lg"
-                            className="h-auto flex flex-col items-center gap-3 p-6 hover:bg-primary/10 hover:border-primary transition-all"
-                            onClick={() => setActiveTab('quizzes')}
-                        >
-                            <div className="p-3 rounded-full bg-blue-500/10 text-blue-500">
-                                <Brain className="h-8 w-8" />
-                            </div>
-                            <div className="text-center">
-                                <div className="font-semibold text-base mb-1">Quiz starten</div>
-                                <div className="text-xs text-muted-foreground">Wissen überprüfen</div>
-                            </div>
-                        </Button>
-
-                        {/* Flashcards Button */}
-                        <Button
-                            variant="outline"
-                            size="lg"
-                            className="h-auto flex flex-col items-center gap-3 p-6 hover:bg-primary/10 hover:border-primary transition-all"
-                            onClick={() => setActiveTab('flashcards')}
-                        >
-                            <div className="p-3 rounded-full bg-purple-500/10 text-purple-500">
-                                <CreditCard className="h-8 w-8" />
-                            </div>
-                            <div className="text-center">
-                                <div className="font-semibold text-base mb-1">Karteikarten üben</div>
-                                <div className="text-xs text-muted-foreground">Mit Spaced Repetition</div>
-                            </div>
-                        </Button>
-
-                        {/* Chat Button */}
-                        <Button
-                            variant="outline"
-                            size="lg"
-                            className="h-auto flex flex-col items-center gap-3 p-6 hover:bg-primary/10 hover:border-primary transition-all"
-                            onClick={() => setActiveTab('chat')}
-                        >
-                            <div className="p-3 rounded-full bg-green-500/10 text-green-500">
-                                <MessageSquare className="h-8 w-8" />
-                            </div>
-                            <div className="text-center">
-                                <div className="font-semibold text-base mb-1">Mit Dokument chatten</div>
-                                <div className="text-xs text-muted-foreground">Fragen stellen</div>
-                            </div>
-                        </Button>
-                    </div>
-                </CardContent>
-            </Card>
 
             {/* Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab}>
                 <TabsList variant="line">
-                    <TabsTrigger value="content">Inhalt</TabsTrigger>
-                    <TabsTrigger value="chat">Chat</TabsTrigger>
-                    <TabsTrigger value="quizzes">Quizze</TabsTrigger>
-                    <TabsTrigger value="flashcards">Karteikarten</TabsTrigger>
+                    <TabsTrigger value="content" className="gap-2">
+                        <FileText className="h-4 w-4" />
+                        Inhalt
+                    </TabsTrigger>
+                    <TabsTrigger value="chat" className="gap-2">
+                        <MessageSquare className="h-4 w-4" />
+                        Chat
+                    </TabsTrigger>
+                    <TabsTrigger value="quizzes" className="gap-2">
+                        <HelpCircle className="h-4 w-4" />
+                        Quizze
+                    </TabsTrigger>
+                    <TabsTrigger value="flashcards" className="gap-2">
+                        <CreditCard className="h-4 w-4" />
+                        Karteikarten
+                    </TabsTrigger>
+                    <TabsTrigger value="topics" className="gap-2">
+                        <Layers className="h-4 w-4" />
+                        Themen
+                    </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="content" className="space-y-6 mt-4">
@@ -434,34 +428,20 @@ export default function DocumentDetailPage() {
                     <div className="space-y-3">
                         <div className="flex items-center justify-between">
                             <h2 className="text-lg font-semibold">Zusammenfassung</h2>
-                            <div className="flex items-center gap-2">
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={handleExtractTopics}
-                                    disabled={extractingTopics}
-                                >
-                                    {extractingTopics ? (
-                                        <><Loader2 className="h-4 w-4 animate-spin" /> Themen werden extrahiert...</>
-                                    ) : (
-                                        'Themen extrahieren'
-                                    )}
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={handleGenerateSummary}
-                                    disabled={generatingSummary}
-                                >
-                                    {generatingSummary ? (
-                                        <><Loader2 className="h-4 w-4 animate-spin" /> Wird erstellt...</>
-                                    ) : summaryText ? (
-                                        'Neu generieren'
-                                    ) : (
-                                        'Zusammenfassung erstellen'
-                                    )}
-                                </Button>
-                            </div>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={handleGenerateSummary}
+                                disabled={generatingSummary}
+                            >
+                                {generatingSummary ? (
+                                    <><Loader2 className="h-4 w-4 animate-spin" /> Wird erstellt...</>
+                                ) : summaryText ? (
+                                    'Neu generieren'
+                                ) : (
+                                    'Zusammenfassung erstellen'
+                                )}
+                            </Button>
                         </div>
                         {summaryText ? (
                             <Card>
@@ -529,15 +509,113 @@ export default function DocumentDetailPage() {
                 </TabsContent>
 
                 <TabsContent value="chat" className="mt-4">
-                    <ChatInterface documentId={params.id} />
+                    {activeTab === 'chat' && <ChatInterface documentId={params.id} />}
                 </TabsContent>
 
                 <TabsContent value="quizzes" className="mt-4">
-                    <DocumentQuizzesTab documentId={params.id} />
+                    {activeTab === 'quizzes' && <DocumentQuizzesTab documentId={params.id} />}
                 </TabsContent>
 
                 <TabsContent value="flashcards" className="mt-4">
-                    <DocumentFlashcardsTab documentId={params.id} />
+                    {activeTab === 'flashcards' && <DocumentFlashcardsTab documentId={params.id} />}
+                </TabsContent>
+
+                <TabsContent value="topics" className="mt-4 space-y-4">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2.5 rounded-xl bg-purple-500/10">
+                                <Layers className="h-5 w-5 text-purple-500" />
+                            </div>
+                            <div>
+                                <h2 className="text-lg font-semibold">Extrahierte Themen</h2>
+                                <p className="text-sm text-muted-foreground">
+                                    {topics.length > 0
+                                        ? `${topics.length} Themen gefunden`
+                                        : 'Extrahiere Themen für die Wissenslandkarte'
+                                    }
+                                </p>
+                            </div>
+                        </div>
+                        <Button
+                            variant={topics.length === 0 ? "default" : "outline"}
+                            size="sm"
+                            onClick={handleExtractTopics}
+                            disabled={extractingTopics || loadingTopics}
+                        >
+                            {extractingTopics ? (
+                                <><Loader2 className="h-4 w-4 animate-spin" /> Extrahiere...</>
+                            ) : topics.length > 0 ? (
+                                <><RefreshCw className="h-4 w-4" /> Neu extrahieren</>
+                            ) : (
+                                <><Brain className="h-4 w-4" /> Themen extrahieren</>
+                            )}
+                        </Button>
+                    </div>
+
+                    {loadingTopics ? (
+                        <div className="grid gap-3 md:grid-cols-2">
+                            <Skeleton className="h-24" />
+                            <Skeleton className="h-24" />
+                        </div>
+                    ) : topics.length > 0 ? (
+                        <div className="grid gap-3 md:grid-cols-2">
+                            {topics.map((topic) => (
+                                <Card key={topic.id}>
+                                    <CardContent className="p-4 space-y-2">
+                                        <div className="flex items-start justify-between gap-2">
+                                            <h3 className="font-medium text-sm flex-1">{topic.name}</h3>
+                                            <Badge
+                                                variant="outline"
+                                                className={
+                                                    topic.status === 'Beherrscht'
+                                                        ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                                                        : topic.status === 'Teilweise'
+                                                            ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
+                                                            : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                                                }
+                                            >
+                                                {topic.status}
+                                            </Badge>
+                                        </div>
+                                        {topic.description && (
+                                            <p className="text-xs text-muted-foreground line-clamp-2">
+                                                {topic.description}
+                                            </p>
+                                        )}
+                                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                            <span className="font-semibold text-foreground">{topic.score}%</span>
+                                            {topic.quizScore !== null && <span>Quiz: {topic.quizScore}%</span>}
+                                            {topic.flashcardScore !== null && <span>Karten: {topic.flashcardScore}%</span>}
+                                        </div>
+                                        <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                                            <div
+                                                className={`h-full rounded-full transition-all ${
+                                                    topic.score >= 80
+                                                        ? 'bg-green-500'
+                                                        : topic.score >= 40
+                                                            ? 'bg-yellow-500'
+                                                            : 'bg-red-500'
+                                                }`}
+                                                style={{ width: `${topic.score}%` }}
+                                            />
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="text-center py-12 space-y-3">
+                            <div className="p-4 rounded-full bg-purple-500/10 w-16 h-16 mx-auto flex items-center justify-center">
+                                <Layers className="h-8 w-8 text-purple-500" />
+                            </div>
+                            <div>
+                                <p className="font-medium mb-1">Noch keine Themen extrahiert</p>
+                                <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                                    Klicke auf "Themen extrahieren", um KI-basierte Themen aus diesem Dokument zu extrahieren.
+                                </p>
+                            </div>
+                        </div>
+                    )}
                 </TabsContent>
             </Tabs>
 
