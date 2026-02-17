@@ -33,14 +33,14 @@ export async function POST(
                     // Find all chunks without embeddings
                     send({ type: 'progress', step: 'checking', detail: 'Prüfe Lernabschnitte...' })
 
-                    const chunksWithoutEmbeddings = await prisma.documentChunk.findMany({
-                        where: {
-                            documentId: id,
-                            embedding: null,
-                        },
-                        orderBy: { chunkIndex: 'asc' },
-                        select: { id: true, content: true },
-                    })
+                    // Use raw SQL since embedding is Unsupported type in Prisma
+                    const chunksWithoutEmbeddings = await prisma.$queryRaw<{ id: string; content: string }[]>`
+                        SELECT id, content
+                        FROM "DocumentChunk"
+                        WHERE "documentId" = ${id}
+                        AND "embedding" IS NULL
+                        ORDER BY "chunkIndex" ASC
+                    `
 
                     if (chunksWithoutEmbeddings.length === 0) {
                         send({

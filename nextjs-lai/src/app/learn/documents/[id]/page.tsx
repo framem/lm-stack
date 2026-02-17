@@ -83,6 +83,11 @@ export default function DocumentDetailPage() {
 
     const fetchDocument = useCallback(async () => {
         try {
+            if (!params.id) {
+                setError('Keine Dokument-ID gefunden.')
+                setLoading(false)
+                return
+            }
             const data = await getDocument(params.id)
             setDocument(data as unknown as DocumentDetail)
             if ((data as unknown as DocumentDetail)?.summary) {
@@ -96,7 +101,8 @@ export default function DocumentDetailPage() {
             // Check if document has chunks without embeddings
             const needsEmbeddings = await hasChunksWithoutEmbeddings(params.id)
             setHasEmbeddingIssues(needsEmbeddings)
-        } catch {
+        } catch (err) {
+            console.error('Error loading document:', err)
             setError('Lernmaterial nicht gefunden.')
         } finally {
             setLoading(false)

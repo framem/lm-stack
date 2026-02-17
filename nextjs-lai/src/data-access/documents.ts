@@ -73,13 +73,14 @@ export async function deleteDocument(id: string) {
 }
 
 export async function hasChunksWithoutEmbeddings(documentId: string): Promise<boolean> {
-    const count = await prisma.documentChunk.count({
-        where: {
-            documentId,
-            embedding: null,
-        },
-    })
-    return count > 0
+    // Use raw SQL since embedding is Unsupported type in Prisma
+    const result = await prisma.$queryRaw<{ count: bigint }[]>`
+        SELECT COUNT(*)::int as count
+        FROM "DocumentChunk"
+        WHERE "documentId" = ${documentId}
+        AND "embedding" IS NULL
+    `
+    return result[0] && Number(result[0].count) > 0
 }
 
 // ---- Document listing for refresh ----

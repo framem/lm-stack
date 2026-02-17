@@ -55,6 +55,12 @@ export async function POST(request: NextRequest) {
         const lang = (language ?? 'de') as 'de' | 'en' | 'es'
         const t = scenarioDef.translations[lang] ?? scenarioDef.translations.de
 
+        // Separate user messages (to evaluate) from assistant messages (context only)
+        const userMessages = messages
+            .filter((m) => m.role === 'user')
+            .map((m, i) => `${i + 1}. ${m.content}`)
+            .join('\n\n')
+
         const conversationText = messages
             .map((m) => `${m.role === 'user' ? 'Lernender' : 'KI-Partner'}: ${m.content}`)
             .join('\n\n')
@@ -64,24 +70,34 @@ export async function POST(request: NextRequest) {
             output: Output.object({ schema: evaluationSchema }),
             system: `Du bist ein erfahrener Sprachlehrer, der Konversationsübungen bewertet. Bewerte die Leistung des Lernenden fair und konstruktiv.
 
+WICHTIG: Bewerte NUR die Nachrichten, die mit "Lernender:" markiert sind. Die "KI-Partner:"-Nachrichten dienen nur als Kontext und sollen NICHT bewertet werden. Analysiere und korrigiere ausschließlich den Text des Lernenden.
+
 Szenario: ${t.title} (${scenarioDef.difficulty})
 Beschreibung: ${t.description}
 Sprache: ${lang === 'de' ? 'Deutsch' : lang === 'en' ? 'Englisch' : 'Spanisch'}
 
 Bewertungskriterien:
-- Grammatik (1-10): Korrekte Satzstruktur, Konjugation, Kasus/Genus, Artikel
-- Wortschatz (1-10): Vielfalt und Angemessenheit der verwendeten Wörter für das Niveau ${scenarioDef.difficulty}
-- Kommunikation (1-10): Wie gut der Lernende sein kommunikatives Ziel erreicht hat, Natürlichkeit
+- Grammatik (1-10): Korrekte Satzstruktur, Konjugation, Kasus/Genus, Artikel des LERNENDEN
+- Wortschatz (1-10): Vielfalt und Angemessenheit der verwendeten Wörter des LERNENDEN für das Niveau ${scenarioDef.difficulty}
+- Kommunikation (1-10): Wie gut der LERNENDE sein kommunikatives Ziel erreicht hat, Natürlichkeit
 - Gesamtnote (1-10): Gewichteter Durchschnitt aller Kriterien
 
 Gib konstruktives Feedback auf Deutsch:
-1. overallFeedback: 2-4 Sätze Zusammenfassung
-2. corrections: Die wichtigsten Grammatik-/Wortwahlfehler mit Erklärung (max 5)
-3. newVocabulary: Bemerkenswerte Vokabeln, die der Lernende korrekt benutzt hat ODER die er lernen sollte (max 5)
-4. tips: 2-3 konkrete, umsetzbare Tipps zur Verbesserung
+1. overallFeedback: 2-4 Sätze Zusammenfassung über die Leistung des LERNENDEN
+2. corrections: Die wichtigsten Grammatik-/Wortwahlfehler des LERNENDEN mit Erklärung (max 5)
+3. newVocabulary: Bemerkenswerte Vokabeln, die der LERNENDE korrekt benutzt hat ODER die er lernen sollte (max 5)
+4. tips: 2-3 konkrete, umsetzbare Tipps zur Verbesserung für den LERNENDEN
 
 Sei ermutigend, aber ehrlich. Passe die Erwartungen an das CEFR-Niveau an.`,
-            prompt: `Bewerte die folgende Konversationsübung:\n\n${conversationText}`,
+            prompt: `Bewerte die folgende Konversationsübung.
+
+=== NACHRICHTEN DES LERNENDEN (ZU BEWERTEN) ===
+${userMessages}
+
+=== VOLLSTÄNDIGE KONVERSATION (NUR ALS KONTEXT) ===
+${conversationText}
+
+Analysiere und bewerte ausschließlich die Nachrichten im Abschnitt "NACHRICHTEN DES LERNENDEN". Der Kontext-Abschnitt dient nur zum Verständnis der Situation.`,
         })
 
         if (output) {

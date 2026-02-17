@@ -190,7 +190,7 @@ function EvaluationCard({ evaluation }: { evaluation: ConversationEvaluation }) 
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 font-semibold">
                     <ClipboardCheck className="h-5 w-5 text-primary" />
-                    <span>Bewertung</span>
+                    <span>Deine Leistung</span>
                 </div>
                 <div className={`text-2xl font-bold ${scoreColor(overallScore)}`}>
                     {overallScore}/10
@@ -707,22 +707,19 @@ export function ChatInterface({ sessionId, documentId, mode = 'learning', scenar
                         {/* Conversation mode: evaluation button and result */}
                         {isConversation && messages.length >= 2 && !isLoading && (
                             <div className="space-y-4 pt-4">
-                                {evaluation ? (
-                                    <EvaluationCard evaluation={evaluation} />
-                                ) : (
-                                    <button
-                                        type="button"
-                                        onClick={handleEvaluate}
-                                        disabled={evaluating}
-                                        className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-4 py-2.5 text-sm font-medium text-primary transition-colors hover:bg-primary/10 disabled:opacity-50"
-                                    >
-                                        {evaluating ? (
-                                            <><Loader2 className="h-4 w-4 animate-spin" /> Wird bewertet...</>
-                                        ) : (
-                                            <><ClipboardCheck className="h-4 w-4" /> Bewertung anfordern</>
-                                        )}
-                                    </button>
-                                )}
+                                {evaluation && <EvaluationCard evaluation={evaluation} />}
+                                <button
+                                    type="button"
+                                    onClick={handleEvaluate}
+                                    disabled={evaluating}
+                                    className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-4 py-2.5 text-sm font-medium text-primary transition-colors hover:bg-primary/10 disabled:opacity-50"
+                                >
+                                    {evaluating ? (
+                                        <><Loader2 className="h-4 w-4 animate-spin" /> Wird bewertet...</>
+                                    ) : (
+                                        <><ClipboardCheck className="h-4 w-4" /> {evaluation ? 'Erneut bewerten' : 'Meine Leistung bewerten'}</>
+                                    )}
+                                </button>
                             </div>
                         )}
                     </ConversationContent>
