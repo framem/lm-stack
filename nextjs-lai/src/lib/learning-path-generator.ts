@@ -13,10 +13,57 @@ const recommendationSchema = z.object({
 
 export type LearningRecommendation = z.infer<typeof recommendationSchema>
 
+/**
+ * Generate a simple rule-based recommendation without LLM
+ */
+function generateFallbackRecommendation(profile: LearnerProfile): LearningRecommendation | null {
+    if (profile.prioritizedDocuments.length === 0) return null
+
+    const topDoc = profile.prioritizedDocuments[0]
+
+    // Decide action based on document state
+    let nextAction: LearningRecommendation['nextAction'] = 'read'
+    let reason = ''
+    let estimatedMinutes = 10
+
+    if (topDoc.dueItems > 0) {
+        nextAction = 'review'
+        reason = `Du hast ${topDoc.dueItems} fällige Wiederholungen. Nutze die Zeit, um dein Wissen aufzufrischen!`
+        estimatedMinutes = Math.min(topDoc.dueItems * 2, 20)
+    } else if (topDoc.avgScore < 60 && topDoc.quizCount > 0) {
+        nextAction = 'quiz'
+        reason = `Dein Wissensstand bei "${topDoc.documentTitle}" liegt bei ${topDoc.avgScore}%. Ein Quiz hilft dir, Lücken zu schließen.`
+        estimatedMinutes = 15
+    } else if (topDoc.flashcardCount > 0) {
+        nextAction = 'flashcards'
+        reason = `Übe mit Karteikarten, um "${topDoc.documentTitle}" besser zu verinnerlichen.`
+        estimatedMinutes = 10
+    } else {
+        nextAction = 'read'
+        reason = `Lies "${topDoc.documentTitle}" durch, um neue Inhalte zu entdecken.`
+        estimatedMinutes = 15
+    }
+
+    return {
+        nextAction,
+        documentId: topDoc.documentId,
+        reason,
+        estimatedMinutes,
+    }
+}
+
 export async function generateLearningRecommendation(
     profile: LearnerProfile,
 ): Promise<LearningRecommendation | null> {
     if (profile.documents.length === 0) return null
+
+    // Check if LLM is available
+    const llmEnabled = process.env.LLM_PROVIDER && process.env.LLM_MODEL
+
+    if (!llmEnabled) {
+        // Use fallback logic without LLM
+        return generateFallbackRecommendation(profile)
+    }
 
     // Build a concise summary for the LLM
     const docSummaries = profile.prioritizedDocuments.slice(0, 10).map((d, i) => (
@@ -55,7 +102,7 @@ Regeln:
             prompt,
         })
 
-        if (!output) return null
+        if (!output) return generateFallbackRecommendation(profile)
 
         // Validate the documentId is one we know
         const validIds = new Set(profile.documents.map((d) => d.documentId))
@@ -66,7 +113,8 @@ Regeln:
 
         return output
     } catch (err) {
-        console.error('Failed to generate learning recommendation:', err)
-        return null
+        console.warn('LLM recommendation failed, using fallback logic:', err instanceof Error ? err.message : 'Unknown error')
+        // Use rule-based fallback instead of returning null
+        return generateFallbackRecommendation(profile)
     }
 }
