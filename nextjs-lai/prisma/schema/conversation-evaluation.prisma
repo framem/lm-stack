@@ -1,0 +1,26 @@
+model ConversationEvaluation {
+  id        String   @id @default(cuid())
+  sessionId String
+  userId    String?  @default("default")
+
+  // Scenario context
+  scenarioKey String  // cafe, restaurant, arzt, wegbeschreibung, supermarkt, hotel
+  language    String  // de, en, es
+
+  // Scores (1-10)
+  grammarScore       Int
+  vocabularyScore    Int
+  communicationScore Int
+
+  // Detailed feedback
+  corrections Json // Array of { original: string, corrected: string, explanation: string }
+  feedback    String // Overall feedback paragraph
+
+  createdAt DateTime @default(now())
+
+  session ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([userId])
+  @@index([scenarioKey])
+}

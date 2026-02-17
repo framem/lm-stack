@@ -1,6 +1,7 @@
 # Feature-Backlog: nextjs-LAI
 
 > Erstellt am 17.02.2026 durch Agenten-Team-Analyse (UX/UI-Designer, Devils Advocate, Next.js-Experte, Lerner-Persona "Maria")
+> **Letzte Aktualisierung:** 17.02.2026 — Status-Prüfung gegen aktuelle Codebase
 
 ---
 
@@ -30,36 +31,60 @@
 
 ---
 
-## Priorisierte Feature-Tabelle
+## Offene Features (13/18)
 
-| # | Feature | Vorgeschlagen von | Priorität | Aufwand | Journey |
-|---|---------|-------------------|-----------|---------|---------|
-| 1 | **Sprachlern-Onboarding** — Zweiter Wizard-Pfad: "Sprache lernen" → Sprachauswahl → Niveau → direkt zu Vokabeln | UX, Maria, DA | **Must-have** | Mittel | J1 |
-| 2 | **Konversations-Evaluationen persistieren** — Neues DB-Modell `LanguageProgress`, Scores speichern, in Statistiken einfließen | DA, NJS, UX | **Must-have** | Mittel | J1 |
-| 3 | **CEFR-Fortschrittsanzeige** — Dashboard-Widget "Spanisch A1: 45%" mit Aufschlüsselung (Vokabeln, Konversation, Quiz) | DA, UX, Maria, NJS | **Must-have** | Mittel | J1 |
-| 4 | **Szenario-Beschreibungen auf Deutsch halten** — Nur Gespräch in Zielsprache, UI-Texte bleiben Deutsch | Maria | **Must-have** | Klein | J1 |
-| 5 | **"Jetzt lernen"-Block auf Dokumentendetailseite** — 3 Buttons: Quiz, Karteikarten, Chat (Dokument vorausgewählt) | UX, Maria | **Must-have** | Klein | J2 |
-| 6 | **Karteikarten bearbeitbar/löschbar machen** — Mindestens Löschen-Button, idealerweise auch Editieren | DA | **Must-have** | Klein | J2 |
-| 7 | **Health-Check aus Layout entfernen** — Client-Polling statt blockierendem `await` im Layout | NJS | **Sollte** | Klein | Beide |
-| 8 | **Dashboard vereinfachen** — TodayLearning + NextStep zusammenfassen, Stat-Cards kompakter, Quick Actions kontextbasiert | UX, DA | **Sollte** | Klein | Beide |
-| 9 | **Qualitätsfeedback nach Dokument-Upload** — "X Abschnitte erkannt, Ø Y Wörter pro Abschnitt" | DA | **Sollte** | Klein | J2 |
-| 10 | **Sprachfilter für Vokabeln/Quiz** — Filter-UI wenn EN + ES importiert sind | NJS | **Sollte** | Klein | J1 |
-| 11 | **Documents-Seite → Server Component** — `searchParams`-basiert statt Client-seitigem `useEffect` | NJS | **Sollte** | Mittel | J2 |
-| 12 | **Navigation konsolidieren** — Wissenslandkarte + Lernpfad + Statistiken zusammenführen | DA, UX | **Sollte** | Mittel | Beide |
-| 13 | **Szenario-Fortschritt persistent speichern** — Badge "geübt/nicht geübt", bester Score pro Szenario | UX, Maria | **Sollte** | Mittel | J1 |
-| 14 | **Embedding-Recovery** — Button "Embeddings regenerieren" für Dokumente ohne Embeddings | NJS | **Nice-to-have** | Klein | J2 |
-| 15 | **Mobile Bottom-Tab-Navigation** — Top 4 Items als Tab-Bar auf Smartphone | UX | **Nice-to-have** | Mittel | Beide |
-| 16 | **Karteikarten ohne Dokument-Zuordnung** — Freie manuelle Karten erlauben | Maria | **Nice-to-have** | Klein | J2 |
-| 17 | **Mehr/dynamische Konversationsszenarien** — KI-generierte Szenarien statt nur 6 statische | DA | **Nice-to-have** | Groß | J1 |
-| 18 | **Strukturierter Lernpfad für Sprachen** — Automatische A1→A2→B1 Progression | DA, Maria | **Nice-to-have** | Groß | J1 |
+| # | Status | Feature | Vorgeschlagen von | Priorität | Aufwand | Journey |
+|---|--------|---------|-------------------|-----------|---------|---------|
+| 2 | ❌ | **Konversations-Evaluationen persistieren** — Neues DB-Modell `LanguageProgress`, Scores speichern, in Statistiken einfließen | DA, NJS, UX | **Must-have** | Mittel | J1 |
+| 4 | ✅ | ~~**Szenario-Beschreibungen auf Deutsch halten** — Nur Gespräch in Zielsprache, UI-Texte bleiben Deutsch~~ | Maria | **Must-have** | Klein | J1 |
+| 5 | ⚠️ | **"Jetzt lernen"-Block auf Dokumentendetailseite** — 3 Buttons: Quiz, Karteikarten, Chat (Dokument vorausgewählt) | UX, Maria | **Must-have** | Klein | J2 |
+| 6 | ⚠️ | **Karteikarten editierbar machen** — Löschen funktioniert bereits, Editieren fehlt noch | DA | **Must-have** | Klein | J2 |
+| 7 | ✅ | ~~**Health-Check aus Layout entfernen** — Client-Polling statt blockierendem `await` im Layout~~ | NJS | **Sollte** | Klein | Beide |
+| 8 | ⚠️ | **Dashboard vereinfachen** — TodayLearning + NextStep zusammenfassen, Stat-Cards kompakter, Quick Actions kontextbasiert | UX, DA | **Sollte** | Klein | Beide |
+| 9 | ❌ | **Qualitätsfeedback nach Dokument-Upload** — "X Abschnitte erkannt, Ø Y Wörter pro Abschnitt" | DA | **Sollte** | Klein | J2 |
+| 10 | ❌ | **Sprachfilter für Vokabeln/Quiz** — Filter-UI wenn EN + ES importiert sind | NJS | **Sollte** | Klein | J1 |
+| 11 | ❌ | **Documents-Seite → Server Component** — `searchParams`-basiert statt Client-seitigem `useEffect` | NJS | **Sollte** | Mittel | J2 |
+| 12 | ❌ | **Navigation konsolidieren** — Wissenslandkarte + Lernpfad + Statistiken zusammenführen | DA, UX | **Sollte** | Mittel | Beide |
+| 13 | ❌ | **Szenario-Fortschritt persistent speichern** — Badge "geübt/nicht geübt", bester Score pro Szenario | UX, Maria | **Sollte** | Mittel | J1 |
+| 14 | ❌ | **Embedding-Recovery** — Button "Embeddings regenerieren" für Dokumente ohne Embeddings | NJS | **Nice-to-have** | Klein | J2 |
+| 15 | ❌ | **Mobile Bottom-Tab-Navigation** — Top 4 Items als Tab-Bar auf Smartphone | UX | **Nice-to-have** | Mittel | Beide |
+| 16 | ❌ | **Karteikarten ohne Dokument-Zuordnung** — Freie manuelle Karten erlauben | Maria | **Nice-to-have** | Klein | J2 |
+| 17 | ❌ | **Mehr/dynamische Konversationsszenarien** — KI-generierte Szenarien statt nur 6 statische | DA | **Nice-to-have** | Groß | J1 |
+| 18 | ❌ | **Strukturierter Lernpfad für Sprachen** — Automatische A1→A2→B1 Progression | DA, Maria | **Nice-to-have** | Groß | J1 |
 
 **Legende:** DA = Devils Advocate, UX = UX-Designer, NJS = Next.js-Experte, Maria = Lerner-Persona, J1 = Journey 1, J2 = Journey 2
 
 ---
 
+## Implementierungs-Status
+
+**✅ Abgeschlossen (5/18):**
+- ~~#1 Sprachlern-Onboarding~~ (`OnboardingWizard.tsx`)
+- ~~#3 CEFR-Fortschrittsanzeige~~ (`CefrProgressRing.tsx`, Dashboard)
+- ~~#4 Szenario-Beschreibungen auf Deutsch~~ (Bug-Fix: nur Gespräch wechselt Sprache)
+- ~~#6 Karteikarten löschbar~~ (Editieren fehlt noch → #6 bleibt teilweise offen)
+- ~~#7 Health-Check aus Layout~~ (Client-Polling via `/api/health`, kein Blocking mehr)
+
+**⚠️ Teilweise umgesetzt (2/18):**
+- #5 "Jetzt lernen"-Block — Existiert als Tab-System, nicht als prominenter Aktionsblock
+- #6 Karteikarten editierbar — Löschen funktioniert, Editieren fehlt
+- #8 Dashboard — Teilweise vereinfacht
+
+**❌ Noch komplett offen (11/18):**
+- **Kritisch:** #2 (Evaluationen gehen verloren)
+- **Quick Wins:** #9, #10, #14
+- **Größere Features:** #11-13, #15-18
+
 ## Quick Wins (Klein + Must-have/Sollte)
 
-Features #4, #5, #6, #7, #8, #9, #10 sind mit geringem Aufwand umsetzbar und haben sofortigen Impact.
+~~Features #4, #5, #6, #7, #8, #9, #10 sind mit geringem Aufwand umsetzbar und haben sofortigen Impact.~~
+
+**✅ Erledigt:** #4 (Szenario-Beschreibungen), #7 (Health-Check)
+
+**Noch offen mit geringem Aufwand:**
+- #9 Upload-Qualitätsfeedback
+- #10 Sprachfilter
+- #14 Embedding-Recovery-Button
 
 ---
 

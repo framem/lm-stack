@@ -77,7 +77,9 @@ export default function ConversationPage() {
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {SCENARIOS.map((scenario) => {
-                    const translation = scenario.translations[selectedLanguage]
+                    // Always use German for UI text (title and description stay in German)
+                    // Only the conversation itself is in the selected language
+                    const germanTranslation = scenario.translations.de
                     return (
                         <Card
                             key={scenario.key}
@@ -87,9 +89,9 @@ export default function ConversationPage() {
                             <CardHeader className="pb-2">
                                 <CardTitle className="flex items-center gap-2 text-base">
                                     <span className="text-xl">{scenario.icon}</span>
-                                    {translation.title}
+                                    {germanTranslation.title}
                                 </CardTitle>
-                                <CardDescription>{translation.description}</CardDescription>
+                                <CardDescription>{germanTranslation.description}</CardDescription>
                             </CardHeader>
                             <CardContent className="flex gap-2">
                                 <Badge variant="secondary">{scenario.difficulty}</Badge>

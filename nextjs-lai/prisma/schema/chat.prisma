@@ -9,8 +9,9 @@ model ChatSession {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  document Document?     @relation(fields: [documentId], references: [id], onDelete: SetNull)
-  messages ChatMessage[]
+  document    Document?                  @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  messages    ChatMessage[]
+  evaluations ConversationEvaluation[]
 
   @@index([documentId])
   @@index([userId])
