@@ -334,6 +334,7 @@ export function ChatInterface({ sessionId, documentId, mode = 'learning', scenar
             documentIds: !isConversation && selectedDocumentIdsRef.current.length > 0 ? selectedDocumentIdsRef.current : undefined,
             mode: isConversation ? 'conversation' : undefined,
             scenario: isConversation ? scenario : undefined,
+            scenarioLanguage: isConversation ? scenarioLanguage : undefined,
         }),
         fetch: async (url, init) => {
             const response = await globalThis.fetch(url as string, init as RequestInit)
@@ -369,7 +370,7 @@ export function ChatInterface({ sessionId, documentId, mode = 'learning', scenar
             }
             return response
         },
-    }), [onSessionCreated, isConversation, scenario])
+    }), [onSessionCreated, isConversation, scenario, scenarioLanguage])
 
     const { messages, sendMessage, status, setMessages, stop } = useChat<ChatMessage>({
         transport,
