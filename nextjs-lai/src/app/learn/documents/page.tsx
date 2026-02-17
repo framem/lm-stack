@@ -35,13 +35,9 @@ async function DocumentsContent({ searchParams }: PageProps) {
     const search = params.search ?? ''
     const subject = params.subject
 
-    // Fetch documents based on search/filter params
-    const documentsPromise = search || subject
-        ? searchDocuments(search, subject)
-        : getDocuments()
-
+    // Fetch documents and subjects in parallel
     const [documents, subjects] = await Promise.all([
-        documentsPromise,
+        search || subject ? searchDocuments(search, subject) : getDocuments(),
         getSubjects(),
     ])
 

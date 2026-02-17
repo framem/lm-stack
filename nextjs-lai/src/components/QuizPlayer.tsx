@@ -20,26 +20,6 @@ import { TTSButton } from '@/src/components/TTSButton'
 import { isFreetextLikeType } from '@/src/lib/quiz-types'
 import { SortableWordChips } from '@/src/components/quiz/SortableWordChips'
 
-// Map document subject to BCP-47 language code for TTS
-const SUBJECT_LANG_MAP: Record<string, string> = {
-    'Englisch': 'en-US',
-    'Spanisch': 'es-ES',
-    'Französisch': 'fr-FR',
-    'Italienisch': 'it-IT',
-    'Portugiesisch': 'pt-PT',
-}
-
-/** Extract the foreign-language word/phrase from a quiz question for TTS */
-function extractTTSText(questionText: string, questionType?: string): string | null {
-    // For cloze: extract the foreign-language sentence
-    if (questionType === 'cloze') {
-        const match = questionText.match(/ein:\s*(.+?)\s*\(Deutsch:/)
-        if (match) return match[1].replace(/\{\{blank\}\}/g, '…')
-    }
-    // For other types: extract first «...» content
-    const match = questionText.match(/«(.+?)»/)
-    return match ? match[1] : null
-}
 
 interface Question {
     id: string
@@ -48,6 +28,8 @@ interface Question {
     questionIndex: number
     questionType?: string
     difficulty?: number
+    ttsText?: string | null
+    ttsLang?: string | null
 }
 
 const DIFFICULTY_LABELS: Record<number, string> = {
@@ -251,9 +233,9 @@ export function QuizPlayer({ quizTitle, questions, onComplete, subject }: QuizPl
     const clozeParts = isCloze ? currentQuestion.questionText.split('{{blank}}') : []
     const fillInBlanksParts = isFillInBlanks ? currentQuestion.questionText.split('{{blank}}') : []
 
-    // TTS for language quizzes
-    const ttsLang = subject ? SUBJECT_LANG_MAP[subject] : undefined
-    const ttsText = ttsLang ? extractTTSText(currentQuestion.questionText, currentQuestion.questionType) : null
+    // TTS for language quizzes - use data from question
+    const ttsText = currentQuestion.ttsText ?? null
+    const ttsLang = currentQuestion.ttsLang ?? null
 
     return (
         <div className="space-y-6">
@@ -275,26 +257,36 @@ export function QuizPlayer({ quizTitle, questions, onComplete, subject }: QuizPl
                     <div className="flex items-start gap-2">
                         {!isFillInBlanks && (
                             <CardTitle className="text-lg flex-1">
-                                {currentQuestion.questionText}
+                                {/* Render question text with inline TTS button inside «...» */}
+                                {ttsText && ttsLang ? (
+                                    (() => {
+                                        const match = currentQuestion.questionText.match(/^(.*?«)(.+?)(».*)$/)
+                                        if (match) {
+                                            return (
+                                                <>
+                                                    {match[1]}
+                                                    {match[2]}{' '}
+                                                    <TTSButton text={ttsText} lang={ttsLang} size="sm" className="inline-block align-middle" />
+                                                    {' '}{match[3]}
+                                                </>
+                                            )
+                                        }
+                                        return currentQuestion.questionText
+                                    })()
+                                ) : (
+                                    currentQuestion.questionText
+                                )}
                             </CardTitle>
                         )}
                         {isFillInBlanks && <div className="flex-1" />}
-                        {ttsText && ttsLang && (
-                            <TTSButton text={ttsText} lang={ttsLang} size="sm" className="shrink-0 mt-0.5" />
-                        )}
                     </div>
-                    <div className="flex items-center gap-1.5 mt-1">
-                        {currentQuestion.questionType && (
-                            <Badge variant="outline" className="text-xs font-normal text-muted-foreground">
-                                {TYPE_LABELS[currentQuestion.questionType] ?? currentQuestion.questionType}
-                            </Badge>
-                        )}
-                        {currentQuestion.difficulty && currentQuestion.difficulty > 0 && (
+                    {currentQuestion.difficulty && currentQuestion.difficulty > 0 && (
+                        <div className="flex items-center gap-1.5 mt-1">
                             <Badge className={`text-xs font-normal border-0 ${DIFFICULTY_COLORS[currentQuestion.difficulty] ?? ''}`}>
                                 {DIFFICULTY_LABELS[currentQuestion.difficulty] ?? `Stufe ${currentQuestion.difficulty}`}
                             </Badge>
-                        )}
-                    </div>
+                        </div>
+                    )}
                 </CardHeader>
                 <CardContent>
                     {/* Multi: show Checkboxes */}

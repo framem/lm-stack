@@ -93,6 +93,8 @@ export interface QuestionToSave {
     sourceSnippet: string
     questionType: string
     difficulty?: number
+    ttsText?: string | null       // Text to read aloud (if foreign language)
+    ttsLang?: string | null       // BCP-47 language code for TTS
 }
 
 // Select representative chunks distributed evenly across the document,

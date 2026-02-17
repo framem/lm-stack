@@ -309,7 +309,10 @@ export function VocabStudyContent() {
                     {typeResult && card.exampleSentence && (
                         <div className="rounded-lg border bg-muted/50 p-3">
                             <p className="text-xs font-medium text-muted-foreground mb-1">Beispielsatz</p>
-                            <p className="text-sm italic">{card.exampleSentence}</p>
+                            <div className="flex items-center gap-2">
+                                <p className="text-sm italic flex-1">{card.exampleSentence}</p>
+                                <TTSButton text={card.exampleSentence} lang={targetLang} size="sm" className="shrink-0" />
+                            </div>
                         </div>
                     )}
 

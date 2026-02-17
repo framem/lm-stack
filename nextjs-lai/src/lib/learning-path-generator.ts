@@ -57,10 +57,10 @@ export async function generateLearningRecommendation(
 ): Promise<LearningRecommendation | null> {
     if (profile.documents.length === 0) return null
 
-    // Check if LLM is available
-    const llmEnabled = process.env.LLM_PROVIDER && process.env.LLM_MODEL
+    // Check if AI recommendations are enabled
+    const aiRecommendationsEnabled = process.env.ENABLE_AI_RECOMMENDATIONS !== 'false'
 
-    if (!llmEnabled) {
+    if (!aiRecommendationsEnabled) {
         // Use fallback logic without LLM
         return generateFallbackRecommendation(profile)
     }

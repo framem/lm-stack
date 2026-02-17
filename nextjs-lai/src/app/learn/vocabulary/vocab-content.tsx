@@ -15,7 +15,17 @@ import {
 import { Card, CardContent } from '@/src/components/ui/card'
 import { Button } from '@/src/components/ui/button'
 import { Badge } from '@/src/components/ui/badge'
+import { TTSButton } from '@/src/components/TTSButton'
 import { getVocabularyFlashcards, getDueVocabularyCount, getVocabularyLanguages } from '@/src/actions/flashcards'
+
+// Map document subject to BCP-47 language code for TTS
+const SUBJECT_LANG_MAP: Record<string, string> = {
+    'Englisch': 'en-US',
+    'Spanisch': 'es-ES',
+    'Französisch': 'fr-FR',
+    'Italienisch': 'it-IT',
+    'Portugiesisch': 'pt-PT',
+}
 
 interface VocabCard {
     id: string
@@ -252,11 +262,17 @@ export function VocabContent() {
                                         {group.cards.map((card) => {
                                             const isMastered = card.progress && card.progress.repetitions >= 3
                                             const isDue = !card.progress || (card.progress.nextReviewAt && new Date(card.progress.nextReviewAt) <= new Date())
+                                            const ttsLang = card.document?.subject ? SUBJECT_LANG_MAP[card.document.subject] : undefined
                                             return (
                                                 <Card key={card.id} className="relative">
                                                     <CardContent className="p-4 space-y-1">
                                                         <div className="flex items-start justify-between gap-2">
-                                                            <p className="font-medium">{card.front}</p>
+                                                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                                                                <p className="font-medium">{card.front}</p>
+                                                                {ttsLang && (
+                                                                    <TTSButton text={card.front} lang={ttsLang} size="sm" className="shrink-0" />
+                                                                )}
+                                                            </div>
                                                             {card.partOfSpeech && (
                                                                 <Badge variant="outline" className="text-xs shrink-0">
                                                                     {card.partOfSpeech}
@@ -265,9 +281,14 @@ export function VocabContent() {
                                                         </div>
                                                         <p className="text-sm text-muted-foreground">{card.back}</p>
                                                         {card.exampleSentence && (
-                                                            <p className="text-xs text-muted-foreground italic mt-1">
-                                                                {card.exampleSentence}
-                                                            </p>
+                                                            <div className="flex items-start gap-2 mt-1">
+                                                                <p className="text-xs text-muted-foreground italic flex-1">
+                                                                    {card.exampleSentence}
+                                                                </p>
+                                                                {ttsLang && (
+                                                                    <TTSButton text={card.exampleSentence} lang={ttsLang} size="sm" className="shrink-0 mt-0.5" />
+                                                                )}
+                                                            </div>
                                                         )}
                                                         <div className="flex items-center gap-1.5 pt-1">
                                                             {isMastered ? (

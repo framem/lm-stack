@@ -151,6 +151,7 @@ function generateTranslationL2ToL1(
     cards: VocabFlashcard[],
     allCards: VocabFlashcard[],
     count: number,
+    langCode?: string,
 ): QuestionToSave[] {
     const selected = sample(cards, count)
     const questions: QuestionToSave[] = []
@@ -176,6 +177,8 @@ function generateTranslationL2ToL1(
             explanation,
             sourceSnippet: `${card.front} — ${card.back}`,
             questionType: 'singleChoice',
+            ttsText: card.front,
+            ttsLang: langCode ?? null,
         })
     }
 
@@ -230,6 +233,7 @@ function generateTranslationCheck(
     cards: VocabFlashcard[],
     allCards: VocabFlashcard[],
     count: number,
+    langCode?: string,
 ): QuestionToSave[] {
     const selected = sample(cards, count)
     const questions: QuestionToSave[] = []
@@ -249,6 +253,8 @@ function generateTranslationCheck(
                     : `Richtig! «${card.front}» bedeutet «${card.back}».`,
                 sourceSnippet: `${card.front} — ${card.back}`,
                 questionType: 'truefalse',
+                ttsText: card.front,
+                ttsLang: langCode ?? null,
             })
         } else {
             // Pick a wrong translation from same category
@@ -264,6 +270,8 @@ function generateTranslationCheck(
                 explanation: `«${card.front}» bedeutet nicht «${wrongBack}», sondern «${card.back}».${wrongFront ? ` «${wrongBack}» heißt «${wrongFront}».` : ''}`,
                 sourceSnippet: `${card.front} — ${card.back}`,
                 questionType: 'truefalse',
+                ttsText: card.front,
+                ttsLang: langCode ?? null,
             })
         }
     }
@@ -555,6 +563,15 @@ function generateVocabSentenceOrder(
 
 // ── Main Entry Point ──
 
+// Map language name to BCP-47 code for TTS
+const LANG_TO_BCP47: Record<string, string> = {
+    'Spanisch': 'es-ES',
+    'Englisch': 'en-US',
+    'Französisch': 'fr-FR',
+    'Italienisch': 'it-IT',
+    'Portugiesisch': 'pt-PT',
+}
+
 /**
  * Generate vocabulary quiz questions deterministically from flashcard data.
  * No LLM calls needed — instant generation.
@@ -574,6 +591,7 @@ export function generateVocabQuizQuestions(
 ): QuestionToSave[] {
     if (flashcards.length < 4) return []
 
+    const langCode = LANG_TO_BCP47[language]
     const distribution = distributeQuestions(count, types)
     const allQuestions: QuestionToSave[] = []
 
@@ -590,14 +608,14 @@ export function generateVocabQuizQuestions(
             const l1l2Count = Math.floor(scCount * 0.3)
             const conjCount = scCount - l2l1Count - l1l2Count
 
-            allQuestions.push(...generateTranslationL2ToL1(flashcards, flashcards, l2l1Count))
+            allQuestions.push(...generateTranslationL2ToL1(flashcards, flashcards, l2l1Count, langCode))
             allQuestions.push(...generateTranslationL1ToL2(flashcards, flashcards, l1l2Count, language))
             allQuestions.push(...generateConjugationPick(flashcards, conjCount))
         } else {
             // No verbs: split 50/50 between L2→L1 and L1→L2
             const l2l1Count = Math.ceil(scCount / 2)
             const l1l2Count = scCount - l2l1Count
-            allQuestions.push(...generateTranslationL2ToL1(flashcards, flashcards, l2l1Count))
+            allQuestions.push(...generateTranslationL2ToL1(flashcards, flashcards, l2l1Count, langCode))
             allQuestions.push(...generateTranslationL1ToL2(flashcards, flashcards, l1l2Count, language))
         }
     }
@@ -611,7 +629,7 @@ export function generateVocabQuizQuestions(
     }
 
     if (distribution['truefalse']) {
-        allQuestions.push(...generateTranslationCheck(flashcards, flashcards, distribution['truefalse']))
+        allQuestions.push(...generateTranslationCheck(flashcards, flashcards, distribution['truefalse'], langCode))
     }
 
     if (distribution['cloze']) {

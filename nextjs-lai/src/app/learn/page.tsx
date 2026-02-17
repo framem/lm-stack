@@ -27,7 +27,6 @@ import {OnboardingTrigger} from '@/src/components/OnboardingTrigger'
 import {CefrProgressRing} from '@/src/components/CefrProgressRing'
 import {BadgeShowcase} from '@/src/components/BadgeShowcase'
 import {getLearnerProfile} from '@/src/data-access/learning-paths'
-import {generateLearningRecommendation} from '@/src/lib/learning-path-generator'
 import {getEarnedBadges} from '@/src/data-access/badges'
 
 export default async function DashboardPage() {
@@ -47,23 +46,13 @@ export default async function DashboardPage() {
         getEarnedBadges(),
     ])
 
-    // Generate recommendation if documents exist
-    const recommendation = profile.documents.length > 0
-        ? await generateLearningRecommendation(profile)
-        : null
-
-    // Action labels for recommendations
+    // Action labels for document cards
     const actionLabels: Record<string, { label: string; icon: typeof HelpCircle; href: (docId: string) => string }> = {
         quiz: { label: 'Quiz starten', icon: HelpCircle, href: (docId) => `/learn/quiz?documentId=${docId}` },
         flashcards: { label: 'Karteikarten lernen', icon: Layers, href: () => '/learn/flashcards/study' },
         review: { label: 'Wiederholung starten', icon: Clock, href: () => '/learn/session' },
         read: { label: 'Dokument lesen', icon: BookOpen, href: (docId) => `/learn/documents/${docId}` },
     }
-
-    const recDoc = recommendation
-        ? profile.documents.find((d) => d.documentId === recommendation!.documentId)
-        : null
-    const recAction = recommendation ? actionLabels[recommendation.nextAction] : null
 
     // Merge quiz and flashcard progress per document
     const progressMap = new Map<string, {
@@ -182,43 +171,6 @@ export default async function DashboardPage() {
                                     Erstes Lernmaterial hochladen
                                 </Link>
                             </Button>
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
-
-            {/* AI Recommendation */}
-            {!isNewUser && recommendation && recAction && (
-                <Card className="border-primary/30 bg-gradient-to-br from-primary/5 via-background to-orange-500/5">
-                    <CardContent className="p-6 space-y-4">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2.5 rounded-xl bg-primary/10">
-                                <Sparkles className="h-5 w-5 text-primary" />
-                            </div>
-                            <div>
-                                <h2 className="text-lg font-bold">KI-Empfehlung</h2>
-                                {recDoc && (
-                                    <p className="text-sm text-muted-foreground">
-                                        {recDoc.documentTitle}
-                                    </p>
-                                )}
-                            </div>
-                        </div>
-
-                        <p className="text-sm">{recommendation.reason}</p>
-
-                        <div className="flex flex-wrap items-center gap-3">
-                            <Button asChild>
-                                <Link href={recAction.href(recommendation.documentId)}>
-                                    <recAction.icon className="h-4 w-4" />
-                                    {recAction.label}
-                                </Link>
-                            </Button>
-                            {recommendation.estimatedMinutes > 0 && (
-                                <Badge variant="secondary">
-                                    ~{recommendation.estimatedMinutes} Min.
-                                </Badge>
-                            )}
                         </div>
                     </CardContent>
                 </Card>

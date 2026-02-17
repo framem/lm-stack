@@ -73,7 +73,7 @@ export function TodayLearningWidget({
                         <Button asChild size="sm" variant="outline">
                             <Link href="/learn/session">
                                 <GraduationCap className="h-4 w-4" />
-                                Volle Lern-Session
+                                Lern-Session
                             </Link>
                         </Button>
                     )}

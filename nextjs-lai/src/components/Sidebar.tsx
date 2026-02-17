@@ -75,7 +75,7 @@ const learnItems = [
     { href: '/learn/session', label: 'Lern-Session', icon: GraduationCap },
     { href: '/learn/daily', label: 'Tagesübung', icon: Clock },
     { href: '/learn/vocabulary', label: 'Vokabeltrainer', icon: Languages },
-    { href: '/learn/conversation', label: 'Konversation', icon: Drama },
+    { href: '/learn/conversation', label: 'Konversation', icon: MessageSquare },
 ]
 
 const manageItems = [

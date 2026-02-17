@@ -237,12 +237,19 @@ export default function DailyPracticePage() {
                 <div className="text-center space-y-3">
                     <div className="flex justify-center">
                         <div className="p-4 rounded-full bg-green-100 dark:bg-green-950">
-                            <Zap className="h-12 w-12 text-green-600" />
+                            <CheckCircle2 className="h-12 w-12 text-green-600" />
                         </div>
                     </div>
-                    <h1 className="text-2xl font-bold">Tägliche Übung geschafft!</h1>
+                    <h1 className="text-2xl font-bold">Tagesübung geschafft!</h1>
                     <p className="text-muted-foreground">
-                        {score.correct} von {score.total} richtig — weiter so!
+                        {score.correct} von {score.total} richtig — {(() => {
+                            const percentage = (score.correct / score.total) * 100
+                            if (percentage >= 90) return 'ausgezeichnet!'
+                            if (percentage >= 75) return 'sehr gut!'
+                            if (percentage >= 60) return 'weiter so!'
+                            if (percentage >= 50) return 'weiter üben!'
+                            return 'bleib dran!'
+                        })()}
                     </p>
                 </div>
 
@@ -251,7 +258,7 @@ export default function DailyPracticePage() {
                     <CardContent className="p-6 space-y-4">
                         <div className="flex items-center gap-2">
                             <MessageSquare className="h-5 w-5 text-primary" />
-                            <h3 className="font-semibold">Konversationsübung</h3>
+                            <h3 className="font-semibold">Konversation</h3>
                         </div>
                         <p className="text-sm text-muted-foreground">
                             Übe eine kurze Konversation, um dein Sprechen zu verbessern.
@@ -277,7 +284,7 @@ export default function DailyPracticePage() {
                 <div className="flex justify-center gap-3">
                     <Button variant="outline" asChild>
                         <Link href="/learn/session">
-                            Volle Lern-Session starten
+                            Lern-Session starten
                         </Link>
                     </Button>
                     <Button variant="ghost" asChild>
