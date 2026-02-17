@@ -192,7 +192,7 @@ export default function DailyPracticePage() {
 
     if (items.length === 0) {
         return (
-            <div className="p-6 max-w-2xl mx-auto text-center space-y-6 mt-16">
+            <div className="p-6 max-w-3xl mx-auto text-center space-y-6 mt-16">
                 <div className="flex justify-center">
                     <div className="p-4 rounded-full bg-green-100 dark:bg-green-950">
                         <CheckCircle2 className="h-12 w-12 text-green-600" />
@@ -233,7 +233,7 @@ export default function DailyPracticePage() {
 
     if (completed) {
         return (
-            <div className="p-6 max-w-2xl mx-auto space-y-8 mt-8">
+            <div className="p-6 max-w-3xl mx-auto space-y-8 mt-8">
                 <div className="text-center space-y-3">
                     <div className="flex justify-center">
                         <div className="p-4 rounded-full bg-green-100 dark:bg-green-950">
@@ -298,7 +298,7 @@ export default function DailyPracticePage() {
     }
 
     return (
-        <div className="p-6 max-w-2xl mx-auto space-y-6">
+        <div className="p-6 max-w-3xl mx-auto space-y-6">
             {/* Header */}
             <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-primary/10">

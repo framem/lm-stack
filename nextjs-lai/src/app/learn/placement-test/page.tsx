@@ -68,7 +68,7 @@ export default function PlacementTestPage() {
 
     if (phase === 'intro') {
         return (
-            <div className="p-6 max-w-2xl mx-auto space-y-6">
+            <div className="p-6 max-w-3xl mx-auto space-y-6">
                 <div>
                     <h1 className="text-2xl font-bold flex items-center gap-2">
                         <GraduationCap className="h-6 w-6" />
@@ -113,7 +113,7 @@ export default function PlacementTestPage() {
 
     if (phase === 'result' && result) {
         return (
-            <div className="p-6 max-w-2xl mx-auto space-y-6">
+            <div className="p-6 max-w-3xl mx-auto space-y-6">
                 <div>
                     <h1 className="text-2xl font-bold flex items-center gap-2">
                         <GraduationCap className="h-6 w-6" />
@@ -166,7 +166,7 @@ export default function PlacementTestPage() {
 
     // Test phase
     return (
-        <div className="p-6 max-w-2xl mx-auto space-y-6">
+        <div className="p-6 max-w-3xl mx-auto space-y-6">
             <div className="flex items-center justify-between">
                 <Badge variant="outline" className={LEVEL_COLORS[currentQuestion?.level ?? 'A1']}>
                     {currentQuestion?.level}

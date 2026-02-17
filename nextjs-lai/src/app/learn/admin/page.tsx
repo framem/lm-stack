@@ -464,7 +464,7 @@ export default function AdminPage() {
 
     if (loading) {
         return (
-            <div className="p-6 max-w-4xl mx-auto space-y-4">
+            <div className="p-6 max-w-5xl mx-auto space-y-4">
                 <Skeleton className="h-8 w-48" />
                 <Skeleton className="h-4 w-72" />
                 <div className="space-y-3 mt-6">
@@ -478,7 +478,7 @@ export default function AdminPage() {
 
     if (error) {
         return (
-            <div className="p-6 max-w-4xl mx-auto">
+            <div className="p-6 max-w-5xl mx-auto">
                 <h1 className="text-2xl font-bold flex items-center gap-2">
                     <Settings className="h-6 w-6" />
                     Admin
@@ -491,7 +491,7 @@ export default function AdminPage() {
     }
 
     return (
-        <div className="p-6 max-w-4xl mx-auto space-y-6">
+        <div className="p-6 max-w-5xl mx-auto space-y-6">
             {/* Header */}
             <div>
                 <h1 className="text-2xl font-bold flex items-center gap-2">

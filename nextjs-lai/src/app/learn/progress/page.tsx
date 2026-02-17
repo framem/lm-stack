@@ -32,7 +32,7 @@ export default async function ProgressPage() {
         : null
 
     return (
-        <div className="p-8 max-w-6xl mx-auto space-y-6">
+        <div className="p-8 max-w-7xl mx-auto space-y-6">
             <div>
                 <h1 className="text-3xl font-bold flex items-center gap-3">
                     <TrendingUp className="h-8 w-8 text-primary" />

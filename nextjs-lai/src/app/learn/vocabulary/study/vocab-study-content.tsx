@@ -164,7 +164,7 @@ export function VocabStudyContent() {
 
     if (cards.length === 0) {
         return (
-            <div className="p-6 max-w-2xl mx-auto text-center space-y-6 mt-16">
+            <div className="p-6 max-w-3xl mx-auto text-center space-y-6 mt-16">
                 <div className="flex justify-center">
                     <div className="p-4 rounded-full bg-green-100 dark:bg-green-950">
                         <CheckCircle2 className="h-12 w-12 text-green-600" />
@@ -194,7 +194,7 @@ export function VocabStudyContent() {
         const total = results.length
 
         return (
-            <div className="p-6 max-w-2xl mx-auto space-y-8 mt-8">
+            <div className="p-6 max-w-3xl mx-auto space-y-8 mt-8">
                 <div className="text-center space-y-3">
                     <div className="flex justify-center">
                         <div className="p-4 rounded-full bg-green-100 dark:bg-green-950">
@@ -247,7 +247,7 @@ export function VocabStudyContent() {
     }
 
     return (
-        <div className="p-6 max-w-2xl mx-auto space-y-6">
+        <div className="p-6 max-w-3xl mx-auto space-y-6">
             {/* Progress */}
             <div className="space-y-2">
                 <Progress value={progressValue} />

@@ -279,7 +279,7 @@ export default function DocumentDetailPage() {
 
     if (loading) {
         return (
-            <div className="p-6 max-w-4xl mx-auto space-y-4">
+            <div className="p-6 max-w-5xl mx-auto space-y-4">
                 <Skeleton className="h-8 w-64" />
                 <Skeleton className="h-4 w-48" />
                 <Skeleton className="h-[400px] w-full" />
@@ -289,7 +289,7 @@ export default function DocumentDetailPage() {
 
     if (error || !document) {
         return (
-            <div className="p-6 max-w-4xl mx-auto text-center space-y-4">
+            <div className="p-6 max-w-5xl mx-auto text-center space-y-4">
                 <p className="text-destructive">{error || 'Lernmaterial nicht gefunden.'}</p>
                 <Button variant="outline" onClick={() => router.push('/learn/documents')}>
                     Zurück zu Lernmaterial
@@ -299,7 +299,7 @@ export default function DocumentDetailPage() {
     }
 
     return (
-        <div className="p-6 max-w-4xl mx-auto space-y-6">
+        <div className="p-6 max-w-5xl mx-auto space-y-6">
             {/* Header */}
             <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">

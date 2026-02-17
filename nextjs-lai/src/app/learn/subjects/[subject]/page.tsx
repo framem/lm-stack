@@ -34,7 +34,7 @@ export default async function SubjectWorkspacePage({ params }: Props) {
         : 0
 
     return (
-        <div className="p-8 max-w-6xl mx-auto space-y-8">
+        <div className="p-8 max-w-7xl mx-auto space-y-8">
             {/* Header */}
             <div className="flex items-center gap-4">
                 <Button variant="ghost" size="icon" asChild>

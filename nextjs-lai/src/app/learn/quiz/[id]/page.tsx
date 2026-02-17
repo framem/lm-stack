@@ -64,7 +64,7 @@ export default function QuizPlayerPage({ params }: { params: Promise<{ id: strin
 
     if (error || !quiz) {
         return (
-            <div className="p-6 max-w-2xl mx-auto">
+            <div className="p-6 max-w-3xl mx-auto">
                 <p className="text-destructive">{error || 'Quiz nicht gefunden.'}</p>
             </div>
         )
@@ -83,7 +83,7 @@ export default function QuizPlayerPage({ params }: { params: Promise<{ id: strin
     }
 
     return (
-        <div className="p-6 max-w-2xl mx-auto">
+        <div className="p-6 max-w-3xl mx-auto">
             <QuizPlayer
                 quizId={quiz.id}
                 quizTitle={quiz.title}

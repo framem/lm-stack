@@ -55,7 +55,7 @@ export default function ReviewPage() {
 
     if (!review) {
         return (
-            <div className="p-6 max-w-2xl mx-auto text-center space-y-6 mt-16">
+            <div className="p-6 max-w-3xl mx-auto text-center space-y-6 mt-16">
                 <div className="flex justify-center">
                     <div className="p-4 rounded-full bg-green-100 dark:bg-green-950">
                         <CheckCircle2 className="h-12 w-12 text-green-600" />
@@ -78,7 +78,7 @@ export default function ReviewPage() {
     }
 
     return (
-        <div className="p-6 max-w-2xl mx-auto">
+        <div className="p-6 max-w-3xl mx-auto">
             <QuizPlayer
                 quizId={review.id}
                 quizTitle={review.title}

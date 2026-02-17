@@ -93,8 +93,13 @@ export function VocabContent() {
     const totalCards = cards.length
     const masteredCards = cards.filter((c) => c.progress && c.progress.repetitions >= 3).length
 
+    // Calculate vocabulary stats
+    const newCards = cards.filter((c) => !c.progress || c.progress.repetitions === 0).length
+    const learningCards = cards.filter((c) => c.progress && c.progress.repetitions >= 1 && c.progress.repetitions < 3).length
+    const masteredCardsCount = cards.filter((c) => c.progress && c.progress.repetitions >= 3).length
+
     return (
-        <div className="p-8 max-w-6xl mx-auto space-y-8">
+        <div className="p-8 max-w-7xl mx-auto space-y-8">
             <div>
                 <h1 className="text-3xl font-bold flex items-center gap-3">
                     <Languages className="h-8 w-8 text-primary" />
@@ -104,6 +109,64 @@ export function VocabContent() {
                     Vokabeln gezielt lernen mit Tipp-Modus und Richtungswechsel
                 </p>
             </div>
+
+            {/* Vocabulary knowledge distribution */}
+            {totalCards > 0 && (
+                <Card>
+                    <CardContent className="p-6">
+                        <h3 className="text-sm font-semibold mb-4">Kenntnisstand</h3>
+                        <div className="space-y-3">
+                            {/* New */}
+                            <div className="space-y-1">
+                                <div className="flex items-center justify-between text-sm">
+                                    <span className="text-muted-foreground">Neu</span>
+                                    <span className="font-medium">{newCards} ({Math.round((newCards / totalCards) * 100)}%)</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <div className="flex-1 h-8 bg-muted rounded overflow-hidden font-mono text-xs leading-8 text-red-600 pl-2">
+                                        {Array.from({ length: Math.round((newCards / totalCards) * 40) }).map((_, i) => (
+                                            <span key={i}>█</span>
+                                        ))}
+                                        <span className="ml-2 text-muted-foreground">Neu</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Learning */}
+                            <div className="space-y-1">
+                                <div className="flex items-center justify-between text-sm">
+                                    <span className="text-muted-foreground">In Arbeit</span>
+                                    <span className="font-medium">{learningCards} ({Math.round((learningCards / totalCards) * 100)}%)</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <div className="flex-1 h-8 bg-muted rounded overflow-hidden font-mono text-xs leading-8 text-yellow-600 pl-2">
+                                        {Array.from({ length: Math.round((learningCards / totalCards) * 40) }).map((_, i) => (
+                                            <span key={i}>█</span>
+                                        ))}
+                                        <span className="ml-2 text-muted-foreground">In Arbeit</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Mastered */}
+                            <div className="space-y-1">
+                                <div className="flex items-center justify-between text-sm">
+                                    <span className="text-muted-foreground">Beherrscht</span>
+                                    <span className="font-medium">{masteredCardsCount} ({Math.round((masteredCardsCount / totalCards) * 100)}%)</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <div className="flex-1 h-8 bg-muted rounded overflow-hidden font-mono text-xs leading-8 text-green-600 pl-2">
+                                        {Array.from({ length: Math.round((masteredCardsCount / totalCards) * 40) }).map((_, i) => (
+                                            <span key={i}>█</span>
+                                        ))}
+                                        <span className="ml-2 text-muted-foreground">Beherrscht</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
 
             {totalCards === 0 ? (
                 <Card>

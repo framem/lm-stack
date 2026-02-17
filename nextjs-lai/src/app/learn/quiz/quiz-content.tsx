@@ -299,7 +299,7 @@ export function QuizContent() {
     const isEmpty = !hasQuizzes && filteredProgress.length === 0
 
     return (
-        <div className="p-6 max-w-4xl mx-auto space-y-8">
+        <div className="p-6 max-w-5xl mx-auto space-y-8">
             {/* Header */}
             <div className="flex items-start justify-between">
                 <div>

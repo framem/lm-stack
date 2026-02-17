@@ -97,7 +97,7 @@ export default function QuizResultsPage({ params }: { params: Promise<{ id: stri
 
     if (error || !data) {
         return (
-            <div className="p-6 max-w-2xl mx-auto">
+            <div className="p-6 max-w-3xl mx-auto">
                 <p className="text-destructive">{error || 'Ergebnisse nicht gefunden.'}</p>
             </div>
         )
@@ -153,7 +153,7 @@ export default function QuizResultsPage({ params }: { params: Promise<{ id: stri
     const weakTopics = [...weakTopicMap.values()].sort((a, b) => b.incorrectCount - a.incorrectCount)
 
     return (
-        <div className="p-6 max-w-2xl mx-auto space-y-4">
+        <div className="p-6 max-w-3xl mx-auto space-y-4">
             <Button asChild variant="ghost" size="sm">
                 <Link href="/learn/quiz">
                     <ArrowLeft className="h-4 w-4" />

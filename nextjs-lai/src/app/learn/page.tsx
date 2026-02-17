@@ -109,7 +109,7 @@ export default async function DashboardPage() {
         : undefined
 
     return (
-        <div className="p-8 max-w-6xl mx-auto space-y-8">
+        <div className="p-8 max-w-7xl mx-auto space-y-8">
             <div>
                 <h1 className="text-3xl font-bold">Dashboard</h1>
                 <p className="text-muted-foreground mt-1">
@@ -270,45 +270,7 @@ export default async function DashboardPage() {
 
             {/* Context-based Quick Actions - show most relevant actions based on user state */}
             {!isNewUser && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {/* Show upload if user has few documents */}
-                    {documents.length < 3 && (
-                        <Link href="/learn/documents">
-                            <Card className="hover:bg-accent transition-colors cursor-pointer h-full">
-                                <CardContent className="flex items-center gap-4 p-6">
-                                    <div className="p-3 rounded-lg bg-primary/10">
-                                        <Upload className="h-6 w-6 text-primary" />
-                                    </div>
-                                    <div>
-                                        <h3 className="font-semibold">Material hochladen</h3>
-                                        <p className="text-sm text-muted-foreground">
-                                            Weitere Lernunterlagen hinzufügen
-                                        </p>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </Link>
-                    )}
-
-                    {/* Show quiz if user has documents but few quizzes */}
-                    {documents.length > 0 && quizzes.length < documents.length * 2 && (
-                        <Link href="/learn/quiz">
-                            <Card className="hover:bg-accent transition-colors cursor-pointer h-full">
-                                <CardContent className="flex items-center gap-4 p-6">
-                                    <div className="p-3 rounded-lg bg-primary/10">
-                                        <HelpCircle className="h-6 w-6 text-primary" />
-                                    </div>
-                                    <div>
-                                        <h3 className="font-semibold">Quiz erstellen</h3>
-                                        <p className="text-sm text-muted-foreground">
-                                            Teste dein Wissen mit Quizfragen
-                                        </p>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </Link>
-                    )}
-
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Show flashcards if user has few flashcards */}
                     {documents.length > 0 && totalFlashcards < 20 && (
                         <Link href="/learn/flashcards">

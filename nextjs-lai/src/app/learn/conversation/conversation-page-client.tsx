@@ -149,20 +149,6 @@ export function ConversationPageClient({ bestEvaluations, generatedScenarios }: 
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button
-                        variant="outline"
-                        className="gap-2"
-                        onClick={() => setShowGenerator(!showGenerator)}
-                    >
-                        {showGenerator ? (
-                            <>Schließen</>
-                        ) : (
-                            <>
-                                <Plus className="h-4 w-4" />
-                                Szenario erstellen
-                            </>
-                        )}
-                    </Button>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="outline" className="gap-2">
@@ -184,16 +170,6 @@ export function ConversationPageClient({ bestEvaluations, generatedScenarios }: 
                     </DropdownMenu>
                 </div>
             </div>
-
-            {/* Scenario generator (toggle) */}
-            {showGenerator && (
-                <ScenarioGenerator
-                    onScenarioGenerated={() => {
-                        router.refresh()
-                        setShowGenerator(false)
-                    }}
-                />
-            )}
 
             {/* Standard scenarios */}
             <div className="space-y-3">
@@ -247,14 +223,38 @@ export function ConversationPageClient({ bestEvaluations, generatedScenarios }: 
 
             {/* Generated scenarios */}
             <div className="space-y-3">
-                <h2 className="text-lg font-semibold flex items-center gap-2">
-                    <Sparkles className="h-5 w-5" />
-                    Deine generierten Szenarien
-                </h2>
+                <div className="flex items-center justify-between">
+                    <h2 className="text-lg font-semibold flex items-center gap-2">
+                        <Sparkles className="h-5 w-5" />
+                        Deine generierten Szenarien
+                    </h2>
+                    <Button
+                        variant="outline"
+                        className="gap-2"
+                        onClick={() => setShowGenerator(!showGenerator)}
+                    >
+                        {showGenerator ? (
+                            <>Schließen</>
+                        ) : (
+                            <>
+                                <Plus className="h-4 w-4" />
+                                Szenario erstellen
+                            </>
+                        )}
+                    </Button>
+                </div>
+                {showGenerator && (
+                    <ScenarioGenerator
+                        onScenarioGenerated={() => {
+                            router.refresh()
+                            setShowGenerator(false)
+                        }}
+                    />
+                )}
                 {filteredGenerated.length === 0 ? (
                     <p className="text-sm text-muted-foreground">
                         Noch keine generierten Szenarien für {LANGUAGE_LABELS[selectedLanguage].name}.
-                        Erstelle dein erstes Szenario mit dem Button oben.
+                        Erstelle dein erstes Szenario mit dem Button rechts.
                     </p>
                 ) : (
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
