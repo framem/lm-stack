@@ -24,6 +24,15 @@ export interface EarnedBadge extends BadgeDefinition {
     earned: true
 }
 
+/** Serializable badge for Client Components (without check function) */
+export interface SerializedBadge {
+    id: string
+    icon: string
+    title: string
+    description: string
+    earned: true
+}
+
 export const BADGES: BadgeDefinition[] = [
     // Vocabulary milestones
     {
@@ -146,6 +155,17 @@ export function computeEarnedBadges(stats: BadgeStats): EarnedBadge[] {
     return BADGES
         .filter((b) => b.check(stats))
         .map((b) => ({ ...b, earned: true as const }))
+}
+
+/** Serialize earned badges for Client Components (removes check function) */
+export function serializeBadges(badges: EarnedBadge[]): SerializedBadge[] {
+    return badges.map(({ id, icon, title, description }) => ({
+        id,
+        icon,
+        title,
+        description,
+        earned: true as const,
+    }))
 }
 
 /** XP values for different activities */

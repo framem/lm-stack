@@ -1,8 +1,8 @@
 import { prisma } from '@/src/lib/prisma'
-import { computeEarnedBadges, type BadgeStats, type EarnedBadge } from '@/src/lib/badges'
+import { computeEarnedBadges, serializeBadges, type BadgeStats, type SerializedBadge } from '@/src/lib/badges'
 
 /** Get badge stats from existing data and compute earned badges */
-export async function getEarnedBadges(): Promise<EarnedBadge[]> {
+export async function getEarnedBadges(): Promise<SerializedBadge[]> {
     const [
         totalVocab,
         masteredVocab,
@@ -47,5 +47,6 @@ export async function getEarnedBadges(): Promise<EarnedBadge[]> {
         totalXp: userStats?.totalXp ?? 0,
     }
 
-    return computeEarnedBadges(stats)
+    const earnedBadges = computeEarnedBadges(stats)
+    return serializeBadges(earnedBadges)
 }

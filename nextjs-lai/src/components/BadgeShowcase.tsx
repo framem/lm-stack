@@ -1,9 +1,9 @@
 import { Award } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/card'
-import { BADGES, type EarnedBadge } from '@/src/lib/badges'
+import { BADGES, type SerializedBadge } from '@/src/lib/badges'
 
 interface BadgeShowcaseProps {
-    earnedBadges: EarnedBadge[]
+    earnedBadges: SerializedBadge[]
 }
 
 export function BadgeShowcase({ earnedBadges }: BadgeShowcaseProps) {
