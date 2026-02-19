@@ -13,17 +13,13 @@ interface TTSButtonProps {
 
 export function TTSButton({ text, lang = 'de-DE', className, size = 'icon' }: TTSButtonProps) {
     const [speaking, setSpeaking] = useState(false)
-    const [supported] = useState(() =>
-        typeof window !== 'undefined' && 'speechSynthesis' in window
-    )
+    const [supported, setSupported] = useState(false)
     const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null)
 
-    // Cleanup on unmount
     useEffect(() => {
+        setSupported('speechSynthesis' in window)
         return () => {
-            if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-                window.speechSynthesis.cancel()
-            }
+            window.speechSynthesis?.cancel()
         }
     }, [])
 
