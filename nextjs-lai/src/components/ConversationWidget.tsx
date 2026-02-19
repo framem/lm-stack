@@ -5,15 +5,20 @@ import { Button } from '@/src/components/ui/button'
 import { Badge } from '@/src/components/ui/badge'
 import { SCENARIOS, type Language } from '@/src/lib/conversation-scenarios-constants'
 
-// Three A1–A2 scenarios shown as quick-start options
-const FEATURED_KEYS = ['cafe', 'supermarkt', 'wegbeschreibung']
+// Language-specific featured scenario keys
+const FEATURED_KEYS: Record<Language, string[]> = {
+    es: ['mercado', 'farmacia', 'estacion'],
+    en: ['cafe', 'supermarkt', 'wegbeschreibung'],
+    de: ['cafe', 'supermarkt', 'wegbeschreibung'],
+}
 
 interface ConversationWidgetProps {
     targetLanguage?: Language
 }
 
 export function ConversationWidget({ targetLanguage = 'es' }: ConversationWidgetProps) {
-    const featured = SCENARIOS.filter((s) => FEATURED_KEYS.includes(s.key))
+    const keys = FEATURED_KEYS[targetLanguage] ?? FEATURED_KEYS.de
+    const featured = SCENARIOS.filter((s) => keys.includes(s.key))
 
     return (
         <Card>
