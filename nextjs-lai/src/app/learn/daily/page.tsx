@@ -12,6 +12,7 @@ import {
     MessageSquare,
     Zap,
     Clock,
+    Flame,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/src/components/ui/card'
 import { Button } from '@/src/components/ui/button'
@@ -19,6 +20,7 @@ import { Badge } from '@/src/components/ui/badge'
 import { Progress } from '@/src/components/ui/progress'
 import { RadioGroup, RadioGroupItem } from '@/src/components/ui/radio-group'
 import { getDailyPracticeItems } from '@/src/actions/session'
+import { getUserStats } from '@/src/actions/user-stats'
 import { reviewFlashcard } from '@/src/actions/flashcards'
 import { evaluateAnswer } from '@/src/actions/quiz'
 import { TTSButton } from '@/src/components/TTSButton'
@@ -66,6 +68,7 @@ export default function DailyPracticePage() {
     const [items, setItems] = useState<SessionItem[]>([])
     const [currentIndex, setCurrentIndex] = useState(0)
     const [loading, setLoading] = useState(true)
+    const [streak, setStreak] = useState<number>(0)
     const [submitting, setSubmitting] = useState(false)
     const [completed, setCompleted] = useState(false)
     const [score, setScore] = useState({ correct: 0, total: 0 })
@@ -84,8 +87,12 @@ export default function DailyPracticePage() {
     useEffect(() => {
         async function load() {
             try {
-                const data = await getDailyPracticeItems()
+                const [data, stats] = await Promise.all([
+                    getDailyPracticeItems(),
+                    getUserStats(),
+                ])
                 setItems(data as unknown as SessionItem[])
+                setStreak(stats.currentStreak ?? 0)
             } catch (err) {
                 console.error('Failed to load daily items:', err)
             } finally {
@@ -102,6 +109,7 @@ export default function DailyPracticePage() {
     const quizCount = items.filter(i => i.type === 'quiz').length
 
     function getDailySubtitle(count: number): string {
+        if (count <= 3 && streak > 1) return `Tag ${streak} — Streak halten mit nur ${count} ${count === 1 ? 'Karte' : 'Karten'}!`
         if (count <= 3) return 'Schnelle Runde — gleich geschafft!'
         if (count <= 10) return `${count} Aufgaben für heute`
         return `Heute etwas mehr — ${count} Aufgaben warten`
@@ -260,6 +268,14 @@ export default function DailyPracticePage() {
                             return 'bleib dran!'
                         })()}
                     </p>
+                    {streak > 0 && (
+                        <div className="flex items-center justify-center gap-2 text-orange-500 font-semibold">
+                            <Flame className="h-5 w-5" />
+                            {streak === 1
+                                ? 'Tag 1 — der Streak beginnt!'
+                                : `${streak} Tage in Folge — weiter so!`}
+                        </div>
+                    )}
                 </div>
 
                 {/* Conversation prompt */}
@@ -330,6 +346,12 @@ export default function DailyPracticePage() {
                         <Badge variant="secondary" className="gap-1">
                             <HelpCircle className="h-3 w-3" />
                             {quizCount}
+                        </Badge>
+                    )}
+                    {streak > 0 && (
+                        <Badge variant="outline" className="gap-1 border-orange-500/50 text-orange-600 dark:text-orange-400">
+                            <Flame className="h-3 w-3" />
+                            {streak}
                         </Badge>
                     )}
                 </div>
