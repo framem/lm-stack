@@ -19,17 +19,6 @@ import { Badge } from '@/src/components/ui/badge'
 import { Progress } from '@/src/components/ui/progress'
 import { getVocabularyFlashcards } from '@/src/actions/flashcards'
 import { languageSets } from '@/src/data/language-sets'
-import { TTSButton } from '@/src/components/TTSButton'
-
-// Map language subject to BCP-47 language code for TTS
-const SUBJECT_LANG_MAP: Record<string, string> = {
-    'Englisch': 'en-US',
-    'Spanisch': 'es-ES',
-    'Französisch': 'fr-FR',
-    'Italienisch': 'it-IT',
-    'Portugiesisch': 'pt-PT',
-}
-
 // Map language-set document titles to their static set IDs
 const LANGUAGE_SET_ID_MAP: Record<string, string> = {
     'Spanisch A1 Grundwortschatz': 'es-a1',
@@ -260,12 +249,6 @@ export function VocabContent() {
                                                     <div className="flex-1 min-w-0">
                                                         <div className="flex items-center gap-1.5">
                                                             <p className="font-semibold truncate">{set.title}</p>
-                                                            <TTSButton
-                                                                text={set.title}
-                                                                lang={SUBJECT_LANG_MAP[set.subject] ?? 'de-DE'}
-                                                                size="sm"
-                                                                className="shrink-0"
-                                                            />
                                                         </div>
                                                         <p className="text-sm text-muted-foreground line-clamp-1">{set.description}</p>
                                                     </div>
