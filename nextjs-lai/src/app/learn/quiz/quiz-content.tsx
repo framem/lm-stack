@@ -558,7 +558,7 @@ export function QuizContent() {
                                                                     </TooltipTrigger>
                                                                     <TooltipContent className="max-w-xs">
                                                                         <p className="text-xs">
-                                                                            Basierend auf deiner bisherigen Leistung: Die höchste Stufe mit ≥80% Erfolgsrate, plus eine Stufe höher zur Herausforderung.
+                                                                            Basierend auf deiner bisherigen Leistung: Die höchste Stufe mit ≥80% Erfolgsrate.
                                                                         </p>
                                                                     </TooltipContent>
                                                                 </Tooltip>
