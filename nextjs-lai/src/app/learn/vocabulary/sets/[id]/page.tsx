@@ -7,15 +7,27 @@ import {
     BookOpen,
     Clock,
     CheckCircle2,
+    Keyboard,
     RotateCcw,
     AlertCircle,
+    Info,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/card'
 import { Button } from '@/src/components/ui/button'
 import { Badge } from '@/src/components/ui/badge'
 import { Progress } from '@/src/components/ui/progress'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/src/components/ui/tooltip'
 import { getLanguageSetDetail } from '@/src/data-access/language-sets'
 import { getLanguageSet } from '@/src/data/language-sets'
+import { TTSButton } from '@/src/components/TTSButton'
+
+const SUBJECT_LANG_MAP: Record<string, string> = {
+    'Englisch': 'en-US',
+    'Spanisch': 'es-ES',
+    'Französisch': 'fr-FR',
+    'Italienisch': 'it-IT',
+    'Portugiesisch': 'pt-PT',
+}
 
 interface Props {
     params: Promise<{ id: string }>
@@ -149,6 +161,12 @@ export default async function LanguageSetDetailPage({ params }: Props) {
                                 </Link>
                             </Button>
                         )}
+                        <Button variant="outline" asChild>
+                            <Link href={`/learn/vocabulary/study?mode=type&doc=${documentId}`}>
+                                <Keyboard className="h-4 w-4" />
+                                Tipp-Modus
+                            </Link>
+                        </Button>
                     </div>
 
                     {/* Knowledge distribution bar */}
@@ -226,7 +244,17 @@ export default async function LanguageSetDetailPage({ params }: Props) {
                                             {/* Progress bar */}
                                             <div className="space-y-1">
                                                 <div className="flex items-center justify-between text-xs text-muted-foreground">
-                                                    <span>Beherrscht</span>
+                                                    <TooltipProvider>
+                                                        <Tooltip>
+                                                            <TooltipTrigger className="flex items-center gap-1 cursor-help">
+                                                                <span>Beherrscht</span>
+                                                                <Info className="h-3 w-3" />
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>
+                                                                Eine Vokabel gilt als beherrscht ab ≥ 3 erfolgreichen Wiederholungen.
+                                                            </TooltipContent>
+                                                        </Tooltip>
+                                                    </TooltipProvider>
                                                     <span>{masteredPct}%</span>
                                                 </div>
                                                 <Progress value={masteredPct} className="h-1.5" />
@@ -243,9 +271,28 @@ export default async function LanguageSetDetailPage({ params }: Props) {
                                                             key={card.id}
                                                             className="flex items-start justify-between gap-2 rounded-lg border px-3 py-2 text-sm"
                                                         >
-                                                            <div className="min-w-0">
-                                                                <p className="font-medium truncate">{card.front}</p>
+                                                            <div className="min-w-0 flex-1">
+                                                                <div className="flex items-center gap-1">
+                                                                    <p className="font-medium truncate">{card.front}</p>
+                                                                    <TTSButton
+                                                                        text={card.front}
+                                                                        lang={SUBJECT_LANG_MAP[set.subject] ?? 'de-DE'}
+                                                                        size="sm"
+                                                                        className="shrink-0 -my-1"
+                                                                    />
+                                                                </div>
                                                                 <p className="text-muted-foreground truncate">{card.back}</p>
+                                                                {card.exampleSentence && (
+                                                                    <div className="flex items-start gap-1 mt-1.5">
+                                                                        <p className="text-xs text-muted-foreground italic leading-snug">{card.exampleSentence}</p>
+                                                                        <TTSButton
+                                                                            text={card.exampleSentence}
+                                                                            lang={SUBJECT_LANG_MAP[set.subject] ?? 'de-DE'}
+                                                                            size="sm"
+                                                                            className="shrink-0 -mt-0.5"
+                                                                        />
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                             <div className="flex flex-col items-end gap-1 shrink-0">
                                                                 {card.partOfSpeech && (

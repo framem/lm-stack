@@ -11,14 +11,17 @@ import {
     Keyboard,
     RotateCcw,
     FolderOpen,
+    Sparkles,
 } from 'lucide-react'
 import { Card, CardContent } from '@/src/components/ui/card'
 import { Button } from '@/src/components/ui/button'
 import { Badge } from '@/src/components/ui/badge'
+import { Progress } from '@/src/components/ui/progress'
+import { getVocabularyFlashcards } from '@/src/actions/flashcards'
+import { languageSets } from '@/src/data/language-sets'
 import { TTSButton } from '@/src/components/TTSButton'
-import { getVocabularyFlashcards, getDueVocabularyCount, getVocabularyLanguages } from '@/src/actions/flashcards'
 
-// Map document subject to BCP-47 language code for TTS
+// Map language subject to BCP-47 language code for TTS
 const SUBJECT_LANG_MAP: Record<string, string> = {
     'Englisch': 'en-US',
     'Spanisch': 'es-ES',
@@ -50,23 +53,13 @@ interface VocabCard {
 
 export function VocabContent() {
     const [cards, setCards] = useState<VocabCard[]>([])
-    const [dueCount, setDueCount] = useState(0)
     const [loading, setLoading] = useState(true)
-    const [filterDoc, setFilterDoc] = useState<string | null>(null)
-    const [filterLanguage, setFilterLanguage] = useState<string | null>(null)
-    const [languages, setLanguages] = useState<string[]>([])
 
     useEffect(() => {
         async function load() {
             try {
-                const [vocabCards, due, langs] = await Promise.all([
-                    getVocabularyFlashcards(undefined, filterLanguage ?? undefined),
-                    getDueVocabularyCount(),
-                    getVocabularyLanguages(),
-                ])
+                const vocabCards = await getVocabularyFlashcards()
                 setCards(vocabCards as unknown as VocabCard[])
-                setDueCount(due)
-                setLanguages(langs)
             } catch (err) {
                 console.error('Failed to load vocabulary:', err)
             } finally {
@@ -74,7 +67,7 @@ export function VocabContent() {
             }
         }
         load()
-    }, [filterLanguage])
+    }, [])
 
     if (loading) {
         return (
@@ -102,10 +95,39 @@ export function VocabContent() {
     const totalCards = cards.length
     const masteredCards = cards.filter((c) => c.progress && c.progress.repetitions >= 3).length
 
-    // Calculate vocabulary stats
-    const newCards = cards.filter((c) => !c.progress || c.progress.repetitions === 0).length
-    const learningCards = cards.filter((c) => c.progress && c.progress.repetitions >= 1 && c.progress.repetitions < 3).length
-    const masteredCardsCount = cards.filter((c) => c.progress && c.progress.repetitions >= 3).length
+    // New cards = never studied; truly-due = reviewed before but past review date
+    const now = new Date()
+    const NEW_BATCH_SIZE = 20
+    const trulyDueCount = cards.filter(c => c.progress?.nextReviewAt && new Date(c.progress.nextReviewAt) <= now).length
+    const newCount = cards.filter(c => !c.progress).length
+    const newBatchCount = Math.min(newCount, NEW_BATCH_SIZE)
+
+    // Build a map from setId → per-doc stats for imported sets
+    const setIdToDocGroup = new Map<string, { docId: string; total: number; mastered: number; trulyDue: number; newCards: number }>()
+    for (const [docId, group] of docGroups.entries()) {
+        const setId = group.fileType === 'language-set' ? LANGUAGE_SET_ID_MAP[group.title] : undefined
+        if (setId) {
+            const total = group.cards.length
+            const mastered = group.cards.filter(c => c.progress && c.progress.repetitions >= 3).length
+            const trulyDue = group.cards.filter(c => c.progress?.nextReviewAt && new Date(c.progress.nextReviewAt) <= now).length
+            const newCards = group.cards.filter(c => !c.progress).length
+            setIdToDocGroup.set(setId, { docId, total, mastered, trulyDue, newCards })
+        }
+    }
+
+    // Group language sets by subject for section rendering
+    const setsBySubject = new Map<string, typeof languageSets>()
+    for (const set of languageSets) {
+        if (!setsBySubject.has(set.subject)) {
+            setsBySubject.set(set.subject, [])
+        }
+        setsBySubject.get(set.subject)!.push(set)
+    }
+
+    // Docs that are not recognized language sets go into "Sonstige"
+    const otherDocs = [...docGroups.entries()].filter(
+        ([, group]) => group.fileType !== 'language-set' || !LANGUAGE_SET_ID_MAP[group.title]
+    )
 
     return (
         <div className="p-8 max-w-7xl mx-auto space-y-8">
@@ -118,64 +140,6 @@ export function VocabContent() {
                     Vokabeln gezielt lernen mit Tipp-Modus und Richtungswechsel
                 </p>
             </div>
-
-            {/* Vocabulary knowledge distribution */}
-            {totalCards > 0 && (
-                <Card>
-                    <CardContent className="p-6">
-                        <h3 className="text-sm font-semibold mb-4">Kenntnisstand</h3>
-                        <div className="space-y-3">
-                            {/* New */}
-                            <div className="space-y-1">
-                                <div className="flex items-center justify-between text-sm">
-                                    <span className="text-muted-foreground">Neu</span>
-                                    <span className="font-medium">{newCards} ({Math.round((newCards / totalCards) * 100)}%)</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <div className="flex-1 h-8 bg-muted rounded overflow-hidden font-mono text-xs leading-8 text-red-600 pl-2">
-                                        {Array.from({ length: Math.round((newCards / totalCards) * 40) }).map((_, i) => (
-                                            <span key={i}>█</span>
-                                        ))}
-                                        <span className="ml-2 text-muted-foreground">Neu</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Learning */}
-                            <div className="space-y-1">
-                                <div className="flex items-center justify-between text-sm">
-                                    <span className="text-muted-foreground">In Arbeit</span>
-                                    <span className="font-medium">{learningCards} ({Math.round((learningCards / totalCards) * 100)}%)</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <div className="flex-1 h-8 bg-muted rounded overflow-hidden font-mono text-xs leading-8 text-yellow-600 pl-2">
-                                        {Array.from({ length: Math.round((learningCards / totalCards) * 40) }).map((_, i) => (
-                                            <span key={i}>█</span>
-                                        ))}
-                                        <span className="ml-2 text-muted-foreground">In Arbeit</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Mastered */}
-                            <div className="space-y-1">
-                                <div className="flex items-center justify-between text-sm">
-                                    <span className="text-muted-foreground">Beherrscht</span>
-                                    <span className="font-medium">{masteredCardsCount} ({Math.round((masteredCardsCount / totalCards) * 100)}%)</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <div className="flex-1 h-8 bg-muted rounded overflow-hidden font-mono text-xs leading-8 text-green-600 pl-2">
-                                        {Array.from({ length: Math.round((masteredCardsCount / totalCards) * 40) }).map((_, i) => (
-                                            <span key={i}>█</span>
-                                        ))}
-                                        <span className="ml-2 text-muted-foreground">Beherrscht</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
 
             {totalCards === 0 ? (
                 <Card>
@@ -197,8 +161,8 @@ export function VocabContent() {
                 </Card>
             ) : (
                 <>
-                    {/* Stats */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Global stats */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <Card>
                             <CardContent className="flex items-center gap-3 p-4">
                                 <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-950">
@@ -206,7 +170,18 @@ export function VocabContent() {
                                 </div>
                                 <div>
                                     <p className="text-2xl font-bold">{totalCards}</p>
-                                    <p className="text-xs text-muted-foreground">Vokabeln gesamt</p>
+                                    <p className="text-xs text-muted-foreground">Gesamt</p>
+                                </div>
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardContent className="flex items-center gap-3 p-4">
+                                <div className="p-2 rounded-lg bg-violet-100 dark:bg-violet-950">
+                                    <Sparkles className="h-4 w-4 text-violet-600" />
+                                </div>
+                                <div>
+                                    <p className="text-2xl font-bold">{newCount}</p>
+                                    <p className="text-xs text-muted-foreground">Neu</p>
                                 </div>
                             </CardContent>
                         </Card>
@@ -216,8 +191,8 @@ export function VocabContent() {
                                     <Clock className="h-4 w-4 text-orange-600" />
                                 </div>
                                 <div>
-                                    <p className="text-2xl font-bold">{dueCount}</p>
-                                    <p className="text-xs text-muted-foreground">Fällige Vokabeln</p>
+                                    <p className="text-2xl font-bold">{trulyDueCount}</p>
+                                    <p className="text-xs text-muted-foreground">Fällig</p>
                                 </div>
                             </CardContent>
                         </Card>
@@ -236,11 +211,19 @@ export function VocabContent() {
 
                     {/* Action buttons */}
                     <div className="flex flex-wrap gap-3">
-                        {dueCount > 0 && (
+                        {trulyDueCount > 0 && (
                             <Button asChild>
                                 <Link href="/learn/vocabulary/study?mode=flip">
                                     <RotateCcw className="h-4 w-4" />
-                                    Fällige lernen ({dueCount})
+                                    Fällige lernen ({trulyDueCount})
+                                </Link>
+                            </Button>
+                        )}
+                        {newCount > 0 && (
+                            <Button variant={trulyDueCount === 0 ? 'default' : 'outline'} asChild>
+                                <Link href="/learn/vocabulary/study?mode=flip">
+                                    <Sparkles className="h-4 w-4" />
+                                    Neue einführen ({newBatchCount} heute)
                                 </Link>
                             </Button>
                         )}
@@ -258,156 +241,111 @@ export function VocabContent() {
                         </Button>
                     </div>
 
-                    {/* Language filter pills */}
-                    {languages.length > 1 && (
-                        <div className="space-y-2">
-                            <p className="text-sm font-medium text-muted-foreground">Sprache</p>
-                            <div className="flex flex-wrap gap-2">
-                                <button
-                                    onClick={() => setFilterLanguage(null)}
-                                    className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
-                                        !filterLanguage ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'
-                                    }`}
-                                >
-                                    Alle Sprachen
-                                </button>
-                                {languages.map((lang) => (
-                                    <button
-                                        key={lang}
-                                        onClick={() => setFilterLanguage(lang)}
-                                        className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
-                                            filterLanguage === lang ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'
-                                        }`}
-                                    >
-                                        {lang}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    )}
+                    {/* Language set tiles grouped by subject */}
+                    {[...setsBySubject.entries()].map(([subject, sets]) => (
+                        <section key={subject} className="space-y-4">
+                            <h2 className="text-lg font-semibold">{subject}</h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {sets.map((set) => {
+                                    const stats = setIdToDocGroup.get(set.id)
+                                    const imported = !!stats
+                                    const masteredPct = stats && stats.total > 0
+                                        ? Math.round((stats.mastered / stats.total) * 100)
+                                        : 0
 
-                    {/* Filter pills */}
-                    {docGroups.size > 1 && (
-                        <div className="space-y-2">
-                            <p className="text-sm font-medium text-muted-foreground">Vokabelset</p>
-                            <div className="flex flex-wrap gap-2">
-                                <button
-                                    onClick={() => setFilterDoc(null)}
-                                    className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
-                                        !filterDoc ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'
-                                    }`}
-                                >
-                                    Alle Sets
-                                </button>
-                                {[...docGroups.entries()].map(([docId, group]) => {
-                                    const setId = group.fileType === 'language-set'
-                                        ? LANGUAGE_SET_ID_MAP[group.title]
-                                        : undefined
                                     return (
-                                        <div key={docId} className="flex items-center gap-1">
-                                            <button
-                                                onClick={() => setFilterDoc(docId)}
-                                                className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
-                                                    filterDoc === docId ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'
-                                                }`}
-                                            >
-                                                {group.title} ({group.cards.length})
-                                            </button>
-                                            {setId && (
-                                                <Link
-                                                    href={`/learn/vocabulary/sets/${setId}`}
-                                                    className="text-muted-foreground hover:text-foreground transition-colors"
-                                                    title="Set-Details anzeigen"
-                                                >
-                                                    ↗
-                                                </Link>
-                                            )}
-                                        </div>
+                                        <Card key={set.id} className={imported ? '' : 'opacity-60'}>
+                                            <CardContent className="p-5 space-y-3">
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center gap-1.5">
+                                                            <p className="font-semibold truncate">{set.title}</p>
+                                                            <TTSButton
+                                                                text={set.title}
+                                                                lang={SUBJECT_LANG_MAP[set.subject] ?? 'de-DE'}
+                                                                size="sm"
+                                                                className="shrink-0"
+                                                            />
+                                                        </div>
+                                                        <p className="text-sm text-muted-foreground line-clamp-1">{set.description}</p>
+                                                    </div>
+                                                    <Badge variant="outline" className="shrink-0">{set.level}</Badge>
+                                                </div>
+
+                                                {imported ? (
+                                                    <>
+                                                        <div className="space-y-1">
+                                                            <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                                                <span>Beherrscht</span>
+                                                                <span>{masteredPct}%</span>
+                                                            </div>
+                                                            <Progress value={masteredPct} className="h-1.5" />
+                                                        </div>
+                                                        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                                                            <span>{stats!.total} Vokabeln</span>
+                                                            {stats!.trulyDue > 0 && (
+                                                                <span className="text-orange-600 font-medium">• {stats!.trulyDue} fällig</span>
+                                                            )}
+                                                            {stats!.newCards > 0 && (
+                                                                <span className="text-violet-600 font-medium">• {stats!.newCards} neu</span>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex items-center justify-end gap-2 pt-1">
+                                                            <Button size="sm" asChild>
+                                                                <Link href={`/learn/vocabulary/study?mode=flip&doc=${stats!.docId}`}>
+                                                                    Lernen
+                                                                </Link>
+                                                            </Button>
+                                                            <Button size="sm" variant="outline" asChild>
+                                                                <Link href={`/learn/vocabulary/sets/${set.id}`}>
+                                                                    Details anzeigen →
+                                                                </Link>
+                                                            </Button>
+                                                        </div>
+                                                    </>
+                                                ) : (
+                                                    <div className="flex items-center justify-end pt-1">
+                                                        <Button size="sm" variant="outline" asChild>
+                                                            <Link href="/learn/admin">
+                                                                Importieren
+                                                            </Link>
+                                                        </Button>
+                                                    </div>
+                                                )}
+                                            </CardContent>
+                                        </Card>
                                     )
                                 })}
                             </div>
-                        </div>
-                    )}
+                        </section>
+                    ))}
 
-                    {/* Card list grouped by document */}
-                    <div className="space-y-6">
-                        {[...docGroups.entries()]
-                            .filter(([docId]) => !filterDoc || filterDoc === docId)
-                            .map(([docId, group]) => {
-                                const setId = group.fileType === 'language-set'
-                                    ? LANGUAGE_SET_ID_MAP[group.title]
-                                    : undefined
-                                return (
-                                <section key={docId} className="space-y-3">
-                                    <div className="flex items-center gap-2">
-                                        {setId ? (
-                                            <Link
-                                                href={`/learn/vocabulary/sets/${setId}`}
-                                                className="font-semibold hover:underline"
-                                            >
-                                                {group.title}
-                                            </Link>
-                                        ) : (
-                                            <h3 className="font-semibold">{group.title}</h3>
-                                        )}
-                                        {group.subject && (
-                                            <Badge variant="outline" className="gap-1">
-                                                <FolderOpen className="h-3 w-3" />
-                                                {group.subject}
-                                            </Badge>
-                                        )}
-                                        <Badge variant="secondary">{group.cards.length} Vokabeln</Badge>
-                                    </div>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                                        {group.cards.map((card) => {
-                                            const isMastered = card.progress && card.progress.repetitions >= 3
-                                            const isDue = !card.progress || (card.progress.nextReviewAt && new Date(card.progress.nextReviewAt) <= new Date())
-                                            const ttsLang = card.document?.subject ? SUBJECT_LANG_MAP[card.document.subject] : undefined
-                                            return (
-                                                <Card key={card.id} className="relative">
-                                                    <CardContent className="p-4 space-y-1">
-                                                        <div className="flex items-start justify-between gap-2">
-                                                            <div className="flex items-center gap-2 flex-1 min-w-0">
-                                                                <p className="font-medium">{card.front}</p>
-                                                                {ttsLang && (
-                                                                    <TTSButton text={card.front} lang={ttsLang} size="sm" className="shrink-0" />
-                                                                )}
-                                                            </div>
-                                                            {card.partOfSpeech && (
-                                                                <Badge variant="outline" className="text-xs shrink-0">
-                                                                    {card.partOfSpeech}
-                                                                </Badge>
-                                                            )}
-                                                        </div>
-                                                        <p className="text-sm text-muted-foreground">{card.back}</p>
-                                                        {card.exampleSentence && (
-                                                            <div className="flex items-start gap-2 mt-1">
-                                                                <p className="text-xs text-muted-foreground italic flex-1">
-                                                                    {card.exampleSentence}
-                                                                </p>
-                                                                {ttsLang && (
-                                                                    <TTSButton text={card.exampleSentence} lang={ttsLang} size="sm" className="shrink-0 mt-0.5" />
-                                                                )}
-                                                            </div>
-                                                        )}
-                                                        <div className="flex items-center gap-1.5 pt-1">
-                                                            {isMastered ? (
-                                                                <Badge variant="default" className="text-xs bg-green-600">Gelernt</Badge>
-                                                            ) : isDue ? (
-                                                                <Badge variant="secondary" className="text-xs">Fällig</Badge>
-                                                            ) : (
-                                                                <Badge variant="outline" className="text-xs">Geplant</Badge>
-                                                            )}
-                                                        </div>
-                                                    </CardContent>
-                                                </Card>
-                                            )
-                                        })}
-                                    </div>
-                                </section>
-                                )
-                            })}
-                    </div>
+                    {/* Non-language-set documents */}
+                    {otherDocs.length > 0 && (
+                        <section className="space-y-4">
+                            <h2 className="text-lg font-semibold">Sonstige Vokabeln</h2>
+                            <div className="flex flex-col gap-3">
+                                {otherDocs.map(([docId, group]) => (
+                                    <Card key={docId}>
+                                        <CardContent className="flex items-center justify-between p-4">
+                                            <div className="flex items-center gap-3">
+                                                <FolderOpen className="h-4 w-4 text-muted-foreground" />
+                                                <div>
+                                                    <p className="font-medium">{group.title}</p>
+                                                    <p className="text-xs text-muted-foreground">{group.cards.length} Vokabeln</p>
+                                                </div>
+                                            </div>
+                                            <Button size="sm" asChild>
+                                                <Link href={`/learn/vocabulary/study?mode=flip&doc=${docId}`}>
+                                                    Lernen
+                                                </Link>
+                                            </Button>
+                                        </CardContent>
+                                    </Card>
+                                ))}
+                            </div>
+                        </section>
+                    )}
                 </>
             )}
         </div>

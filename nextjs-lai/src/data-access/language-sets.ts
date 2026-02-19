@@ -13,6 +13,7 @@ export interface CategoryStat {
         front: string
         back: string
         partOfSpeech: string | null
+        exampleSentence: string | null
         progress: { repetitions: number; nextReviewAt: Date | null } | null
     }>
 }
@@ -99,6 +100,7 @@ export async function getLanguageSetDetail(setId: string): Promise<LanguageSetDe
             front: fc.front,
             back: fc.back,
             partOfSpeech: fc.partOfSpeech ?? null,
+            exampleSentence: fc.exampleSentence ?? null,
             progress: fc.progress
                 ? { repetitions: fc.progress.repetitions, nextReviewAt: fc.progress.nextReviewAt }
                 : null,
