@@ -109,8 +109,17 @@ export default function DailyPracticePage() {
     const flashcardCount = items.filter(i => i.type === 'flashcard').length
     const quizCount = items.filter(i => i.type === 'quiz').length
 
+    // New cards have overdueBy === 0 (no nextReviewAt set yet); due cards have overdueBy > 0
+    const flashcardItems = items.filter(i => i.type === 'flashcard')
+    const allFlashcardsNew = flashcardItems.length > 0 && flashcardItems.every(i => i.overdueBy === 0)
+
     function getDailySubtitle(count: number): string {
-        if (streak > 1) return `Tag ${streak} — Streak halten mit ${count} ${count === 1 ? 'Aufgabe' : 'Aufgaben'}!`
+        if (streak > 1 && allFlashcardsNew)
+            return `Tag ${streak} — ${flashcardCount} neue ${flashcardCount === 1 ? 'Vokabel' : 'Vokabeln'} lernen!`
+        if (streak > 1)
+            return `Tag ${streak} — Streak halten mit ${count} ${count === 1 ? 'Aufgabe' : 'Aufgaben'}!`
+        if (allFlashcardsNew)
+            return count <= 3 ? 'Neue Vokabeln — gleich geschafft!' : `${flashcardCount} neue Vokabeln für heute`
         if (count <= 3) return 'Schnelle Runde — gleich geschafft!'
         if (count <= 6) return `${count} Aufgaben für heute`
         return `${count} Aufgaben — du schaffst das!`
