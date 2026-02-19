@@ -324,12 +324,12 @@ export async function getVocabularyFlashcards(documentId?: string, language?: st
     return dbGetVocabularyFlashcards(documentId, language)
 }
 
-export async function getDueVocabularyFlashcards() {
-    return dbGetDueVocabularyFlashcards()
+export async function getDueVocabularyFlashcards(documentId?: string) {
+    return dbGetDueVocabularyFlashcards(20, documentId)
 }
 
-export async function getNewVocabularyFlashcards(limit?: number) {
-    return dbGetNewVocabularyFlashcards(limit)
+export async function getNewVocabularyFlashcards(limit?: number, documentId?: string) {
+    return dbGetNewVocabularyFlashcards(limit, documentId)
 }
 
 export async function getDueVocabularyCount() {

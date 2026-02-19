@@ -159,11 +159,12 @@ export async function getVocabularyFlashcards(documentId?: string, language?: st
     })
 }
 
-// Get due vocabulary flashcards
-export async function getDueVocabularyFlashcards(limit: number = 20) {
+// Get due vocabulary flashcards (new + overdue), optionally filtered to one document
+export async function getDueVocabularyFlashcards(limit: number = 20, documentId?: string) {
     return prisma.flashcard.findMany({
         where: {
             isVocabulary: true,
+            ...(documentId ? { documentId } : {}),
             OR: [
                 { progress: null },
                 { progress: { nextReviewAt: { lte: new Date() } } },
@@ -179,11 +180,12 @@ export async function getDueVocabularyFlashcards(limit: number = 20) {
     })
 }
 
-// Get new (never-reviewed) vocabulary flashcards only
-export async function getNewVocabularyFlashcards(limit: number = 20) {
+// Get new (never-reviewed) vocabulary flashcards only, optionally filtered to one document
+export async function getNewVocabularyFlashcards(limit: number = 20, documentId?: string) {
     return prisma.flashcard.findMany({
         where: {
             isVocabulary: true,
+            ...(documentId ? { documentId } : {}),
             progress: null,
         },
         include: {

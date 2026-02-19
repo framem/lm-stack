@@ -79,6 +79,7 @@ export function VocabStudyContent() {
     const mode = searchParams.get('mode') || 'flip'
     const practiceAll = searchParams.get('all') === 'true'
     const newOnly = searchParams.get('new') === 'true'
+    const docFilter = searchParams.get('doc') || undefined
 
     const [cards, setCards] = useState<VocabCard[]>([])
     const [loading, setLoading] = useState(true)
@@ -94,13 +95,13 @@ export function VocabStudyContent() {
         async function load() {
             try {
                 if (practiceAll) {
-                    const data = await getVocabularyFlashcards()
+                    const data = await getVocabularyFlashcards(docFilter)
                     setCards(shuffle(data as unknown as VocabCard[]))
                 } else if (newOnly) {
-                    const data = await getNewVocabularyFlashcards(20)
+                    const data = await getNewVocabularyFlashcards(20, docFilter)
                     setCards(data as unknown as VocabCard[])
                 } else {
-                    const data = await getDueVocabularyFlashcards()
+                    const data = await getDueVocabularyFlashcards(docFilter)
                     setCards(data as unknown as VocabCard[])
                 }
             } catch (err) {
@@ -110,7 +111,7 @@ export function VocabStudyContent() {
             }
         }
         load()
-    }, [practiceAll, newOnly])
+    }, [practiceAll, newOnly, docFilter])
 
     const card = cards[currentIndex]
     const progressValue = cards.length > 0 ? (results.length / cards.length) * 100 : 0
