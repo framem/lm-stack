@@ -28,6 +28,7 @@ import {CefrProgressRing} from '@/src/components/CefrProgressRing'
 import {BadgeShowcase} from '@/src/components/BadgeShowcase'
 import {getLearnerProfile} from '@/src/data-access/learning-paths'
 import {getEarnedBadges} from '@/src/data-access/badges'
+import {ConversationWidget} from '@/src/components/ConversationWidget'
 
 export default async function DashboardPage() {
     const [documents, sessions, quizzes, quizProgress, flashcardProgress, dueQuizReviews, dueFlashcardReviews, totalFlashcards, userStats, cefrProgress, todayTasks, profile, earnedBadges] = await Promise.all([
@@ -100,6 +101,16 @@ export default async function DashboardPage() {
     const recentSessions = sessions.slice(0, 5)
     const recentQuizzes = quizzes.slice(0, 5)
     const isNewUser = documents.length === 0
+
+    // Detect primary target language from document subjects (only languages supported in conversation)
+    const targetLanguage = (() => {
+        for (const doc of documents) {
+            const s = doc.subject?.toLowerCase() ?? ''
+            if (s.includes('spanisch')) return 'es' as const
+            if (s.includes('englisch')) return 'en' as const
+        }
+        return 'de' as const
+    })()
 
     // Find weakest document for the today-learning widget
     const weakestDocument = progress.length > 0
@@ -187,6 +198,11 @@ export default async function DashboardPage() {
                         percentage: weakestDocument.percentage,
                     } : undefined}
                 />
+            )}
+
+            {/* Conversation quick-start */}
+            {!isNewUser && (
+                <ConversationWidget targetLanguage={targetLanguage} />
             )}
 
             {/* Today's study plan tasks */}
