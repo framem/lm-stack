@@ -512,7 +512,7 @@ export function QuizContent() {
                                 ))}
                             </div>
                             <p className="text-xs text-muted-foreground">
-                                Pro ausgewähltem Fragetyp wird mindestens eine Frage erstellt. Die Fragen werden möglichst gleichmäßig auf alle Typen verteilt.
+                                Pro ausgewähltem Fragetyp wird mindestens eine Frage erstellt. Die Fragen werden möglichst gleichmäßig auf alle Fragetypen verteilt.
                             </p>
                         </div>
 
