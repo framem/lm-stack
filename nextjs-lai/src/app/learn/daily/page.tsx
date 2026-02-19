@@ -98,6 +98,15 @@ export default function DailyPracticePage() {
     const currentItem = items[currentIndex]
     const progressPercent = items.length > 0 ? ((currentIndex + 1) / items.length) * 100 : 0
 
+    const flashcardCount = items.filter(i => i.type === 'flashcard').length
+    const quizCount = items.filter(i => i.type === 'quiz').length
+
+    function getDailySubtitle(count: number): string {
+        if (count <= 3) return 'Schnelle Runde — gleich geschafft!'
+        if (count <= 10) return `${count} Aufgaben für heute`
+        return `Heute etwas mehr — ${count} Aufgaben warten`
+    }
+
     // Detect language and CEFR level from flashcard subjects
     const { detectedLang, userLevel } = (() => {
         let lang = 'de'
@@ -302,13 +311,27 @@ export default function DailyPracticePage() {
             {/* Header */}
             <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-primary/10">
-                    <Clock className="h-5 w-5 text-primary" />
+                    <Zap className="h-5 w-5 text-primary" />
                 </div>
-                <div>
-                    <h1 className="text-lg font-bold">5-Minuten-Übung</h1>
+                <div className="flex-1">
+                    <h1 className="text-lg font-bold">Tagesübung</h1>
                     <p className="text-sm text-muted-foreground">
-                        {items.length} Aufgabe{items.length !== 1 ? 'n' : ''} für heute
+                        {getDailySubtitle(items.length)}
                     </p>
+                </div>
+                <div className="flex items-center gap-1.5">
+                    {flashcardCount > 0 && (
+                        <Badge variant="secondary" className="gap-1">
+                            <Layers className="h-3 w-3" />
+                            {flashcardCount}
+                        </Badge>
+                    )}
+                    {quizCount > 0 && (
+                        <Badge variant="secondary" className="gap-1">
+                            <HelpCircle className="h-3 w-3" />
+                            {quizCount}
+                        </Badge>
+                    )}
                 </div>
             </div>
 

@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Layers, HelpCircle, BookOpen, Clock, Sparkles, GraduationCap } from 'lucide-react'
+import { Layers, HelpCircle, BookOpen, Clock, Sparkles, GraduationCap, Zap } from 'lucide-react'
 import { Card, CardContent } from '@/src/components/ui/card'
 import { Button } from '@/src/components/ui/button'
 import { Badge } from '@/src/components/ui/badge'
@@ -66,8 +66,8 @@ export async function TodayActionWidget({
                     {hasDueReviews ? (
                         <Button asChild>
                             <Link href="/learn/daily">
-                                <Clock className="h-4 w-4" />
-                                5 Min lernen
+                                <Zap className="h-4 w-4" />
+                                Jetzt wiederholen
                             </Link>
                         </Button>
                     ) : recommendation ? (
