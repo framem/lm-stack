@@ -6,7 +6,7 @@ import { Separator } from '@/src/components/ui/separator'
 import { Breadcrumbs } from '@/src/components/Breadcrumbs'
 import { LLMHealthBanner } from '@/src/components/LLMHealthBanner'
 import { BreadcrumbProvider } from '@/src/contexts/BreadcrumbContext'
-import { GlobalSearch } from '@/src/components/GlobalSearch'
+import { GlobalSearch } from '@/src/components/GlobalSearchClient'
 
 export default function MainLayout({
     children,
