@@ -49,14 +49,19 @@ export async function getCombinedDueItems(limit: number = 30): Promise<CombinedI
     return items.slice(0, limit)
 }
 
+// Daily practice caps: keeps the session quick (~5-10 min) while showing enough to matter
+const DAILY_VOCAB_CAP = 5
+const DAILY_QUIZ_CAP = 3
+
 /**
- * Get a curated daily practice set: 2 due vocabulary flashcards + 1 quiz question.
- * Prioritized by SM-2 overdue urgency. Returns fewer items for a quick ~5 minute session.
+ * Get a curated daily practice set sorted by SM-2 overdue urgency.
+ * Caps at DAILY_VOCAB_CAP vocab cards + DAILY_QUIZ_CAP quiz questions so the
+ * session stays quick (streak-keeper), not exhaustive like getCombinedDueItems.
  */
 export async function getDailyPracticeItems(): Promise<CombinedItem[]> {
     const [vocabCards, questions] = await Promise.all([
-        getDueVocabularyFlashcards(2),
-        getDueQuestions(1),
+        getDueVocabularyFlashcards(DAILY_VOCAB_CAP),
+        getDueQuestions(DAILY_QUIZ_CAP),
     ])
 
     const now = Date.now()
@@ -77,7 +82,7 @@ export async function getDailyPracticeItems(): Promise<CombinedItem[]> {
 
     // If no vocabulary flashcards, fall back to general flashcards
     if (vocabCards.length === 0) {
-        const generalCards = await getDueFlashcards(2)
+        const generalCards = await getDueFlashcards(DAILY_VOCAB_CAP)
         for (const fc of generalCards) {
             const nextReview = fc.progress?.nextReviewAt
             const overdueBy = nextReview

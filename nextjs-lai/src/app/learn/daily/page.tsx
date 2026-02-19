@@ -110,10 +110,10 @@ export default function DailyPracticePage() {
     const quizCount = items.filter(i => i.type === 'quiz').length
 
     function getDailySubtitle(count: number): string {
-        if (count <= 3 && streak > 1) return `Tag ${streak} — Streak halten mit nur ${count} ${count === 1 ? 'Karte' : 'Karten'}!`
+        if (streak > 1) return `Tag ${streak} — Streak halten mit ${count} ${count === 1 ? 'Aufgabe' : 'Aufgaben'}!`
         if (count <= 3) return 'Schnelle Runde — gleich geschafft!'
-        if (count <= 10) return `${count} Aufgaben für heute`
-        return `Heute etwas mehr — ${count} Aufgaben warten`
+        if (count <= 6) return `${count} Aufgaben für heute`
+        return `${count} Aufgaben — du schaffst das!`
     }
 
     // Detect language and CEFR level from flashcard subjects
