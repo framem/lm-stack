@@ -175,7 +175,7 @@ export function ConversationPageClient({ bestEvaluations, generatedScenarios }: 
             <div className="space-y-3">
                 <h2 className="text-lg font-semibold">Standard-Szenarien</h2>
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {SCENARIOS.map((scenario) => {
+                    {SCENARIOS.filter((s) => !s.targetLanguages || s.targetLanguages.includes(selectedLanguage)).map((scenario) => {
                         const germanTranslation = scenario.translations.de
                         const bestEval = bestEvaluations[scenario.key]
                         const hasAttempt = !!bestEval

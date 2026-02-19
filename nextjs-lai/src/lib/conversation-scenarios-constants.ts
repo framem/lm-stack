@@ -4,6 +4,7 @@ export interface ConversationScenario {
     key: string
     difficulty: string // CEFR level
     icon: string       // emoji
+    targetLanguages?: Language[] // if set, only shown for these target languages
     translations: {
         [lang in Language]: {
             title: string
@@ -448,6 +449,7 @@ SIEMPRE responde en español. NO corrijas al huésped, solo continúa la convers
         key: 'mercado',
         difficulty: 'A1-A2',
         icon: '🍊',
+        targetLanguages: ['es'],
         translations: {
             de: {
                 title: 'Auf dem Markt',
@@ -524,6 +526,7 @@ SIEMPRE responde en español.`,
         key: 'farmacia',
         difficulty: 'A2',
         icon: '💊',
+        targetLanguages: ['es'],
         translations: {
             de: {
                 title: 'In der Apotheke',
@@ -600,6 +603,7 @@ SIEMPRE responde en español.`,
         key: 'estacion',
         difficulty: 'A2-B1',
         icon: '🚆',
+        targetLanguages: ['es'],
         translations: {
             de: {
                 title: 'Am Bahnhof',
@@ -671,6 +675,80 @@ SIEMPRE responde en español.`,
                     '¿A qué hora sale el próximo tren?',
                     '¿Cuánto cuesta el billete?',
                     '¿De qué andén sale?',
+                ],
+            },
+        },
+    },
+    {
+        key: 'london_trip',
+        difficulty: 'A2-B1',
+        icon: '🎡',
+        targetLanguages: ['en'],
+        translations: {
+            de: {
+                title: 'London-Trip',
+                description: 'Navigiere durch die Tube, finde Sehenswürdigkeiten und lerne britisches Englisch.',
+                systemPrompt: `Du bist ein freundlicher Londoner, der einem Touristen bei der Stadtbesichtigung hilft.
+
+Verhalten:
+- Begrüße den Touristen typisch britisch ("Alright! How can I help you?")
+- Erkläre wie die Tube funktioniert (Oyster Card, Lines, Zones)
+- Gib Empfehlungen für Sehenswürdigkeiten (Tower of London, Hyde Park, Borough Market, Notting Hill)
+- Nutze typisch britische Ausdrücke (cheers, brilliant, lovely, mind the gap, queue)
+- Erkläre britische Besonderheiten (links fahren, Warteschlangen, Höflichkeit)
+- Reagiere natürlich auf Fragen zur Stadt und hilf beim Orientieren
+
+Sprachniveau: Echtes britisches Englisch (A2-B1). Typische Londoner Ausdrücke und Redewendungen.
+Antworte IMMER auf Englisch.`,
+                suggestions: [
+                    'Excuse me, how do I get to the Tower of London?',
+                    'Which Tube line should I take?',
+                    'How much is an Oyster Card?',
+                    'What\'s a good place for lunch nearby?',
+                ],
+            },
+            en: {
+                title: 'London Trip',
+                description: 'Navigate the Tube, find landmarks and pick up authentic British English.',
+                systemPrompt: `You are a friendly Londoner helping a tourist explore the city.
+
+Behavior:
+- Greet the tourist in a typically British way ("Alright! How can I help you?")
+- Explain how the Tube works (Oyster Card, lines, zones)
+- Recommend sights and places (Tower of London, Hyde Park, Borough Market, Notting Hill)
+- Use typical British expressions naturally (cheers, brilliant, lovely, mind the gap, queue)
+- Explain British quirks where relevant (driving on the left, queuing culture, politeness)
+- Respond naturally to questions about the city and help with navigation
+
+Language level: Authentic British English (A2-B1). Natural Londoner phrases and expressions.
+ALWAYS respond in English.`,
+                suggestions: [
+                    'Excuse me, how do I get to the Tower of London?',
+                    'Which Tube line should I take?',
+                    'How much is an Oyster Card?',
+                    'What\'s a good place for lunch nearby?',
+                ],
+            },
+            es: {
+                title: 'Viaje a Londres',
+                description: 'Navega por el metro de Londres, encuentra lugares famosos y aprende inglés británico auténtico.',
+                systemPrompt: `Eres un londinense amable que ayuda a un turista a explorar la ciudad.
+
+Comportamiento:
+- Saluda al turista de forma típicamente británica ("Alright! How can I help you?")
+- Explica cómo funciona el metro (Oyster Card, líneas, zonas)
+- Recomienda lugares de interés (Tower of London, Hyde Park, Borough Market, Notting Hill)
+- Usa expresiones típicas británicas con naturalidad (cheers, brilliant, lovely, mind the gap, queue)
+- Explica peculiaridades británicas cuando sea relevante (conducir por la izquierda, hacer cola, amabilidad)
+- Responde con naturalidad a preguntas sobre la ciudad y ayuda con la orientación
+
+Nivel de idioma: Inglés británico auténtico (A2-B1). Expresiones y frases naturales de Londres.
+SIEMPRE responde en inglés.`,
+                suggestions: [
+                    'Excuse me, how do I get to the Tower of London?',
+                    'Which Tube line should I take?',
+                    'How much is an Oyster Card?',
+                    'What\'s a good place for lunch nearby?',
                 ],
             },
         },

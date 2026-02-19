@@ -8,7 +8,7 @@ import { SCENARIOS, type Language } from '@/src/lib/conversation-scenarios-const
 // Language-specific featured scenario keys
 const FEATURED_KEYS: Record<Language, string[]> = {
     es: ['mercado', 'farmacia', 'estacion'],
-    en: ['cafe', 'supermarkt', 'wegbeschreibung'],
+    en: ['london_trip', 'cafe', 'supermarkt'],
     de: ['cafe', 'supermarkt', 'wegbeschreibung'],
 }
 

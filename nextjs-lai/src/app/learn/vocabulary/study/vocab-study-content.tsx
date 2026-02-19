@@ -51,7 +51,11 @@ const SUBJECT_LANG_MAP: Record<string, string> = {
 
 function getTargetLang(card: VocabCard): string {
     const subject = card.document?.subject
-    return (subject && SUBJECT_LANG_MAP[subject]) || 'de-DE'
+    if (!subject) return 'de-DE'
+    for (const [key, lang] of Object.entries(SUBJECT_LANG_MAP)) {
+        if (subject.startsWith(key)) return lang
+    }
+    return 'de-DE'
 }
 
 interface ReviewResult {

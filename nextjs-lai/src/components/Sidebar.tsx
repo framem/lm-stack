@@ -210,7 +210,7 @@ export function AppSidebar() {
             </SidebarHeader>
 
             <SidebarContent>
-                {/* Dashboard */}
+                {/* Dashboard + Chat */}
                 <SidebarGroup>
                     <SidebarGroupContent>
                         <SidebarMenu>
@@ -226,39 +226,6 @@ export function AppSidebar() {
                                     </Link>
                                 </SidebarMenuButton>
                             </SidebarMenuItem>
-                        </SidebarMenu>
-                    </SidebarGroupContent>
-                </SidebarGroup>
-
-                {/* Lernen */}
-                <SidebarGroup>
-                    <SidebarGroupLabel>Lernen</SidebarGroupLabel>
-                    <SidebarGroupContent>
-                        <SidebarMenu>
-                            {learnItems.map((item) => {
-                                const isActive = pathname === item.href || pathname.startsWith(item.href)
-                                return (
-                                    <SidebarMenuItem key={item.href}>
-                                        <SidebarMenuButton
-                                            asChild
-                                            isActive={isActive}
-                                            tooltip={item.label}
-                                        >
-                                            <Link href={item.href}>
-                                                <item.icon className="shrink-0" />
-                                                <div className="flex flex-col min-w-0">
-                                                    <span>{item.label}</span>
-                                                    {'description' in item && item.description && (
-                                                        <span className="text-xs text-muted-foreground font-normal truncate">
-                                                            {item.description}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </Link>
-                                        </SidebarMenuButton>
-                                    </SidebarMenuItem>
-                                )
-                            })}
 
                             {/* Chat with collapsible session list */}
                             <Collapsible
@@ -452,6 +419,39 @@ export function AppSidebar() {
                                     </CollapsibleContent>
                                 </SidebarMenuItem>
                             </Collapsible>
+                        </SidebarMenu>
+                    </SidebarGroupContent>
+                </SidebarGroup>
+
+                {/* Lernen */}
+                <SidebarGroup>
+                    <SidebarGroupLabel>Lernen</SidebarGroupLabel>
+                    <SidebarGroupContent>
+                        <SidebarMenu>
+                            {learnItems.map((item) => {
+                                const isActive = pathname === item.href || pathname.startsWith(item.href)
+                                return (
+                                    <SidebarMenuItem key={item.href}>
+                                        <SidebarMenuButton
+                                            asChild
+                                            isActive={isActive}
+                                            tooltip={item.label}
+                                        >
+                                            <Link href={item.href}>
+                                                <item.icon className="shrink-0" />
+                                                <div className="flex flex-col min-w-0">
+                                                    <span>{item.label}</span>
+                                                    {'description' in item && item.description && (
+                                                        <span className="text-xs text-muted-foreground font-normal truncate">
+                                                            {item.description}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </Link>
+                                        </SidebarMenuButton>
+                                    </SidebarMenuItem>
+                                )
+                            })}
                         </SidebarMenu>
                     </SidebarGroupContent>
                 </SidebarGroup>
