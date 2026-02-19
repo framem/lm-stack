@@ -300,14 +300,14 @@ export function SessionContent() {
                     Lern-Session
                 </h1>
                 <p className="text-sm text-muted-foreground flex items-center justify-center gap-3">
+                    <span>Alle fälligen Wiederholungen —</span>
                     <span className="flex items-center gap-1">
                         <Layers className="h-4 w-4" />
-                        Karteikarten
+                        {items.filter(i => i.type === 'flashcard').length} Karteikarten
                     </span>
-                    <span>+</span>
                     <span className="flex items-center gap-1">
                         <HelpCircle className="h-4 w-4" />
-                        Quiz-Fragen
+                        {items.filter(i => i.type === 'quiz').length} Quizfragen
                     </span>
                 </p>
             </div>

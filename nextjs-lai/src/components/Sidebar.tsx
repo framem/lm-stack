@@ -72,8 +72,8 @@ interface SessionItem {
 
 // Sidebar groups (without Chat and Fächer — handled separately)
 const learnItems = [
-    { href: '/learn/session', label: 'Lern-Session', icon: GraduationCap },
-    { href: '/learn/daily', label: 'Tagesübung', icon: Clock },
+    { href: '/learn/session', label: 'Lern-Session', icon: GraduationCap, description: 'Alle fälligen Items · tief lernen' },
+    { href: '/learn/daily', label: 'Tagesübung', icon: Clock, description: 'Quick-Check · Streak sichern' },
     { href: '/learn/vocabulary', label: 'Vokabeltrainer', icon: Languages },
     { href: '/learn/conversation', label: 'Konversation', icon: MessageSquare },
 ]
@@ -245,8 +245,15 @@ export function AppSidebar() {
                                             tooltip={item.label}
                                         >
                                             <Link href={item.href}>
-                                                <item.icon />
-                                                <span>{item.label}</span>
+                                                <item.icon className="shrink-0" />
+                                                <div className="flex flex-col min-w-0">
+                                                    <span>{item.label}</span>
+                                                    {'description' in item && item.description && (
+                                                        <span className="text-xs text-muted-foreground font-normal truncate">
+                                                            {item.description}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </Link>
                                         </SidebarMenuButton>
                                     </SidebarMenuItem>

@@ -13,6 +13,7 @@ import {
     Zap,
     Clock,
     Flame,
+    GraduationCap,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/src/components/ui/card'
 import { Button } from '@/src/components/ui/button'
@@ -306,10 +307,11 @@ export default function DailyPracticePage() {
                     </CardContent>
                 </Card>
 
-                <div className="flex justify-center gap-3">
+                <div className="flex flex-col items-center gap-3">
                     <Button variant="outline" asChild>
                         <Link href="/learn/session">
-                            Lern-Session starten
+                            <GraduationCap className="h-4 w-4" />
+                            Lern-Session — alle fälligen Items
                         </Link>
                     </Button>
                     <Button variant="ghost" asChild>
