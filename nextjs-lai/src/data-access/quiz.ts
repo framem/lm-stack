@@ -354,3 +354,18 @@ export async function getQuizResults(quizId: string) {
 
     return quiz
 }
+
+// Search quizzes by title
+export async function searchQuizzes(query: string) {
+    return prisma.quiz.findMany({
+        where: { title: { contains: query, mode: 'insensitive' } },
+        select: {
+            id: true,
+            title: true,
+            document: { select: { id: true, title: true } },
+            _count: { select: { questions: true } },
+        },
+        take: 5,
+        orderBy: { createdAt: 'desc' },
+    })
+}

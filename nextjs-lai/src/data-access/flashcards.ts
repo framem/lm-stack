@@ -198,6 +198,26 @@ export async function getNewVocabularyFlashcards(limit: number = 20, documentId?
     })
 }
 
+// Search flashcards by front or back text
+export async function searchFlashcards(query: string) {
+    return prisma.flashcard.findMany({
+        where: {
+            OR: [
+                { front: { contains: query, mode: 'insensitive' } },
+                { back:  { contains: query, mode: 'insensitive' } },
+            ],
+        },
+        select: {
+            id: true,
+            front: true,
+            back: true,
+            document: { select: { id: true, title: true } },
+        },
+        take: 6,
+        orderBy: { createdAt: 'desc' },
+    })
+}
+
 // Count due vocabulary flashcards
 export async function getDueVocabularyCount() {
     const [newCards, dueCards] = await Promise.all([

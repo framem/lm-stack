@@ -6,6 +6,7 @@ import { Separator } from '@/src/components/ui/separator'
 import { Breadcrumbs } from '@/src/components/Breadcrumbs'
 import { LLMHealthBanner } from '@/src/components/LLMHealthBanner'
 import { BreadcrumbProvider } from '@/src/contexts/BreadcrumbContext'
+import { GlobalSearch } from '@/src/components/GlobalSearch'
 
 export default function MainLayout({
     children,
@@ -24,6 +25,7 @@ export default function MainLayout({
                             <SidebarTrigger className="-ml-1" />
                             <Separator orientation="vertical" className="mr-2 h-4" />
                             <Breadcrumbs />
+                            <GlobalSearch />
                         </header>
                         <LLMHealthBanner />
                         <main className="flex-1 overflow-auto">
