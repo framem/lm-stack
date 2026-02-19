@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { FileText, Layers, HelpCircle, BookOpen, BarChart2, Search, Loader2 } from 'lucide-react'
+import { FileText, Layers, HelpCircle, BookOpen, BarChart2, Search, Loader2, AlignLeft } from 'lucide-react'
 import {
     CommandDialog,
     CommandInput,
@@ -18,6 +18,7 @@ interface SearchResults {
     documents: { id: string; title: string; fileName: string | null; subject: string | null }[]
     flashcards: { id: string; front: string; back: string; document: { id: string; title: string } }[]
     quizzes: { id: string; title: string; document: { id: string; title: string } | null; _count: { questions: number } }[]
+    chunks: { id: string; documentId: string; documentTitle: string; content: string; similarity: number }[]
 }
 
 const STATIC_PAGES = [
@@ -31,7 +32,7 @@ const STATIC_PAGES = [
 export function GlobalSearch() {
     const [open, setOpen] = useState(false)
     const [query, setQuery] = useState('')
-    const [results, setResults] = useState<SearchResults>({ documents: [], flashcards: [], quizzes: [] })
+    const [results, setResults] = useState<SearchResults>({ documents: [], flashcards: [], quizzes: [], chunks: [] })
     const [loading, setLoading] = useState(false)
     const router = useRouter()
     const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -52,7 +53,7 @@ export function GlobalSearch() {
     const fetchResults = useCallback((q: string) => {
         if (debounceRef.current) clearTimeout(debounceRef.current)
         if (q.length < 2) {
-            setResults({ documents: [], flashcards: [], quizzes: [] })
+            setResults({ documents: [], flashcards: [], quizzes: [], chunks: [] })
             setLoading(false)
             return
         }
@@ -78,14 +79,15 @@ export function GlobalSearch() {
     const navigate = (href: string) => {
         setOpen(false)
         setQuery('')
-        setResults({ documents: [], flashcards: [], quizzes: [] })
+        setResults({ documents: [], flashcards: [], quizzes: [], chunks: [] })
         router.push(href)
     }
 
     const hasResults =
         results.documents.length > 0 ||
         results.flashcards.length > 0 ||
-        results.quizzes.length > 0
+        results.quizzes.length > 0 ||
+        results.chunks.length > 0
 
     return (
         <>
@@ -108,7 +110,7 @@ export function GlobalSearch() {
                     setOpen(v)
                     if (!v) {
                         setQuery('')
-                        setResults({ documents: [], flashcards: [], quizzes: [] })
+                        setResults({ documents: [], flashcards: [], quizzes: [], chunks: [] })
                     }
                 }}
                 title="Globale Suche"
@@ -203,6 +205,30 @@ export function GlobalSearch() {
                                 </CommandItem>
                             ))}
                         </CommandGroup>
+                    )}
+
+                    {!loading && results.chunks.length > 0 && (
+                        <>
+                            <CommandSeparator />
+                            <CommandGroup heading="Passagen">
+                                {results.chunks.map((chunk) => (
+                                    <CommandItem
+                                        key={chunk.id}
+                                        value={`chunk-${chunk.id}-${chunk.documentTitle}`}
+                                        onSelect={() => navigate(`/learn/documents?search=${encodeURIComponent(chunk.documentTitle)}`)}
+                                    >
+                                        <AlignLeft className="size-4 shrink-0" />
+                                        <div className="flex flex-col flex-1 min-w-0">
+                                            <span className="text-xs text-muted-foreground truncate">{chunk.documentTitle}</span>
+                                            <span className="truncate">{chunk.content.trim().slice(0, 80)}</span>
+                                        </div>
+                                        <span className="text-xs text-muted-foreground shrink-0">
+                                            {Math.round(chunk.similarity * 100)}%
+                                        </span>
+                                    </CommandItem>
+                                ))}
+                            </CommandGroup>
+                        </>
                     )}
                 </CommandList>
             </CommandDialog>
