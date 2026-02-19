@@ -221,7 +221,7 @@ export function VocabContent() {
                         )}
                         {newCount > 0 && (
                             <Button variant={trulyDueCount === 0 ? 'default' : 'outline'} asChild>
-                                <Link href="/learn/vocabulary/study?mode=flip">
+                                <Link href="/learn/vocabulary/study?mode=flip&new=true">
                                     <Sparkles className="h-4 w-4" />
                                     Neue einführen ({newBatchCount} heute)
                                 </Link>

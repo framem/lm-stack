@@ -179,6 +179,23 @@ export async function getDueVocabularyFlashcards(limit: number = 20) {
     })
 }
 
+// Get new (never-reviewed) vocabulary flashcards only
+export async function getNewVocabularyFlashcards(limit: number = 20) {
+    return prisma.flashcard.findMany({
+        where: {
+            isVocabulary: true,
+            progress: null,
+        },
+        include: {
+            document: { select: { id: true, title: true, subject: true } },
+            chunk: { select: { id: true, content: true, chunkIndex: true } },
+            progress: true,
+        },
+        take: limit,
+        orderBy: { createdAt: 'asc' },
+    })
+}
+
 // Count due vocabulary flashcards
 export async function getDueVocabularyCount() {
     const [newCards, dueCards] = await Promise.all([

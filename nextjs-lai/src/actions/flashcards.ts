@@ -21,6 +21,7 @@ import {
     getQuestionIdsWithFlashcards as dbGetQuestionIdsWithFlashcards,
     getVocabularyFlashcards as dbGetVocabularyFlashcards,
     getDueVocabularyFlashcards as dbGetDueVocabularyFlashcards,
+    getNewVocabularyFlashcards as dbGetNewVocabularyFlashcards,
     getDueVocabularyCount as dbGetDueVocabularyCount,
     getVocabularyLanguages as dbGetVocabularyLanguages,
 } from '@/src/data-access/flashcards'
@@ -325,6 +326,10 @@ export async function getVocabularyFlashcards(documentId?: string, language?: st
 
 export async function getDueVocabularyFlashcards() {
     return dbGetDueVocabularyFlashcards()
+}
+
+export async function getNewVocabularyFlashcards(limit?: number) {
+    return dbGetNewVocabularyFlashcards(limit)
 }
 
 export async function getDueVocabularyCount() {

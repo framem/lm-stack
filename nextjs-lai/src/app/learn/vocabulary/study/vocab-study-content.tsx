@@ -20,8 +20,7 @@ import { Progress } from '@/src/components/ui/progress'
 import { VocabTypeInput } from '@/src/components/VocabTypeInput'
 import { TTSButton } from '@/src/components/TTSButton'
 import { ConjugationTable } from '@/src/components/ConjugationTable'
-import { reviewFlashcard } from '@/src/actions/flashcards'
-import { getDueVocabularyFlashcards, getVocabularyFlashcards } from '@/src/actions/flashcards'
+import { reviewFlashcard, getDueVocabularyFlashcards, getNewVocabularyFlashcards, getVocabularyFlashcards } from '@/src/actions/flashcards'
 
 interface ConjugationData {
     present?: Record<string, string>
@@ -79,6 +78,7 @@ export function VocabStudyContent() {
     const searchParams = useSearchParams()
     const mode = searchParams.get('mode') || 'flip'
     const practiceAll = searchParams.get('all') === 'true'
+    const newOnly = searchParams.get('new') === 'true'
 
     const [cards, setCards] = useState<VocabCard[]>([])
     const [loading, setLoading] = useState(true)
@@ -96,6 +96,9 @@ export function VocabStudyContent() {
                 if (practiceAll) {
                     const data = await getVocabularyFlashcards()
                     setCards(shuffle(data as unknown as VocabCard[]))
+                } else if (newOnly) {
+                    const data = await getNewVocabularyFlashcards(20)
+                    setCards(data as unknown as VocabCard[])
                 } else {
                     const data = await getDueVocabularyFlashcards()
                     setCards(data as unknown as VocabCard[])
@@ -107,7 +110,7 @@ export function VocabStudyContent() {
             }
         }
         load()
-    }, [practiceAll])
+    }, [practiceAll, newOnly])
 
     const card = cards[currentIndex]
     const progressValue = cards.length > 0 ? (results.length / cards.length) * 100 : 0
