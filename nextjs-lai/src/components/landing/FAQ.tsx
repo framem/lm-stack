@@ -39,6 +39,16 @@ const faqs = [
     answer:
       "ChatGPT antwortet generisch und erfindet manchmal Fakten. LAI kennt NUR dein hochgeladenes Material und zeigt dir die exakte Quelle jeder Antwort. Außerdem erstellt LAI automatisch Quizfragen und Karteikarten — alles lokal und kostenlos.",
   },
+  {
+    question: "Welche Sprachen kann ich mit dem Vokabeltrainer lernen?",
+    answer:
+      "Aktuell bietet LAI fertige Wortschatz-Sets für Spanisch und Englisch (A1 und A2). Du kannst aber auch eigene Vokabeln aus deinen Dokumenten erstellen — für jede Sprache.",
+  },
+  {
+    question: "Was ist Spaced Repetition?",
+    answer:
+      "Spaced Repetition zeigt dir eine Vokabel genau dann wieder, wenn du sie fast vergessen hättest. So prägt sich dein Gehirn Wörter langfristig ein — statt nach einer Woche alles wieder zu vergessen.",
+  },
 ];
 
 export function FAQ() {

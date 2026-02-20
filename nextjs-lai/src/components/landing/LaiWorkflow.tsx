@@ -4,11 +4,13 @@ import type { Node as FlowNode, Edge as FlowEdge, NodeProps } from "@xyflow/reac
 
 import {
   Upload,
-  Database,
   MessageSquare,
   HelpCircle,
   Layers,
   TrendingUp,
+  BookOpen,
+  PenLine,
+  Brain,
 } from "lucide-react";
 
 import { Canvas } from "@/src/components/ai-elements/canvas";
@@ -37,7 +39,7 @@ function WorkflowNode({ data }: NodeProps<FlowNode<WorkflowNodeData>>) {
   return (
     <Node
       handles={{ target: data.hasTarget, source: data.hasSource }}
-      className="w-48"
+      className="w-52"
     >
       <NodeHeader className="flex items-center gap-2 p-3!">
         <Badge
@@ -61,24 +63,35 @@ function WorkflowNode({ data }: NodeProps<FlowNode<WorkflowNodeData>>) {
 const nodeTypes = { workflow: WorkflowNode };
 const edgeTypes = { animated: Edge.Animated };
 
-//  Layout (fan-out after step 2):
+//  Two direct inputs → LAI (central hub) → four features → one endpoint:
 //
-//                        ┌── KI-Chat ───────┐
-//  Hochladen → Analyse ─┤── Karteikarten ──├─ Fortschritt
-//                        └── Quiz ──────────┘
+//  Hochladen  ─┐           ┌── KI-Chat ──────┐
+//               ├─── LAI ──┤── Karteikarten ──├─ Fortschritt
+//  Vokabel-Set─┘           ├── Quiz ──────────┤
+//                          └── Vokabeln üben ─┘
 
-const X_GAP = 250;
-const Y_OFFSET = 110;
-const Y_MID = 100;
+const X_GAP = 280;
+const Y_GAP = 210;
+const Y_PAD = 30; // top/bottom breathing room so fitView doesn't clip
+
+// Four feature rows, evenly spaced
+const Y_CHAT  = Y_PAD;
+const Y_FLASH = Y_PAD + Y_GAP;
+const Y_QUIZ  = Y_PAD + Y_GAP * 2;
+const Y_PRAC  = Y_PAD + Y_GAP * 3;
+
+// LAI and progress sit at the vertical center of all four features
+const Y_MID = (Y_CHAT + Y_PRAC) / 2;
 
 const nodes: FlowNode<WorkflowNodeData>[] = [
+  // --- Two starting points ---
   {
     id: "upload",
     type: "workflow",
-    position: { x: 0, y: Y_MID },
+    position: { x: 0, y: Y_CHAT },
     data: {
       step: 1,
-      title: "Hochladen",
+      title: "Eigene Unterlagen",
       icon: Upload,
       description: "PDF, DOCX oder Markdown hochladen",
       hasTarget: false,
@@ -86,27 +99,42 @@ const nodes: FlowNode<WorkflowNodeData>[] = [
     },
   },
   {
-    id: "analyse",
+    id: "vocab_set",
+    type: "workflow",
+    position: { x: 0, y: Y_PRAC },
+    data: {
+      step: 1,
+      title: "Eine Sprache lernen",
+      icon: BookOpen,
+      description: "Fertiges A1/A2-Set für Spanisch oder Englisch",
+      hasTarget: false,
+      hasSource: true,
+    },
+  },
+  // --- Central hub ---
+  {
+    id: "lai",
     type: "workflow",
     position: { x: X_GAP, y: Y_MID },
     data: {
       step: 2,
-      title: "Analyse",
-      icon: Database,
-      description: "LAI liest und strukturiert dein Material",
+      title: "LAI",
+      icon: Brain,
+      description: "Liest, strukturiert und schaltet alle Lernfunktionen frei",
       hasTarget: true,
       hasSource: true,
     },
   },
+  // --- Features ---
   {
     id: "chat",
     type: "workflow",
-    position: { x: X_GAP * 2, y: Y_MID - Y_OFFSET },
+    position: { x: X_GAP * 2, y: Y_CHAT },
     data: {
       step: 3,
       title: "KI-Chat",
       icon: MessageSquare,
-      description: "Wie ein Tutor — mit Seitenzahlen aus deinem PDF",
+      description: "Wie ein Tutor — mit Quellenangaben aus deinem Material",
       hasTarget: true,
       hasSource: true,
     },
@@ -114,7 +142,7 @@ const nodes: FlowNode<WorkflowNodeData>[] = [
   {
     id: "flashcards",
     type: "workflow",
-    position: { x: X_GAP * 2, y: Y_MID },
+    position: { x: X_GAP * 2, y: Y_FLASH },
     data: {
       step: 3,
       title: "Karteikarten",
@@ -127,16 +155,30 @@ const nodes: FlowNode<WorkflowNodeData>[] = [
   {
     id: "quiz",
     type: "workflow",
-    position: { x: X_GAP * 2, y: Y_MID + Y_OFFSET },
+    position: { x: X_GAP * 2, y: Y_QUIZ },
     data: {
       step: 3,
       title: "Quiz",
       icon: HelpCircle,
-      description: "Fragen aus deinen Unterlagen — nicht aus dem Internet",
+      description: "Fragen aus deinem Material — nicht aus dem Internet",
       hasTarget: true,
       hasSource: true,
     },
   },
+  {
+    id: "vocab_practice",
+    type: "workflow",
+    position: { x: X_GAP * 2, y: Y_PRAC },
+    data: {
+      step: 3,
+      title: "Vokabeln üben",
+      icon: PenLine,
+      description: "Spaced Repetition merkt sich, was du nochmal brauchst",
+      hasTarget: true,
+      hasSource: true,
+    },
+  },
+  // --- Endpoint ---
   {
     id: "progress",
     type: "workflow",
@@ -153,13 +195,19 @@ const nodes: FlowNode<WorkflowNodeData>[] = [
 ];
 
 const edges: FlowEdge[] = [
-  { id: "upload-analyse", source: "upload", target: "analyse", type: "animated" },
-  { id: "analyse-chat", source: "analyse", target: "chat", type: "animated" },
-  { id: "analyse-flashcards", source: "analyse", target: "flashcards", type: "animated" },
-  { id: "analyse-quiz", source: "analyse", target: "quiz", type: "animated" },
-  { id: "chat-progress", source: "chat", target: "progress", type: "animated" },
-  { id: "flashcards-progress", source: "flashcards", target: "progress", type: "animated" },
-  { id: "quiz-progress", source: "quiz", target: "progress", type: "animated" },
+  // Both inputs → LAI
+  { id: "upload-lai",        source: "upload",         target: "lai",            type: "animated" },
+  { id: "vocab_set-lai",     source: "vocab_set",      target: "lai",            type: "animated" },
+  // LAI → features (fan out)
+  { id: "lai-chat",          source: "lai",            target: "chat",           type: "animated" },
+  { id: "lai-flash",         source: "lai",            target: "flashcards",     type: "animated" },
+  { id: "lai-quiz",          source: "lai",            target: "quiz",           type: "animated" },
+  { id: "lai-practice",      source: "lai",            target: "vocab_practice", type: "animated" },
+  // Features → progress (converge)
+  { id: "chat-progress",     source: "chat",           target: "progress",       type: "animated" },
+  { id: "flash-progress",    source: "flashcards",     target: "progress",       type: "animated" },
+  { id: "quiz-progress",     source: "quiz",           target: "progress",       type: "animated" },
+  { id: "prac-progress",     source: "vocab_practice", target: "progress",       type: "animated" },
 ];
 
 export function LaiWorkflow() {
@@ -176,6 +224,7 @@ export function LaiWorkflow() {
       nodesDraggable={false}
       nodesConnectable={false}
       elementsSelectable={false}
+      fitViewOptions={{ padding: 0.25 }}
       proOptions={{ hideAttribution: true }}
     />
   );

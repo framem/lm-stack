@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
-import { Stethoscope, Scale, Code } from "lucide-react";
+import { Stethoscope, Scale, Code, Languages } from "lucide-react";
 import { Card, CardContent } from "@/src/components/ui/card";
 
 const cases = [
@@ -23,11 +23,17 @@ const cases = [
     quote:
       "Die automatisch generierten Quizfragen zu Datenbanken sind besser als alles, was ich selbst geschrieben hätte. Und die KI zeigt mir genau, wo die Info herkommt.",
   },
+  {
+    icon: Languages,
+    name: "Elena, Spanisch A1",
+    quote:
+      "Ich übe täglich 20 neue Vokabeln im Tipp-Modus — 15 Minuten, kein Schnickschnack. Spaced Repetition zeigt mir jede Vokabel genau dann, wenn ich sie fast vergessen hätte.",
+  },
 ];
 
 export function UseCases() {
   return (
-    <div className="grid gap-6 md:grid-cols-3">
+    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
       {cases.map((c, i) => {
         const Icon = c.icon;
         return (

@@ -10,6 +10,7 @@ import {
   Layers,
   TrendingUp,
   ShieldCheck,
+  BookOpen,
 } from "lucide-react";
 
 import dynamic from "next/dynamic";
@@ -110,6 +111,14 @@ const features = [
     href: "#faq",
     accent: "orange" as const,
   },
+  {
+    icon: BookOpen,
+    title: "Vokabeltrainer",
+    description:
+      "Lerne Spanisch und Englisch mit fertigen Wortschatz-Sets (A1–A2) oder eigenen Vokabeln — mit intelligentem Spaced Repetition.",
+    href: "/learn/vocabulary",
+    accent: "blue" as const,
+  },
 ];
 
 export default function LandingPage() {
@@ -171,8 +180,9 @@ export default function LandingPage() {
               variants={fadeUp}
               className="mt-5 max-w-lg text-lg leading-relaxed text-muted-foreground"
             >
-              Lade PDFs hoch, stelle Fragen und teste dein Wissen —
-              ohne manuelles Zusammenfassen. Die KI antwortet nur aus deinen Unterlagen.
+              Lade deine Skripte hoch oder starte direkt mit fertigen Vokabel-Sets —
+              LAI erstellt Karteikarten, beantwortet Fragen und testet dein Wissen.
+              Ohne Cloud, ohne Registrierung.
             </motion.p>
             <motion.div
               variants={fadeUp}
@@ -182,7 +192,7 @@ export default function LandingPage() {
                 <Link href="/learn">Kostenlos ausprobieren</Link>
               </Button>
               <Button variant="outline" size="lg" asChild>
-                <Link href="#workflow">So funktioniert&apos;s</Link>
+                <Link href="/learn/vocabulary">🇪🇸 Vokabeln lernen</Link>
               </Button>
             </motion.div>
             <motion.p
@@ -191,6 +201,25 @@ export default function LandingPage() {
             >
               Keine Registrierung · Keine Kreditkarte · 2 Min Setup
             </motion.p>
+            <motion.div
+              variants={fadeUp}
+              className="mt-5 flex flex-wrap gap-2"
+            >
+              <Link
+                href="/learn"
+                className="flex items-center gap-1.5 rounded-full border bg-muted/50 px-3 py-1.5 text-xs transition-colors hover:border-primary/40 hover:bg-muted"
+              >
+                <FileText className="size-3.5 shrink-0 text-primary" />
+                <span>PDF/DOCX → KI-Analyse</span>
+              </Link>
+              <Link
+                href="/learn/vocabulary"
+                className="flex items-center gap-1.5 rounded-full border bg-muted/50 px-3 py-1.5 text-xs transition-colors hover:border-orange-400/40 hover:bg-muted"
+              >
+                <span className="shrink-0 leading-none">🇪🇸</span>
+                <span>Spanisch &amp; Englisch A1–A2</span>
+              </Link>
+            </motion.div>
           </motion.div>
 
           {/* Right column — Fox logo with glow (reduced size) */}
@@ -258,10 +287,10 @@ export default function LandingPage() {
             transition={{ duration: 0.5 }}
           >
             <h2 className="text-3xl font-bold tracking-tight">
-              Gebaut für Studierende
+              Für jeden Lerntyp die richtige Methode
             </h2>
             <p className="mt-2 text-muted-foreground">
-              Egal ob Medizin, Jura oder Informatik — LAI arbeitet mit deinem Material.
+              Ob Klausurvorbereitung oder Sprachkurs — LAI passt sich deinem Lernziel an.
             </p>
           </motion.div>
           <div className="mt-12">
@@ -284,11 +313,11 @@ export default function LandingPage() {
               So einfach geht&apos;s
             </h2>
             <p className="mt-2 text-muted-foreground">
-              Von deinem Lernmaterial zum verifizierten Wissen in vier Schritten.
+              Zwei Wege, ein Ziel — ob eigene Unterlagen oder fertige Sprach-Sets.
             </p>
           </motion.div>
           <motion.div
-            className="mt-12 h-[350px] md:h-[400px]"
+            className="mt-12 h-[700px] md:h-[780px]"
             initial={{ opacity: 0, scale: 0.95 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
@@ -318,9 +347,117 @@ export default function LandingPage() {
           </motion.div>
           <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {features.map((feature, index) => (
-              <FeatureCard key={feature.title} index={index} {...feature} />
+              <div
+                key={feature.title}
+                className={index === features.length - 1 ? "sm:col-span-2 lg:col-span-1 lg:col-start-2" : ""}
+              >
+                <FeatureCard index={index} {...feature} />
+              </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Language Learning */}
+      <section className="px-6 py-24 bg-muted/20">
+        <div className="mx-auto max-w-5xl">
+          <motion.div
+            className="text-center"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+          >
+            <Badge
+              variant="secondary"
+              className="mb-4 border border-orange-400/25 px-3 py-1 text-xs tracking-wide"
+            >
+              Sprachen lernen
+            </Badge>
+            <h2 className="text-3xl font-bold tracking-tight">
+              Vokabeln lernen — von A1{" "}
+              <span className="bg-gradient-to-r from-orange-400 to-primary bg-clip-text text-transparent">
+                bis zur Flüssigkeit
+              </span>
+            </h2>
+            <p className="mt-2 text-muted-foreground">
+              Kein Buch, keine App — fertige Sets für Spanisch und Englisch, direkt im Browser.
+              Spaced Repetition bringt jede Vokabel genau dann zurück, wenn du sie fast vergessen hättest.
+            </p>
+          </motion.div>
+
+          <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              {
+                flag: "🇪🇸",
+                lang: "Spanisch",
+                level: "A1",
+                sample: ["hola", "Hallo"],
+                color: "from-orange-500/10 to-red-500/5",
+              },
+              {
+                flag: "🇪🇸",
+                lang: "Spanisch",
+                level: "A2",
+                sample: ["ciudad", "Stadt"],
+                color: "from-orange-500/10 to-red-500/5",
+              },
+              {
+                flag: "🇬🇧",
+                lang: "Englisch",
+                level: "A1",
+                sample: ["hello", "Hallo"],
+                color: "from-blue-500/10 to-sky-500/5",
+              },
+              {
+                flag: "🇬🇧",
+                lang: "Englisch",
+                level: "A2",
+                sample: ["quickly", "schnell"],
+                color: "from-blue-500/10 to-sky-500/5",
+              },
+            ].map((set, i) => (
+              <motion.div
+                key={`${set.lang}-${set.level}`}
+                initial={{ opacity: 0, y: 16 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: i * 0.08 }}
+              >
+                <Link href="/learn/vocabulary" className="group block h-full">
+                  <div
+                    className={`h-full rounded-xl border bg-gradient-to-br ${set.color} p-5 transition-all group-hover:border-primary/40 group-hover:shadow-md`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-2xl">{set.flag}</span>
+                      <Badge variant="outline" className="font-mono text-xs">
+                        {set.level}
+                      </Badge>
+                    </div>
+                    <p className="mt-3 font-semibold">{set.lang}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">Grundwortschatz</p>
+                    <div className="mt-4 rounded-lg bg-background/60 px-3 py-2 text-center text-sm">
+                      <span className="font-medium">{set.sample[0]}</span>
+                      <span className="mx-2 text-muted-foreground">→</span>
+                      <span className="text-muted-foreground">{set.sample[1]}</span>
+                    </div>
+                  </div>
+                </Link>
+              </motion.div>
+            ))}
+          </div>
+
+          <motion.div
+            className="mt-8 text-center"
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.4, delay: 0.35 }}
+          >
+            <Button variant="outline" asChild>
+              <Link href="/learn/vocabulary">Alle Vokabel-Sets ansehen →</Link>
+            </Button>
+          </motion.div>
         </div>
       </section>
 
