@@ -136,6 +136,10 @@ export default function LandingPage() {
             />
             <span className="text-lg font-bold">LAI</span>
           </Link>
+          <nav className="hidden items-center gap-6 text-sm text-muted-foreground sm:flex">
+            <Link href="#features" className="transition-colors hover:text-foreground">Funktionen</Link>
+            <Link href="#faq" className="transition-colors hover:text-foreground">FAQ</Link>
+          </nav>
           <Button size="sm" asChild>
             <Link href="/learn">Kostenlos ausprobieren</Link>
           </Button>
@@ -326,7 +330,7 @@ export default function LandingPage() {
       </section>
 
       {/* Features */}
-      <section className="px-6 py-24">
+      <section id="features" className="px-6 py-24">
         <div className="mx-auto max-w-5xl">
           <motion.div
             className="text-center"
