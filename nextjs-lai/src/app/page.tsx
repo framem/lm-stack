@@ -191,9 +191,6 @@ export default function LandingPage() {
               <Button size="lg" asChild>
                 <Link href="/learn">Kostenlos ausprobieren</Link>
               </Button>
-              <Button variant="outline" size="lg" asChild>
-                <Link href="/learn/vocabulary">🇪🇸 Vokabeln lernen</Link>
-              </Button>
             </motion.div>
             <motion.p
               variants={fadeUp}
