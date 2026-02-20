@@ -2,6 +2,7 @@
 
 import type { Node as FlowNode, Edge as FlowEdge, NodeProps } from "@xyflow/react";
 
+import Image from "next/image";
 import {
   Upload,
   MessageSquare,
@@ -10,7 +11,6 @@ import {
   TrendingUp,
   BookOpen,
   PenLine,
-  Brain,
 } from "lucide-react";
 
 import { Canvas } from "@/src/components/ai-elements/canvas";
@@ -22,13 +22,11 @@ import {
   NodeContent,
 } from "@/src/components/ai-elements/node";
 import { Edge } from "@/src/components/ai-elements/edge";
-import { Badge } from "@/src/components/ui/badge";
-
 type WorkflowNodeData = {
   title: string;
   description: string;
-  icon: typeof Upload;
-  step: number;
+  icon?: typeof Upload;
+  imageSrc?: string;
   hasTarget: boolean;
   hasSource: boolean;
   [key: string]: unknown;
@@ -42,13 +40,17 @@ function WorkflowNode({ data }: NodeProps<FlowNode<WorkflowNodeData>>) {
       className="w-52"
     >
       <NodeHeader className="flex items-center gap-2 p-3!">
-        <Badge
-          variant="secondary"
-          className="size-6 shrink-0 justify-center rounded-full p-0 text-xs"
-        >
-          {data.step}
-        </Badge>
-        <Icon className="size-4 shrink-0 text-primary" />
+        {data.imageSrc ? (
+          <Image
+            src={data.imageSrc}
+            alt={data.title}
+            width={16}
+            height={16}
+            className="size-4 shrink-0"
+          />
+        ) : Icon ? (
+          <Icon className="size-4 shrink-0 text-primary" />
+        ) : null}
         <NodeTitle className="truncate text-sm">{data.title}</NodeTitle>
       </NodeHeader>
       <NodeContent>
@@ -72,7 +74,7 @@ const edgeTypes = { animated: Edge.Animated };
 
 const X_GAP = 280;
 const Y_GAP = 210;
-const Y_PAD = 30; // top/bottom breathing room so fitView doesn't clip
+const Y_PAD = 8; // top/bottom breathing room so fitView doesn't clip
 
 // Four feature rows, evenly spaced
 const Y_CHAT  = Y_PAD;
@@ -83,14 +85,17 @@ const Y_PRAC  = Y_PAD + Y_GAP * 3;
 // LAI and progress sit at the vertical center of all four features
 const Y_MID = (Y_CHAT + Y_PRAC) / 2;
 
+// Input nodes sit closer together, centered around Y_MID
+const Y_IN_TOP = Y_MID - Y_GAP * 0.7;
+const Y_IN_BOT = Y_MID + Y_GAP * 0.7;
+
 const nodes: FlowNode<WorkflowNodeData>[] = [
   // --- Two starting points ---
   {
     id: "upload",
     type: "workflow",
-    position: { x: 0, y: Y_CHAT },
+    position: { x: 0, y: Y_IN_TOP },
     data: {
-      step: 1,
       title: "Eigene Unterlagen",
       icon: Upload,
       description: "PDF, DOCX oder Markdown hochladen",
@@ -101,9 +106,8 @@ const nodes: FlowNode<WorkflowNodeData>[] = [
   {
     id: "vocab_set",
     type: "workflow",
-    position: { x: 0, y: Y_PRAC },
+    position: { x: 0, y: Y_IN_BOT },
     data: {
-      step: 1,
       title: "Eine Sprache lernen",
       icon: BookOpen,
       description: "Fertiges A1/A2-Set für Spanisch oder Englisch",
@@ -117,9 +121,8 @@ const nodes: FlowNode<WorkflowNodeData>[] = [
     type: "workflow",
     position: { x: X_GAP, y: Y_MID },
     data: {
-      step: 2,
       title: "LAI",
-      icon: Brain,
+      imageSrc: "/images/fox.png",
       description: "Liest, strukturiert und schaltet alle Lernfunktionen frei",
       hasTarget: true,
       hasSource: true,
@@ -131,7 +134,6 @@ const nodes: FlowNode<WorkflowNodeData>[] = [
     type: "workflow",
     position: { x: X_GAP * 2, y: Y_CHAT },
     data: {
-      step: 3,
       title: "KI-Chat",
       icon: MessageSquare,
       description: "Wie ein Tutor — mit Quellenangaben aus deinem Material",
@@ -144,7 +146,6 @@ const nodes: FlowNode<WorkflowNodeData>[] = [
     type: "workflow",
     position: { x: X_GAP * 2, y: Y_FLASH },
     data: {
-      step: 3,
       title: "Karteikarten",
       icon: Layers,
       description: "Passen sich deinem Lernstand automatisch an",
@@ -157,7 +158,6 @@ const nodes: FlowNode<WorkflowNodeData>[] = [
     type: "workflow",
     position: { x: X_GAP * 2, y: Y_QUIZ },
     data: {
-      step: 3,
       title: "Quiz",
       icon: HelpCircle,
       description: "Fragen aus deinem Material — nicht aus dem Internet",
@@ -170,7 +170,6 @@ const nodes: FlowNode<WorkflowNodeData>[] = [
     type: "workflow",
     position: { x: X_GAP * 2, y: Y_PRAC },
     data: {
-      step: 3,
       title: "Vokabeln üben",
       icon: PenLine,
       description: "Spaced Repetition merkt sich, was du nochmal brauchst",
@@ -184,7 +183,6 @@ const nodes: FlowNode<WorkflowNodeData>[] = [
     type: "workflow",
     position: { x: X_GAP * 3, y: Y_MID },
     data: {
-      step: 4,
       title: "Fortschritt",
       icon: TrendingUp,
       description: "Sieh wo du stehst und was du noch üben solltest",
@@ -224,7 +222,7 @@ export function LaiWorkflow() {
       nodesDraggable={false}
       nodesConnectable={false}
       elementsSelectable={false}
-      fitViewOptions={{ padding: 0.25 }}
+      fitViewOptions={{ padding: 0.08 }}
       proOptions={{ hideAttribution: true }}
     />
   );

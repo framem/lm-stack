@@ -317,7 +317,7 @@ export default function LandingPage() {
             </p>
           </motion.div>
           <motion.div
-            className="mt-12 h-[700px] md:h-[780px]"
+            className="mt-12 h-[700px] md:h-[780px] pointer-events-none"
             initial={{ opacity: 0, scale: 0.95 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
