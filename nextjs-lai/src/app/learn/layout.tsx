@@ -7,6 +7,7 @@ import { Breadcrumbs } from '@/src/components/Breadcrumbs'
 import { LLMHealthBanner } from '@/src/components/LLMHealthBanner'
 import { BreadcrumbProvider } from '@/src/contexts/BreadcrumbContext'
 import { GlobalSearch } from '@/src/components/GlobalSearchClient'
+import { FoxChatbot } from '@/src/components/FoxChatbot'
 
 export default function MainLayout({
     children,
@@ -34,6 +35,7 @@ export default function MainLayout({
                     </SidebarInset>
                 </SidebarProvider>
             </BreadcrumbProvider>
+            <FoxChatbot />
         </TooltipProvider>
     )
 }

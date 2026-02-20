@@ -10,8 +10,8 @@ import { Button } from '@/src/components/ui/button'
 interface QuizCardProps {
     id: string
     title: string
-    documentId: string
-    documentTitle: string
+    documentId?: string | null
+    documentTitle?: string | null
     questionCount: number
     createdAt: string
     lastAttemptAt?: string
@@ -29,11 +29,13 @@ export function QuizCard({ id, title, documentId, documentTitle, questionCount, 
                     <HelpCircle className="h-5 w-5 text-primary shrink-0" />
                     <CardTitle className="text-lg truncate">{title}</CardTitle>
                 </div>
-                <CardDescription className="truncate">
-                    <Link href={`/learn/documents/${documentId}`} className="hover:underline">
-                        {documentTitle}
-                    </Link>
-                </CardDescription>
+                {documentId && documentTitle && (
+                    <CardDescription className="truncate">
+                        <Link href={`/learn/documents/${documentId}`} className="hover:underline">
+                            {documentTitle}
+                        </Link>
+                    </CardDescription>
+                )}
                 {onDelete && (
                     <CardAction>
                         <Button

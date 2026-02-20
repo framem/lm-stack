@@ -69,6 +69,7 @@ export async function getQuiz(id: string) {
         id: quiz.id,
         title: quiz.title,
         document: quiz.document,
+        scenarioLanguage: quiz.scenarioLanguage,
         createdAt: quiz.createdAt,
         questions: sanitizedQuestions,
     }
@@ -207,7 +208,7 @@ export async function generateQuiz(
             generationTasks.push(
                 generateClozeQuestions(contextText, distribution['cloze'], difficulty).then((qs) => {
                     for (const q of qs) {
-                        allQuestions.push({ questionText: q.questionText, options: null, correctIndex: null, correctAnswer: q.correctAnswer, explanation: q.explanation, sourceSnippet: q.sourceSnippet, questionType: 'cloze', difficulty })
+                        allQuestions.push({ questionText: `${q.questionText}\n\n${q.sentenceWithBlank}`, options: null, correctIndex: null, correctAnswer: q.correctAnswer, explanation: q.explanation, sourceSnippet: q.sourceSnippet, questionType: 'cloze', difficulty })
                     }
                 })
             )
@@ -217,7 +218,7 @@ export async function generateQuiz(
             generationTasks.push(
                 generateFillInBlanksQuestions(contextText, distribution['fillInBlanks'], difficulty).then((qs) => {
                     for (const q of qs) {
-                        allQuestions.push({ questionText: q.questionText, options: null, correctIndex: null, correctAnswer: JSON.stringify(q.correctAnswers), explanation: q.explanation, sourceSnippet: q.sourceSnippet, questionType: 'fillInBlanks', difficulty })
+                        allQuestions.push({ questionText: `${q.questionText}\n\n${q.sentenceWithBlanks}`, options: null, correctIndex: null, correctAnswer: JSON.stringify(q.correctAnswers), explanation: q.explanation, sourceSnippet: q.sourceSnippet, questionType: 'fillInBlanks', difficulty })
                     }
                 })
             )
@@ -252,7 +253,7 @@ export async function generateQuiz(
     }
 
     // Create quiz in DB
-    const quiz = await dbCreateQuiz(document.title, documentId)
+    const quiz = await dbCreateQuiz(document.title, { documentId })
 
     // Save questions with correct indices
     const questionsToSave = allQuestions.slice(0, count).map((q, i) => ({
@@ -610,7 +611,23 @@ async function evaluateConjugation(
     }
 }
 
-// Evaluate sentenceOrder: compare word sequence via Levenshtein
+// Word-position similarity: compares word arrays positionally (not character-based).
+// Character Levenshtein is wrong for sentence ordering — "gato grande" vs "grande gato"
+// would score ~0.85 despite being in wrong order.
+function wordPositionSimilarity(userAnswer: string, correct: string): number {
+    const norm = (s: string) => s.toLowerCase().replace(/[.,!?;:]/g, '').trim()
+    const userWords = userAnswer.trim().split(/\s+/).map(norm).filter(Boolean)
+    const correctWords = correct.trim().split(/\s+/).map(norm).filter(Boolean)
+    if (correctWords.length === 0) return 1.0
+    const len = Math.max(userWords.length, correctWords.length)
+    let matches = 0
+    for (let i = 0; i < Math.min(userWords.length, correctWords.length); i++) {
+        if (userWords[i] === correctWords[i]) matches++
+    }
+    return matches / len
+}
+
+// Evaluate sentenceOrder: compare word order positionally
 async function evaluateSentenceOrder(
     question: {
         id: string
@@ -621,7 +638,7 @@ async function evaluateSentenceOrder(
     freeTextAnswer: string,
 ) {
     const correct = question.correctAnswer ?? ''
-    const similarity = normalizedLevenshtein(freeTextAnswer, correct)
+    const similarity = wordPositionSimilarity(freeTextAnswer, correct)
     const freeTextScore = similarity >= 0.9 ? 1.0 : similarity >= 0.75 ? 0.5 : 0.0
     const isCorrect = freeTextScore >= 0.5
 

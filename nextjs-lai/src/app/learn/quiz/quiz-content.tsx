@@ -44,8 +44,11 @@ import { QuizCard } from '@/src/components/QuizCard'
 import { getQuizzes, deleteQuiz, getDocumentProgress, getRecommendedQuizDifficulty } from '@/src/actions/quiz'
 import { DIFFICULTY_LEVELS } from '@/src/lib/quiz-difficulty'
 import { getDocuments, getSubjects } from '@/src/actions/documents'
+import { listGeneratedScenarios } from '@/src/actions/generated-scenarios'
+import { getLearningGoals } from '@/src/actions/learning-goal'
 import { formatDate } from '@/src/lib/utils'
 import { isFreetextLikeType } from '@/src/lib/quiz-types'
+import { SCENARIOS, LANGUAGE_LABELS, type Language } from '@/src/lib/conversation-scenarios-constants'
 
 interface Document {
     id: string
@@ -68,7 +71,7 @@ interface Quiz {
     id: string
     title: string
     createdAt: string | Date
-    document: { id: string; title: string }
+    document: { id: string; title: string } | null
     questions: {
         id: string
         questionType: string
@@ -78,6 +81,23 @@ interface Quiz {
             createdAt: string | Date
         }[]
     }[]
+}
+
+// Derive numeric difficulty from CEFR level string
+function cefrToDifficulty(cefr: string): 1 | 2 | 3 {
+    const upper = cefr.toUpperCase()
+    if (upper === 'A1' || upper === 'A1-A2' || upper === 'A2') return 1
+    if (upper === 'A2-B1' || upper === 'B1') return 2
+    return 3
+}
+
+interface ScenarioOption {
+    key: string
+    icon: string
+    title: string
+    description: string
+    difficulty: string
+    isGenerated?: boolean
 }
 
 // Compute last attempt stats for a quiz
@@ -136,20 +156,29 @@ export function QuizContent() {
     const [examTimeLimit, setExamTimeLimit] = useState(30)
     const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
 
+    // Scenario source state
+    const [sourceMode, setSourceMode] = useState<'document' | 'scenario'>('document')
+    const [scenarioLanguage, setScenarioLanguage] = useState<Language>('de')
+    const [scenarioOptions, setScenarioOptions] = useState<ScenarioOption[]>([])
+    const [selectedScenario, setSelectedScenario] = useState<ScenarioOption | null>(null)
+    const [learningGoals, setLearningGoals] = useState<{ language: string; targetLevel: string }[]>([])
+
     useEffect(() => {
         async function load() {
             try {
-                const [docs, quizList, progressData, subjectList] = await Promise.all([
+                const [docs, quizList, progressData, subjectList, goals] = await Promise.all([
                     getDocuments(),
                     getQuizzes(),
                     getDocumentProgress(),
                     getSubjects(),
+                    getLearningGoals(),
                 ])
                 const typedDocs = docs as unknown as Document[]
                 setDocuments(typedDocs)
                 setQuizzes(quizList as Quiz[])
                 setProgress(progressData as unknown as DocumentProgressItem[])
                 setSubjects(subjectList)
+                setLearningGoals(goals.map(g => ({ language: g.language, targetLevel: g.targetLevel })))
 
                 // Pre-select when only one document exists
                 if (typedDocs.length === 1 && !searchParams.get('documentId')) {
@@ -163,6 +192,39 @@ export function QuizContent() {
         }
         load()
     }, [searchParams])
+
+    // Load scenario options when source mode or language changes
+    useEffect(() => {
+        if (sourceMode !== 'scenario') return
+        async function loadScenarios() {
+            try {
+                const generated = await listGeneratedScenarios(scenarioLanguage)
+                const staticOptions: ScenarioOption[] = SCENARIOS.map(s => {
+                    const t = s.translations[scenarioLanguage] ?? s.translations['de']
+                    return {
+                        key: s.key,
+                        icon: s.icon,
+                        title: t.title,
+                        description: t.description,
+                        difficulty: s.difficulty,
+                    }
+                })
+                const generatedOptions: ScenarioOption[] = generated.map(s => ({
+                    key: s.key,
+                    icon: s.icon,
+                    title: s.title,
+                    description: s.description,
+                    difficulty: s.difficulty,
+                    isGenerated: true,
+                }))
+                setScenarioOptions([...staticOptions, ...generatedOptions])
+                setSelectedScenario(null)
+            } catch (error) {
+                console.error('Failed to load scenarios:', error)
+            }
+        }
+        loadScenarios()
+    }, [sourceMode, scenarioLanguage])
 
     // Auto-recommend difficulty when selected documents change
     useEffect(() => {
@@ -185,19 +247,29 @@ export function QuizContent() {
     }
 
     async function handleGenerate() {
-        if (selectedDocIds.length === 0) return
+        if (sourceMode === 'document' && selectedDocIds.length === 0) return
+        if (sourceMode === 'scenario' && !selectedScenario) return
         setGenerating(true)
         setGeneratedCount(0)
         try {
-            const res = await fetch('/api/quiz/generate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
+            const body = sourceMode === 'scenario'
+                ? {
+                    scenarioKey: selectedScenario!.key,
+                    language: scenarioLanguage,
+                    questionCount,
+                    questionTypes,
+                    difficulty: cefrToDifficulty(selectedScenario!.difficulty),
+                }
+                : {
                     documentIds: selectedDocIds,
                     questionCount,
                     questionTypes,
                     difficulty,
-                }),
+                }
+            const res = await fetch('/api/quiz/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
             })
 
             if (!res.ok || !res.body) {
@@ -285,7 +357,7 @@ export function QuizContent() {
 
     // Filter quizzes, progress, and documents by active subject
     const filteredQuizzes = activeSubject
-        ? quizzes.filter((q) => docSubjectMap.get(q.document.id) === activeSubject)
+        ? quizzes.filter((q) => q.document && docSubjectMap.get(q.document.id) === activeSubject)
         : quizzes
     const filteredProgress = activeSubject
         ? progress.filter((p) => docSubjectMap.get(p.documentId) === activeSubject)
@@ -423,8 +495,8 @@ export function QuizContent() {
                                     key={quiz.id}
                                     id={quiz.id}
                                     title={quiz.title}
-                                    documentId={quiz.document.id}
-                                    documentTitle={quiz.document.title}
+                                    documentId={quiz.document?.id}
+                                    documentTitle={quiz.document?.title}
                                     questionCount={quiz.questions.length}
                                     createdAt={String(quiz.createdAt)}
                                     lastAttemptAt={stats?.lastAttemptAt}
@@ -439,44 +511,162 @@ export function QuizContent() {
 
             {/* Quiz creation dialog */}
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                <DialogContent className="sm:max-w-lg">
+                <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>Quiz erstellen</DialogTitle>
                         <DialogDescription>
-                            Wähle Lernmaterial aus und konfiguriere deine Quiz-Einstellungen.
+                            Wähle eine Quelle und konfiguriere deine Quiz-Einstellungen.
                         </DialogDescription>
                     </DialogHeader>
 
                     <div className="space-y-5">
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium">Lernmaterial</label>
-                            <div className="border rounded-md max-h-48 overflow-y-auto p-2 space-y-1">
-                                {filteredDocuments.map((doc) => {
-                                    const isChecked = selectedDocIds.includes(doc.id)
-                                    return (
-                                        <label key={doc.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-accent cursor-pointer text-sm">
-                                            <Checkbox
-                                                checked={isChecked}
-                                                onCheckedChange={() => {
-                                                    setSelectedDocIds(prev =>
-                                                        isChecked ? prev.filter(id => id !== doc.id) : [...prev, doc.id]
-                                                    )
-                                                }}
-                                            />
-                                            <span className="truncate">{doc.title}</span>
-                                        </label>
-                                    )
-                                })}
-                            </div>
-                            {selectedDocIds.length > 0 && (
-                                <p className="text-xs text-muted-foreground">{selectedDocIds.length} ausgewählt</p>
-                            )}
+                        {/* Source toggle */}
+                        <div className="flex rounded-md border overflow-hidden">
+                            <button
+                                type="button"
+                                onClick={() => setSourceMode('document')}
+                                className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium transition-colors ${
+                                    sourceMode === 'document'
+                                        ? 'bg-primary text-primary-foreground'
+                                        : 'bg-background text-muted-foreground hover:bg-accent'
+                                }`}
+                            >
+                                <FileText className="h-4 w-4" />
+                                Dokument / Vokabelset
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setSourceMode('scenario')}
+                                className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium transition-colors ${
+                                    sourceMode === 'scenario'
+                                        ? 'bg-primary text-primary-foreground'
+                                        : 'bg-background text-muted-foreground hover:bg-accent'
+                                }`}
+                            >
+                                <HelpCircle className="h-4 w-4" />
+                                Konversationsübung
+                            </button>
                         </div>
 
-                        {selectedDocIds.length > 0 && selectedDocIds.every(id => documents.find(d => d.id === id)?.fileType === 'language-set') && (
-                            <p className="text-xs text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 p-2.5 rounded-md">
-                                Vokabelquiz — Fragen werden sofort aus den Vokabeldaten generiert (kein LLM nötig).
-                            </p>
+                        {/* Document source */}
+                        {sourceMode === 'document' && (
+                            <>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium">Lernmaterial</label>
+                                    <div className="border rounded-md max-h-48 overflow-y-auto p-2 space-y-1">
+                                        {filteredDocuments.map((doc) => {
+                                            const isChecked = selectedDocIds.includes(doc.id)
+                                            return (
+                                                <label key={doc.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-accent cursor-pointer text-sm">
+                                                    <Checkbox
+                                                        checked={isChecked}
+                                                        onCheckedChange={() => {
+                                                            setSelectedDocIds(prev =>
+                                                                isChecked ? prev.filter(id => id !== doc.id) : [...prev, doc.id]
+                                                            )
+                                                        }}
+                                                    />
+                                                    <span className="truncate">{doc.title}</span>
+                                                </label>
+                                            )
+                                        })}
+                                    </div>
+                                    {selectedDocIds.length > 0 && (
+                                        <p className="text-xs text-muted-foreground">{selectedDocIds.length} ausgewählt</p>
+                                    )}
+                                </div>
+
+                                {selectedDocIds.length > 0 && selectedDocIds.every(id => documents.find(d => d.id === id)?.fileType === 'language-set') && (
+                                    <p className="text-xs text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 p-2.5 rounded-md">
+                                        Vokabelquiz — Fragen werden sofort aus den Vokabeldaten generiert (kein LLM nötig).
+                                    </p>
+                                )}
+                            </>
+                        )}
+
+                        {/* Scenario source */}
+                        {sourceMode === 'scenario' && (
+                            <div className="space-y-3">
+                                {/* Language selector */}
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium">Sprache</label>
+                                    <div className="flex gap-2">
+                                        {(Object.entries(LANGUAGE_LABELS) as [Language, { name: string; flag: string }][]).map(([lang, meta]) => (
+                                            <button
+                                                key={lang}
+                                                type="button"
+                                                onClick={() => setScenarioLanguage(lang)}
+                                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-sm font-medium transition-colors ${
+                                                    scenarioLanguage === lang
+                                                        ? 'border-primary bg-primary/5 text-primary'
+                                                        : 'border-transparent bg-muted text-muted-foreground hover:bg-accent'
+                                                }`}
+                                            >
+                                                <span>{meta.flag}</span>
+                                                <span>{meta.name}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Scenario list */}
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium">Szenario wählen</label>
+                                    <div className="border rounded-md max-h-52 overflow-y-auto p-2 space-y-1">
+                                        {(() => {
+                                            const userLevel = learningGoals.find(g => g.language === scenarioLanguage)?.targetLevel ?? null
+                                            return scenarioOptions.length === 0 ? (
+                                                <p className="text-xs text-muted-foreground p-2">Keine Szenarien verfügbar.</p>
+                                            ) : scenarioOptions.map((s) => {
+                                                const isRecommended = userLevel !== null && s.difficulty.includes(userLevel)
+                                                return (
+                                                    <label
+                                                        key={s.key}
+                                                        className={`flex items-start gap-2.5 p-2 rounded cursor-pointer transition-colors ${
+                                                            selectedScenario?.key === s.key
+                                                                ? 'bg-primary/10 border border-primary/30'
+                                                                : 'hover:bg-accent border border-transparent'
+                                                        }`}
+                                                    >
+                                                        <input
+                                                            type="radio"
+                                                            name="scenario"
+                                                            value={s.key}
+                                                            checked={selectedScenario?.key === s.key}
+                                                            onChange={() => setSelectedScenario(s)}
+                                                            className="sr-only"
+                                                        />
+                                                        <span className="text-xl leading-none mt-0.5">{s.icon}</span>
+                                                        <div className="min-w-0 flex-1">
+                                                            <div className="flex items-center gap-2 flex-wrap">
+                                                                <span className="text-sm font-medium">{s.title}</span>
+                                                                <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{s.difficulty}</span>
+                                                                {isRecommended && (
+                                                                    <span className="text-xs px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300">Empfohlen</span>
+                                                                )}
+                                                                {s.isGenerated && (
+                                                                    <span className="text-xs px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">Eigenes</span>
+                                                                )}
+                                                            </div>
+                                                            <p className="text-xs text-muted-foreground truncate">{s.description}</p>
+                                                        </div>
+                                                    </label>
+                                                )
+                                            })
+                                        })()}
+                                    </div>
+                                </div>
+
+                                {/* Read-only difficulty badge */}
+                                {selectedScenario && (
+                                    <p className="text-xs text-muted-foreground bg-muted/50 p-2.5 rounded-md">
+                                        Schwierigkeit wird automatisch aus dem CEFR-Niveau abgeleitet:{' '}
+                                        <strong>{selectedScenario.difficulty}</strong>{' '}
+                                        → Stufe {cefrToDifficulty(selectedScenario.difficulty)}{' '}
+                                        ({DIFFICULTY_LEVELS.find(l => l.value === cefrToDifficulty(selectedScenario.difficulty))?.label})
+                                    </p>
+                                )}
+                            </div>
                         )}
 
                         <div className="space-y-2">
@@ -516,63 +706,65 @@ export function QuizContent() {
                             </p>
                         </div>
 
-                        {/* Difficulty */}
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium">Schwierigkeitsstufe</label>
-                            <div className="space-y-1.5">
-                                {DIFFICULTY_LEVELS.map((level) => (
-                                    <label
-                                        key={level.value}
-                                        className={`flex items-center gap-3 p-2.5 rounded-md border cursor-pointer transition-colors ${
-                                            difficulty === level.value
-                                                ? 'border-primary bg-primary/5'
-                                                : 'border-transparent hover:bg-accent'
-                                        }`}
-                                    >
-                                        <input
-                                            type="radio"
-                                            name="difficulty"
-                                            value={level.value}
-                                            checked={difficulty === level.value}
-                                            onChange={() => setDifficulty(level.value)}
-                                            className="sr-only"
-                                        />
-                                        <div className="flex items-center gap-2 min-w-0">
-                                            <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${
+                        {/* Difficulty — only shown in document mode */}
+                        {sourceMode === 'document' && (
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Schwierigkeitsstufe</label>
+                                <div className="space-y-1.5">
+                                    {DIFFICULTY_LEVELS.map((level) => (
+                                        <label
+                                            key={level.value}
+                                            className={`flex items-center gap-3 p-2.5 rounded-md border cursor-pointer transition-colors ${
                                                 difficulty === level.value
-                                                    ? 'bg-primary text-primary-foreground'
-                                                    : 'bg-muted text-muted-foreground'
-                                            }`}>
-                                                {level.value}
-                                            </span>
-                                            <div>
-                                                <span className="text-sm font-medium">
-                                                    {level.label}
-                                                    {recommendedDifficulty === level.value && (
-                                                        <span className="ml-1.5 text-xs text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1">
-                                                            Empfohlen
-                                                            <TooltipProvider delayDuration={200}>
-                                                                <Tooltip>
-                                                                    <TooltipTrigger asChild>
-                                                                        <HelpCircle className="h-3 w-3 cursor-help" />
-                                                                    </TooltipTrigger>
-                                                                    <TooltipContent className="max-w-xs">
-                                                                        <p className="text-xs">
-                                                                            Basierend auf deiner bisherigen Leistung: Die höchste Stufe mit ≥80% Erfolgsrate.
-                                                                        </p>
-                                                                    </TooltipContent>
-                                                                </Tooltip>
-                                                            </TooltipProvider>
-                                                        </span>
-                                                    )}
+                                                    ? 'border-primary bg-primary/5'
+                                                    : 'border-transparent hover:bg-accent'
+                                            }`}
+                                        >
+                                            <input
+                                                type="radio"
+                                                name="difficulty"
+                                                value={level.value}
+                                                checked={difficulty === level.value}
+                                                onChange={() => setDifficulty(level.value)}
+                                                className="sr-only"
+                                            />
+                                            <div className="flex items-center gap-2 min-w-0">
+                                                <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${
+                                                    difficulty === level.value
+                                                        ? 'bg-primary text-primary-foreground'
+                                                        : 'bg-muted text-muted-foreground'
+                                                }`}>
+                                                    {level.value}
                                                 </span>
-                                                <p className="text-xs text-muted-foreground">{level.description}</p>
+                                                <div>
+                                                    <span className="text-sm font-medium">
+                                                        {level.label}
+                                                        {recommendedDifficulty === level.value && (
+                                                            <span className="ml-1.5 text-xs text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1">
+                                                                Empfohlen
+                                                                <TooltipProvider delayDuration={200}>
+                                                                    <Tooltip>
+                                                                        <TooltipTrigger asChild>
+                                                                            <HelpCircle className="h-3 w-3 cursor-help" />
+                                                                        </TooltipTrigger>
+                                                                        <TooltipContent className="max-w-xs">
+                                                                            <p className="text-xs">
+                                                                                Basierend auf deiner bisherigen Leistung: Die höchste Stufe mit ≥80% Erfolgsrate.
+                                                                            </p>
+                                                                        </TooltipContent>
+                                                                    </Tooltip>
+                                                                </TooltipProvider>
+                                                            </span>
+                                                        )}
+                                                    </span>
+                                                    <p className="text-xs text-muted-foreground">{level.description}</p>
+                                                </div>
                                             </div>
-                                        </div>
-                                    </label>
-                                ))}
+                                        </label>
+                                    ))}
+                                </div>
                             </div>
-                        </div>
+                        )}
 
                         {/* Exam mode */}
                         <div className="space-y-3">
@@ -604,7 +796,12 @@ export function QuizContent() {
                     <div className="pt-2">
                         <Button
                             onClick={handleGenerate}
-                            disabled={selectedDocIds.length === 0 || generating || questionTypes.length === 0}
+                            disabled={
+                                generating ||
+                                questionTypes.length === 0 ||
+                                (sourceMode === 'document' && selectedDocIds.length === 0) ||
+                                (sourceMode === 'scenario' && !selectedScenario)
+                            }
                             className="w-full"
                         >
                             {generating

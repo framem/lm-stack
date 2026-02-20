@@ -56,12 +56,29 @@ interface AnswerResult {
     sourceSnippet?: string
 }
 
+// Map document subject to BCP-47 language code for TTS
+const SUBJECT_LANG_MAP: Record<string, string> = {
+    'Englisch': 'en-US',
+    'Spanisch': 'es-ES',
+    'Französisch': 'fr-FR',
+    'Italienisch': 'it-IT',
+    'Portugiesisch': 'pt-PT',
+}
+
+// Map scenario language code (ISO 639-1) to BCP-47
+const SCENARIO_LANG_BCP47: Record<string, string> = {
+    es: 'es-ES',
+    en: 'en-US',
+    fr: 'fr-FR',
+}
+
 interface QuizPlayerProps {
     quizId: string
     quizTitle: string
     questions: Question[]
     onComplete: (results: Map<string, AnswerResult>) => void
     subject?: string | null
+    scenarioLanguage?: string | null
 }
 
 const TYPE_LABELS: Record<string, string> = {
@@ -75,7 +92,7 @@ const TYPE_LABELS: Record<string, string> = {
     sentenceOrder: 'Satzordnung',
 }
 
-export function QuizPlayer({ quizTitle, questions, onComplete, subject }: QuizPlayerProps) {
+export function QuizPlayer({ quizTitle, questions, onComplete, subject, scenarioLanguage }: QuizPlayerProps) {
     const [currentIndex, setCurrentIndex] = useState(0)
     const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
     const [freeTextAnswer, setFreeTextAnswer] = useState('')
@@ -229,13 +246,43 @@ export function QuizPlayer({ quizTitle, questions, onComplete, subject }: QuizPl
                         ? selectedIndices.length > 0
                         : selectedIndex !== null
 
-    // Split cloze/fillInBlanks question text around {{blank}}
-    const clozeParts = isCloze ? currentQuestion.questionText.split('{{blank}}') : []
-    const fillInBlanksParts = isFillInBlanks ? currentQuestion.questionText.split('{{blank}}') : []
+    // For cloze/fillInBlanks: questionText is encoded as "<German question>\n\n<sentence with {{blank}}>"
+    // Split at the first double-newline to separate question from sentence template.
+    // Fall back to the full questionText as the sentence if no separator is found (legacy questions).
+    function splitClozeText(raw: string): { question: string; sentence: string } {
+        const idx = raw.indexOf('\n\n')
+        if (idx !== -1) return { question: raw.slice(0, idx), sentence: raw.slice(idx + 2) }
+        return { question: '', sentence: raw }
+    }
+    const clozeQuestion = isCloze ? splitClozeText(currentQuestion.questionText) : null
+    const fillInBlanksQuestion = isFillInBlanks ? splitClozeText(currentQuestion.questionText) : null
 
-    // TTS for language quizzes - use data from question
+    // Split cloze/fillInBlanks sentence template around {{blank}}
+    const clozeParts = clozeQuestion ? clozeQuestion.sentence.split('{{blank}}') : []
+    const fillInBlanksParts = fillInBlanksQuestion ? fillInBlanksQuestion.sentence.split('{{blank}}') : []
+
+    // TTS for language quizzes - use data from question, or derive from scenario/subject
     const ttsText = currentQuestion.ttsText ?? null
-    const ttsLang = currentQuestion.ttsLang ?? null
+    const ttsLang = currentQuestion.ttsLang
+        ?? (scenarioLanguage ? SCENARIO_LANG_BCP47[scenarioLanguage] : null)
+        ?? (subject ? SUBJECT_LANG_MAP[subject] : null)
+        ?? null
+
+    // Derive the target-language text to read after answering
+    function getAnswerTTSText(res: AnswerResult): string | null {
+        if (!ttsLang) return null
+        // For types that return correctAnswer (cloze, freetext, sentenceOrder, fillInBlanks, conjugation)
+        if (res.correctAnswer) return res.correctAnswer
+        // For singleChoice / truefalse: read the correct option
+        if (res.correctIndex != null && currentQuestion.options) {
+            return (currentQuestion.options as string[])[res.correctIndex] ?? null
+        }
+        // For multipleChoice: join correct options
+        if (res.correctIndices?.length && currentQuestion.options) {
+            return res.correctIndices.map(i => (currentQuestion.options as string[])[i]).join(' / ')
+        }
+        return null
+    }
 
     return (
         <div className="space-y-6">
@@ -255,7 +302,7 @@ export function QuizPlayer({ quizTitle, questions, onComplete, subject }: QuizPl
             <Card>
                 <CardHeader>
                     <div className="flex items-start gap-2">
-                        {!isFillInBlanks && (
+                        {!isFillInBlanks && !isCloze && (
                             <CardTitle className="text-lg flex-1">
                                 {/* Render question text with inline TTS button inside «...» */}
                                 {ttsText && ttsLang ? (
@@ -278,7 +325,13 @@ export function QuizPlayer({ quizTitle, questions, onComplete, subject }: QuizPl
                                 )}
                             </CardTitle>
                         )}
-                        {isFillInBlanks && <div className="flex-1" />}
+                        {(isFillInBlanks || isCloze) && (
+                            <CardTitle className="text-lg flex-1">
+                                {isCloze
+                                    ? (clozeQuestion?.question || 'Welches Wort fehlt in diesem Satz?')
+                                    : (fillInBlanksQuestion?.question || 'Welche Wörter fehlen in diesem Satz?')}
+                            </CardTitle>
+                        )}
                     </div>
                     {currentQuestion.difficulty && currentQuestion.difficulty > 0 && (
                         <div className="flex items-center gap-1.5 mt-1">
@@ -532,6 +585,12 @@ export function QuizPlayer({ quizTitle, questions, onComplete, subject }: QuizPl
                                 ) : (
                                     <Badge variant="destructive">Falsch</Badge>
                                 )}
+                                {(() => {
+                                    const answerTTS = getAnswerTTSText(result)
+                                    return answerTTS && ttsLang ? (
+                                        <TTSButton text={answerTTS} lang={ttsLang} size="sm" />
+                                    ) : null
+                                })()}
                             </div>
                             {(isCloze || isFillInBlanks || isSentenceOrder) && result.correctAnswer && (
                                 <p className="text-sm font-medium">

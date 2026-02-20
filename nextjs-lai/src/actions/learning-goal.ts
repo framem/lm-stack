@@ -3,8 +3,13 @@
 import {
     upsertLearningGoal,
     deleteLearningGoal as deleteGoal,
+    getLearningGoals as dbGetLearningGoals,
 } from '@/src/data-access/learning-goal'
 import { revalidatePath } from 'next/cache'
+
+export async function getLearningGoals() {
+    return dbGetLearningGoals()
+}
 
 export async function setLearningGoal(data: {
     language: string

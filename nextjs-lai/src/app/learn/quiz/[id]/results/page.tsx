@@ -33,7 +33,7 @@ interface QuestionResult {
 interface QuizResultData {
     id: string
     title: string
-    document: { id: string; title: string }
+    document: { id: string; title: string } | null
     questions: {
         id: string
         questionText: string
@@ -126,28 +126,30 @@ export default function QuizResultsPage({ params }: { params: Promise<{ id: stri
         }
     })
 
-    // Compute weak topics from incorrect answers
+    // Compute weak topics from incorrect answers (only for document-based quizzes)
     const weakTopicMap = new Map<string, { documentId: string; documentTitle: string; chunkIndex: number | null; incorrectCount: number }>()
-    for (const q of data.questions) {
-        const lastAttempt = q.attempts[0]
-        if (!lastAttempt) continue
-        const isIncorrect = isFreetextLikeType(q.questionType)
-            ? (lastAttempt.freeTextScore ?? 0) < 0.5
-            : !lastAttempt.isCorrect
-        if (!isIncorrect) continue
+    if (data.document) {
+        for (const q of data.questions) {
+            const lastAttempt = q.attempts[0]
+            if (!lastAttempt) continue
+            const isIncorrect = isFreetextLikeType(q.questionType)
+                ? (lastAttempt.freeTextScore ?? 0) < 0.5
+                : !lastAttempt.isCorrect
+            if (!isIncorrect) continue
 
-        const chunkIndex = q.sourceChunk?.chunkIndex ?? null
-        const key = `${data.document.id}-${chunkIndex}`
-        const existing = weakTopicMap.get(key)
-        if (existing) {
-            existing.incorrectCount++
-        } else {
-            weakTopicMap.set(key, {
-                documentId: data.document.id,
-                documentTitle: data.document.title,
-                chunkIndex,
-                incorrectCount: 1,
-            })
+            const chunkIndex = q.sourceChunk?.chunkIndex ?? null
+            const key = `${data.document.id}-${chunkIndex}`
+            const existing = weakTopicMap.get(key)
+            if (existing) {
+                existing.incorrectCount++
+            } else {
+                weakTopicMap.set(key, {
+                    documentId: data.document.id,
+                    documentTitle: data.document.title,
+                    chunkIndex,
+                    incorrectCount: 1,
+                })
+            }
         }
     }
     const weakTopics = [...weakTopicMap.values()].sort((a, b) => b.incorrectCount - a.incorrectCount)
@@ -163,7 +165,7 @@ export default function QuizResultsPage({ params }: { params: Promise<{ id: stri
 
             <QuizResults
                 quizTitle={data.title}
-                documentTitle={data.document.title}
+                documentTitle={data.document?.title ?? ''}
                 results={results}
                 onRetry={() => router.push(`/learn/quiz/${id}`)}
                 initialSavedIds={savedQuestionIds}

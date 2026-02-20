@@ -20,7 +20,6 @@ import {
   NodeContent,
 } from "@/src/components/ai-elements/node";
 import { Edge } from "@/src/components/ai-elements/edge";
-import { Controls } from "@/src/components/ai-elements/controls";
 import { Badge } from "@/src/components/ui/badge";
 
 type WorkflowNodeData = {
@@ -178,8 +177,6 @@ export function LaiWorkflow() {
       nodesConnectable={false}
       elementsSelectable={false}
       proOptions={{ hideAttribution: true }}
-    >
-      <Controls />
-    </Canvas>
+    />
   );
 }

@@ -18,11 +18,15 @@ interface CreateQuestionInput {
     difficulty?: number
 }
 
-// Create a new quiz for a document
-export async function createQuiz(title: string, documentId: string) {
-    return prisma.quiz.create({
-        data: { title, documentId },
-    })
+// Create a new quiz — either from a document or a conversation scenario
+export async function createQuiz(
+    title: string,
+    source: { documentId: string } | { scenarioKey: string; scenarioLanguage: string },
+) {
+    const data = 'documentId' in source
+        ? { title, documentId: source.documentId }
+        : { title, scenarioKey: source.scenarioKey, scenarioLanguage: source.scenarioLanguage }
+    return prisma.quiz.create({ data })
 }
 
 // Add questions to an existing quiz

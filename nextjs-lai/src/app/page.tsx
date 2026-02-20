@@ -19,7 +19,6 @@ import { FeatureCard } from "@/src/components/landing/FeatureCard";
 import { UseCases } from "@/src/components/landing/UseCases";
 import { FAQ } from "@/src/components/landing/FAQ";
 
-// Lazy load LaiWorkflow — uses @xyflow/react (~50KB+ gzipped)
 const LaiWorkflow = dynamic(
   () => import("@/src/components/landing/LaiWorkflow").then((m) => m.LaiWorkflow),
   {

@@ -1,11 +1,13 @@
 model Quiz {
-  id         String   @id @default(cuid())
-  userId     String?  @default("default")
-  title      String
-  documentId String
-  createdAt  DateTime @default(now())
+  id               String   @id @default(cuid())
+  userId           String?  @default("default")
+  title            String
+  documentId       String?
+  scenarioKey      String?
+  scenarioLanguage String?
+  createdAt        DateTime @default(now())
 
-  document  Document       @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  document  Document?      @relation(fields: [documentId], references: [id], onDelete: Cascade)
   questions QuizQuestion[]
 
   @@index([documentId])

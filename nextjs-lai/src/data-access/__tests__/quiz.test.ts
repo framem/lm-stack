@@ -41,7 +41,7 @@ describe('createQuiz', () => {
         const quiz = { id: 'quiz-1', title: 'Test Quiz', documentId: 'doc-1' }
         mockQuiz.create.mockResolvedValue(quiz)
 
-        const result = await createQuiz('Test Quiz', 'doc-1')
+        const result = await createQuiz('Test Quiz', { documentId: 'doc-1' })
 
         expect(mockQuiz.create).toHaveBeenCalledWith({
             data: { title: 'Test Quiz', documentId: 'doc-1' },
