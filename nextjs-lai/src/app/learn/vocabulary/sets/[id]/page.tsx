@@ -306,7 +306,7 @@ export default async function LanguageSetDetailPage({ params }: Props) {
                                                                     </Badge>
                                                                 ) : isLearning ? (
                                                                     <Badge variant="secondary" className="text-xs">
-                                                                        ~
+                                                                        {reps}/3
                                                                     </Badge>
                                                                 ) : null}
                                                             </div>
