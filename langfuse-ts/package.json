@@ -1,0 +1,23 @@
+{
+  "name": "langfuse-ts",
+  "version": "1.0.0",
+  "description": "Langfuse LLM Observability — TypeScript",
+  "type": "module",
+  "scripts": {
+    "01:basic": "tsx src/01_tracing/tracingBasic.ts",
+    "01:chain": "tsx src/01_tracing/tracingChain.ts",
+    "02:prompts": "tsx src/02_prompt_management/promptVersioning.ts",
+    "03:judge": "tsx src/03_evaluation/llmAsJudge.ts",
+    "04:rag": "tsx src/04_pipeline/ragPipeline.ts"
+  },
+  "dependencies": {
+    "langfuse": "^3.0.0",
+    "openai": "^4.0.0",
+    "dotenv": "^16.0.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0",
+    "@types/node": "^20.0.0"
+  }
+}

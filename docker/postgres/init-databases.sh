@@ -26,4 +26,7 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" <<-EOSQL
     -- Enable pgvector extension in the movie_flix database
     \c movie_flix
     CREATE EXTENSION IF NOT EXISTS vector;
+
+    SELECT 'CREATE DATABASE langfuse'
+    WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'langfuse')\gexec
 EOSQL
