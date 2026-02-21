@@ -56,18 +56,6 @@ export function RequestCard({ result, index }: Props) {
           : "none",
       }}
     >
-      {/* Scan-line sweep while streaming */}
-      {isStreaming && (
-        <div
-          style={{
-            position: "absolute", top: 0, left: 0, right: 0, height: 1, zIndex: 10,
-            background: "linear-gradient(90deg, transparent, var(--app-cyan), transparent)",
-            animation: "scan 2.5s linear infinite",
-            pointerEvents: "none",
-          }}
-        />
-      )}
-
       {/* ── Header ── */}
       <div
         className="flex items-center justify-between px-3 py-1.5 flex-shrink-0"

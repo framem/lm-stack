@@ -29,12 +29,13 @@ export default function Home() {
   const hasRequests = requests.length > 0;
   const hasHistory = history.length > 0;
 
-  // Responsive grid columns
+  // Grid based on actual displayed requests, not the (possibly changed) config selector
+  const displayedCount = requests.length;
   const cols =
-    config.concurrency === 1 ? 1 :
-    config.concurrency === 2 ? 2 :
-    config.concurrency <= 5 ? 3 :
-    config.concurrency <= 10 ? 4 : 5;
+    displayedCount === 1 ? 1 :
+    displayedCount === 2 ? 2 :
+    displayedCount <= 5 ? 3 :
+    displayedCount <= 10 ? 4 : 5;
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: "var(--app-bg)" }}>
