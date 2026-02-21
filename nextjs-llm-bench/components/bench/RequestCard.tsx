@@ -78,20 +78,20 @@ export function RequestCard({ result, index }: Props) {
         <div className="flex items-center gap-2">
           {isDone  && <CheckCircle size={11} style={{ color: "var(--app-green)" }} />}
           {isError && <XCircle    size={11} style={{ color: "var(--app-red)" }} />}
-          {isStreaming && liveTPS && (
+          {(isStreaming || isDone) && (liveTPS ?? result.tps) && (
             <span
               className="px-1.5 py-0.5 rounded"
-              style={{ background: "rgba(0,200,232,0.1)", color: "var(--app-cyan)", fontFamily: "JetBrains Mono, monospace", fontSize: 9, fontWeight: 600, letterSpacing: "0.08em" }}
+              style={{
+                background: "var(--app-surface)",
+                border: "1px solid var(--app-border-2)",
+                color: "var(--app-text-2)",
+                fontFamily: "JetBrains Mono, monospace",
+                fontSize: 9,
+                fontWeight: 600,
+                letterSpacing: "0.08em",
+              }}
             >
-              {liveTPS} t/s
-            </span>
-          )}
-          {isDone && result.tps && (
-            <span
-              className="px-1.5 py-0.5 rounded"
-              style={{ background: "rgba(0,232,122,0.08)", color: "var(--app-green)", fontFamily: "JetBrains Mono, monospace", fontSize: 9, fontWeight: 600 }}
-            >
-              {result.tps.toFixed(1)} t/s
+              {(isStreaming ? liveTPS : result.tps?.toFixed(1))} t/s
             </span>
           )}
         </div>

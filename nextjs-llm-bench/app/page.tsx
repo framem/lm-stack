@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { ConfigSidebar } from "@/components/bench/ConfigSidebar";
 import { RequestCard } from "@/components/bench/RequestCard";
 import { MetricsChart } from "@/components/bench/MetricsChart";
@@ -22,6 +22,19 @@ const DEFAULT_CONFIG: BenchmarkConfig = {
   unloadAfterRun: true,
 };
 
+// Max columns allowed at the current viewport width
+function useMaxCols(): number {
+  const [maxCols, setMaxCols] = useState(5);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 1400px)");
+    const update = () => setMaxCols(mq.matches ? 3 : 5);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  return maxCols;
+}
+
 export default function Home() {
   const [config, setConfig] = useState<BenchmarkConfig>(DEFAULT_CONFIG);
   const { requests, history, running, warmupStatus, warmup, run, stop, clear } = useBenchmark();
@@ -32,13 +45,17 @@ export default function Home() {
   const hasRequests = requests.length > 0;
   const hasHistory = history.length > 0;
 
-  // Grid based on actual displayed requests, not the (possibly changed) config selector
+  const maxCols = useMaxCols();
+
+  // Grid based on actual displayed requests, capped by screen size
   const displayedCount = requests.length;
-  const cols =
+  const cols = Math.min(
     displayedCount === 1 ? 1 :
     displayedCount === 2 ? 2 :
     displayedCount <= 5 ? 3 :
-    displayedCount <= 10 ? 4 : 5;
+    displayedCount <= 10 ? 4 : 5,
+    maxCols
+  );
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: "var(--app-bg)" }}>
