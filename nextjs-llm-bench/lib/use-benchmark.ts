@@ -9,10 +9,13 @@ import {
   summarizeRun,
 } from "./types";
 
+type WarmupStatus = "idle" | "warming" | "ready" | "error";
+
 export function useBenchmark() {
   const [requests, setRequests] = useState<RequestResult[]>([]);
   const [history, setHistory] = useState<RunSummary[]>([]);
   const [running, setRunning] = useState(false);
+  const [warmupStatus, setWarmupStatus] = useState<WarmupStatus>("idle");
   const abortRef = useRef<AbortController | null>(null);
   const requestsRef = useRef<RequestResult[]>([]);
 
@@ -42,6 +45,8 @@ export function useBenchmark() {
             model: config.model,
             baseURL: config.baseURL,
             apiKey: config.apiKey,
+            temperature: config.temperature,
+            maxTokens: config.maxTokens,
           }),
           signal,
         });
@@ -67,7 +72,7 @@ export function useBenchmark() {
 
           text += chunk;
           charCount += chunk.length;
-          const elapsed = (Date.now() - startTime) / 1000;
+          const elapsed = (Date.now() - firstTokenTime) / 1000;
           const liveTps = elapsed > 0 ? (charCount / 4) / elapsed : null;
           updateRequest(id, { text, charCount, tps: liveTps });
         }
@@ -75,7 +80,9 @@ export function useBenchmark() {
         const endTime = Date.now();
         const totalTime = endTime - startTime;
         const tokenCount = Math.round(charCount / 4);
-        const tps = totalTime > 0 ? (tokenCount / totalTime) * 1000 : null;
+        // TPS based on generation time only (excludes queue/TTFT wait)
+        const generationTime = firstTokenTime ? endTime - firstTokenTime : totalTime;
+        const tps = generationTime > 0 ? (tokenCount / generationTime) * 1000 : null;
 
         updateRequest(id, {
           status: "done",
@@ -138,6 +145,33 @@ export function useBenchmark() {
     [runSingleRequest]
   );
 
+  const warmup = useCallback(async (config: BenchmarkConfig) => {
+    setWarmupStatus("warming");
+    try {
+      const res = await fetch("/api/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: "Hi",
+          systemPrompt: 'Always and only answer with "Hi".',
+          model: config.model,
+          baseURL: config.baseURL,
+          apiKey: config.apiKey,
+        }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      // Drain the stream fully so the model loads completely
+      const reader = res.body!.getReader();
+      while (true) {
+        const { done } = await reader.read();
+        if (done) break;
+      }
+      setWarmupStatus("ready");
+    } catch {
+      setWarmupStatus("error");
+    }
+  }, []);
+
   const stop = useCallback(() => {
     abortRef.current?.abort();
     setRunning(false);
@@ -150,5 +184,5 @@ export function useBenchmark() {
     setRunning(false);
   }, []);
 
-  return { requests, history, running, run, stop, clear };
+  return { requests, history, running, warmupStatus, warmup, run, stop, clear };
 }

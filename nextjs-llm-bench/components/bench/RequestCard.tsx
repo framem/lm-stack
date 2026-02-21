@@ -126,14 +126,9 @@ export function RequestCard({ result, index }: Props) {
         className="flex items-center gap-4 px-3 py-1.5 flex-shrink-0"
         style={{ borderTop: "1px solid var(--app-border)", background: "var(--app-surface-2)" }}
       >
-        <Metric label="TTFT"  value={fmt(result.ttft)}       color="var(--app-accent)"  dim={!result.ttft} />
-        <Metric label="Total" value={fmt(result.totalTime)}  color="var(--app-text-2)"  dim={!result.totalTime} />
-        <Metric label="Tok"   value={isDone ? String(result.tokenCount) : result.charCount > 0 ? `~${Math.round(result.charCount / 4)}` : "—"} color="var(--app-text-3)" dim={result.charCount === 0} />
-        {isStreaming && liveElapsed && (
-          <span style={{ marginLeft: "auto", fontFamily: "JetBrains Mono, monospace", fontSize: 9, color: "var(--app-text-3)" }}>
-            {liveElapsed}s
-          </span>
-        )}
+        <Metric label="TTFT"  value={fmt(result.ttft)}                                                        color="var(--app-accent)"  dim={!result.ttft} />
+        <Metric label="Total" value={isDone ? fmt(result.totalTime) : liveElapsed ? `${liveElapsed}s` : "—"}  color="var(--app-text-2)"  dim={!result.totalTime && !liveElapsed} />
+        <Metric label="Tok"   value={result.charCount > 0 ? String(Math.round(result.charCount / 4)) : "—"}   color="var(--app-text-3)"  dim={result.charCount === 0} />
       </div>
     </div>
   );

@@ -1,9 +1,29 @@
 "use client";
 
 import { BenchmarkConfig } from "@/lib/types";
-import { Play, Square, RotateCcw, Zap, Cpu } from "lucide-react";
+import { Play, Square, RotateCcw, Zap, Cpu, Flame, CheckCircle2, XCircle } from "lucide-react";
 
 const CONCURRENCY_OPTIONS = [1, 2, 4, 5, 10, 20];
+
+// OKLCH color stops: blue(cold) → amber(neutral) → red(hot)
+// Stops: [temperature, L, C, H]
+const TEMP_STOPS = [
+  [0.0,  0.72, 0.14, 220],  // cyan-blue
+  [1.0,  0.80, 0.19,  78],  // amber
+  [2.0,  0.62, 0.22,  28],  // red
+] as const;
+
+function tempToColor(t: number): string {
+  const v = Math.max(0, Math.min(2, t));
+  // Find surrounding stops
+  let i = 1;
+  while (i < TEMP_STOPS.length - 1 && TEMP_STOPS[i][0] < v) i++;
+  const [t0, l0, c0, h0] = TEMP_STOPS[i - 1];
+  const [t1, l1, c1, h1] = TEMP_STOPS[i];
+  const f = (v - t0) / (t1 - t0);
+  const lerp = (a: number, b: number) => a + (b - a) * f;
+  return `oklch(${lerp(l0, l1).toFixed(3)} ${lerp(c0, c1).toFixed(3)} ${lerp(h0, h1).toFixed(1)})`;
+}
 
 const PRESET_PROMPTS = [
   { label: "Story", value: "Write a short story about an astronaut who discovers something unexpected on Mars. Be creative and detailed." },
@@ -12,16 +32,20 @@ const PRESET_PROMPTS = [
   { label: "List", value: "Give me 20 creative startup ideas in the AI space with a brief description of each." },
 ];
 
+type WarmupStatus = "idle" | "warming" | "ready" | "error";
+
 interface Props {
   config: BenchmarkConfig;
   onChange: (c: BenchmarkConfig) => void;
   running: boolean;
+  warmupStatus: WarmupStatus;
   onRun: () => void;
   onStop: () => void;
   onClear: () => void;
+  onWarmup: () => void;
 }
 
-export function ConfigSidebar({ config, onChange, running, onRun, onStop, onClear }: Props) {
+export function ConfigSidebar({ config, onChange, running, warmupStatus, onRun, onStop, onClear, onWarmup }: Props) {
   const set = (patch: Partial<BenchmarkConfig>) => onChange({ ...config, ...patch });
 
   return (
@@ -144,6 +168,66 @@ export function ConfigSidebar({ config, onChange, running, onRun, onStop, onClea
           />
         </div>
 
+        {/* Temperature */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <label className="section-label">Temperature</label>
+            <span
+              style={{
+                fontFamily: "JetBrains Mono, monospace",
+                fontSize: 11,
+                fontWeight: 600,
+                color: tempToColor(config.temperature),
+              }}
+            >
+              {config.temperature.toFixed(2)}
+            </span>
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={2}
+            step={0.05}
+            value={config.temperature}
+            onChange={(e) => set({ temperature: parseFloat(e.target.value) })}
+            className="w-full"
+            style={{ accentColor: tempToColor(config.temperature) }}
+          />
+          <div className="flex justify-between mt-1">
+            <span style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 9, color: "var(--app-text-3)" }}>deterministisch</span>
+            <span style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 9, color: "var(--app-text-3)" }}>kreativ</span>
+          </div>
+        </div>
+
+        {/* Max Tokens */}
+        <div>
+          <label className="section-label block mb-2">Max Tokens</label>
+          <div className="flex gap-1.5 flex-wrap">
+            {[512, 1024, 2048, 4096].map((n) => {
+              const active = config.maxTokens === n;
+              return (
+                <button
+                  key={n}
+                  onClick={() => set({ maxTokens: n })}
+                  className="rounded transition-all"
+                  style={{
+                    padding: "4px 8px",
+                    background: active ? "var(--app-surface-3)" : "var(--app-surface-3)",
+                    border: `1px solid ${active ? "var(--app-accent)" : "var(--app-border-2)"}`,
+                    color: active ? "var(--app-accent)" : "var(--app-text-3)",
+                    fontFamily: "JetBrains Mono, monospace",
+                    fontSize: 10,
+                    fontWeight: active ? 700 : 400,
+                    letterSpacing: "0.04em",
+                  }}
+                >
+                  {n >= 1024 ? `${n / 1024}k` : n}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Concurrency */}
         <div>
           <label className="section-label block mb-2">Parallele Requests</label>
@@ -249,6 +333,64 @@ export function ConfigSidebar({ config, onChange, running, onRun, onStop, onClea
               ABBRECHEN
             </button>
           )}
+
+          {/* Warmup button */}
+          <button
+            onClick={onWarmup}
+            disabled={warmupStatus === "warming" || running}
+            className="flex items-center justify-center gap-2 w-full rounded py-2 text-xs transition-all"
+            style={{
+              background: warmupStatus === "ready"
+                ? "rgba(0,232,122,0.08)"
+                : warmupStatus === "error"
+                ? "rgba(255,68,85,0.08)"
+                : "var(--app-surface-3)",
+              border: `1px solid ${
+                warmupStatus === "ready"
+                  ? "rgba(0,232,122,0.25)"
+                  : warmupStatus === "error"
+                  ? "rgba(255,68,85,0.25)"
+                  : warmupStatus === "warming"
+                  ? "rgba(0,200,232,0.3)"
+                  : "var(--app-border)"
+              }`,
+              color: warmupStatus === "ready"
+                ? "var(--app-green)"
+                : warmupStatus === "error"
+                ? "var(--app-red)"
+                : warmupStatus === "warming"
+                ? "var(--app-cyan)"
+                : "var(--app-text-2)",
+              fontFamily: "JetBrains Mono, monospace",
+              fontSize: 10,
+              letterSpacing: "0.08em",
+              opacity: (warmupStatus === "warming" || running) ? 0.6 : 1,
+              cursor: (warmupStatus === "warming" || running) ? "not-allowed" : "pointer",
+            }}
+          >
+            {warmupStatus === "warming" ? (
+              <>
+                <Zap size={11} style={{ animation: "blink 0.8s step-end infinite" }} />
+                WIRD AUFGEWÄRMT…
+              </>
+            ) : warmupStatus === "ready" ? (
+              <>
+                <CheckCircle2 size={11} />
+                MODELL BEREIT
+              </>
+            ) : warmupStatus === "error" ? (
+              <>
+                <XCircle size={11} />
+                AUFWÄRMEN FEHLGESCHLAGEN
+              </>
+            ) : (
+              <>
+                <Flame size={11} />
+                LLM AUFWÄRMEN
+              </>
+            )}
+          </button>
+
           <button
             onClick={onClear}
             className="flex items-center justify-center gap-2 w-full rounded py-2 text-xs transition-colors"

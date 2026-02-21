@@ -17,14 +17,17 @@ const DEFAULT_CONFIG: BenchmarkConfig = {
   prompt:
     "Write a short story about an astronaut who discovers something unexpected on Mars. Be creative and detailed.",
   concurrency: 4,
+  temperature: 0.7,
+  maxTokens: 2048,
   unloadAfterRun: true,
 };
 
 export default function Home() {
   const [config, setConfig] = useState<BenchmarkConfig>(DEFAULT_CONFIG);
-  const { requests, history, running, run, stop, clear } = useBenchmark();
+  const { requests, history, running, warmupStatus, warmup, run, stop, clear } = useBenchmark();
 
   const handleRun = useCallback(() => run(config), [run, config]);
+  const handleWarmup = useCallback(() => warmup(config), [warmup, config]);
 
   const hasRequests = requests.length > 0;
   const hasHistory = history.length > 0;
@@ -44,9 +47,11 @@ export default function Home() {
         config={config}
         onChange={setConfig}
         running={running}
+        warmupStatus={warmupStatus}
         onRun={handleRun}
         onStop={stop}
         onClear={clear}
+        onWarmup={handleWarmup}
       />
 
       {/* Main content */}

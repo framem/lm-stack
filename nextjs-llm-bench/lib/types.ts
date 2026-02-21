@@ -21,6 +21,8 @@ export interface BenchmarkConfig {
   model: string;
   prompt: string;
   concurrency: number;
+  temperature: number;
+  maxTokens: number;
   unloadAfterRun: boolean;
 }
 

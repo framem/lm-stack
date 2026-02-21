@@ -3,7 +3,7 @@
 export const runtime = "nodejs";
 
 export async function POST(req: Request) {
-  const { prompt, model, baseURL, apiKey } = await req.json();
+  const { prompt, model, baseURL, apiKey, systemPrompt, temperature, maxTokens } = await req.json();
 
   const endpoint = (baseURL || process.env.LLM_PROVIDER_URL || "http://localhost:1234/v1")
     .replace(/\/$/, "");
@@ -19,9 +19,13 @@ export async function POST(req: Request) {
       },
       body: JSON.stringify({
         model: resolvedModel,
-        messages: [{ role: "user", content: prompt }],
+        messages: [
+          ...(systemPrompt ? [{ role: "system", content: systemPrompt }] : []),
+          { role: "user", content: prompt },
+        ],
         stream: true,
-        max_tokens: 600,
+        max_tokens: maxTokens ?? 2048,
+        temperature: temperature ?? 0.7,
       }),
     });
   } catch (err) {
