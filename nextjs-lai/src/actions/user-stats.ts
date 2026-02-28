@@ -20,7 +20,7 @@ export async function getEarnedBadges() {
     return dbGetEarnedBadges()
 }
 
-export function getAllBadges() {
+export async function getAllBadges() {
     return getAllBadgeDefinitions()
 }
 

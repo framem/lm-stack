@@ -34,7 +34,7 @@ export function GamificationBar() {
     useEffect(() => {
         getUserStats().then((s) => setStats(s as UserStatsData)).catch(console.error)
         getEarnedBadges().then(setEarnedBadges).catch(console.error)
-        setAllBadges(getAllBadges())
+        getAllBadges().then(setAllBadges).catch(console.error)
     }, [])
 
     if (!stats) return null
