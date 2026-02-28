@@ -1,5 +1,5 @@
 import { prisma } from '@/src/lib/prisma'
-import { sm2, quizQualityFromAnswer } from '@/src/lib/spaced-repetition'
+import { progressToCard, scheduleReview, quizQualityFromAnswer, Rating } from '@/src/lib/spaced-repetition'
 import { isFreetextLikeType } from '@/src/lib/quiz-types'
 import type { DifficultyLevel } from '@/src/lib/quiz-difficulty'
 
@@ -203,41 +203,51 @@ export async function getDocumentProgress() {
     })
 }
 
-// Upsert question progress using SM-2 after answering
+// Upsert question progress using FSRS after answering
 export async function upsertQuestionProgress(
     questionId: string,
     isCorrect: boolean,
     freeTextScore?: number | null,
 ) {
-    const quality = quizQualityFromAnswer(isCorrect, freeTextScore)
+    const rating = quizQualityFromAnswer(isCorrect, freeTextScore)
 
     const existing = await prisma.questionProgress.findUnique({
         where: { questionId },
     })
 
-    const result = sm2({
-        quality,
-        easeFactor: existing?.easeFactor ?? 2.5,
-        interval: existing?.interval ?? 1,
-        repetitions: existing?.repetitions ?? 0,
-    })
+    // Build a minimal FSRS card from existing SM-2 progress
+    const card = progressToCard(existing ? {
+        stability: 0,
+        difficulty: 0,
+        elapsedDays: existing.interval,
+        scheduledDays: existing.interval,
+        reps: existing.repetitions,
+        lapses: 0,
+        state: existing.repetitions === 0 ? 0 : 2,
+        due: existing.nextReviewAt,
+        lastReview: existing.lastReviewedAt,
+    } : null)
+
+    const now = new Date()
+    const result = scheduleReview(card, rating, now)
+    const next = result.card
 
     return prisma.questionProgress.upsert({
         where: { questionId },
         create: {
             questionId,
-            easeFactor: result.easeFactor,
-            interval: result.interval,
-            repetitions: result.repetitions,
-            nextReviewAt: result.nextReviewAt,
-            lastReviewedAt: new Date(),
+            easeFactor: 2.5,
+            interval: Math.max(1, next.scheduled_days),
+            repetitions: next.reps,
+            nextReviewAt: next.due,
+            lastReviewedAt: now,
         },
         update: {
-            easeFactor: result.easeFactor,
-            interval: result.interval,
-            repetitions: result.repetitions,
-            nextReviewAt: result.nextReviewAt,
-            lastReviewedAt: new Date(),
+            easeFactor: 2.5,
+            interval: Math.max(1, next.scheduled_days),
+            repetitions: next.reps,
+            nextReviewAt: next.due,
+            lastReviewedAt: now,
         },
     })
 }

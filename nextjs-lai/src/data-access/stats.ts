@@ -118,7 +118,7 @@ export async function getSubjectDistribution(): Promise<SubjectDistribution[]> {
     const docToSubject = new Map(docSubjectMap.map((d) => [d.id, d.subject!]))
 
     for (const qc of quizCounts) {
-        const subject = docToSubject.get(qc.documentId)
+        const subject = qc.documentId ? docToSubject.get(qc.documentId) : undefined
         if (!subject) continue
         const entry = subjects.get(subject)
         if (entry) entry.quizzes += qc._count

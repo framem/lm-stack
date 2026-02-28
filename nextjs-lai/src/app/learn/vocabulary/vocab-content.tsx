@@ -12,12 +12,16 @@ import {
     RotateCcw,
     FolderOpen,
     Sparkles,
+    Mic,
+    BarChart3,
+    ChevronDown,
 } from 'lucide-react'
 import { Card, CardContent } from '@/src/components/ui/card'
 import { Button } from '@/src/components/ui/button'
 import { Badge } from '@/src/components/ui/badge'
 import { Progress } from '@/src/components/ui/progress'
 import { getVocabularyFlashcards } from '@/src/actions/flashcards'
+import { VocabAnalytics } from '@/src/components/VocabAnalytics'
 import { languageSets } from '@/src/data/language-sets'
 // Map language-set document titles to their static set IDs
 const LANGUAGE_SET_ID_MAP: Record<string, string> = {
@@ -35,6 +39,8 @@ interface VocabCard {
     partOfSpeech?: string | null
     document?: { id: string; title: string; subject?: string | null; fileType?: string | null } | null
     progress?: {
+        reps: number
+        due: Date | null
         repetitions: number
         nextReviewAt: Date | null
     } | null
@@ -43,6 +49,7 @@ interface VocabCard {
 export function VocabContent() {
     const [cards, setCards] = useState<VocabCard[]>([])
     const [loading, setLoading] = useState(true)
+    const [analyticsOpen, setAnalyticsOpen] = useState(false)
 
     useEffect(() => {
         async function load() {
@@ -82,12 +89,12 @@ export function VocabContent() {
     }
 
     const totalCards = cards.length
-    const masteredCards = cards.filter((c) => c.progress && c.progress.repetitions >= 3).length
+    const masteredCards = cards.filter((c) => c.progress && (c.progress.reps ?? c.progress.repetitions) >= 3).length
 
     // New cards = never studied; truly-due = reviewed before but past review date
     const now = new Date()
     const NEW_BATCH_SIZE = 20
-    const trulyDueCount = cards.filter(c => c.progress?.nextReviewAt && new Date(c.progress.nextReviewAt) <= now).length
+    const trulyDueCount = cards.filter(c => c.progress?.due && new Date(c.progress.due) <= now).length
     const newCount = cards.filter(c => !c.progress).length
     const newBatchCount = Math.min(newCount, NEW_BATCH_SIZE)
 
@@ -97,8 +104,8 @@ export function VocabContent() {
         const setId = group.fileType === 'language-set' ? LANGUAGE_SET_ID_MAP[group.title] : undefined
         if (setId) {
             const total = group.cards.length
-            const mastered = group.cards.filter(c => c.progress && c.progress.repetitions >= 3).length
-            const trulyDue = group.cards.filter(c => c.progress?.nextReviewAt && new Date(c.progress.nextReviewAt) <= now).length
+            const mastered = group.cards.filter(c => c.progress && (c.progress.reps ?? c.progress.repetitions) >= 3).length
+            const trulyDue = group.cards.filter(c => c.progress?.due && new Date(c.progress.due) <= now).length
             const newCards = group.cards.filter(c => !c.progress).length
             setIdToDocGroup.set(setId, { docId, total, mastered, trulyDue, newCards })
         }
@@ -228,6 +235,12 @@ export function VocabContent() {
                                 Tipp-Modus
                             </Link>
                         </Button>
+                        <Button variant="outline" asChild>
+                            <Link href="/learn/vocabulary/study?mode=speech">
+                                <Mic className="h-4 w-4" />
+                                Sprech-Modus
+                            </Link>
+                        </Button>
                     </div>
 
                     {/* Language set tiles grouped by subject */}
@@ -329,6 +342,19 @@ export function VocabContent() {
                             </div>
                         </section>
                     )}
+
+                    {/* Analytics section */}
+                    <section className="space-y-4">
+                        <button
+                            onClick={() => setAnalyticsOpen((o) => !o)}
+                            className="flex items-center gap-2 text-lg font-semibold hover:text-primary transition-colors w-full text-left"
+                        >
+                            <BarChart3 className="h-5 w-5" />
+                            Vokabel-Statistiken
+                            <ChevronDown className={`h-4 w-4 transition-transform ${analyticsOpen ? 'rotate-180' : ''}`} />
+                        </button>
+                        {analyticsOpen && <VocabAnalytics />}
+                    </section>
                 </>
             )}
         </div>

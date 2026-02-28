@@ -14,7 +14,7 @@ export interface CategoryStat {
         back: string
         partOfSpeech: string | null
         exampleSentence: string | null
-        progress: { repetitions: number; nextReviewAt: Date | null } | null
+        progress: { reps: number; repetitions: number; due: Date | null; nextReviewAt: Date | null } | null
     }>
 }
 
@@ -91,8 +91,8 @@ export async function getLanguageSetDetail(setId: string): Promise<LanguageSetDe
         }
         const cat = categoryMap.get(catName)!
 
-        const reps = fc.progress?.repetitions ?? 0
-        const isDue = !fc.progress || (fc.progress.nextReviewAt !== null && fc.progress.nextReviewAt <= now)
+        const reps = fc.progress?.reps ?? fc.progress?.repetitions ?? 0
+        const isDue = !fc.progress || (fc.progress.due !== null && fc.progress.due <= now)
 
         cat.total++
         cat.cards.push({
@@ -102,7 +102,7 @@ export async function getLanguageSetDetail(setId: string): Promise<LanguageSetDe
             partOfSpeech: fc.partOfSpeech ?? null,
             exampleSentence: fc.exampleSentence ?? null,
             progress: fc.progress
-                ? { repetitions: fc.progress.repetitions, nextReviewAt: fc.progress.nextReviewAt }
+                ? { reps: fc.progress.reps, repetitions: fc.progress.repetitions, due: fc.progress.due, nextReviewAt: fc.progress.nextReviewAt }
                 : null,
         })
 

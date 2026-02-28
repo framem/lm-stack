@@ -12,6 +12,11 @@ import {
     ArrowLeftRight,
     Keyboard,
     RotateCcw,
+    Mic,
+    BookText,
+    Lightbulb,
+    Brain,
+    MessageCircleQuestion,
 } from 'lucide-react'
 import { Button } from '@/src/components/ui/button'
 import { Card, CardContent } from '@/src/components/ui/card'
@@ -20,7 +25,10 @@ import { Progress } from '@/src/components/ui/progress'
 import { VocabTypeInput } from '@/src/components/VocabTypeInput'
 import { TTSButton } from '@/src/components/TTSButton'
 import { ConjugationTable } from '@/src/components/ConjugationTable'
-import { reviewFlashcard, getDueVocabularyFlashcards, getNewVocabularyFlashcards, getVocabularyFlashcards } from '@/src/actions/flashcards'
+import { reviewFlashcard, getDueVocabularyFlashcards, getNewVocabularyFlashcards, getVocabularyFlashcards, getSchedulingPreview } from '@/src/actions/flashcards'
+import { Rating } from '@/src/lib/spaced-repetition'
+import { generateExampleSentences, generateMnemonic, explainWord, explainError } from '@/src/actions/vocab-ai'
+import { VocabSpeechInput } from '@/src/components/VocabSpeechInput'
 
 interface ConjugationData {
     present?: Record<string, string>
@@ -60,7 +68,72 @@ function getTargetLang(card: VocabCard): string {
 
 interface ReviewResult {
     cardId: string
-    quality: number
+    rating: number
+}
+
+type IntervalMap = Record<number, string>
+
+type AiPanelType = 'sentences' | 'mnemonic' | 'explain' | 'error' | null
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function AiResultDisplay({ type, result }: { type: AiPanelType; result: any }) {
+    if (!type || !result) return null
+
+    if (type === 'sentences' && result.sentences) {
+        return (
+            <div className="space-y-2">
+                <p className="text-xs font-semibold text-muted-foreground">Beispielsätze</p>
+                {result.sentences.map((s: { sentence: string; translation: string }, i: number) => (
+                    <div key={i} className="text-sm">
+                        <p className="font-medium">{s.sentence}</p>
+                        <p className="text-muted-foreground text-xs">{s.translation}</p>
+                    </div>
+                ))}
+            </div>
+        )
+    }
+
+    if (type === 'mnemonic') {
+        return (
+            <div className="space-y-1">
+                <p className="text-xs font-semibold text-muted-foreground">Eselsbrücke</p>
+                <p className="text-sm font-medium">{result.mnemonic}</p>
+                <p className="text-xs text-muted-foreground">{result.explanation}</p>
+            </div>
+        )
+    }
+
+    if (type === 'explain') {
+        return (
+            <div className="space-y-2 text-sm">
+                <p className="text-xs font-semibold text-muted-foreground">Wort-Erklärung</p>
+                {result.etymology && <p><span className="font-medium">Herkunft:</span> {result.etymology}</p>}
+                <p><span className="font-medium">Verwendung:</span> {result.usage}</p>
+                {result.level && <p><span className="font-medium">Niveau:</span> {result.level}</p>}
+                {result.falseFriends?.length > 0 && (
+                    <p><span className="font-medium">Falsche Freunde:</span> {result.falseFriends.join(', ')}</p>
+                )}
+                {result.relatedWords?.length > 0 && (
+                    <p><span className="font-medium">Verwandte Wörter:</span> {result.relatedWords.join(', ')}</p>
+                )}
+            </div>
+        )
+    }
+
+    if (type === 'error') {
+        return (
+            <div className="space-y-1 text-sm">
+                <p className="text-xs font-semibold text-muted-foreground">Fehler-Erklärung</p>
+                <p>{result.explanation}</p>
+                <p className="font-medium">Tipp: {result.tip}</p>
+                {result.commonMistake && (
+                    <p className="text-xs text-muted-foreground">{result.commonMistake}</p>
+                )}
+            </div>
+        )
+    }
+
+    return null
 }
 
 function shuffle<T>(arr: T[]): T[] {
@@ -73,9 +146,10 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 const RATINGS = [
-    { quality: 1, label: 'Kenne ich nicht', variant: 'destructive' as const },
-    { quality: 3, label: 'Unsicher', variant: 'outline' as const },
-    { quality: 5, label: 'Kenne ich', variant: 'default' as const },
+    { rating: Rating.Again, label: 'Nochmal', variant: 'destructive' as const },
+    { rating: Rating.Hard, label: 'Schwer', variant: 'outline' as const },
+    { rating: Rating.Good, label: 'Gut', variant: 'default' as const },
+    { rating: Rating.Easy, label: 'Einfach', variant: 'secondary' as const },
 ]
 
 export function VocabStudyContent() {
@@ -94,6 +168,12 @@ export function VocabStudyContent() {
     const [results, setResults] = useState<ReviewResult[]>([])
     const [completed, setCompleted] = useState(false)
     const [typeResult, setTypeResult] = useState<{ isCorrect: boolean; similarity: number } | null>(null)
+    const [intervals, setIntervals] = useState<IntervalMap | null>(null)
+    const [aiPanel, setAiPanel] = useState<AiPanelType>(null)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const [aiResult, setAiResult] = useState<any>(null)
+    const [aiLoading, setAiLoading] = useState(false)
+    const [userTypedInput, setUserTypedInput] = useState('')
 
     useEffect(() => {
         async function load() {
@@ -131,16 +211,27 @@ export function VocabStudyContent() {
     const frontLang = reversed ? 'de-DE' : targetLang
     const backLang = reversed ? targetLang : 'de-DE'
 
+    // Load intervals when card is revealed
+    useEffect(() => {
+        if (!card) return
+        if (!(flipped || typeResult)) return
+        let cancelled = false
+        getSchedulingPreview(card.id).then((preview) => {
+            if (!cancelled) setIntervals(preview)
+        }).catch(console.error)
+        return () => { cancelled = true }
+    }, [card, flipped, typeResult])
+
     const handleFlip = useCallback(() => {
         if (!flipped) setFlipped(true)
     }, [flipped])
 
-    async function handleRate(quality: number) {
+    async function handleRate(rating: number) {
         if (!card || submitting) return
         setSubmitting(true)
         try {
-            await reviewFlashcard(card.id, quality)
-            const updated = [...results, { cardId: card.id, quality }]
+            await reviewFlashcard(card.id, rating)
+            const updated = [...results, { cardId: card.id, rating }]
             setResults(updated)
 
             if (isLast) {
@@ -151,6 +242,10 @@ export function VocabStudyContent() {
             setCurrentIndex((i) => i + 1)
             setFlipped(false)
             setTypeResult(null)
+            setIntervals(null)
+            setAiPanel(null)
+            setAiResult(null)
+            setUserTypedInput('')
         } catch (err) {
             console.error('Rating failed:', err)
         } finally {
@@ -160,6 +255,38 @@ export function VocabStudyContent() {
 
     function handleTypeResult(isCorrect: boolean, similarity: number) {
         setTypeResult({ isCorrect, similarity })
+    }
+
+    async function handleAiAction(type: AiPanelType) {
+        if (!card || aiLoading) return
+        if (aiPanel === type) { setAiPanel(null); return }
+        setAiPanel(type)
+        setAiResult(null)
+        setAiLoading(true)
+        const lang = card.document?.subject ?? 'Englisch'
+        try {
+            let result
+            switch (type) {
+                case 'sentences':
+                    result = await generateExampleSentences(card.front, lang)
+                    break
+                case 'mnemonic':
+                    result = await generateMnemonic(card.front, card.back, lang)
+                    break
+                case 'explain':
+                    result = await explainWord(card.front, lang)
+                    break
+                case 'error':
+                    result = await explainError(userTypedInput, displayBack, card.front, lang)
+                    break
+            }
+            setAiResult(result)
+        } catch (err) {
+            console.error('AI action failed:', err)
+            setAiPanel(null)
+        } finally {
+            setAiLoading(false)
+        }
     }
 
     if (loading) {
@@ -196,9 +323,10 @@ export function VocabStudyContent() {
 
     // Completion screen
     if (completed) {
-        const known = results.filter((r) => r.quality === 5).length
-        const unsure = results.filter((r) => r.quality === 3).length
-        const unknown = results.filter((r) => r.quality === 1).length
+        const again = results.filter((r) => r.rating === Rating.Again).length
+        const hard = results.filter((r) => r.rating === Rating.Hard).length
+        const good = results.filter((r) => r.rating === Rating.Good).length
+        const easy = results.filter((r) => r.rating === Rating.Easy).length
         const total = results.length
 
         return (
@@ -215,26 +343,33 @@ export function VocabStudyContent() {
                     </p>
                 </div>
 
-                <div className="grid grid-cols-3 gap-4">
-                    <Card>
-                        <CardContent className="flex flex-col items-center p-4 gap-2">
-                            <CheckCircle2 className="h-6 w-6 text-green-600" />
-                            <span className="text-2xl font-bold">{known}</span>
-                            <span className="text-xs text-muted-foreground">Gewusst</span>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardContent className="flex flex-col items-center p-4 gap-2">
-                            <HelpCircle className="h-6 w-6 text-yellow-600" />
-                            <span className="text-2xl font-bold">{unsure}</span>
-                            <span className="text-xs text-muted-foreground">Unsicher</span>
-                        </CardContent>
-                    </Card>
+                <div className="grid grid-cols-4 gap-4">
                     <Card>
                         <CardContent className="flex flex-col items-center p-4 gap-2">
                             <XCircle className="h-6 w-6 text-red-600" />
-                            <span className="text-2xl font-bold">{unknown}</span>
-                            <span className="text-xs text-muted-foreground">Nicht gewusst</span>
+                            <span className="text-2xl font-bold">{again}</span>
+                            <span className="text-xs text-muted-foreground">Nochmal</span>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardContent className="flex flex-col items-center p-4 gap-2">
+                            <HelpCircle className="h-6 w-6 text-orange-600" />
+                            <span className="text-2xl font-bold">{hard}</span>
+                            <span className="text-xs text-muted-foreground">Schwer</span>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardContent className="flex flex-col items-center p-4 gap-2">
+                            <CheckCircle2 className="h-6 w-6 text-green-600" />
+                            <span className="text-2xl font-bold">{good}</span>
+                            <span className="text-xs text-muted-foreground">Gut</span>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardContent className="flex flex-col items-center p-4 gap-2">
+                            <CheckCircle2 className="h-6 w-6 text-blue-600" />
+                            <span className="text-2xl font-bold">{easy}</span>
+                            <span className="text-xs text-muted-foreground">Einfach</span>
                         </CardContent>
                     </Card>
                 </div>
@@ -263,6 +398,8 @@ export function VocabStudyContent() {
                     <span className="flex items-center gap-1.5">
                         {mode === 'type' ? (
                             <><Keyboard className="h-4 w-4" /> Tipp-Modus</>
+                        ) : mode === 'speech' ? (
+                            <><Mic className="h-4 w-4" /> Sprech-Modus</>
                         ) : (
                             <><RotateCcw className="h-4 w-4" /> Umdrehen-Modus</>
                         )}
@@ -289,7 +426,103 @@ export function VocabStudyContent() {
             </div>
 
             {/* Card display */}
-            {mode === 'type' ? (
+            {mode === 'speech' ? (
+                // Speech mode
+                <div className="space-y-4">
+                    <Card className="min-h-[200px]">
+                        <CardContent className="flex flex-col items-center justify-center min-h-[200px] p-8 text-center">
+                            {card.document && (
+                                <Badge variant="outline" className="mb-4">{card.document.title}</Badge>
+                            )}
+                            {card.partOfSpeech && (
+                                <Badge variant="secondary" className="mb-2">{card.partOfSpeech}</Badge>
+                            )}
+                            <div className="flex items-center gap-1">
+                                <p className="text-xl font-semibold">{displayFront}</p>
+                                <TTSButton text={displayFront} lang={frontLang} />
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <VocabSpeechInput
+                        key={`${card.id}-${reversed}`}
+                        correctAnswer={displayBack}
+                        lang={backLang}
+                        onResult={handleTypeResult}
+                    />
+
+                    {/* Show example sentence after answering */}
+                    {typeResult && card.exampleSentence && (
+                        <div className="rounded-lg border bg-muted/50 p-3">
+                            <p className="text-xs font-medium text-muted-foreground mb-1">Beispielsatz</p>
+                            <div className="flex items-center gap-2">
+                                <p className="text-sm italic flex-1">{card.exampleSentence}</p>
+                                <TTSButton text={card.exampleSentence} lang={targetLang} size="sm" className="shrink-0" />
+                            </div>
+                        </div>
+                    )}
+
+                    {/* AI toolbar after speech */}
+                    {typeResult && (
+                        <div className="space-y-3">
+                            <div className="flex flex-wrap items-center justify-center gap-2">
+                                <Button variant="ghost" size="sm" onClick={() => handleAiAction('sentences')} disabled={aiLoading && aiPanel !== 'sentences'}>
+                                    <BookText className="h-4 w-4" />
+                                    Beispielsätze
+                                </Button>
+                                <Button variant="ghost" size="sm" onClick={() => handleAiAction('mnemonic')} disabled={aiLoading && aiPanel !== 'mnemonic'}>
+                                    <Lightbulb className="h-4 w-4" />
+                                    Eselsbrücke
+                                </Button>
+                                <Button variant="ghost" size="sm" onClick={() => handleAiAction('explain')} disabled={aiLoading && aiPanel !== 'explain'}>
+                                    <Brain className="h-4 w-4" />
+                                    Wort erklären
+                                </Button>
+                            </div>
+                            {aiPanel && (
+                                <div className="rounded-lg border bg-muted/50 p-4">
+                                    {aiLoading ? (
+                                        <div className="flex items-center justify-center gap-2 py-2">
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                            <span className="text-sm text-muted-foreground">KI denkt nach...</span>
+                                        </div>
+                                    ) : (
+                                        <AiResultDisplay type={aiPanel} result={aiResult} />
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Rating buttons after speech */}
+                    {typeResult && (
+                        <div className="space-y-3">
+                            <p className="text-xs text-center text-muted-foreground">
+                                Wie gut konntest du die Antwort?
+                            </p>
+                            <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3">
+                                {RATINGS.map((r) => (
+                                    <Button
+                                        key={r.rating}
+                                        variant={r.variant}
+                                        onClick={() => handleRate(r.rating)}
+                                        disabled={submitting}
+                                        className="w-full sm:w-auto sm:min-w-[120px]"
+                                    >
+                                        {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+                                        <span className="flex flex-col items-center leading-tight">
+                                            <span>{r.label}</span>
+                                            {intervals && (
+                                                <span className="text-[10px] opacity-70">{intervals[r.rating]}</span>
+                                            )}
+                                        </span>
+                                    </Button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            ) : mode === 'type' ? (
                 // Type mode
                 <div className="space-y-4">
                     <Card className="min-h-[200px]">
@@ -311,6 +544,7 @@ export function VocabStudyContent() {
                         key={`${card.id}-${reversed}`}
                         correctAnswer={displayBack}
                         onResult={handleTypeResult}
+                        onInput={setUserTypedInput}
                     />
 
                     {/* Show example sentence after answering */}
@@ -324,6 +558,44 @@ export function VocabStudyContent() {
                         </div>
                     )}
 
+                    {/* AI toolbar after typing */}
+                    {typeResult && (
+                        <div className="space-y-3">
+                            <div className="flex flex-wrap items-center justify-center gap-2">
+                                <Button variant="ghost" size="sm" onClick={() => handleAiAction('sentences')} disabled={aiLoading && aiPanel !== 'sentences'}>
+                                    <BookText className="h-4 w-4" />
+                                    Beispielsätze
+                                </Button>
+                                <Button variant="ghost" size="sm" onClick={() => handleAiAction('mnemonic')} disabled={aiLoading && aiPanel !== 'mnemonic'}>
+                                    <Lightbulb className="h-4 w-4" />
+                                    Eselsbrücke
+                                </Button>
+                                <Button variant="ghost" size="sm" onClick={() => handleAiAction('explain')} disabled={aiLoading && aiPanel !== 'explain'}>
+                                    <Brain className="h-4 w-4" />
+                                    Wort erklären
+                                </Button>
+                                {typeResult && !typeResult.isCorrect && (
+                                    <Button variant="ghost" size="sm" onClick={() => handleAiAction('error')} disabled={aiLoading && aiPanel !== 'error'}>
+                                        <MessageCircleQuestion className="h-4 w-4" />
+                                        Fehler erklären
+                                    </Button>
+                                )}
+                            </div>
+                            {aiPanel && (
+                                <div className="rounded-lg border bg-muted/50 p-4">
+                                    {aiLoading ? (
+                                        <div className="flex items-center justify-center gap-2 py-2">
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                            <span className="text-sm text-muted-foreground">KI denkt nach...</span>
+                                        </div>
+                                    ) : (
+                                        <AiResultDisplay type={aiPanel} result={aiResult} />
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {/* Rating buttons after typing */}
                     {typeResult && (
                         <div className="space-y-3">
@@ -333,14 +605,19 @@ export function VocabStudyContent() {
                             <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3">
                                 {RATINGS.map((r) => (
                                     <Button
-                                        key={r.quality}
+                                        key={r.rating}
                                         variant={r.variant}
-                                        onClick={() => handleRate(r.quality)}
+                                        onClick={() => handleRate(r.rating)}
                                         disabled={submitting}
-                                        className="w-full sm:w-auto sm:min-w-[140px]"
+                                        className="w-full sm:w-auto sm:min-w-[120px]"
                                     >
                                         {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-                                        {r.label}
+                                        <span className="flex flex-col items-center leading-tight">
+                                            <span>{r.label}</span>
+                                            {intervals && (
+                                                <span className="text-[10px] opacity-70">{intervals[r.rating]}</span>
+                                            )}
+                                        </span>
                                     </Button>
                                 ))}
                             </div>
@@ -416,6 +693,38 @@ export function VocabStudyContent() {
                         </div>
                     </div>
 
+                    {/* AI toolbar after flip */}
+                    {flipped && (
+                        <div className="space-y-3">
+                            <div className="flex flex-wrap items-center justify-center gap-2">
+                                <Button variant="ghost" size="sm" onClick={() => handleAiAction('sentences')} disabled={aiLoading && aiPanel !== 'sentences'}>
+                                    <BookText className="h-4 w-4" />
+                                    Beispielsätze
+                                </Button>
+                                <Button variant="ghost" size="sm" onClick={() => handleAiAction('mnemonic')} disabled={aiLoading && aiPanel !== 'mnemonic'}>
+                                    <Lightbulb className="h-4 w-4" />
+                                    Eselsbrücke
+                                </Button>
+                                <Button variant="ghost" size="sm" onClick={() => handleAiAction('explain')} disabled={aiLoading && aiPanel !== 'explain'}>
+                                    <Brain className="h-4 w-4" />
+                                    Wort erklären
+                                </Button>
+                            </div>
+                            {aiPanel && (
+                                <div className="rounded-lg border bg-muted/50 p-4">
+                                    {aiLoading ? (
+                                        <div className="flex items-center justify-center gap-2 py-2">
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                            <span className="text-sm text-muted-foreground">KI denkt nach...</span>
+                                        </div>
+                                    ) : (
+                                        <AiResultDisplay type={aiPanel} result={aiResult} />
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {/* Rating buttons after flip */}
                     {flipped && (
                         <div className="space-y-3">
@@ -425,14 +734,19 @@ export function VocabStudyContent() {
                             <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3">
                                 {RATINGS.map((r) => (
                                     <Button
-                                        key={r.quality}
+                                        key={r.rating}
                                         variant={r.variant}
-                                        onClick={() => handleRate(r.quality)}
+                                        onClick={() => handleRate(r.rating)}
                                         disabled={submitting}
-                                        className="w-full sm:w-auto sm:min-w-[140px]"
+                                        className="w-full sm:w-auto sm:min-w-[120px]"
                                     >
                                         {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-                                        {r.label}
+                                        <span className="flex flex-col items-center leading-tight">
+                                            <span>{r.label}</span>
+                                            {intervals && (
+                                                <span className="text-[10px] opacity-70">{intervals[r.rating]}</span>
+                                            )}
+                                        </span>
                                     </Button>
                                 ))}
                             </div>

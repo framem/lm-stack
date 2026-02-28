@@ -1,5 +1,5 @@
 import { prisma } from '@/src/lib/prisma'
-import { sm2 } from '@/src/lib/spaced-repetition'
+import { progressToCard, scheduleReview, getSchedulingOptions, formatInterval, Rating } from '@/src/lib/spaced-repetition'
 
 interface CreateFlashcardInput {
     documentId: string
@@ -54,7 +54,7 @@ export async function getDueFlashcards(limit: number = 20) {
                 // New cards — no progress record yet
                 { progress: null },
                 // Reviewed cards that are due
-                { progress: { nextReviewAt: { lte: new Date() } } },
+                { progress: { due: { lte: new Date() } } },
             ],
         },
         include: {
@@ -71,42 +71,78 @@ export async function getDueFlashcards(limit: number = 20) {
 export async function getDueFlashcardCount() {
     const [newCards, dueCards] = await Promise.all([
         prisma.flashcard.count({ where: { progress: null } }),
-        prisma.flashcardProgress.count({ where: { nextReviewAt: { lte: new Date() } } }),
+        prisma.flashcardProgress.count({ where: { due: { lte: new Date() } } }),
     ])
     return newCards + dueCards
 }
 
-// Upsert flashcard progress using SM-2
-export async function upsertFlashcardProgress(flashcardId: string, quality: number) {
+// Upsert flashcard progress using FSRS
+export async function upsertFlashcardProgress(flashcardId: string, rating: Rating) {
     const existing = await prisma.flashcardProgress.findUnique({
         where: { flashcardId },
     })
 
-    const result = sm2({
-        quality,
-        easeFactor: existing?.easeFactor ?? 2.5,
-        interval: existing?.interval ?? 1,
-        repetitions: existing?.repetitions ?? 0,
+    const card = progressToCard(existing)
+    const now = new Date()
+    const result = scheduleReview(card, rating, now)
+    const next = result.card
+
+    const progressData = {
+        // FSRS fields
+        stability: next.stability,
+        difficulty: next.difficulty,
+        elapsedDays: next.elapsed_days,
+        scheduledDays: next.scheduled_days,
+        reps: next.reps,
+        lapses: next.lapses,
+        state: next.state as number,
+        due: next.due,
+        lastReview: now,
+        // Legacy SM-2 fields (kept in sync for transition)
+        easeFactor: 2.5,
+        interval: Math.max(1, next.scheduled_days),
+        repetitions: next.reps,
+        nextReviewAt: next.due,
+        lastReviewedAt: now,
+    }
+
+    const [progress] = await prisma.$transaction([
+        prisma.flashcardProgress.upsert({
+            where: { flashcardId },
+            create: { flashcardId, ...progressData },
+            update: progressData,
+        }),
+        prisma.reviewLog.create({
+            data: {
+                flashcardId,
+                rating: rating as number,
+                state: next.state as number,
+                stability: next.stability,
+                difficulty: next.difficulty,
+                elapsedDays: next.elapsed_days,
+                scheduledDays: next.scheduled_days,
+            },
+        }),
+    ])
+
+    return progress
+}
+
+// Get scheduling preview (interval labels) for all 4 rating buttons
+export async function getFlashcardSchedulingPreview(flashcardId: string) {
+    const existing = await prisma.flashcardProgress.findUnique({
+        where: { flashcardId },
     })
 
-    return prisma.flashcardProgress.upsert({
-        where: { flashcardId },
-        create: {
-            flashcardId,
-            easeFactor: result.easeFactor,
-            interval: result.interval,
-            repetitions: result.repetitions,
-            nextReviewAt: result.nextReviewAt,
-            lastReviewedAt: new Date(),
-        },
-        update: {
-            easeFactor: result.easeFactor,
-            interval: result.interval,
-            repetitions: result.repetitions,
-            nextReviewAt: result.nextReviewAt,
-            lastReviewedAt: new Date(),
-        },
-    })
+    const card = progressToCard(existing)
+    const options = getSchedulingOptions(card)
+
+    return {
+        [Rating.Again]: formatInterval(options[Rating.Again].card.scheduled_days),
+        [Rating.Hard]: formatInterval(options[Rating.Hard].card.scheduled_days),
+        [Rating.Good]: formatInterval(options[Rating.Good].card.scheduled_days),
+        [Rating.Easy]: formatInterval(options[Rating.Easy].card.scheduled_days),
+    }
 }
 
 // Update a flashcard
@@ -167,7 +203,7 @@ export async function getDueVocabularyFlashcards(limit: number = 20, documentId?
             ...(documentId ? { documentId } : {}),
             OR: [
                 { progress: null },
-                { progress: { nextReviewAt: { lte: new Date() } } },
+                { progress: { due: { lte: new Date() } } },
             ],
         },
         include: {
@@ -225,7 +261,7 @@ export async function getDueVocabularyCount() {
         prisma.flashcard.count({
             where: {
                 isVocabulary: true,
-                progress: { nextReviewAt: { lte: new Date() } },
+                progress: { due: { lte: new Date() } },
             },
         }),
     ])
@@ -250,7 +286,7 @@ export async function getFlashcardDocumentProgress() {
                     id: true,
                     progress: {
                         select: {
-                            repetitions: true,
+                            reps: true,
                         },
                     },
                 },
@@ -261,7 +297,7 @@ export async function getFlashcardDocumentProgress() {
     return documents.map((doc) => {
         const total = doc.flashcards.length
         const reviewed = doc.flashcards.filter((f) => f.progress !== null)
-        const mastered = reviewed.filter((f) => f.progress!.repetitions >= 3).length
+        const mastered = reviewed.filter((f) => f.progress!.reps >= 3).length
         const percentage = total > 0 ? Math.round((mastered / total) * 100) : 0
 
         return {

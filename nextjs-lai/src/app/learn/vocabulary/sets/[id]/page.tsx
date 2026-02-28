@@ -263,7 +263,7 @@ export default async function LanguageSetDetailPage({ params }: Props) {
                                             {/* Vocab item list */}
                                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                                                 {cat.cards.map((card) => {
-                                                    const reps = card.progress?.repetitions ?? 0
+                                                    const reps = card.progress?.reps ?? card.progress?.repetitions ?? 0
                                                     const isMastered = reps >= 3
                                                     const isLearning = reps >= 1 && reps < 3
                                                     return (

@@ -9,9 +9,10 @@ import { normalizedLevenshtein } from '@/src/lib/string-similarity'
 interface VocabTypeInputProps {
     correctAnswer: string
     onResult: (isCorrect: boolean, similarity: number) => void
+    onInput?: (value: string) => void
 }
 
-export function VocabTypeInput({ correctAnswer, onResult }: VocabTypeInputProps) {
+export function VocabTypeInput({ correctAnswer, onResult, onInput }: VocabTypeInputProps) {
     const [input, setInput] = useState('')
     const [submitted, setSubmitted] = useState(false)
     const [similarity, setSimilarity] = useState(0)
@@ -39,7 +40,10 @@ export function VocabTypeInput({ correctAnswer, onResult }: VocabTypeInputProps)
             <div className="flex gap-2">
                 <Input
                     value={input}
-                    onChange={(e) => setInput(e.target.value)}
+                    onChange={(e) => {
+                        setInput(e.target.value)
+                        onInput?.(e.target.value)
+                    }}
                     onKeyDown={handleKeyDown}
                     placeholder="Antwort eingeben..."
                     disabled={submitted}

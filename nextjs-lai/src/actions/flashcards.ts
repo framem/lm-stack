@@ -24,7 +24,9 @@ import {
     getNewVocabularyFlashcards as dbGetNewVocabularyFlashcards,
     getDueVocabularyCount as dbGetDueVocabularyCount,
     getVocabularyLanguages as dbGetVocabularyLanguages,
+    getFlashcardSchedulingPreview as dbGetFlashcardSchedulingPreview,
 } from '@/src/data-access/flashcards'
+import { Rating } from '@/src/lib/spaced-repetition'
 import { revalidatePath } from 'next/cache'
 import { revalidateFlashcards, revalidateUserStats } from '@/src/lib/dashboard-cache'
 import { recordActivity } from '@/src/data-access/user-stats'
@@ -239,16 +241,23 @@ ${contextText}`
 
 // ── Review a flashcard (rate and update progress) ──
 
-export async function reviewFlashcard(flashcardId: string, quality: number) {
+export async function reviewFlashcard(flashcardId: string, rating: number) {
     if (!flashcardId) throw new Error('Karteikarten-ID ist erforderlich.')
-    if (quality < 0 || quality > 5) throw new Error('Bewertung muss zwischen 0 und 5 liegen.')
+    if (rating < 1 || rating > 4) throw new Error('Bewertung muss zwischen 1 und 4 liegen.')
 
-    await dbUpsertFlashcardProgress(flashcardId, quality)
+    await dbUpsertFlashcardProgress(flashcardId, rating as Rating)
     revalidatePath('/learn/flashcards')
     revalidateFlashcards()
 
     // Track activity for streaks (fire-and-forget)
     recordActivity().then(() => revalidateUserStats()).catch(console.error)
+}
+
+// ── Get scheduling preview for rating buttons ──
+
+export async function getSchedulingPreview(flashcardId: string) {
+    if (!flashcardId) throw new Error('Karteikarten-ID ist erforderlich.')
+    return dbGetFlashcardSchedulingPreview(flashcardId)
 }
 
 // ── Create flashcard from a quiz question ──
@@ -283,7 +292,7 @@ export async function createFlashcardFromQuestion(questionId: string) {
         : answer
 
     const card = await dbCreateFlashcard({
-        documentId: question.quiz.documentId,
+        documentId: question.quiz.documentId!,
         front,
         back,
         context: question.sourceSnippet || undefined,
