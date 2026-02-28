@@ -22,6 +22,16 @@ export function getModel() {
             const lmstudio = createOpenAICompatible({ name: 'lmstudio', baseURL })
             return lmstudio.chatModel(modelName)
         }
+        case 'vllm': {
+            const baseURL = process.env.LLM_PROVIDER_URL || 'http://localhost:8000/v1'
+            const apiKey = process.env.RUNPOD_API_KEY
+            const vllm = createOpenAICompatible({
+                name: 'vllm',
+                baseURL,
+                ...(apiKey && { headers: { Authorization: `Bearer ${apiKey}` } }),
+            })
+            return wrapLanguageModel({ model: vllm.chatModel(modelName), middleware: reasoningMiddleware })
+        }
         case 'ollama':
         default: {
             const baseURL = process.env.LLM_PROVIDER_URL || 'http://localhost:11434'
