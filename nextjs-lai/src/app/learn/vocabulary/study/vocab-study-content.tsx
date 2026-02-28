@@ -158,6 +158,7 @@ export function VocabStudyContent() {
     const practiceAll = searchParams.get('all') === 'true'
     const newOnly = searchParams.get('new') === 'true'
     const docFilter = searchParams.get('doc') || undefined
+    const categoryFilter = searchParams.get('category') || undefined
 
     const [cards, setCards] = useState<VocabCard[]>([])
     const [loading, setLoading] = useState(true)
@@ -179,13 +180,13 @@ export function VocabStudyContent() {
         async function load() {
             try {
                 if (practiceAll) {
-                    const data = await getVocabularyFlashcards(docFilter)
+                    const data = await getVocabularyFlashcards(docFilter, undefined, categoryFilter)
                     setCards(shuffle(data as unknown as VocabCard[]))
                 } else if (newOnly) {
-                    const data = await getNewVocabularyFlashcards(20, docFilter)
+                    const data = await getNewVocabularyFlashcards(20, docFilter, categoryFilter)
                     setCards(data as unknown as VocabCard[])
                 } else {
-                    const data = await getDueVocabularyFlashcards(docFilter)
+                    const data = await getDueVocabularyFlashcards(docFilter, categoryFilter)
                     setCards(data as unknown as VocabCard[])
                 }
             } catch (err) {
@@ -195,7 +196,7 @@ export function VocabStudyContent() {
             }
         }
         load()
-    }, [practiceAll, newOnly, docFilter])
+    }, [practiceAll, newOnly, docFilter, categoryFilter])
 
     const card = cards[currentIndex]
     const progressValue = cards.length > 0 ? (results.length / cards.length) * 100 : 0

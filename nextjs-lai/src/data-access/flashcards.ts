@@ -179,13 +179,14 @@ export async function getFlashcardCount() {
     return prisma.flashcard.count()
 }
 
-// Get vocabulary flashcards, optionally filtered by document or language
-export async function getVocabularyFlashcards(documentId?: string, language?: string) {
+// Get vocabulary flashcards, optionally filtered by document, language, or category
+export async function getVocabularyFlashcards(documentId?: string, language?: string, category?: string) {
     return prisma.flashcard.findMany({
         where: {
             isVocabulary: true,
             ...(documentId ? { documentId } : {}),
             ...(language ? { document: { subject: language, fileType: 'language-set' } } : {}),
+            ...(category ? { context: category } : {}),
         },
         include: {
             document: { select: { id: true, title: true, subject: true, fileType: true } },
@@ -195,12 +196,13 @@ export async function getVocabularyFlashcards(documentId?: string, language?: st
     })
 }
 
-// Get due vocabulary flashcards (new + overdue), optionally filtered to one document
-export async function getDueVocabularyFlashcards(limit: number = 20, documentId?: string) {
+// Get due vocabulary flashcards (new + overdue), optionally filtered to one document/category
+export async function getDueVocabularyFlashcards(limit: number = 20, documentId?: string, category?: string) {
     return prisma.flashcard.findMany({
         where: {
             isVocabulary: true,
             ...(documentId ? { documentId } : {}),
+            ...(category ? { context: category } : {}),
             OR: [
                 { progress: null },
                 { progress: { due: { lte: new Date() } } },
@@ -216,12 +218,13 @@ export async function getDueVocabularyFlashcards(limit: number = 20, documentId?
     })
 }
 
-// Get new (never-reviewed) vocabulary flashcards only, optionally filtered to one document
-export async function getNewVocabularyFlashcards(limit: number = 20, documentId?: string) {
+// Get new (never-reviewed) vocabulary flashcards only, optionally filtered to one document/category
+export async function getNewVocabularyFlashcards(limit: number = 20, documentId?: string, category?: string) {
     return prisma.flashcard.findMany({
         where: {
             isVocabulary: true,
             ...(documentId ? { documentId } : {}),
+            ...(category ? { context: category } : {}),
             progress: null,
         },
         include: {

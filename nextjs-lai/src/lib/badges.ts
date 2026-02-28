@@ -168,6 +168,16 @@ export function serializeBadges(badges: EarnedBadge[]): SerializedBadge[] {
     }))
 }
 
+/** Get all badge definitions without check function (for client display) */
+export function getAllBadgeDefinitions(): Omit<BadgeDefinition, 'check'>[] {
+    return BADGES.map(({ id, icon, title, description }) => ({
+        id,
+        icon,
+        title,
+        description,
+    }))
+}
+
 /** XP values for different activities */
 export const XP_VALUES = {
     flashcardReview: 5,

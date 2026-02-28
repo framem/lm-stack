@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react'
 import { Input } from '@/src/components/ui/input'
 import { Button } from '@/src/components/ui/button'
-import { CheckCircle2, XCircle, AlertTriangle } from 'lucide-react'
+import { CheckCircle2, XCircle, AlertTriangle, HelpCircle } from 'lucide-react'
 import { normalizedLevenshtein } from '@/src/lib/string-similarity'
 
 interface VocabTypeInputProps {
@@ -32,6 +32,12 @@ export function VocabTypeInput({ correctAnswer, onResult, onInput }: VocabTypeIn
         }
     }, [handleSubmit])
 
+    const handleSkip = useCallback(() => {
+        setSimilarity(0)
+        setSubmitted(true)
+        onResult(false, 0)
+    }, [onResult])
+
     const isCorrect = similarity >= 0.95
     const isAlmostCorrect = similarity >= 0.8 && similarity < 0.95
 
@@ -57,9 +63,14 @@ export function VocabTypeInput({ correctAnswer, onResult, onInput }: VocabTypeIn
                     ) : ''}
                 />
                 {!submitted && (
-                    <Button onClick={handleSubmit} disabled={!input.trim()}>
-                        Prüfen
-                    </Button>
+                    <>
+                        <Button onClick={handleSubmit} disabled={!input.trim()}>
+                            Prüfen
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={handleSkip} className="text-muted-foreground" title="Weiß nicht">
+                            <HelpCircle className="h-4 w-4" />
+                        </Button>
+                    </>
                 )}
             </div>
 

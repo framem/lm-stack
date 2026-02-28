@@ -22,6 +22,7 @@ import { Badge } from '@/src/components/ui/badge'
 import { Progress } from '@/src/components/ui/progress'
 import { getVocabularyFlashcards } from '@/src/actions/flashcards'
 import { VocabAnalytics } from '@/src/components/VocabAnalytics'
+import { GamificationBar } from '@/src/components/GamificationBar'
 import { languageSets } from '@/src/data/language-sets'
 // Map language-set document titles to their static set IDs
 const LANGUAGE_SET_ID_MAP: Record<string, string> = {
@@ -136,6 +137,8 @@ export function VocabContent() {
                     Vokabeln gezielt lernen mit Tipp-Modus und Richtungswechsel
                 </p>
             </div>
+
+            <GamificationBar />
 
             {totalCards === 0 ? (
                 <Card>

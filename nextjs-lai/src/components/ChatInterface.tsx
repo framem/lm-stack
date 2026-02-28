@@ -1,10 +1,10 @@
 'use client'
 
-import { Fragment, useState, useMemo, useEffect, useRef } from 'react'
+import { Fragment, useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { DefaultChatTransport, type UIMessage } from 'ai'
 import { useChat } from '@ai-sdk/react'
 import { z } from 'zod'
-import { BookOpen, FileText, Loader2, ChevronDown, CornerDownLeft, Check, AlertTriangle, Bookmark, ClipboardCheck, MessageSquare } from 'lucide-react'
+import { BookOpen, FileText, Loader2, ChevronDown, CornerDownLeft, Check, AlertTriangle, Bookmark, ClipboardCheck, MessageSquare, Mic, MicOff } from 'lucide-react'
 import { getSession, getChatSuggestions, toggleBookmark } from '@/src/actions/chat'
 import { getDocuments, getSubjects } from '@/src/actions/documents'
 import type { ConversationEvaluation } from '@/src/app/api/chat/conversation/evaluate/route'
@@ -447,9 +447,13 @@ export function ChatInterface({ sessionId, documentId, mode = 'learning', scenar
 
     const isLoading = status === 'streaming' || status === 'submitted'
 
+    const [inputValue, setInputValue] = useState('')
+
     function handleSubmit({ text }: PromptInputMessage) {
         const trimmed = text.trim()
         if (!trimmed || isLoading) return
+        cleanupSpeechRecognition()
+        setInputValue('')
         sendMessage({ text: trimmed })
     }
 
@@ -504,6 +508,62 @@ export function ChatInterface({ sessionId, documentId, mode = 'learning', scenar
             setEvaluating(false)
         }
     }
+
+    // Speech-to-text for conversation mode
+    const [speechListening, setSpeechListening] = useState(false)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const speechRecognitionRef = useRef<any>(null)
+    const prefixBeforeSpeechRef = useRef('')
+
+    // Detach handlers and stop the current recognition so stale events can't fire
+    const cleanupSpeechRecognition = useCallback(() => {
+        const rec = speechRecognitionRef.current
+        if (!rec) return
+        rec.onresult = null
+        rec.onerror = null
+        rec.onend = null
+        try { rec.stop() } catch { /* already stopped */ }
+        speechRecognitionRef.current = null
+        setSpeechListening(false)
+    }, [])
+
+    const startSpeechInput = useCallback(() => {
+        const SpeechRecognitionAPI = (window as Window).SpeechRecognition || (window as Window).webkitSpeechRecognition
+        if (!SpeechRecognitionAPI) return
+
+        // Clean up any lingering previous session
+        cleanupSpeechRecognition()
+
+        // Remember any text already in the input so new speech appends after it
+        setInputValue(prev => {
+            prefixBeforeSpeechRef.current = prev ? prev.trimEnd() + ' ' : ''
+            return prev
+        })
+
+        const recognition = new SpeechRecognitionAPI()
+        recognition.continuous = true
+        recognition.interimResults = true
+        recognition.lang = getConversationTTSLang(scenarioLanguage)
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        recognition.onresult = (event: any) => {
+            let transcript = ''
+            for (let i = 0; i < event.results.length; i++) {
+                transcript += event.results[i][0].transcript
+            }
+            setInputValue(prefixBeforeSpeechRef.current + transcript)
+        }
+        recognition.onerror = () => cleanupSpeechRecognition()
+        recognition.onend = () => setSpeechListening(false)
+
+        speechRecognitionRef.current = recognition
+        setSpeechListening(true)
+        recognition.start()
+    }, [scenarioLanguage, cleanupSpeechRecognition])
+
+    const stopSpeechInput = useCallback(() => {
+        cleanupSpeechRecognition()
+    }, [cleanupSpeechRecognition])
 
     // Toggle a source in the detail panel
     function handleSourceClick(source: StoredSource) {
@@ -731,7 +791,10 @@ export function ChatInterface({ sessionId, documentId, mode = 'learning', scenar
                   <div className="max-w-3xl mx-auto w-full">
                     <PromptInput onSubmit={handleSubmit}>
                         <PromptInputBody>
-                            <PromptInputTextarea placeholder={isConversation
+                            <PromptInputTextarea
+                                value={inputValue}
+                                onChange={(e) => setInputValue(e.target.value)}
+                                placeholder={isConversation
                                 ? (scenarioLanguage === 'en' ? 'Schreibe auf Englisch...'
                                    : scenarioLanguage === 'es' ? 'Schreibe auf Spanisch...'
                                    : 'Schreibe auf Deutsch...')
@@ -820,6 +883,17 @@ export function ChatInterface({ sessionId, documentId, mode = 'learning', scenar
                                         })}
                                     </PopoverContent>
                                 </Popover>}
+                                {isConversation && (
+                                    <PromptInputButton
+                                        tooltip={{ content: speechListening ? 'Aufnahme stoppen' : 'Spracheingabe' }}
+                                        variant={speechListening ? 'destructive' : 'ghost'}
+                                        onClick={speechListening ? stopSpeechInput : startSpeechInput}
+                                        disabled={isLoading}
+                                        className={speechListening ? 'animate-pulse' : ''}
+                                    >
+                                        {speechListening ? <MicOff className="size-3.5" /> : <Mic className="size-3.5" />}
+                                    </PromptInputButton>
+                                )}
                                 <PromptInputButton
                                     tooltip={{ content: 'Absenden', shortcut: '↵' }}
                                     variant="ghost"

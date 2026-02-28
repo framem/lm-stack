@@ -8,6 +8,9 @@ export interface CategoryStat {
     learningCount: number
     masteredCount: number
     dueCount: number
+    lessonIndex: number
+    unlocked: boolean
+    completedPct: number
     cards: Array<{
         id: string
         front: string
@@ -86,6 +89,9 @@ export async function getLanguageSetDetail(setId: string): Promise<LanguageSetDe
                 learningCount: 0,
                 masteredCount: 0,
                 dueCount: 0,
+                lessonIndex: 0,
+                unlocked: false,
+                completedPct: 0,
                 cards: [],
             })
         }
@@ -127,6 +133,15 @@ export async function getLanguageSetDetail(setId: string): Promise<LanguageSetDe
         if (!categories.find(c => c.name === name)) {
             categories.push(cat)
         }
+    }
+
+    // Compute lesson index, completion percentage, and unlock status
+    for (let i = 0; i < categories.length; i++) {
+        const cat = categories[i]
+        cat.lessonIndex = i
+        cat.completedPct = cat.total > 0 ? Math.round((cat.masteredCount / cat.total) * 100) : 0
+        // Lesson 0 is always unlocked; subsequent lessons unlock when previous is ≥80% mastered
+        cat.unlocked = i === 0 || categories[i - 1].completedPct >= 80
     }
 
     const totalCards = doc.flashcards.length

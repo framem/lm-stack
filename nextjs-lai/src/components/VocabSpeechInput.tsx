@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef } from 'react'
 import { Button } from '@/src/components/ui/button'
-import { Mic, MicOff, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react'
+import { Mic, MicOff, CheckCircle2, XCircle, AlertTriangle, HelpCircle } from 'lucide-react'
 import { normalizedLevenshtein } from '@/src/lib/string-similarity'
 
 interface VocabSpeechInputProps {
@@ -66,6 +66,14 @@ export function VocabSpeechInput({ correctAnswer, lang, onResult }: VocabSpeechI
         setListening(false)
     }, [])
 
+    const handleSkip = useCallback(() => {
+        recognitionRef.current?.stop()
+        setListening(false)
+        setSimilarity(0)
+        setSubmitted(true)
+        onResult(false, 0)
+    }, [onResult])
+
     if (!supported) {
         return (
             <div className="rounded-lg border border-yellow-500/30 bg-yellow-50 dark:bg-yellow-950/20 p-4 text-center">
@@ -102,6 +110,17 @@ export function VocabSpeechInput({ correctAnswer, lang, onResult }: VocabSpeechI
                             ? ''
                             : 'Klicke auf das Mikrofon und sprich das Wort aus'}
                 </p>
+                {!submitted && !listening && (
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleSkip}
+                        className="text-muted-foreground"
+                    >
+                        <HelpCircle className="h-4 w-4" />
+                        Weiß nicht
+                    </Button>
+                )}
             </div>
 
             {transcript && (

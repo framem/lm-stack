@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/src/components/ui/card'
 import { Badge } from '@/src/components/ui/badge'
 import { Button } from '@/src/components/ui/button'
+import Image from 'next/image'
 import { ArrowLeft, Languages, Trophy, Sparkles, Plus, Trash2 } from 'lucide-react'
 import { SCENARIOS, LANGUAGE_LABELS, type ConversationScenario, type Language } from '@/src/lib/conversation-scenarios-constants'
 import { ConversationContent } from './conversation-content'
@@ -138,7 +139,7 @@ export function ConversationPageClient({ bestEvaluations, generatedScenarios }: 
     }
 
     return (
-        <div className="p-6 max-w-4xl mx-auto space-y-6">
+        <div className="p-6 max-w-5xl mx-auto space-y-6">
             <div className="flex items-start justify-between">
                 <div>
                     <h1 className="text-2xl font-bold flex items-center gap-2">
@@ -188,23 +189,46 @@ export function ConversationPageClient({ bestEvaluations, generatedScenarios }: 
                         return (
                             <Card
                                 key={scenario.key}
-                                className="cursor-pointer transition-colors hover:bg-accent/30 relative flex flex-col"
+                                className="cursor-pointer transition-all hover:shadow-md hover:scale-[1.02] relative flex flex-col overflow-hidden"
                                 onClick={() => setActiveScenario(scenario)}
                             >
-                                <CardHeader className="pb-2 flex-1">
-                                    <CardTitle className="flex items-center gap-2 text-base">
-                                        <span className="text-xl">{scenario.icon}</span>
-                                        <span className="flex-1">{germanTranslation.title}</span>
-                                        {hasAttempt && (
-                                            <Badge variant="secondary" className="text-xs">
+                                {/* Hero image */}
+                                <div className="relative h-36 w-full">
+                                    {scenario.heroImage ? (
+                                        <Image
+                                            src={scenario.heroImage}
+                                            alt={germanTranslation.title}
+                                            fill
+                                            className="object-cover"
+                                            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                                        />
+                                    ) : (
+                                        <div className="h-full w-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+                                            <span className="text-4xl">{scenario.icon}</span>
+                                        </div>
+                                    )}
+                                    <div className="absolute top-2 right-2">
+                                        <Badge variant="secondary" className="bg-background/80 backdrop-blur-sm">
+                                            {scenario.difficulty}
+                                        </Badge>
+                                    </div>
+                                    {hasAttempt && (
+                                        <div className="absolute top-2 left-2">
+                                            <Badge variant="secondary" className="bg-background/80 backdrop-blur-sm text-xs">
                                                 Geübt
                                             </Badge>
-                                        )}
+                                        </div>
+                                    )}
+                                </div>
+
+                                <CardHeader className="pb-2 flex-1">
+                                    <CardTitle className="flex items-center gap-2 text-base">
+                                        <span className="text-lg">{scenario.icon}</span>
+                                        <span className="flex-1">{germanTranslation.title}</span>
                                     </CardTitle>
                                     <CardDescription>{germanTranslation.description}</CardDescription>
                                 </CardHeader>
                                 <CardContent className="flex gap-2 items-center mt-auto pt-0">
-                                    <Badge variant="secondary">{scenario.difficulty}</Badge>
                                     <Badge variant="outline" className="gap-1">
                                         {LANGUAGE_LABELS[selectedLanguage].flag}
                                     </Badge>
@@ -270,23 +294,36 @@ export function ConversationPageClient({ bestEvaluations, generatedScenarios }: 
                             return (
                                 <Card
                                     key={record.id}
-                                    className="cursor-pointer transition-colors hover:bg-accent/30 relative flex flex-col"
+                                    className="cursor-pointer transition-all hover:shadow-md hover:scale-[1.02] relative flex flex-col overflow-hidden"
                                     onClick={() => setActiveScenario(toConversationScenario(record))}
                                 >
-                                    <CardHeader className="pb-2 flex-1">
-                                        <CardTitle className="flex items-center gap-2 text-base">
-                                            <span className="text-xl">{record.icon}</span>
-                                            <span className="flex-1">{record.title}</span>
-                                            {hasAttempt && (
-                                                <Badge variant="secondary" className="text-xs">
+                                    {/* Gradient fallback for generated scenarios */}
+                                    <div className="relative h-36 w-full">
+                                        <div className="h-full w-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+                                            <span className="text-4xl">{record.icon}</span>
+                                        </div>
+                                        <div className="absolute top-2 right-2">
+                                            <Badge variant="secondary" className="bg-background/80 backdrop-blur-sm">
+                                                {record.difficulty}
+                                            </Badge>
+                                        </div>
+                                        {hasAttempt && (
+                                            <div className="absolute top-2 left-2">
+                                                <Badge variant="secondary" className="bg-background/80 backdrop-blur-sm text-xs">
                                                     Geübt
                                                 </Badge>
-                                            )}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <CardHeader className="pb-2 flex-1">
+                                        <CardTitle className="flex items-center gap-2 text-base">
+                                            <span className="text-lg">{record.icon}</span>
+                                            <span className="flex-1">{record.title}</span>
                                         </CardTitle>
                                         <CardDescription>{record.description}</CardDescription>
                                     </CardHeader>
                                     <CardContent className="flex gap-2 items-center mt-auto pt-0">
-                                        <Badge variant="secondary">{record.difficulty}</Badge>
                                         <Badge variant="outline" className="gap-1">
                                             {LANGUAGE_LABELS[record.language as Language]?.flag}
                                         </Badge>

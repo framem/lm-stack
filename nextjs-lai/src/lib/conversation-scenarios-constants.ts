@@ -4,6 +4,7 @@ export interface ConversationScenario {
     key: string
     difficulty: string // CEFR level
     icon: string       // emoji
+    heroImage?: string // Unsplash URL for scenario card hero image
     targetLanguages?: Language[] // if set, only shown for these target languages
     translations: {
         [lang in Language]: {
@@ -26,6 +27,7 @@ export const SCENARIOS: ConversationScenario[] = [
         key: 'cafe',
         difficulty: 'A1',
         icon: '☕',
+        heroImage: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=600&h=400&fit=crop',
         translations: {
             de: {
                 title: 'Im Café',
@@ -102,6 +104,7 @@ Termina la conversación de forma natural después del pago.`,
         key: 'restaurant',
         difficulty: 'A2',
         icon: '🍽️',
+        heroImage: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=600&h=400&fit=crop',
         translations: {
             de: {
                 title: 'Im Restaurant',
@@ -175,6 +178,7 @@ Termina la conversación de forma natural cuando el cliente haya pagado.`,
         key: 'arzt',
         difficulty: 'B1',
         icon: '🏥',
+        heroImage: 'https://images.unsplash.com/photo-1631815588090-d4bfec5b1ccb?w=600&h=400&fit=crop',
         translations: {
             de: {
                 title: 'Beim Arzt',
@@ -248,6 +252,7 @@ Termina la conversación cuando el paciente no tenga más preguntas.`,
         key: 'wegbeschreibung',
         difficulty: 'A2',
         icon: '🗺️',
+        heroImage: 'https://images.unsplash.com/photo-1519501025264-65ba15a82390?w=600&h=400&fit=crop',
         translations: {
             de: {
                 title: 'Wegbeschreibung',
@@ -321,6 +326,7 @@ Termina la conversación después de dar las indicaciones y confirmar que se ent
         key: 'supermarkt',
         difficulty: 'A1-A2',
         icon: '🛒',
+        heroImage: 'https://images.unsplash.com/photo-1604719312566-8912e9227c6a?w=600&h=400&fit=crop',
         translations: {
             de: {
                 title: 'Im Supermarkt',
@@ -394,6 +400,7 @@ Termina la conversación de forma natural después del pago en caja.`,
         key: 'hotel',
         difficulty: 'A2-B1',
         icon: '🏨',
+        heroImage: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=600&h=400&fit=crop',
         translations: {
             de: {
                 title: 'Im Hotel',
@@ -467,6 +474,7 @@ Termina la conversación cuando el huésped haya recibido toda la información n
         key: 'mercado',
         difficulty: 'A1-A2',
         icon: '🍊',
+        heroImage: 'https://images.unsplash.com/photo-1533900298318-6b8da08a523e?w=600&h=400&fit=crop',
         targetLanguages: ['es'],
         translations: {
             de: {
@@ -547,6 +555,7 @@ Termina la conversación cuando el cliente haya pagado y se despida.`,
         key: 'farmacia',
         difficulty: 'A2',
         icon: '💊',
+        heroImage: 'https://images.unsplash.com/photo-1587854692152-cbe660dbde88?w=600&h=400&fit=crop',
         targetLanguages: ['es'],
         translations: {
             de: {
@@ -627,6 +636,7 @@ Termina la conversación cuando el cliente tenga su medicamento y las instruccio
         key: 'estacion',
         difficulty: 'A2-B1',
         icon: '🚆',
+        heroImage: 'https://images.unsplash.com/photo-1474487548417-781cb71495f3?w=600&h=400&fit=crop',
         targetLanguages: ['es'],
         translations: {
             de: {
@@ -710,6 +720,7 @@ Termina la conversación cuando el viajero tenga su billete y sepa el andén.`,
         key: 'london_trip',
         difficulty: 'A2-B1',
         icon: '🎡',
+        heroImage: 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=600&h=400&fit=crop',
         targetLanguages: ['en'],
         translations: {
             de: {
@@ -787,6 +798,7 @@ End the conversation when the tourist has all they need to explore the city.`,
         key: 'nie',
         difficulty: 'B1',
         icon: '🏛️',
+        heroImage: 'https://images.unsplash.com/photo-1568992687947-868a62a9f521?w=600&h=400&fit=crop',
         targetLanguages: ['es'],
         translations: {
             de: {

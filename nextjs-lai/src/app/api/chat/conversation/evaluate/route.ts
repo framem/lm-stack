@@ -74,7 +74,10 @@ WICHTIG: Bewerte NUR die Nachrichten, die mit "Lernender:" markiert sind. Die "K
 
 Szenario: ${t.title} (${scenarioDef.difficulty})
 Beschreibung: ${t.description}
+Szenario-Kontext: ${t.systemPrompt}
 Sprache: ${lang === 'de' ? 'Deutsch' : lang === 'en' ? 'Englisch' : 'Spanisch'}
+
+WICHTIG: Der Lernende ist der KUNDE/PATIENT/REISENDE in diesem Szenario. Der KI-Partner spielt die Servicerolle (Kellner, Arzt, Verkäufer etc.). Bewerte den Lernenden entsprechend seiner Rolle als Kunde — er soll bestellen, fragen, antworten, NICHT die Servicerolle übernehmen.
 
 Bewertungskriterien:
 - Grammatik (1-10): Korrekte Satzstruktur, Konjugation, Kasus/Genus, Artikel des LERNENDEN

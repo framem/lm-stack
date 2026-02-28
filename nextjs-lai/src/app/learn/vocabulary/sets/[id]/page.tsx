@@ -11,12 +11,14 @@ import {
     RotateCcw,
     AlertCircle,
     Info,
+    Lock,
+    Sparkles,
+    Mic,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/card'
 import { Button } from '@/src/components/ui/button'
 import { Badge } from '@/src/components/ui/badge'
 import { Progress } from '@/src/components/ui/progress'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/src/components/ui/tooltip'
 import { getLanguageSetDetail } from '@/src/data-access/language-sets'
 import { getLanguageSet } from '@/src/data/language-sets'
 import { TTSButton } from '@/src/components/TTSButton'
@@ -217,103 +219,173 @@ export default async function LanguageSetDetailPage({ params }: Props) {
                         </Card>
                     )}
 
-                    {/* Category sections */}
+                    {/* Lesson timeline */}
                     <section className="space-y-6">
                         <h2 className="text-lg font-semibold">
-                            Kategorien
+                            Lektionen
                             <span className="text-sm font-normal text-muted-foreground ml-2">
                                 ({categories.length})
                             </span>
                         </h2>
-                        <div className="space-y-6">
+                        <div className="space-y-4">
                             {categories.map((cat) => {
-                                const masteredPct = cat.total > 0
-                                    ? Math.round((cat.masteredCount / cat.total) * 100)
-                                    : 0
+                                const isCompleted = cat.completedPct >= 80
+                                const isActive = cat.unlocked && !isCompleted
+                                const categoryParam = encodeURIComponent(cat.name)
+
                                 return (
-                                    <Card key={cat.name}>
+                                    <Card
+                                        key={cat.name}
+                                        className={!cat.unlocked ? 'opacity-50' : ''}
+                                    >
                                         <CardContent className="p-5 space-y-4">
-                                            {/* Category header */}
-                                            <div className="flex items-center justify-between gap-3">
-                                                <h3 className="font-semibold">{cat.name}</h3>
+                                            {/* Lesson header */}
+                                            <div className="flex items-center gap-3">
+                                                <div className={`flex items-center justify-center h-8 w-8 rounded-full shrink-0 text-sm font-bold ${
+                                                    isCompleted
+                                                        ? 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-400'
+                                                        : isActive
+                                                            ? 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-400'
+                                                            : 'bg-muted text-muted-foreground'
+                                                }`}>
+                                                    {isCompleted ? (
+                                                        <CheckCircle2 className="h-4 w-4" />
+                                                    ) : !cat.unlocked ? (
+                                                        <Lock className="h-3.5 w-3.5" />
+                                                    ) : (
+                                                        cat.lessonIndex + 1
+                                                    )}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2">
+                                                        <h3 className="font-semibold">Lektion {cat.lessonIndex + 1}: {cat.name}</h3>
+                                                        {isCompleted && (
+                                                            <Badge variant="default" className="bg-green-600 text-xs">Abgeschlossen</Badge>
+                                                        )}
+                                                        {isActive && (
+                                                            <Badge variant="default" className="bg-blue-600 text-xs">Aktiv</Badge>
+                                                        )}
+                                                        {!cat.unlocked && (
+                                                            <Badge variant="secondary" className="text-xs">Gesperrt</Badge>
+                                                        )}
+                                                    </div>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {cat.total} Vokabeln · {cat.masteredCount} beherrscht
+                                                        {cat.dueCount > 0 && ` · ${cat.dueCount} fällig`}
+                                                        {cat.newCount > 0 && ` · ${cat.newCount} neu`}
+                                                    </p>
+                                                </div>
                                                 <Badge variant="secondary" className="shrink-0">
-                                                    {cat.masteredCount}/{cat.total}
+                                                    {cat.completedPct}%
                                                 </Badge>
                                             </div>
 
                                             {/* Progress bar */}
                                             <div className="space-y-1">
-                                                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                                                    <TooltipProvider>
-                                                        <Tooltip>
-                                                            <TooltipTrigger className="flex items-center gap-1 cursor-help">
-                                                                <span>Beherrscht</span>
-                                                                <Info className="h-3 w-3" />
-                                                            </TooltipTrigger>
-                                                            <TooltipContent>
-                                                                Eine Vokabel gilt als beherrscht ab ≥ 3 erfolgreichen Wiederholungen.
-                                                            </TooltipContent>
-                                                        </Tooltip>
-                                                    </TooltipProvider>
-                                                    <span>{masteredPct}%</span>
-                                                </div>
-                                                <Progress value={masteredPct} className="h-1.5" />
+                                                <Progress value={cat.completedPct} className="h-2" />
+                                                {!cat.unlocked && (
+                                                    <p className="text-xs text-muted-foreground">
+                                                        Schließe Lektion {cat.lessonIndex} ab, um diese Lektion freizuschalten.
+                                                    </p>
+                                                )}
                                             </div>
 
-                                            {/* Vocab item list */}
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                                                {cat.cards.map((card) => {
-                                                    const reps = card.progress?.reps ?? card.progress?.repetitions ?? 0
-                                                    const isMastered = reps >= 3
-                                                    const isLearning = reps >= 1 && reps < 3
-                                                    return (
-                                                        <div
-                                                            key={card.id}
-                                                            className="flex items-start justify-between gap-2 rounded-lg border px-3 py-2 text-sm"
-                                                        >
-                                                            <div className="min-w-0 flex-1">
-                                                                <div className="flex items-center gap-1">
-                                                                    <p className="font-medium truncate">{card.front}</p>
-                                                                    <TTSButton
-                                                                        text={card.front}
-                                                                        lang={SUBJECT_LANG_MAP[set.subject] ?? 'de-DE'}
-                                                                        size="sm"
-                                                                        className="shrink-0 -my-1"
-                                                                    />
-                                                                </div>
-                                                                <p className="text-muted-foreground truncate">{card.back}</p>
-                                                                {card.exampleSentence && (
-                                                                    <div className="flex items-start gap-1 mt-1.5">
-                                                                        <p className="text-xs text-muted-foreground italic leading-snug">{card.exampleSentence}</p>
-                                                                        <TTSButton
-                                                                            text={card.exampleSentence}
-                                                                            lang={SUBJECT_LANG_MAP[set.subject] ?? 'de-DE'}
-                                                                            size="sm"
-                                                                            className="shrink-0 -mt-0.5"
-                                                                        />
+                                            {/* Action buttons for unlocked lessons */}
+                                            {cat.unlocked && (
+                                                <div className="flex flex-wrap gap-2">
+                                                    {cat.newCount > 0 && (
+                                                        <Button size="sm" asChild>
+                                                            <Link href={`/learn/vocabulary/study?mode=flip&doc=${documentId}&category=${categoryParam}&new=true`}>
+                                                                <Sparkles className="h-3.5 w-3.5" />
+                                                                Neue lernen ({cat.newCount})
+                                                            </Link>
+                                                        </Button>
+                                                    )}
+                                                    {cat.dueCount > 0 && (
+                                                        <Button size="sm" variant={cat.newCount === 0 ? 'default' : 'outline'} asChild>
+                                                            <Link href={`/learn/vocabulary/study?mode=flip&doc=${documentId}&category=${categoryParam}`}>
+                                                                <RotateCcw className="h-3.5 w-3.5" />
+                                                                Fällige wiederholen ({cat.dueCount})
+                                                            </Link>
+                                                        </Button>
+                                                    )}
+                                                    <Button size="sm" variant="outline" asChild>
+                                                        <Link href={`/learn/vocabulary/study?mode=type&doc=${documentId}&category=${categoryParam}`}>
+                                                            <Keyboard className="h-3.5 w-3.5" />
+                                                            Tipp-Modus
+                                                        </Link>
+                                                    </Button>
+                                                    <Button size="sm" variant="outline" asChild>
+                                                        <Link href={`/learn/vocabulary/study?mode=speech&doc=${documentId}&category=${categoryParam}`}>
+                                                            <Mic className="h-3.5 w-3.5" />
+                                                            Sprech-Modus
+                                                        </Link>
+                                                    </Button>
+                                                </div>
+                                            )}
+
+                                            {/* Expandable vocab list for unlocked lessons */}
+                                            {cat.unlocked && (
+                                                <details className="group">
+                                                    <summary className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors select-none">
+                                                        <Info className="h-3 w-3" />
+                                                        Vokabeln anzeigen
+                                                    </summary>
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 mt-3">
+                                                        {cat.cards.map((card) => {
+                                                            const reps = card.progress?.reps ?? card.progress?.repetitions ?? 0
+                                                            const isMastered = reps >= 3
+                                                            const isLearning = reps >= 1 && reps < 3
+                                                            return (
+                                                                <div
+                                                                    key={card.id}
+                                                                    className="flex items-start justify-between gap-2 rounded-lg border px-3 py-2 text-sm"
+                                                                >
+                                                                    <div className="min-w-0 flex-1">
+                                                                        <div className="flex items-center gap-1">
+                                                                            <p className="font-medium truncate">{card.front}</p>
+                                                                            <TTSButton
+                                                                                text={card.front}
+                                                                                lang={SUBJECT_LANG_MAP[set.subject] ?? 'de-DE'}
+                                                                                size="sm"
+                                                                                className="shrink-0 -my-1"
+                                                                            />
+                                                                        </div>
+                                                                        <p className="text-muted-foreground truncate">{card.back}</p>
+                                                                        {card.exampleSentence && (
+                                                                            <div className="flex items-start gap-1 mt-1.5">
+                                                                                <p className="text-xs text-muted-foreground italic leading-snug">{card.exampleSentence}</p>
+                                                                                <TTSButton
+                                                                                    text={card.exampleSentence}
+                                                                                    lang={SUBJECT_LANG_MAP[set.subject] ?? 'de-DE'}
+                                                                                    size="sm"
+                                                                                    className="shrink-0 -mt-0.5"
+                                                                                />
+                                                                            </div>
+                                                                        )}
                                                                     </div>
-                                                                )}
-                                                            </div>
-                                                            <div className="flex flex-col items-end gap-1 shrink-0">
-                                                                {card.partOfSpeech && (
-                                                                    <Badge variant="outline" className="text-xs">
-                                                                        {card.partOfSpeech}
-                                                                    </Badge>
-                                                                )}
-                                                                {isMastered ? (
-                                                                    <Badge variant="default" className="text-xs bg-green-600">
-                                                                        ✓
-                                                                    </Badge>
-                                                                ) : isLearning ? (
-                                                                    <Badge variant="secondary" className="text-xs">
-                                                                        {reps}/3
-                                                                    </Badge>
-                                                                ) : null}
-                                                            </div>
-                                                        </div>
-                                                    )
-                                                })}
-                                            </div>
+                                                                    <div className="flex flex-col items-end gap-1 shrink-0">
+                                                                        {card.partOfSpeech && (
+                                                                            <Badge variant="outline" className="text-xs">
+                                                                                {card.partOfSpeech}
+                                                                            </Badge>
+                                                                        )}
+                                                                        {isMastered ? (
+                                                                            <Badge variant="default" className="text-xs bg-green-600">
+                                                                                ✓
+                                                                            </Badge>
+                                                                        ) : isLearning ? (
+                                                                            <Badge variant="secondary" className="text-xs">
+                                                                                {reps}/3
+                                                                            </Badge>
+                                                                        ) : null}
+                                                                    </div>
+                                                                </div>
+                                                            )
+                                                        })}
+                                                    </div>
+                                                </details>
+                                            )}
                                         </CardContent>
                                     </Card>
                                 )
