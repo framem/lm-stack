@@ -17,6 +17,8 @@ import {
     getCachedUserStats,
     getCachedCefrProgress,
     getCachedTodayTasks,
+    getCachedDueVocabByLanguage,
+    getCachedDueDocumentFlashcardCount,
 } from '@/src/lib/dashboard-cache'
 import {Badge} from '@/src/components/ui/badge'
 import {Progress} from '@/src/components/ui/progress'
@@ -31,7 +33,7 @@ import {getEarnedBadges} from '@/src/data-access/badges'
 import {ConversationWidget} from '@/src/components/ConversationWidget'
 
 export default async function DashboardPage() {
-    const [documents, sessions, quizzes, quizProgress, flashcardProgress, dueQuizReviews, dueFlashcardReviews, totalFlashcards, userStats, cefrProgress, todayTasks, profile, earnedBadges] = await Promise.all([
+    const [documents, sessions, quizzes, quizProgress, flashcardProgress, dueQuizReviews, dueFlashcardReviews, totalFlashcards, userStats, cefrProgress, todayTasks, profile, earnedBadges, dueVocabByLanguage, dueDocumentFlashcards] = await Promise.all([
         getCachedDocuments(),
         getCachedSessions(),
         getCachedQuizzes(),
@@ -45,6 +47,8 @@ export default async function DashboardPage() {
         getCachedTodayTasks(),
         getLearnerProfile(),
         getEarnedBadges(),
+        getCachedDueVocabByLanguage(),
+        getCachedDueDocumentFlashcardCount(),
     ])
 
     // Action labels for document cards
@@ -192,6 +196,8 @@ export default async function DashboardPage() {
                 <TodayActionWidget
                     dueFlashcards={dueFlashcardReviews}
                     dueQuizReviews={dueQuizReviews}
+                    dueVocabByLanguage={dueVocabByLanguage}
+                    dueDocumentFlashcards={dueDocumentFlashcards}
                     weakestDocument={weakestDocument ? {
                         id: weakestDocument.documentId,
                         title: weakestDocument.documentTitle,

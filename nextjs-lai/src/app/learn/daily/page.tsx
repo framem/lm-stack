@@ -9,11 +9,10 @@ import {
     HelpCircle,
     Layers,
     ArrowRight,
-    MessageSquare,
     Zap,
-    Clock,
     Flame,
     GraduationCap,
+    Languages,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/src/components/ui/card'
 import { Button } from '@/src/components/ui/button'
@@ -24,8 +23,6 @@ import { getDailyPracticeItems } from '@/src/actions/session'
 import { getUserStats } from '@/src/actions/user-stats'
 import { reviewFlashcard } from '@/src/actions/flashcards'
 import { evaluateAnswer } from '@/src/actions/quiz'
-import { TTSButton } from '@/src/components/TTSButton'
-import { detectLanguageFromSubject, extractCEFRLevel, compareCEFRLevels } from '@/src/lib/language-utils'
 
 interface FlashcardData {
     id: string
@@ -57,14 +54,6 @@ const FLASHCARD_RATINGS = [
     { quality: 5, label: 'Kenne ich', variant: 'default' as const },
 ]
 
-// Random conversation scenarios to suggest
-const CONVERSATION_SUGGESTIONS = [
-    { key: 'cafe', icon: '\u2615', label: 'Im Caf\u00e9', level: 'A1' },
-    { key: 'supermarkt', icon: '\u{1F6D2}', label: 'Im Supermarkt', level: 'A1-A2' },
-    { key: 'wegbeschreibung', icon: '\u{1F5FA}\uFE0F', label: 'Wegbeschreibung', level: 'A2' },
-    { key: 'restaurant', icon: '\u{1F37D}\uFE0F', label: 'Im Restaurant', level: 'A2' },
-]
-
 export default function DailyPracticePage() {
     const [items, setItems] = useState<SessionItem[]>([])
     const [currentIndex, setCurrentIndex] = useState(0)
@@ -89,7 +78,7 @@ export default function DailyPracticePage() {
         async function load() {
             try {
                 const [data, stats] = await Promise.all([
-                    getDailyPracticeItems(),
+                    getDailyPracticeItems('documents-only'),
                     getUserStats(),
                 ])
                 setItems(data as unknown as SessionItem[])
@@ -115,44 +104,15 @@ export default function DailyPracticePage() {
 
     function getDailySubtitle(count: number): string {
         if (streak > 1 && allFlashcardsNew)
-            return `Tag ${streak} — ${flashcardCount} neue ${flashcardCount === 1 ? 'Vokabel' : 'Vokabeln'} lernen!`
+            return `Tag ${streak} — ${flashcardCount} neue ${flashcardCount === 1 ? 'Karteikarte' : 'Karteikarten'} lernen!`
         if (streak > 1)
             return `Tag ${streak} — Streak halten mit ${count} ${count === 1 ? 'Aufgabe' : 'Aufgaben'}!`
         if (allFlashcardsNew)
-            return count <= 3 ? 'Neue Vokabeln — gleich geschafft!' : `${flashcardCount} neue Vokabeln für heute`
+            return count <= 3 ? 'Neue Karteikarten — gleich geschafft!' : `${flashcardCount} neue Karteikarten für heute`
         if (count <= 3) return 'Schnelle Runde — gleich geschafft!'
         if (count <= 6) return `${count} Aufgaben für heute`
         return `${count} Aufgaben — du schaffst das!`
     }
-
-    // Detect language and CEFR level from flashcard subjects
-    const { detectedLang, userLevel } = (() => {
-        let lang = 'de'
-        let maxLevel: string | null = null
-
-        for (const item of items) {
-            if (item.type === 'flashcard' && 'document' in item.data) {
-                const subject = (item.data as FlashcardData).document?.subject
-
-                // Detect language
-                const ttsLang = detectLanguageFromSubject(subject)
-                if (ttsLang.startsWith('es')) lang = 'es'
-                else if (ttsLang.startsWith('en')) lang = 'en'
-                else if (ttsLang.startsWith('fr')) lang = 'fr'
-                else if (ttsLang.startsWith('it')) lang = 'it'
-
-                // Extract CEFR level
-                const level = extractCEFRLevel(subject)
-                if (level) {
-                    if (!maxLevel || compareCEFRLevels(level, maxLevel)) {
-                        maxLevel = level
-                    }
-                }
-            }
-        }
-
-        return { detectedLang: lang, userLevel: maxLevel || 'A1' }
-    })()
 
     const resetState = useCallback(() => {
         setFlipped(false)
@@ -199,16 +159,6 @@ export default function DailyPracticePage() {
         }
     }
 
-    // Filter conversation suggestions by user's CEFR level
-    const suitableScenarios = CONVERSATION_SUGGESTIONS.filter((scenario) => {
-        // Extract highest level from difficulty string (e.g., "A1-A2" → "A2")
-        const levels = scenario.level.match(/[ABC][12]/g)
-        if (!levels) return true // If no level specified, show it
-
-        const scenarioMaxLevel = levels[levels.length - 1] // Take highest level
-        return compareCEFRLevels(userLevel, scenarioMaxLevel)
-    })
-
     if (loading) {
         return (
             <div className="flex items-center justify-center h-64">
@@ -228,27 +178,17 @@ export default function DailyPracticePage() {
                 <div>
                     <h1 className="text-2xl font-bold">Alles erledigt!</h1>
                     <p className="text-muted-foreground mt-2">
-                        Heute sind keine Wiederholungen fällig. Wie wäre es mit einer Konversationsübung?
+                        Heute sind keine Dokument-Wiederholungen fällig.
                     </p>
                 </div>
-                <div className="flex flex-col gap-3 max-w-md mx-auto">
-                    <p className="text-sm text-muted-foreground text-center mb-2">
-                        Wähle ein Szenario zum Üben:
-                    </p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {suitableScenarios.map((scenario) => (
-                            <Button key={scenario.key} variant="outline" asChild className="h-auto py-3">
-                                <Link href={`/learn/conversation?scenario=${scenario.key}&language=${detectedLang}`}>
-                                    <div className="flex flex-col items-center gap-1">
-                                        <span className="text-2xl">{scenario.icon}</span>
-                                        <span className="text-sm font-medium">{scenario.label}</span>
-                                        <Badge variant="secondary" className="text-xs">{scenario.level}</Badge>
-                                    </div>
-                                </Link>
-                            </Button>
-                        ))}
-                    </div>
-                    <Button variant="ghost" asChild className="mt-2">
+                <div className="flex flex-col gap-3 items-center">
+                    <Button asChild>
+                        <Link href="/learn/language">
+                            <Languages className="h-4 w-4" />
+                            Zum Sprachtrainer
+                        </Link>
+                    </Button>
+                    <Button variant="ghost" asChild>
                         <Link href="/learn">
                             Zurück zum Dashboard
                         </Link>
@@ -288,35 +228,13 @@ export default function DailyPracticePage() {
                     )}
                 </div>
 
-                {/* Conversation prompt */}
-                <Card className="border-primary/30 bg-gradient-to-r from-primary/5 to-background">
-                    <CardContent className="p-6 space-y-4">
-                        <div className="flex items-center gap-2">
-                            <MessageSquare className="h-5 w-5 text-primary" />
-                            <h3 className="font-semibold">Konversation</h3>
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                            Übe eine kurze Konversation, um dein Sprechen zu verbessern.
-                        </p>
-                            <div className="grid grid-cols-2 gap-2">
-                            {suitableScenarios.map((scenario) => (
-                                <Button key={scenario.key} variant="outline" asChild size="sm" className="h-auto py-2">
-                                    <Link href={`/learn/conversation?scenario=${scenario.key}&language=${detectedLang}`}>
-                                        <div className="flex flex-col items-center gap-1 w-full">
-                                            <div className="flex items-center gap-1">
-                                                <span>{scenario.icon}</span>
-                                                <span className="text-sm truncate">{scenario.label}</span>
-                                            </div>
-                                            <Badge variant="secondary" className="text-xs">{scenario.level}</Badge>
-                                        </div>
-                                    </Link>
-                                </Button>
-                            ))}
-                        </div>
-                    </CardContent>
-                </Card>
-
                 <div className="flex flex-col items-center gap-3">
+                    <Button variant="outline" asChild>
+                        <Link href="/learn/language">
+                            <Languages className="h-4 w-4" />
+                            Zum Sprachtrainer
+                        </Link>
+                    </Button>
                     <Button variant="outline" asChild>
                         <Link href="/learn/session">
                             <GraduationCap className="h-4 w-4" />
@@ -381,7 +299,7 @@ export default function DailyPracticePage() {
                 <div className="space-y-4">
                     <Badge variant="secondary" className="gap-1">
                         <Layers className="h-3 w-3" />
-                        Vokabel
+                        Karteikarte
                     </Badge>
 
                     <div
@@ -400,13 +318,7 @@ export default function DailyPracticePage() {
                         <div className={`relative transition-transform duration-500 [transform-style:preserve-3d] ${flipped ? '[transform:rotateY(180deg)]' : ''}`}>
                             <Card className="[backface-visibility:hidden] min-h-[180px]">
                                 <CardContent className="flex flex-col items-center justify-center min-h-[180px] p-8 text-center">
-                                    <div className="flex items-center gap-2">
-                                        <p className="text-xl font-semibold">{(currentItem.data as FlashcardData).front}</p>
-                                        <TTSButton
-                                            text={(currentItem.data as FlashcardData).front}
-                                            lang={detectLanguageFromSubject((currentItem.data as FlashcardData).document?.subject)}
-                                        />
-                                    </div>
+                                    <p className="text-xl font-semibold">{(currentItem.data as FlashcardData).front}</p>
                                     {!flipped && (
                                         <p className="text-sm text-muted-foreground mt-4">Klicken zum Umdrehen</p>
                                     )}
@@ -414,14 +326,7 @@ export default function DailyPracticePage() {
                             </Card>
                             <Card className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)] min-h-[180px]">
                                 <CardContent className="flex flex-col items-center justify-center min-h-[180px] p-8 text-center">
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <p className="text-xs text-muted-foreground italic">{(currentItem.data as FlashcardData).front}</p>
-                                        <TTSButton
-                                            text={(currentItem.data as FlashcardData).front}
-                                            lang={detectLanguageFromSubject((currentItem.data as FlashcardData).document?.subject)}
-                                            size="sm"
-                                        />
-                                    </div>
+                                    <p className="text-xs text-muted-foreground italic mb-2">{(currentItem.data as FlashcardData).front}</p>
                                     <p className="text-lg">{(currentItem.data as FlashcardData).back}</p>
                                 </CardContent>
                             </Card>

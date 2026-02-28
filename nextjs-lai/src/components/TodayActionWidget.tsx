@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Layers, HelpCircle, BookOpen, Clock, Sparkles, GraduationCap, Zap } from 'lucide-react'
+import { Layers, HelpCircle, BookOpen, Clock, Sparkles, GraduationCap, Zap, Languages } from 'lucide-react'
 import { Card, CardContent } from '@/src/components/ui/card'
 import { Button } from '@/src/components/ui/button'
 import { Badge } from '@/src/components/ui/badge'
@@ -9,6 +9,8 @@ import { generateLearningRecommendation } from '@/src/lib/learning-path-generato
 interface TodayActionWidgetProps {
     dueFlashcards: number
     dueQuizReviews: number
+    dueVocabByLanguage?: Record<string, number>
+    dueDocumentFlashcards?: number
     weakestDocument?: {
         id: string
         title: string
@@ -23,9 +25,12 @@ interface TodayActionWidgetProps {
 export async function TodayActionWidget({
     dueFlashcards,
     dueQuizReviews,
+    dueVocabByLanguage,
+    dueDocumentFlashcards,
     weakestDocument,
 }: TodayActionWidgetProps) {
-    const totalDue = dueFlashcards + dueQuizReviews
+    const vocabTotal = Object.values(dueVocabByLanguage ?? {}).reduce((a, b) => a + b, 0)
+    const totalDue = (dueDocumentFlashcards ?? dueFlashcards) + dueQuizReviews + vocabTotal
     const hasDueReviews = totalDue > 0
 
     // Fetch recommendation only if no due reviews
@@ -58,7 +63,19 @@ export async function TodayActionWidget({
                         </h2>
                         <p className="text-sm text-muted-foreground">
                             {hasDueReviews
-                                ? `${totalDue} Wiederholung${totalDue !== 1 ? 'en' : ''} fällig`
+                                ? (() => {
+                                    const parts: string[] = []
+                                    if (dueVocabByLanguage) {
+                                        for (const [lang, count] of Object.entries(dueVocabByLanguage)) {
+                                            if (count > 0) parts.push(`${count} ${lang}-Vokabeln`)
+                                        }
+                                    }
+                                    const docDue = (dueDocumentFlashcards ?? dueFlashcards) + dueQuizReviews
+                                    if (docDue > 0) parts.push(`${docDue} Dokument-Wiederholungen`)
+                                    return parts.length > 0
+                                        ? parts.join(', ') + ' fällig'
+                                        : `${totalDue} Wiederholung${totalDue !== 1 ? 'en' : ''} fällig`
+                                })()
                                 : recommendation?.reason || 'Mach weiter so!'}
                         </p>
                     </div>
@@ -103,10 +120,22 @@ export async function TodayActionWidget({
                 {/* Due badges */}
                 {hasDueReviews && (
                     <div className="flex flex-wrap items-center gap-2">
-                        {dueFlashcards > 0 && (
+                        {/* Per-language vocab badges */}
+                        {dueVocabByLanguage && Object.entries(dueVocabByLanguage).map(([lang, count]) => (
+                            count > 0 && (
+                                <Link key={lang} href={`/learn/language/${encodeURIComponent(lang)}`}>
+                                    <Badge variant="secondary" className="gap-1 cursor-pointer hover:bg-secondary/80">
+                                        <Languages className="h-3 w-3" />
+                                        {count} {lang}-Vokabel{count !== 1 ? 'n' : ''}
+                                    </Badge>
+                                </Link>
+                            )
+                        ))}
+                        {/* Document flashcards */}
+                        {(dueDocumentFlashcards ?? dueFlashcards) > 0 && (
                             <Badge variant="secondary" className="gap-1">
                                 <Layers className="h-3 w-3" />
-                                {dueFlashcards} Karteikarte{dueFlashcards !== 1 ? 'n' : ''}
+                                {dueDocumentFlashcards ?? dueFlashcards} Dokument-Karteikarte{(dueDocumentFlashcards ?? dueFlashcards) !== 1 ? 'n' : ''}
                             </Badge>
                         )}
                         {dueQuizReviews > 0 && (

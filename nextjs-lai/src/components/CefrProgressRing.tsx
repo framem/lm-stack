@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { Languages, Target, Calendar, Plus, Trash2, Info } from 'lucide-react'
 import { Card, CardContent } from '@/src/components/ui/card'
 import { Button } from '@/src/components/ui/button'
@@ -178,32 +179,37 @@ export function CefrProgressRing({ progress }: CefrProgressRingProps) {
 
                             return (
                                 <div key={p.id} className="flex items-center gap-4">
-                                    <ProgressRing percentage={p.percentage} level={p.targetLevel} />
-                                    <div className="flex-1 min-w-0 space-y-1">
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-lg">{LANGUAGE_FLAGS[p.language]}</span>
-                                            <span className="font-semibold">
-                                                {LANGUAGE_LABELS[p.language] ?? p.language}
-                                            </span>
-                                            <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${colors.bg} ${colors.text}`}>
-                                                {p.targetLevel}
-                                            </span>
+                                    <Link
+                                        href={`/learn/language/${encodeURIComponent(LANGUAGE_LABELS[p.language] ?? p.language)}`}
+                                        className="flex items-center gap-4 flex-1 min-w-0 hover:opacity-80 transition-opacity"
+                                    >
+                                        <ProgressRing percentage={p.percentage} level={p.targetLevel} />
+                                        <div className="flex-1 min-w-0 space-y-1">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-lg">{LANGUAGE_FLAGS[p.language]}</span>
+                                                <span className="font-semibold">
+                                                    {LANGUAGE_LABELS[p.language] ?? p.language}
+                                                </span>
+                                                <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${colors.bg} ${colors.text}`}>
+                                                    {p.targetLevel}
+                                                </span>
+                                            </div>
+                                            <p className="text-sm text-muted-foreground">
+                                                {p.vocabMastered} / {p.targetCount} Wörter beherrscht
+                                            </p>
+                                            {p.vocabLearning > p.vocabMastered && (
+                                                <p className="text-xs text-muted-foreground">
+                                                    + {p.vocabLearning - p.vocabMastered} in Wiederholung
+                                                </p>
+                                            )}
+                                            {deadlineStr && (
+                                                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                                    <Calendar className="h-3 w-3" />
+                                                    Ziel: {deadlineStr}
+                                                </p>
+                                            )}
                                         </div>
-                                        <p className="text-sm text-muted-foreground">
-                                            {p.vocabMastered} / {p.targetCount} Wörter beherrscht
-                                        </p>
-                                        {p.vocabLearning > p.vocabMastered && (
-                                            <p className="text-xs text-muted-foreground">
-                                                + {p.vocabLearning - p.vocabMastered} in Wiederholung
-                                            </p>
-                                        )}
-                                        {deadlineStr && (
-                                            <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                                <Calendar className="h-3 w-3" />
-                                                Ziel: {deadlineStr}
-                                            </p>
-                                        )}
-                                    </div>
+                                    </Link>
                                     <Button
                                         variant="ghost"
                                         size="icon"

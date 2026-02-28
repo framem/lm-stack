@@ -3,7 +3,7 @@ import { revalidatePath } from 'next/cache'
 import { getDocuments } from '@/src/data-access/documents'
 import { getSessions } from '@/src/data-access/chat'
 import { getDocumentProgress, getDueReviewCount, getQuizzes } from '@/src/data-access/quiz'
-import { getDueFlashcardCount, getFlashcardCount, getFlashcardDocumentProgress } from '@/src/data-access/flashcards'
+import { getDueFlashcardCount, getFlashcardCount, getFlashcardDocumentProgress, getDueVocabularyCountByLanguage, getDueDocumentFlashcardCount } from '@/src/data-access/flashcards'
 import { getOrCreateUserStats } from '@/src/data-access/user-stats'
 import { getCefrProgress } from '@/src/data-access/learning-goal'
 import { getTodayTasks } from '@/src/data-access/study-plan'
@@ -22,6 +22,8 @@ export const getCachedFlashcardCount = cache(() => getFlashcardCount())
 export const getCachedUserStats = cache(() => getOrCreateUserStats())
 export const getCachedCefrProgress = cache(() => getCefrProgress())
 export const getCachedTodayTasks = cache(() => getTodayTasks())
+export const getCachedDueVocabByLanguage = cache(() => getDueVocabularyCountByLanguage())
+export const getCachedDueDocumentFlashcardCount = cache(() => getDueDocumentFlashcardCount())
 
 // Revalidation helpers — call after mutations to refresh dashboard
 export function revalidateDocuments() { revalidatePath('/learn') }

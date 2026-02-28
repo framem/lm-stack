@@ -11,6 +11,7 @@ import {
     ArrowRight,
     GraduationCap,
     PenLine,
+    Languages,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/src/components/ui/card'
 import { Button } from '@/src/components/ui/button'
@@ -98,7 +99,7 @@ export function SessionContent() {
     useEffect(() => {
         async function load() {
             try {
-                const data = await getCombinedDueItems(30)
+                const data = await getCombinedDueItems(30, 'documents-only')
                 setItems(data as unknown as SessionItem[])
             } catch (err) {
                 console.error('Failed to load session items:', err)
@@ -222,13 +223,19 @@ export function SessionContent() {
                 <div>
                     <h1 className="text-2xl font-bold">Alles gelernt!</h1>
                     <p className="text-muted-foreground mt-2">
-                        Aktuell sind keine Wiederholungen fällig. Schau später nochmal vorbei.
+                        Aktuell sind keine Dokument-Wiederholungen fällig. Schau später nochmal vorbei.
                     </p>
                 </div>
                 <Button asChild>
                     <Link href="/learn">
                         <GraduationCap className="h-4 w-4" />
                         Zurück zum Dashboard
+                    </Link>
+                </Button>
+                <Button variant="outline" asChild>
+                    <Link href="/learn/language">
+                        <Languages className="h-4 w-4" />
+                        Sprachen lernen? Zum Sprachtrainer
                     </Link>
                 </Button>
             </div>
@@ -300,7 +307,7 @@ export function SessionContent() {
                     Lern-Session
                 </h1>
                 <p className="text-sm text-muted-foreground flex items-center justify-center gap-3">
-                    <span>Alle fälligen Wiederholungen —</span>
+                    <span>Fällige Dokument-Wiederholungen —</span>
                     <span className="flex items-center gap-1">
                         <Layers className="h-4 w-4" />
                         {items.filter(i => i.type === 'flashcard').length} Karteikarten

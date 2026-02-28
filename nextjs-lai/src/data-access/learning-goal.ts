@@ -3,6 +3,13 @@ import { getWordList } from '@/src/data/cefr-reference'
 import { getLanguageSet } from '@/src/data/language-sets'
 import type { CefrLevel } from '@/src/data/cefr-reference/types'
 
+// Map language codes to subject names used in document records
+const LANGUAGE_CODE_TO_SUBJECT: Record<string, string> = {
+    es: 'Spanisch',
+    en: 'Englisch',
+    de: 'Deutsch',
+}
+
 // Create or update a learning goal for a language
 export async function upsertLearningGoal(data: {
     language: string
@@ -69,41 +76,49 @@ export async function getCefrProgress() {
     const goals = await getLearningGoals()
     if (goals.length === 0) return []
 
-    // Get mastered vocabulary count (repetitions >= 3 means well-learned in SM-2)
-    const masteredCount = await prisma.flashcard.count({
-        where: {
-            isVocabulary: true,
-            progress: { repetitions: { gte: 3 } },
-        },
-    })
+    // Query per-goal counts in parallel, filtering by language subject
+    const results = await Promise.all(
+        goals.map(async (goal) => {
+            const subjectName = LANGUAGE_CODE_TO_SUBJECT[goal.language] ?? goal.language
+            const languageFilter = {
+                isVocabulary: true,
+                document: { subject: subjectName, fileType: 'language-set' as const },
+            }
 
-    // Get total vocabulary flashcard count
-    const totalVocab = await prisma.flashcard.count({
-        where: { isVocabulary: true },
-    })
+            const [masteredCount, totalVocab, learningCount] = await Promise.all([
+                prisma.flashcard.count({
+                    where: {
+                        ...languageFilter,
+                        progress: { repetitions: { gte: 3 } },
+                    },
+                }),
+                prisma.flashcard.count({
+                    where: languageFilter,
+                }),
+                prisma.flashcard.count({
+                    where: {
+                        ...languageFilter,
+                        progress: { isNot: null },
+                    },
+                }),
+            ])
 
-    // Get learning/reviewed vocabulary count (has any progress record)
-    const learningCount = await prisma.flashcard.count({
-        where: {
-            isVocabulary: true,
-            progress: { isNot: null },
-        },
-    })
+            const target = getTargetVocabCount(goal.language, goal.targetLevel)
+            const vocabPercentage = target > 0 ? Math.min(100, Math.round((masteredCount / target) * 100)) : 0
 
-    return goals.map((goal) => {
-        const target = getTargetVocabCount(goal.language, goal.targetLevel)
-        const vocabPercentage = target > 0 ? Math.min(100, Math.round((masteredCount / target) * 100)) : 0
+            return {
+                id: goal.id,
+                language: goal.language,
+                targetLevel: goal.targetLevel,
+                deadline: goal.deadline,
+                vocabMastered: masteredCount,
+                vocabLearning: learningCount,
+                vocabTotal: totalVocab,
+                targetCount: target,
+                percentage: vocabPercentage,
+            }
+        })
+    )
 
-        return {
-            id: goal.id,
-            language: goal.language,
-            targetLevel: goal.targetLevel,
-            deadline: goal.deadline,
-            vocabMastered: masteredCount,
-            vocabLearning: learningCount,
-            vocabTotal: totalVocab,
-            targetCount: target,
-            percentage: vocabPercentage,
-        }
-    })
+    return results
 }

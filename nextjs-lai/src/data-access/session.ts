@@ -1,5 +1,7 @@
-import { getDueFlashcards, getDueVocabularyFlashcards } from './flashcards'
+import { getDueFlashcards, getDueVocabularyFlashcards, getDueFlashcardsForLanguage } from './flashcards'
 import { getDueQuestions } from './quiz'
+
+export type SessionMode = 'documents-only' | 'language' | 'all'
 
 export interface CombinedItem {
     type: 'flashcard' | 'quiz'
@@ -9,11 +11,30 @@ export interface CombinedItem {
 }
 
 // Get a mixed list of due flashcards and quiz questions sorted by urgency
-export async function getCombinedDueItems(limit: number = 30): Promise<CombinedItem[]> {
-    const [flashcards, questions] = await Promise.all([
-        getDueFlashcards(limit),
-        getDueQuestions(limit),
-    ])
+export async function getCombinedDueItems(
+    limit: number = 30,
+    mode: SessionMode = 'all',
+    language?: string,
+): Promise<CombinedItem[]> {
+    let flashcards: Awaited<ReturnType<typeof getDueFlashcards>>
+    let questions: Awaited<ReturnType<typeof getDueQuestions>>
+
+    if (mode === 'documents-only') {
+        ;[flashcards, questions] = await Promise.all([
+            getDueFlashcards(limit, true),
+            getDueQuestions(limit, { excludeLanguageSets: true }),
+        ])
+    } else if (mode === 'language' && language) {
+        ;[flashcards, questions] = await Promise.all([
+            getDueFlashcardsForLanguage(language, limit),
+            getDueQuestions(limit, { language }),
+        ])
+    } else {
+        ;[flashcards, questions] = await Promise.all([
+            getDueFlashcards(limit),
+            getDueQuestions(limit),
+        ])
+    }
 
     const now = Date.now()
     const items: CombinedItem[] = []
@@ -54,15 +75,33 @@ const DAILY_VOCAB_CAP = 5
 const DAILY_QUIZ_CAP = 3
 
 /**
- * Get a curated daily practice set sorted by SM-2 overdue urgency.
+ * Get a curated daily practice set sorted by FSRS overdue urgency.
  * Caps at DAILY_VOCAB_CAP vocab cards + DAILY_QUIZ_CAP quiz questions so the
  * session stays quick (streak-keeper), not exhaustive like getCombinedDueItems.
  */
-export async function getDailyPracticeItems(): Promise<CombinedItem[]> {
-    const [vocabCards, questions] = await Promise.all([
-        getDueVocabularyFlashcards(DAILY_VOCAB_CAP),
-        getDueQuestions(DAILY_QUIZ_CAP),
-    ])
+export async function getDailyPracticeItems(
+    mode: SessionMode = 'all',
+    language?: string,
+): Promise<CombinedItem[]> {
+    let vocabCards: Awaited<ReturnType<typeof getDueVocabularyFlashcards>>
+    let questions: Awaited<ReturnType<typeof getDueQuestions>>
+
+    if (mode === 'documents-only') {
+        ;[vocabCards, questions] = await Promise.all([
+            getDueFlashcards(DAILY_VOCAB_CAP, true) as ReturnType<typeof getDueVocabularyFlashcards>,
+            getDueQuestions(DAILY_QUIZ_CAP, { excludeLanguageSets: true }),
+        ])
+    } else if (mode === 'language' && language) {
+        ;[vocabCards, questions] = await Promise.all([
+            getDueFlashcardsForLanguage(language, DAILY_VOCAB_CAP) as ReturnType<typeof getDueVocabularyFlashcards>,
+            getDueQuestions(DAILY_QUIZ_CAP, { language }),
+        ])
+    } else {
+        ;[vocabCards, questions] = await Promise.all([
+            getDueVocabularyFlashcards(DAILY_VOCAB_CAP),
+            getDueQuestions(DAILY_QUIZ_CAP),
+        ])
+    }
 
     const now = Date.now()
     const items: CombinedItem[] = []
@@ -80,8 +119,8 @@ export async function getDailyPracticeItems(): Promise<CombinedItem[]> {
         items.push({ type: 'quiz', id: q.id, data: q, overdueBy })
     }
 
-    // If no vocabulary flashcards, fall back to general flashcards
-    if (vocabCards.length === 0) {
+    // If no vocabulary flashcards in 'all' mode, fall back to general flashcards
+    if (mode === 'all' && vocabCards.length === 0) {
         const generalCards = await getDueFlashcards(DAILY_VOCAB_CAP)
         for (const fc of generalCards) {
             const nextReview = fc.progress?.nextReviewAt

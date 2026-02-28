@@ -47,9 +47,10 @@ export async function getFlashcardsByDocument(documentId: string) {
 }
 
 // Get flashcards due for review (includes new cards without progress)
-export async function getDueFlashcards(limit: number = 20) {
+export async function getDueFlashcards(limit: number = 20, excludeVocabulary?: boolean) {
     return prisma.flashcard.findMany({
         where: {
+            ...(excludeVocabulary ? { isVocabulary: false } : {}),
             OR: [
                 // New cards — no progress record yet
                 { progress: null },
@@ -65,6 +66,80 @@ export async function getDueFlashcards(limit: number = 20) {
         take: limit,
         orderBy: { createdAt: 'asc' },
     })
+}
+
+// Get due flashcards for a specific language (vocabulary only)
+export async function getDueFlashcardsForLanguage(language: string, limit: number = 20) {
+    return prisma.flashcard.findMany({
+        where: {
+            isVocabulary: true,
+            document: { subject: language, fileType: 'language-set' },
+            OR: [
+                { progress: null },
+                { progress: { due: { lte: new Date() } } },
+            ],
+        },
+        include: {
+            document: { select: { id: true, title: true, subject: true } },
+            chunk: { select: { id: true, content: true, chunkIndex: true } },
+            progress: true,
+        },
+        take: limit,
+        orderBy: { createdAt: 'asc' },
+    })
+}
+
+// Count due vocabulary flashcards grouped by language
+export async function getDueVocabularyCountByLanguage(): Promise<Record<string, number>> {
+    const docs = await prisma.document.findMany({
+        where: {
+            fileType: 'language-set',
+            flashcards: {
+                some: {
+                    isVocabulary: true,
+                    OR: [
+                        { progress: null },
+                        { progress: { due: { lte: new Date() } } },
+                    ],
+                },
+            },
+        },
+        select: {
+            subject: true,
+            flashcards: {
+                where: {
+                    isVocabulary: true,
+                    OR: [
+                        { progress: null },
+                        { progress: { due: { lte: new Date() } } },
+                    ],
+                },
+                select: { id: true },
+            },
+        },
+    })
+
+    const result: Record<string, number> = {}
+    for (const doc of docs) {
+        if (doc.subject) {
+            result[doc.subject] = (result[doc.subject] ?? 0) + doc.flashcards.length
+        }
+    }
+    return result
+}
+
+// Count due document-based flashcards (excludes vocabulary)
+export async function getDueDocumentFlashcardCount() {
+    const [newCards, dueCards] = await Promise.all([
+        prisma.flashcard.count({ where: { isVocabulary: false, progress: null } }),
+        prisma.flashcard.count({
+            where: {
+                isVocabulary: false,
+                progress: { due: { lte: new Date() } },
+            },
+        }),
+    ])
+    return newCards + dueCards
 }
 
 // Count of due flashcards (includes new cards without progress)

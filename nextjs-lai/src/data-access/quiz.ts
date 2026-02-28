@@ -253,13 +253,30 @@ export async function upsertQuestionProgress(
 }
 
 // Get questions due for review (nextReviewAt <= now)
-export async function getDueQuestions(limit: number = 20) {
-    return prisma.quizQuestion.findMany({
-        where: {
-            progress: {
-                nextReviewAt: { lte: new Date() },
-            },
+export async function getDueQuestions(limit: number = 20, opts?: { excludeLanguageSets?: boolean; language?: string }) {
+    const where: any = {
+        progress: {
+            nextReviewAt: { lte: new Date() },
         },
+    }
+
+    if (opts?.excludeLanguageSets) {
+        where.quiz = {
+            document: {
+                NOT: { fileType: 'language-set' },
+            },
+        }
+    } else if (opts?.language) {
+        where.quiz = {
+            document: {
+                subject: opts.language,
+                fileType: 'language-set',
+            },
+        }
+    }
+
+    return prisma.quizQuestion.findMany({
+        where,
         include: {
             quiz: {
                 select: { id: true, title: true, document: { select: { id: true, title: true } } },
@@ -280,6 +297,22 @@ export async function getDueReviewCount() {
     return prisma.questionProgress.count({
         where: {
             nextReviewAt: { lte: new Date() },
+        },
+    })
+}
+
+// Count due review questions for documents only (excludes language-set quizzes)
+export async function getDueDocumentReviewCount() {
+    return prisma.questionProgress.count({
+        where: {
+            nextReviewAt: { lte: new Date() },
+            question: {
+                quiz: {
+                    document: {
+                        NOT: { fileType: 'language-set' },
+                    },
+                },
+            },
         },
     })
 }

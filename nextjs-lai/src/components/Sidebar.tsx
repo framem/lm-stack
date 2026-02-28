@@ -10,7 +10,6 @@ import {
     CalendarDays,
     ChevronRight,
     Clock,
-    Drama,
     Ellipsis,
     FileText,
     FolderOpen,
@@ -64,6 +63,7 @@ import { Input } from '@/src/components/ui/input'
 import { Progress } from '@/src/components/ui/progress'
 import { getSessions, deleteSession, searchMessages, getBookmarkedMessages } from '@/src/actions/chat'
 import { getSubjectOverview } from '@/src/actions/subjects'
+import { getVocabularyLanguages } from '@/src/actions/flashcards'
 
 interface SessionItem {
     id: string
@@ -72,10 +72,8 @@ interface SessionItem {
 
 // Sidebar groups (without Chat and Fächer — handled separately)
 const learnItems = [
-    { href: '/learn/session', label: 'Lern-Session', icon: GraduationCap, description: 'Alle fälligen Items · tief lernen' },
+    { href: '/learn/session', label: 'Lern-Session', icon: GraduationCap, description: 'Dokument-Wiederholungen · tief lernen' },
     { href: '/learn/daily', label: 'Tagesübung', icon: Clock, description: 'Quick-Check · Streak sichern' },
-    { href: '/learn/vocabulary', label: 'Vokabeltrainer', icon: Languages },
-    { href: '/learn/conversation', label: 'Konversationsübungen', icon: Drama, description: 'Rollenspielen · Sprechen üben' },
 ]
 
 const manageItems = [
@@ -95,6 +93,14 @@ interface SubjectItem {
     dueReviews: number
 }
 
+const LANGUAGE_FLAGS: Record<string, string> = {
+    'Spanisch': '🇪🇸',
+    'Englisch': '🇬🇧',
+    'Deutsch': '🇩🇪',
+    'Französisch': '🇫🇷',
+    'Italienisch': '🇮🇹',
+}
+
 export function AppSidebar() {
     const pathname = usePathname()
     const searchParams = useSearchParams()
@@ -103,6 +109,7 @@ export function AppSidebar() {
     const mounted = useSyncExternalStore(() => () => {}, () => true, () => false)
     const activeSessionId = searchParams.get('sessionId')
     const [subjects, setSubjects] = useState<SubjectItem[]>([])
+    const [languages, setLanguages] = useState<string[]>([])
     const [sessions, setSessions] = useState<SessionItem[]>([])
     const [chatView, setChatView] = useState<'sessions' | 'search' | 'bookmarks'>('sessions')
     const [searchQuery, setSearchQuery] = useState('')
@@ -164,6 +171,13 @@ export function AppSidebar() {
             .catch(() => {})
     }, [])
 
+    // Fetch vocabulary languages for the sidebar
+    useEffect(() => {
+        getVocabularyLanguages()
+            .then((langs) => setLanguages(langs as string[]))
+            .catch(() => {})
+    }, [])
+
     // Fetch sessions on mount and whenever a new session is created
     useEffect(() => {
         function fetchSessions() {
@@ -186,6 +200,7 @@ export function AppSidebar() {
 
     const isSubjectsActive = pathname.startsWith('/learn/subjects')
     const isChatActive = pathname.startsWith('/learn/chat')
+    const isLanguageActive = pathname.startsWith('/learn/language')
 
     return (
         <SidebarRoot collapsible="icon">
@@ -408,6 +423,67 @@ export function AppSidebar() {
                                                         </SidebarMenuSubItem>
                                                     ))
                                                 )
+                                            )}
+                                        </SidebarMenuSub>
+                                    </CollapsibleContent>
+                                </SidebarMenuItem>
+                            </Collapsible>
+                        </SidebarMenu>
+                    </SidebarGroupContent>
+                </SidebarGroup>
+
+                {/* Sprachen */}
+                <SidebarGroup>
+                    <SidebarGroupLabel>Sprachen</SidebarGroupLabel>
+                    <SidebarGroupContent>
+                        <SidebarMenu>
+                            <Collapsible
+                                asChild
+                                defaultOpen={isLanguageActive}
+                                className="group/collapsible"
+                            >
+                                <SidebarMenuItem>
+                                    <CollapsibleTrigger asChild>
+                                        <SidebarMenuButton
+                                            isActive={isLanguageActive}
+                                            tooltip="Sprachtrainer"
+                                        >
+                                            <Languages />
+                                            <span>Sprachtrainer</span>
+                                            <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                                        </SidebarMenuButton>
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent>
+                                        <SidebarMenuSub>
+                                            <SidebarMenuSubItem>
+                                                <SidebarMenuSubButton
+                                                    asChild
+                                                    isActive={pathname === '/learn/language'}
+                                                >
+                                                    <Link href="/learn/language">
+                                                        <span>Übersicht</span>
+                                                    </Link>
+                                                </SidebarMenuSubButton>
+                                            </SidebarMenuSubItem>
+                                            {languages.length === 0 ? (
+                                                <SidebarMenuSubItem>
+                                                    <span className="px-2 py-1.5 text-xs text-muted-foreground">
+                                                        Keine Sprachen
+                                                    </span>
+                                                </SidebarMenuSubItem>
+                                            ) : (
+                                                languages.map((lang) => (
+                                                    <SidebarMenuSubItem key={lang}>
+                                                        <SidebarMenuSubButton
+                                                            asChild
+                                                            isActive={pathname === `/learn/language/${encodeURIComponent(lang)}`}
+                                                        >
+                                                            <Link href={`/learn/language/${encodeURIComponent(lang)}`}>
+                                                                <span>{LANGUAGE_FLAGS[lang] ?? '🌐'} {lang}</span>
+                                                            </Link>
+                                                        </SidebarMenuSubButton>
+                                                    </SidebarMenuSubItem>
+                                                ))
                                             )}
                                         </SidebarMenuSub>
                                     </CollapsibleContent>
