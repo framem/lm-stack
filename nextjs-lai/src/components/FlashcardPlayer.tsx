@@ -12,6 +12,7 @@ import {
 } from '@/src/components/ui/sheet'
 import { reviewFlashcard } from '@/src/actions/flashcards'
 import { Loader2, FileText, SkipForward } from 'lucide-react'
+import { toast } from 'sonner'
 import { FlashcardCard } from '@/src/components/FlashcardCard'
 
 interface FlashcardItem {
@@ -82,6 +83,7 @@ export function FlashcardPlayer({ cards: initialCards, onComplete }: FlashcardPl
             setSourceOpen(false)
         } catch (err) {
             console.error('Rating failed:', err)
+            toast.error('Bewertung fehlgeschlagen. Bitte versuche es erneut.')
         } finally {
             setSubmitting(false)
         }

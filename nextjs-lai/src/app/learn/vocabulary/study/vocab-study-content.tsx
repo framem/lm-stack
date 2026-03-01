@@ -29,6 +29,7 @@ import { reviewFlashcard, getDueVocabularyFlashcards, getNewVocabularyFlashcards
 import { Rating } from '@/src/lib/spaced-repetition'
 import { generateExampleSentences, generateMnemonic, explainWord, explainError } from '@/src/actions/vocab-ai'
 import { VocabSpeechInput } from '@/src/components/VocabSpeechInput'
+import { toast } from 'sonner'
 
 interface ConjugationData {
     present?: Record<string, string>
@@ -249,6 +250,7 @@ export function VocabStudyContent() {
             setUserTypedInput('')
         } catch (err) {
             console.error('Rating failed:', err)
+            toast.error('Bewertung fehlgeschlagen. Bitte versuche es erneut.')
         } finally {
             setSubmitting(false)
         }

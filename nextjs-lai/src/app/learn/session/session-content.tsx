@@ -26,6 +26,7 @@ import { evaluateAnswer } from '@/src/actions/quiz'
 import { isFreetextLikeType } from '@/src/lib/quiz-types'
 import { SortableWordChips } from '@/src/components/quiz/SortableWordChips'
 import { FlashcardCard } from '@/src/components/FlashcardCard'
+import { toast } from 'sonner'
 
 interface FlashcardData {
     id: string
@@ -148,6 +149,7 @@ export function SessionContent() {
             advance()
         } catch (err) {
             console.error('Rating failed:', err)
+            toast.error('Bewertung fehlgeschlagen. Bitte versuche es erneut.')
         } finally {
             setSubmitting(false)
         }
@@ -197,6 +199,7 @@ export function SessionContent() {
             }))
         } catch (err) {
             console.error('Quiz evaluation failed:', err)
+            toast.error('Antwortprüfung fehlgeschlagen. Bitte versuche es erneut.')
         } finally {
             setSubmitting(false)
         }
