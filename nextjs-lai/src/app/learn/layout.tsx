@@ -1,5 +1,5 @@
 import { Suspense } from 'react'
-import { AppSidebar } from '@/src/components/Sidebar'
+import { AppSidebar } from '@/src/components/SidebarServer'
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/src/components/ui/sidebar'
 import { TooltipProvider } from '@/src/components/ui/tooltip'
 import { Separator } from '@/src/components/ui/separator'

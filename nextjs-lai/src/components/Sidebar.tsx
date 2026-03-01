@@ -56,12 +56,16 @@ import {
 import { useTheme } from 'next-themes'
 import { Input } from '@/src/components/ui/input'
 import { getSessions, deleteSession, searchMessages, getBookmarkedMessages } from '@/src/actions/chat'
-import { getVocabularyLanguages } from '@/src/actions/flashcards'
 import { resolveLanguageCode, getLanguageFlag } from '@/src/lib/language-utils'
 
 interface SessionItem {
     id: string
     title: string | null
+}
+
+interface SidebarClientProps {
+    initialSessions: SessionItem[]
+    initialLanguages: string[]
 }
 
 // Sidebar groups (without Chat — handled separately)
@@ -79,15 +83,15 @@ const manageItems = [
 
 
 
-export function AppSidebar() {
+export function SidebarClient({ initialSessions, initialLanguages }: SidebarClientProps) {
     const pathname = usePathname()
     const searchParams = useSearchParams()
     const router = useRouter()
     const { resolvedTheme, setTheme } = useTheme()
     const mounted = useSyncExternalStore(() => () => {}, () => true, () => false)
     const activeSessionId = searchParams.get('sessionId')
-    const [languages, setLanguages] = useState<string[]>([])
-    const [sessions, setSessions] = useState<SessionItem[]>([])
+    const [languages] = useState<string[]>(initialLanguages)
+    const [sessions, setSessions] = useState<SessionItem[]>(initialSessions)
     const [chatView, setChatView] = useState<'sessions' | 'search' | 'bookmarks'>('sessions')
     const [searchQuery, setSearchQuery] = useState('')
     const [searchResults, setSearchResults] = useState<{
@@ -139,14 +143,7 @@ export function AppSidebar() {
         }
     }
 
-    // Fetch vocabulary languages for the sidebar
-    useEffect(() => {
-        getVocabularyLanguages()
-            .then((langs) => setLanguages(langs as string[]))
-            .catch(() => {})
-    }, [])
-
-    // Fetch sessions on mount and whenever a new session is created
+    // Refresh session list when a new session is created client-side
     useEffect(() => {
         function fetchSessions() {
             getSessions()
@@ -161,7 +158,6 @@ export function AppSidebar() {
                 .catch(() => {})
         }
 
-        fetchSessions()
         window.addEventListener('session-created', fetchSessions)
         return () => window.removeEventListener('session-created', fetchSessions)
     }, [])
