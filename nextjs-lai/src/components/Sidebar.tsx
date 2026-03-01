@@ -5,7 +5,6 @@ import Link from 'next/link'
 import Image from "next/image";
 import { usePathname, useSearchParams, useRouter } from 'next/navigation'
 import {
-    BarChart3,
     Bookmark,
     CalendarDays,
     ChevronRight,
@@ -17,16 +16,13 @@ import {
     Home,
     Languages,
     Layers,
-    Map,
     MessageSquare,
     Moon,
     Plus,
-    Route,
     Search,
     Settings,
     Sun,
     Trash2,
-    TrendingUp,
     X,
 } from 'lucide-react'
 import {
@@ -81,9 +77,6 @@ const manageItems = [
     { href: '/learn/plan', label: 'Lernplan', icon: CalendarDays },
 ]
 
-const progressItems = [
-    { href: '/learn/progress', label: 'Fortschritt', icon: TrendingUp },
-]
 
 
 export function AppSidebar() {
@@ -530,31 +523,6 @@ export function AppSidebar() {
                     </SidebarGroupContent>
                 </SidebarGroup>
 
-                {/* Fortschritt */}
-                <SidebarGroup>
-                    <SidebarGroupLabel>Fortschritt</SidebarGroupLabel>
-                    <SidebarGroupContent>
-                        <SidebarMenu>
-                            {progressItems.map((item) => {
-                                const isActive = pathname === item.href || pathname.startsWith(item.href)
-                                return (
-                                    <SidebarMenuItem key={item.href}>
-                                        <SidebarMenuButton
-                                            asChild
-                                            isActive={isActive}
-                                            tooltip={item.label}
-                                        >
-                                            <Link href={item.href}>
-                                                <item.icon />
-                                                <span>{item.label}</span>
-                                            </Link>
-                                        </SidebarMenuButton>
-                                    </SidebarMenuItem>
-                                )
-                            })}
-                        </SidebarMenu>
-                    </SidebarGroupContent>
-                </SidebarGroup>
             </SidebarContent>
 
             <SidebarFooter>

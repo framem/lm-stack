@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { FileText, Layers, HelpCircle, BookOpen, BarChart2, Search, Loader2, AlignLeft } from 'lucide-react'
+import { FileText, Layers, HelpCircle, BookOpen, Search, Loader2, AlignLeft } from 'lucide-react'
 import {
     CommandDialog,
     CommandInput,
@@ -26,7 +26,6 @@ const STATIC_PAGES = [
     { label: 'Karteikarten', href: '/learn/flashcards', icon: Layers },
     { label: 'Quiz', href: '/learn/quiz', icon: HelpCircle },
     { label: 'Vokabeltrainer', href: '/learn/language', icon: FileText },
-    { label: 'Fortschritt', href: '/learn/progress', icon: BarChart2 },
 ]
 
 export function GlobalSearch() {

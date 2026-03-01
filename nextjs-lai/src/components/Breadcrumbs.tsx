@@ -33,7 +33,6 @@ const ROUTE_LABELS: Record<string, string> = {
     '/learn/language': 'Sprachtrainer',
     '/learn/placement-test': 'Einstufungstest',
     '/learn/plan': 'Lernplan',
-    '/learn/progress': 'Fortschritt',
     '/learn/quiz': 'Quiz',
     '/learn/quiz/review': 'Auswertung',
     '/learn/session': 'Lern-Session',
