@@ -339,19 +339,12 @@ export default async function DashboardPage() {
             {/* Top Documents by Priority */}
             {!isNewUser && profile.prioritizedDocuments.length > 0 && (
                 <section className="space-y-4">
-                    <div className="flex items-center justify-between">
-                        <h2 className="text-lg font-semibold flex items-center gap-2">
-                            <TrendingUp className="h-5 w-5" />
-                            Dokumente nach Priorität
-                        </h2>
-                        <Link href="/learn/progress?tab=path">
-                            <Button variant="ghost" size="sm">
-                                Alle anzeigen <ArrowRight className="h-4 w-4 ml-1" />
-                            </Button>
-                        </Link>
-                    </div>
+                    <h2 className="text-lg font-semibold flex items-center gap-2">
+                        <TrendingUp className="h-5 w-5" />
+                        Dokumente nach Priorität
+                    </h2>
                     <div className="space-y-3">
-                        {profile.prioritizedDocuments.slice(0, 5).map((doc, index) => {
+                        {profile.prioritizedDocuments.map((doc, index) => {
                             const isWeak = doc.avgScore < 50 && doc.totalAttempts > 0
 
                             // Determine best action per document
