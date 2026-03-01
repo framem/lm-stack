@@ -9,7 +9,7 @@ import { Button } from '@/src/components/ui/button'
 import { Badge } from '@/src/components/ui/badge'
 import { Progress } from '@/src/components/ui/progress'
 import { RadioGroup, RadioGroupItem } from '@/src/components/ui/radio-group'
-import { generatePlacementQuestions, evaluatePlacementResult, type PlacementQuestion } from '@/src/lib/placement-test'
+import { generatePlacementQuestions, evaluatePlacementResult } from '@/src/lib/placement-test'
 import { setLearningGoal } from '@/src/actions/learning-goal'
 
 type Phase = 'intro' | 'test' | 'result'

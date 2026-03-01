@@ -630,6 +630,12 @@ export function ChatInterface({ sessionId, documentId, mode = 'learning', scenar
                                 lastPart?.type === 'reasoning' || hasPartialThink
                             )
 
+                            const fullText = message.parts
+                                .filter((p): p is { type: 'text'; text: string } => p.type === 'text')
+                                .map((p) => extractThinkBlocks(p.text).text)
+                                .filter(Boolean)
+                                .join(' ')
+
                             return (
                                 <Fragment key={message.id}>
                                 <div className="group">
@@ -646,17 +652,6 @@ export function ChatInterface({ sessionId, documentId, mode = 'learning', scenar
                                             <span>Keine passenden Quellen gefunden. Versuche eine andere Formulierung oder prüfe, ob relevantes Lernmaterial hochgeladen ist.</span>
                                         </div>
                                     )}
-
-                                    {/* Extract full text from message for TTS */}
-                                    {(() => {
-                                        const messageText = message.parts
-                                            .filter((p): p is { type: 'text'; text: string } => p.type === 'text')
-                                            .map((p) => extractThinkBlocks(p.text).text)
-                                            .filter(Boolean)
-                                            .join(' ')
-                                        // Store in message object for later use
-                                        ;(message as any)._fullText = messageText
-                                    })()}
 
                                     {message.parts.map((part, i) => {
                                         if (part.type === 'reasoning') return null
@@ -696,9 +691,9 @@ export function ChatInterface({ sessionId, documentId, mode = 'learning', scenar
                                     {message.role === 'assistant' && (
                                         <div className="flex items-center gap-2">
                                             {/* TTS Button for conversation mode */}
-                                            {isConversation && scenarioLanguage && (message as any)._fullText && (
+                                            {isConversation && scenarioLanguage && fullText && (
                                                 <TTSButton
-                                                    text={(message as any)._fullText}
+                                                    text={fullText}
                                                     lang={getConversationTTSLang(scenarioLanguage)}
                                                     size="sm"
                                                 />
@@ -743,10 +738,10 @@ export function ChatInterface({ sessionId, documentId, mode = 'learning', scenar
                                     )}
 
                                     {/* Actions for user messages in conversation mode */}
-                                    {message.role === 'user' && isConversation && scenarioLanguage && (message as any)._fullText && (
+                                    {message.role === 'user' && isConversation && scenarioLanguage && fullText && (
                                         <div className="flex items-center gap-2 justify-end">
                                             <TTSButton
-                                                text={(message as any)._fullText}
+                                                text={fullText}
                                                 lang={getConversationTTSLang(scenarioLanguage)}
                                                 size="sm"
                                             />

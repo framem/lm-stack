@@ -171,54 +171,6 @@ export function VocabStudyContent() {
     const [aiLoading, setAiLoading] = useState(false)
     const [userTypedInput, setUserTypedInput] = useState('')
 
-    // Keyboard shortcuts: 1-4 for ratings, Space to flip
-    useEffect(() => {
-        function handleKeyDown(e: KeyboardEvent) {
-            // Don't trigger shortcuts when typing in an input
-            if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
-
-            const canRate = flipped || typeResult
-            if (canRate && !submitting) {
-                const keyMap: Record<string, number> = { '1': Rating.Again, '2': Rating.Hard, '3': Rating.Good, '4': Rating.Easy }
-                const rating = keyMap[e.key]
-                if (rating !== undefined) {
-                    e.preventDefault()
-                    handleRate(rating)
-                    return
-                }
-            }
-
-            if (mode === 'flip' && !flipped && (e.key === ' ' || e.key === 'Enter')) {
-                e.preventDefault()
-                handleFlip()
-            }
-        }
-        window.addEventListener('keydown', handleKeyDown)
-        return () => window.removeEventListener('keydown', handleKeyDown)
-    }, [flipped, typeResult, submitting, mode, handleFlip])
-
-    useEffect(() => {
-        async function load() {
-            try {
-                if (practiceAll) {
-                    const data = await getVocabularyFlashcards(docFilter, undefined, categoryFilter)
-                    setCards(shuffle(data as unknown as VocabCard[]))
-                } else if (newOnly) {
-                    const data = await getNewVocabularyFlashcards(20, docFilter, categoryFilter)
-                    setCards(data as unknown as VocabCard[])
-                } else {
-                    const data = await getDueVocabularyFlashcards(docFilter, categoryFilter)
-                    setCards(data as unknown as VocabCard[])
-                }
-            } catch (err) {
-                console.error('Failed to load vocabulary:', err)
-            } finally {
-                setLoading(false)
-            }
-        }
-        load()
-    }, [practiceAll, newOnly, docFilter, categoryFilter])
-
     const card = cards[currentIndex]
     const progressValue = cards.length > 0 ? (results.length / cards.length) * 100 : 0
     const isLast = currentIndex === cards.length - 1
@@ -233,22 +185,11 @@ export function VocabStudyContent() {
     const frontLang = reversed ? 'de-DE' : targetLang
     const backLang = reversed ? targetLang : 'de-DE'
 
-    // Load intervals when card is revealed
-    useEffect(() => {
-        if (!card) return
-        if (!(flipped || typeResult)) return
-        let cancelled = false
-        getSchedulingPreview(card.id).then((preview) => {
-            if (!cancelled) setIntervals(preview)
-        }).catch(console.error)
-        return () => { cancelled = true }
-    }, [card, flipped, typeResult])
-
     const handleFlip = useCallback(() => {
         if (!flipped) setFlipped(true)
     }, [flipped])
 
-    async function handleRate(rating: number) {
+    const handleRate = useCallback(async (rating: number) => {
         if (!card || submitting) return
         setSubmitting(true)
         try {
@@ -274,7 +215,66 @@ export function VocabStudyContent() {
         } finally {
             setSubmitting(false)
         }
-    }
+    }, [card, submitting, results, isLast])
+
+    // Keyboard shortcuts: 1-4 for ratings, Space to flip
+    useEffect(() => {
+        function handleKeyDown(e: KeyboardEvent) {
+            // Don't trigger shortcuts when typing in an input
+            if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+
+            const canRate = flipped || typeResult
+            if (canRate && !submitting) {
+                const keyMap: Record<string, number> = { '1': Rating.Again, '2': Rating.Hard, '3': Rating.Good, '4': Rating.Easy }
+                const rating = keyMap[e.key]
+                if (rating !== undefined) {
+                    e.preventDefault()
+                    handleRate(rating)
+                    return
+                }
+            }
+
+            if (mode === 'flip' && !flipped && (e.key === ' ' || e.key === 'Enter')) {
+                e.preventDefault()
+                handleFlip()
+            }
+        }
+        window.addEventListener('keydown', handleKeyDown)
+        return () => window.removeEventListener('keydown', handleKeyDown)
+    }, [flipped, typeResult, submitting, mode, handleFlip, handleRate])
+
+    useEffect(() => {
+        async function load() {
+            try {
+                if (practiceAll) {
+                    const data = await getVocabularyFlashcards(docFilter, undefined, categoryFilter)
+                    setCards(shuffle(data as unknown as VocabCard[]))
+                } else if (newOnly) {
+                    const data = await getNewVocabularyFlashcards(20, docFilter, categoryFilter)
+                    setCards(data as unknown as VocabCard[])
+                } else {
+                    const data = await getDueVocabularyFlashcards(docFilter, categoryFilter)
+                    setCards(data as unknown as VocabCard[])
+                }
+            } catch (err) {
+                console.error('Failed to load vocabulary:', err)
+            } finally {
+                setLoading(false)
+            }
+        }
+        load()
+    }, [practiceAll, newOnly, docFilter, categoryFilter])
+
+    // Load intervals when card is revealed
+    useEffect(() => {
+        if (!card) return
+        if (!(flipped || typeResult)) return
+        let cancelled = false
+        getSchedulingPreview(card.id).then((preview) => {
+            if (!cancelled) setIntervals(preview)
+        }).catch(console.error)
+        return () => { cancelled = true }
+    }, [card, flipped, typeResult])
 
     function handleTypeResult(isCorrect: boolean, similarity: number) {
         setTypeResult({ isCorrect, similarity })

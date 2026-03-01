@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
     CalendarDays,
@@ -124,7 +123,6 @@ export interface PlanContentProps {
 }
 
 export function PlanContent({ initialPlans, initialDocuments }: PlanContentProps) {
-    const router = useRouter()
     const [plans, setPlans] = useState<StudyPlan[]>(initialPlans)
     const [documents] = useState<Document[]>(initialDocuments)
     const [loading] = useState(false)

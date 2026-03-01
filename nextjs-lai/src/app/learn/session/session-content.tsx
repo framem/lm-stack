@@ -122,7 +122,7 @@ export function SessionContent({ initialItems }: SessionContentProps) {
         }
         window.addEventListener('keydown', handleKeyDown)
         return () => window.removeEventListener('keydown', handleKeyDown)
-    }, [currentItem, flipped, submitting])
+    }, [currentItem, flipped, submitting, handleFlashcardRate])
 
     const resetItemState = useCallback(() => {
         setFlipped(false)
@@ -135,17 +135,17 @@ export function SessionContent({ initialItems }: SessionContentProps) {
         setQuizResult(null)
     }, [])
 
-    function advance() {
+    const advance = useCallback(() => {
         if (currentIndex >= items.length - 1) {
             setCompleted(true)
             return
         }
         setCurrentIndex((i) => i + 1)
         resetItemState()
-    }
+    }, [currentIndex, items.length, resetItemState])
 
     // Flashcard handlers
-    async function handleFlashcardRate(quality: number) {
+    const handleFlashcardRate = useCallback(async (quality: number) => {
         if (!currentItem || submitting) return
         setSubmitting(true)
         try {
@@ -162,7 +162,7 @@ export function SessionContent({ initialItems }: SessionContentProps) {
         } finally {
             setSubmitting(false)
         }
-    }
+    }, [currentItem, submitting, advance])
 
     // Quiz handlers
     async function handleQuizSubmit() {

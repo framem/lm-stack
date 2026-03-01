@@ -81,17 +81,6 @@ interface QuizPlayerProps {
     scenarioLanguage?: string | null
 }
 
-const TYPE_LABELS: Record<string, string> = {
-    singleChoice: 'Single Choice',
-    multipleChoice: 'Multiple Choice',
-    freetext: 'Freitext',
-    truefalse: 'Wahr/Falsch',
-    cloze: 'Lückentext',
-    fillInBlanks: 'Lückentext (mehrfach)',
-    conjugation: 'Konjugation',
-    sentenceOrder: 'Satzordnung',
-}
-
 export function QuizPlayer({ quizTitle, questions, onComplete, subject, scenarioLanguage }: QuizPlayerProps) {
     const [currentIndex, setCurrentIndex] = useState(0)
     const [selectedIndex, setSelectedIndex] = useState<number | null>(null)

@@ -52,31 +52,7 @@ export function FlashcardPlayer({ cards: initialCards, onComplete }: FlashcardPl
         if (!flipped) setFlipped(true)
     }, [flipped])
 
-    // Keyboard shortcuts: 1-3 for ratings, Space to flip
-    useEffect(() => {
-        function handleGlobalKeyDown(e: KeyboardEvent) {
-            if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
-
-            if (flipped && !submitting) {
-                const keyMap: Record<string, number> = { '1': 1, '2': 3, '3': 5 }
-                const quality = keyMap[e.key]
-                if (quality !== undefined) {
-                    e.preventDefault()
-                    handleRate(quality)
-                    return
-                }
-            }
-
-            if (!flipped && (e.key === ' ' || e.key === 'Enter')) {
-                e.preventDefault()
-                handleFlip()
-            }
-        }
-        window.addEventListener('keydown', handleGlobalKeyDown)
-        return () => window.removeEventListener('keydown', handleGlobalKeyDown)
-    }, [flipped, submitting, handleFlip])
-
-    async function handleRate(quality: number) {
+    const handleRate = useCallback(async (quality: number) => {
         if (!card || submitting) return
         setSubmitting(true)
 
@@ -99,7 +75,31 @@ export function FlashcardPlayer({ cards: initialCards, onComplete }: FlashcardPl
         } finally {
             setSubmitting(false)
         }
-    }
+    }, [card, submitting, results, isLast, onComplete])
+
+    // Keyboard shortcuts: 1-3 for ratings, Space to flip
+    useEffect(() => {
+        function handleGlobalKeyDown(e: KeyboardEvent) {
+            if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+
+            if (flipped && !submitting) {
+                const keyMap: Record<string, number> = { '1': 1, '2': 3, '3': 5 }
+                const quality = keyMap[e.key]
+                if (quality !== undefined) {
+                    e.preventDefault()
+                    handleRate(quality)
+                    return
+                }
+            }
+
+            if (!flipped && (e.key === ' ' || e.key === 'Enter')) {
+                e.preventDefault()
+                handleFlip()
+            }
+        }
+        window.addEventListener('keydown', handleGlobalKeyDown)
+        return () => window.removeEventListener('keydown', handleGlobalKeyDown)
+    }, [flipped, submitting, handleFlip, handleRate])
 
     function handleSkip() {
         if (!card || submitting || remaining <= 1) return

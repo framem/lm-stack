@@ -100,7 +100,7 @@ export interface FlashcardsContentProps {
 
 export function FlashcardsContent({ initialFlashcards, initialDocuments, initialDueCount }: FlashcardsContentProps) {
     const [flashcards, setFlashcards] = useState<FlashcardItem[]>(initialFlashcards)
-    const [documents, setDocuments] = useState<Document[]>(initialDocuments)
+    const [documents] = useState<Document[]>(initialDocuments)
     const [dueCount, setDueCount] = useState(initialDueCount)
     const [loading] = useState(false)
     const [infoVisible, setInfoVisible] = useState(() => {

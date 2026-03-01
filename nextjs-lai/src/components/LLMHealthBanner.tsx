@@ -29,7 +29,7 @@ export function LLMHealthBanner() {
                     setIsHealthy(data.healthy)
                     setIsChecking(false)
                 }
-            } catch (error) {
+            } catch {
                 if (mounted) {
                     setIsHealthy(false)
                     setIsChecking(false)
