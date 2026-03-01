@@ -600,7 +600,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
                                         <BookOpen className="h-4 w-4" />
                                         Vokabeln lernen
                                     </Button>
-                                    <Button variant="outline" onClick={() => { markComplete(); router.push('/learn/conversation') }} className="w-full">
+                                    <Button variant="outline" onClick={() => { markComplete(); router.push(`/learn/language/${choice}/conversation`) }} className="w-full">
                                         Konversation üben
                                     </Button>
                                 </div>

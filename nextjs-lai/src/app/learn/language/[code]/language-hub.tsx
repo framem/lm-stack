@@ -408,7 +408,7 @@ export function LanguageHub({ code, language }: LanguageHubProps) {
                             </p>
                         </div>
                         <Button asChild>
-                            <Link href={`/learn/conversation?language=${code}`}>
+                            <Link href={`/learn/language/${code}/conversation`}>
                                 <MessageSquare className="h-4 w-4" />
                                 Starten
                             </Link>

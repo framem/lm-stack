@@ -44,7 +44,7 @@ export async function generateAndSaveScenario(params: {
         suggestions: scenario.suggestions,
     })
 
-    revalidatePath('/learn/conversation')
+    revalidatePath('/learn/language', 'layout')
 
     return saved
 }
@@ -61,5 +61,5 @@ export async function removeGeneratedScenario(id: string) {
     if (!id) throw new Error('Szenario-ID ist erforderlich.')
 
     await deleteGeneratedScenario(id)
-    revalidatePath('/learn/conversation')
+    revalidatePath('/learn/language', 'layout')
 }

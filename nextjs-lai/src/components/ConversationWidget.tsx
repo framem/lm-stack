@@ -34,7 +34,7 @@ export function ConversationWidget({ targetLanguage = 'es' }: ConversationWidget
                         </div>
                     </div>
                     <Button variant="ghost" size="sm" asChild>
-                        <Link href="/learn/conversation" className="gap-1 text-xs">
+                        <Link href={`/learn/language/${targetLanguage}/conversation`} className="gap-1 text-xs">
                             Alle anzeigen
                             <ArrowRight className="h-3.5 w-3.5" />
                         </Link>
@@ -45,7 +45,7 @@ export function ConversationWidget({ targetLanguage = 'es' }: ConversationWidget
                     {featured.map((scenario) => (
                         <Link
                             key={scenario.key}
-                            href={`/learn/conversation?scenario=${scenario.key}&language=${targetLanguage}`}
+                            href={`/learn/language/${targetLanguage}/conversation?scenario=${scenario.key}`}
                             className="flex items-center gap-3 p-3 rounded-lg border hover:bg-accent transition-colors"
                         >
                             <span className="text-xl shrink-0">{scenario.icon}</span>

@@ -14,11 +14,17 @@ const LANGUAGE_SET_TITLES: Record<string, string> = {
     'en-a2': 'Englisch A2 Grundwortschatz',
 }
 
+// Bare segment names for dynamic sub-routes (e.g. /learn/language/es/conversation)
+const SEGMENT_LABELS: Record<string, string> = {
+    conversation: 'Konversation',
+    study: 'Lernen',
+    vocabulary: 'Vokabeln',
+}
+
 const ROUTE_LABELS: Record<string, string> = {
     '/learn': 'Dashboard',
     '/learn/admin': 'Admin',
     '/learn/chat': 'Chat',
-    '/learn/conversation': 'Konversation',
     '/learn/daily': 'Tagesaufgabe',
     '/learn/documents': 'Lernmaterial',
     '/learn/flashcards': 'Karteikarten',
@@ -51,7 +57,7 @@ export function Breadcrumbs() {
         for (const part of parts) {
             currentPath += `/${part}`
             if (currentPath === '/learn') continue // suppress "Dashboard" for sub-pages
-            const label = ROUTE_LABELS[currentPath] ?? LANGUAGE_SET_TITLES[part] ?? getLanguageName(part)
+            const label = ROUTE_LABELS[currentPath] ?? LANGUAGE_SET_TITLES[part] ?? getLanguageName(part) ?? SEGMENT_LABELS[part]
             if (label) {
                 segments.push({ label, href: currentPath })
             }

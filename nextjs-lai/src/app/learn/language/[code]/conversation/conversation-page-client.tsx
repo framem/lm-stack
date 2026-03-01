@@ -6,18 +6,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/src
 import { Badge } from '@/src/components/ui/badge'
 import { Button } from '@/src/components/ui/button'
 import Image from 'next/image'
-import { ArrowLeft, Languages, Trophy, Sparkles, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, Trophy, Sparkles, Plus, Trash2 } from 'lucide-react'
 import { SCENARIOS, LANGUAGE_LABELS, type ConversationScenario, type Language } from '@/src/lib/conversation-scenarios-constants'
 import { ConversationContent } from './conversation-content'
 import { ScenarioGenerator } from '@/src/components/ScenarioGenerator'
 import { removeGeneratedScenario } from '@/src/actions/generated-scenarios'
 import { toast } from 'sonner'
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from '@/src/components/ui/dropdown-menu'
 import {
     AlertDialog,
     AlertDialogAction,
@@ -46,6 +40,7 @@ interface GeneratedScenarioRecord {
 }
 
 interface ConversationPageClientProps {
+    language: Language
     bestEvaluations: Record<string, {
         grammarScore: number
         vocabularyScore: number
@@ -71,24 +66,21 @@ function toConversationScenario(record: GeneratedScenarioRecord): ConversationSc
     }
 }
 
-export function ConversationPageClient({ bestEvaluations, generatedScenarios }: ConversationPageClientProps) {
+export function ConversationPageClient({ language, bestEvaluations, generatedScenarios }: ConversationPageClientProps) {
     const router = useRouter()
     const searchParams = useSearchParams()
     const [activeScenario, setActiveScenario] = useState<ConversationScenario | null>(null)
-    const [selectedLanguage, setSelectedLanguage] = useState<Language>('de')
     const [showGenerator, setShowGenerator] = useState(false)
     const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
     const [removedIds, setRemovedIds] = useState<Set<string>>(new Set())
 
-    // Auto-select scenario and language from URL params
+    const basePath = `/learn/language/${language}/conversation`
+
+    // Auto-select scenario from URL params
     useEffect(() => {
         const scenarioKey = searchParams.get('scenario')
-        const languageParam = searchParams.get('language') as Language | null
 
-        if (scenarioKey && languageParam) {
-            // Set language first
-            setSelectedLanguage(languageParam)
-
+        if (scenarioKey) {
             // Find the scenario in standard scenarios
             const standardScenario = SCENARIOS.find((s) => s.key === scenarioKey)
             if (standardScenario) {
@@ -98,16 +90,16 @@ export function ConversationPageClient({ bestEvaluations, generatedScenarios }: 
 
             // Find in generated scenarios
             const generatedScenario = generatedScenarios.find(
-                (s) => s.key === scenarioKey && s.language === languageParam
+                (s) => s.key === scenarioKey && s.language === language
             )
             if (generatedScenario) {
                 setActiveScenario(toConversationScenario(generatedScenario))
             }
         }
-    }, [searchParams, generatedScenarios])
+    }, [searchParams, generatedScenarios, language])
 
     if (activeScenario) {
-        const translation = activeScenario.translations[selectedLanguage]
+        const translation = activeScenario.translations[language]
         return (
             <div className="flex flex-col h-[calc(100vh-4rem)]">
                 <div className="border-b border-border px-6 py-3 flex items-center gap-3">
@@ -116,7 +108,7 @@ export function ConversationPageClient({ bestEvaluations, generatedScenarios }: 
                         size="sm"
                         onClick={() => {
                             setActiveScenario(null)
-                            router.push('/learn/conversation')
+                            router.push(basePath)
                         }}
                     >
                         <ArrowLeft className="h-4 w-4" />
@@ -126,17 +118,17 @@ export function ConversationPageClient({ bestEvaluations, generatedScenarios }: 
                     <h1 className="font-semibold">{translation.title}</h1>
                     <Badge variant="outline">{activeScenario.difficulty}</Badge>
                     <Badge variant="secondary" className="gap-1">
-                        {LANGUAGE_LABELS[selectedLanguage].flag} {LANGUAGE_LABELS[selectedLanguage].nativeName}
+                        {LANGUAGE_LABELS[language].flag} {LANGUAGE_LABELS[language].nativeName}
                     </Badge>
                 </div>
-                <ConversationContent scenario={activeScenario} language={selectedLanguage} />
+                <ConversationContent scenario={activeScenario} language={language} />
             </div>
         )
     }
 
-    // Filter generated scenarios by selected language
+    // Filter generated scenarios by language
     const filteredGenerated = generatedScenarios.filter(
-        (s) => s.language === selectedLanguage && !removedIds.has(s.id)
+        (s) => s.language === language && !removedIds.has(s.id)
     )
 
     const handleDeleteGenerated = (e: React.MouseEvent, id: string) => {
@@ -169,34 +161,16 @@ export function ConversationPageClient({ bestEvaluations, generatedScenarios }: 
                         Übe Alltagssituationen in Rollenspielen mit KI-Gesprächspartnern.
                     </p>
                 </div>
-                <div className="flex items-center gap-2">
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="outline" className="gap-2">
-                                <Languages className="h-4 w-4" />
-                                {LANGUAGE_LABELS[selectedLanguage].flag} {LANGUAGE_LABELS[selectedLanguage].name}
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            {(Object.keys(LANGUAGE_LABELS) as Language[]).map((lang) => (
-                                <DropdownMenuItem
-                                    key={lang}
-                                    onClick={() => setSelectedLanguage(lang)}
-                                    className="gap-2"
-                                >
-                                    {LANGUAGE_LABELS[lang].flag} {LANGUAGE_LABELS[lang].name}
-                                </DropdownMenuItem>
-                            ))}
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                </div>
+                <Badge variant="secondary" className="gap-1 text-sm">
+                    {LANGUAGE_LABELS[language].flag} {LANGUAGE_LABELS[language].name}
+                </Badge>
             </div>
 
             {/* Standard scenarios */}
             <div className="space-y-3">
                 <h2 className="text-lg font-semibold">Standard-Szenarien</h2>
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {SCENARIOS.filter((s) => !s.targetLanguages || s.targetLanguages.includes(selectedLanguage)).map((scenario) => {
+                    {SCENARIOS.filter((s) => !s.targetLanguages || s.targetLanguages.includes(language)).map((scenario) => {
                         const germanTranslation = scenario.translations.de
                         const bestEval = bestEvaluations[scenario.key]
                         const hasAttempt = !!bestEval
@@ -250,7 +224,7 @@ export function ConversationPageClient({ bestEvaluations, generatedScenarios }: 
                                 </CardHeader>
                                 <CardContent className="flex gap-2 items-center mt-auto pt-0">
                                     <Badge variant="outline" className="gap-1">
-                                        {LANGUAGE_LABELS[selectedLanguage].flag}
+                                        {LANGUAGE_LABELS[language].flag}
                                     </Badge>
                                     {hasAttempt && (
                                         <div className="ml-auto flex items-center gap-1 text-xs text-muted-foreground">
@@ -297,7 +271,7 @@ export function ConversationPageClient({ bestEvaluations, generatedScenarios }: 
                 )}
                 {filteredGenerated.length === 0 ? (
                     <p className="text-sm text-muted-foreground">
-                        Noch keine generierten Szenarien für {LANGUAGE_LABELS[selectedLanguage].name}.
+                        Noch keine generierten Szenarien für {LANGUAGE_LABELS[language].name}.
                         Erstelle dein erstes Szenario mit dem Button rechts.
                     </p>
                 ) : (
