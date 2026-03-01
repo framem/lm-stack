@@ -385,6 +385,9 @@ export function LanguageHub({ code, language }: LanguageHubProps) {
                             <p className="text-sm text-muted-foreground">
                                 Noch keine {language}-Quizze vorhanden.
                             </p>
+                            <Button asChild className="mt-3" size="sm" variant="outline">
+                                <Link href="/learn/quiz">Quiz erstellen</Link>
+                            </Button>
                         </CardContent>
                     </Card>
                 )}

@@ -460,9 +460,17 @@ export default async function DashboardPage() {
                     </CardHeader>
                     <CardContent>
                         {recentSessions.length === 0 ? (
-                            <p className="text-sm text-muted-foreground">
-                                Noch keine Chat-Sessions vorhanden.
-                            </p>
+                            <div className="text-center py-4 space-y-2">
+                                <p className="text-sm text-muted-foreground">
+                                    Noch keine Chat-Sessions vorhanden.
+                                </p>
+                                <Button asChild size="sm" variant="outline">
+                                    <Link href="/learn/chat">
+                                        <MessageSquare className="h-4 w-4" />
+                                        Chat starten
+                                    </Link>
+                                </Button>
+                            </div>
                         ) : (
                             <div className="space-y-3">
                                 {recentSessions.map((session) => (
@@ -495,9 +503,17 @@ export default async function DashboardPage() {
                     </CardHeader>
                     <CardContent>
                         {recentQuizzes.length === 0 ? (
-                            <p className="text-sm text-muted-foreground">
-                                Noch keine Quizze erstellt.
-                            </p>
+                            <div className="text-center py-4 space-y-2">
+                                <p className="text-sm text-muted-foreground">
+                                    Noch keine Quizze erstellt.
+                                </p>
+                                <Button asChild size="sm" variant="outline">
+                                    <Link href="/learn/quiz">
+                                        <HelpCircle className="h-4 w-4" />
+                                        Quiz erstellen
+                                    </Link>
+                                </Button>
+                            </div>
                         ) : (
                             <div className="space-y-3">
                                 {recentQuizzes.map((quiz) => (

@@ -320,12 +320,20 @@ export function ProgressPageClient({
                         knowledgeTrend={knowledgeTrend}
                     />
                 ) : (
-                    <div className="text-center py-16 space-y-2">
+                    <div className="text-center py-16 space-y-3">
                         <BarChart3 className="h-12 w-12 mx-auto text-muted-foreground/50" />
                         <p className="text-lg font-medium">Noch keine Statistiken</p>
                         <p className="text-sm text-muted-foreground">
                             Bearbeite Quizze und lerne Karteikarten, um Statistiken zu sehen.
                         </p>
+                        <div className="flex justify-center gap-2 pt-2">
+                            <Button asChild size="sm" variant="outline">
+                                <Link href="/learn/language">Vokabeln lernen</Link>
+                            </Button>
+                            <Button asChild size="sm" variant="outline">
+                                <Link href="/learn/quiz">Quiz starten</Link>
+                            </Button>
+                        </div>
                     </div>
                 )}
             </TabsContent>
