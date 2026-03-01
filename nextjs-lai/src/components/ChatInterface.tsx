@@ -6,7 +6,7 @@ import { useChat } from '@ai-sdk/react'
 import { z } from 'zod'
 import { BookOpen, FileText, Loader2, ChevronDown, CornerDownLeft, Check, AlertTriangle, Bookmark, ClipboardCheck, MessageSquare, Mic, MicOff } from 'lucide-react'
 import { getSession, getChatSuggestions, toggleBookmark } from '@/src/actions/chat'
-import { getDocuments, getSubjects } from '@/src/actions/documents'
+import { getDocuments } from '@/src/actions/documents'
 import type { ConversationEvaluation } from '@/src/app/api/chat/conversation/evaluate/route'
 import { TTSButton } from '@/src/components/TTSButton'
 import { getConversationTTSLang } from '@/src/lib/language-utils'
@@ -299,8 +299,6 @@ export function ChatInterface({ sessionId, documentId, mode = 'learning', scenar
     )
     const selectedDocumentIdsRef = useRef(selectedDocumentIds)
     const [documents, setDocuments] = useState<{ id: string; title: string; subject?: string | null }[]>([])
-    const [subjects, setSubjects] = useState<string[]>([])
-    const [activeSubject, setActiveSubject] = useState<string | null>(null)
 
     const DEFAULT_SUGGESTIONS = [
         'Fasse das Dokument zusammen',
@@ -320,7 +318,6 @@ export function ChatInterface({ sessionId, documentId, mode = 'learning', scenar
         getDocuments().then((docs) =>
             setDocuments(docs.map((d) => ({ id: d.id, title: d.title, subject: (d as { subject?: string | null }).subject })))
         ).catch(() => {})
-        getSubjects().then(setSubjects).catch(() => {})
     }, [])
 
     const activeSessionIdRef = useRef(activeSessionId)
@@ -820,35 +817,10 @@ export function ChatInterface({ sessionId, documentId, mode = 'learning', scenar
                                         </button>
                                     </PopoverTrigger>
                                     <PopoverContent align="start" className="w-72 max-h-80 overflow-y-auto p-1">
-                                        {subjects.length > 0 && (
-                                            <div className="flex flex-wrap gap-1 px-2 py-1.5 border-b border-border mb-1">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setActiveSubject(null)}
-                                                    className={`px-2 py-0.5 rounded-full text-xs font-medium transition-colors ${
-                                                        !activeSubject ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-accent'
-                                                    }`}
-                                                >
-                                                    Alle
-                                                </button>
-                                                {subjects.map((s) => (
-                                                    <button
-                                                        key={s}
-                                                        type="button"
-                                                        onClick={() => setActiveSubject(activeSubject === s ? null : s)}
-                                                        className={`px-2 py-0.5 rounded-full text-xs font-medium transition-colors ${
-                                                            activeSubject === s ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-accent'
-                                                        }`}
-                                                    >
-                                                        {s}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        )}
                                         <button
                                             type="button"
                                             className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
-                                            onClick={() => { setSelectedDocumentIds([]); setActiveSubject(null) }}
+                                            onClick={() => { setSelectedDocumentIds([]) }}
                                         >
                                             <span className="flex size-4 shrink-0 items-center justify-center rounded-sm border border-primary">
                                                 {selectedDocumentIds.length === 0 && (
@@ -858,7 +830,6 @@ export function ChatInterface({ sessionId, documentId, mode = 'learning', scenar
                                             Alle Lernmaterialien
                                         </button>
                                         {documents
-                                            .filter((doc) => !activeSubject || doc.subject === activeSubject)
                                             .map((doc) => {
                                             const isChecked = selectedDocumentIds.includes(doc.id)
                                             return (

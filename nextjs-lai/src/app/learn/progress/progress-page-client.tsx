@@ -48,7 +48,6 @@ interface ProgressPageClientProps {
     recommendation: LearningRecommendation | null
     dailyActivity: Awaited<ReturnType<typeof import('@/src/data-access/stats').getDailyActivity>>
     knowledgeTrend: Awaited<ReturnType<typeof import('@/src/data-access/stats').getKnowledgeTrend>>
-    subjectDistribution: Awaited<ReturnType<typeof import('@/src/data-access/stats').getSubjectDistribution>>
     earnedBadges: Awaited<ReturnType<typeof import('@/src/data-access/badges').getEarnedBadges>>
     evaluationStats: Awaited<ReturnType<typeof import('@/src/data-access/conversation-evaluation').getEvaluationStats>>
 }
@@ -58,7 +57,6 @@ export function ProgressPageClient({
     recommendation,
     dailyActivity,
     knowledgeTrend,
-    subjectDistribution,
     earnedBadges,
     evaluationStats,
 }: ProgressPageClientProps) {
@@ -76,7 +74,7 @@ export function ProgressPageClient({
         : null
     const recAction = recommendation ? actionLabels[recommendation.nextAction] : null
 
-    const hasStatsData = dailyActivity.length > 0 || knowledgeTrend.length > 0 || subjectDistribution.length > 0
+    const hasStatsData = dailyActivity.length > 0 || knowledgeTrend.length > 0
 
     // Load knowledge map data
     useEffect(() => {
@@ -269,9 +267,6 @@ export function ProgressPageClient({
                                                                 )}
                                                             </div>
                                                             <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
-                                                                {doc.subject && (
-                                                                    <Badge variant="outline" className="text-xs">{doc.subject}</Badge>
-                                                                )}
                                                                 <span>{doc.quizCount} Quizze</span>
                                                                 <span>{doc.flashcardCount} Karteikarten</span>
                                                                 {doc.dueItems > 0 && (
@@ -323,7 +318,6 @@ export function ProgressPageClient({
                     <StatsCharts
                         dailyActivity={dailyActivity}
                         knowledgeTrend={knowledgeTrend}
-                        subjectDistribution={subjectDistribution}
                     />
                 ) : (
                     <div className="text-center py-16 space-y-2">

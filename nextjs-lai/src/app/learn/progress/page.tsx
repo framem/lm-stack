@@ -4,7 +4,7 @@ import { TrendingUp } from 'lucide-react'
 import { ProgressPageClient } from './progress-page-client'
 import { getLearnerProfile } from '@/src/data-access/learning-paths'
 import { generateLearningRecommendation } from '@/src/lib/learning-path-generator'
-import { getDailyActivity, getKnowledgeTrend, getSubjectDistribution } from '@/src/data-access/stats'
+import { getDailyActivity, getKnowledgeTrend } from '@/src/data-access/stats'
 import { getEarnedBadges } from '@/src/data-access/badges'
 import { getEvaluationStats } from '@/src/data-access/conversation-evaluation'
 
@@ -14,14 +14,12 @@ export default async function ProgressPage() {
         profile,
         dailyActivity,
         knowledgeTrend,
-        subjectDistribution,
         earnedBadges,
         evaluationStats,
     ] = await Promise.all([
         getLearnerProfile(),
         getDailyActivity(90),
         getKnowledgeTrend(12),
-        getSubjectDistribution(),
         getEarnedBadges(),
         getEvaluationStats(),
     ])
@@ -48,7 +46,6 @@ export default async function ProgressPage() {
                 recommendation={recommendation}
                 dailyActivity={dailyActivity}
                 knowledgeTrend={knowledgeTrend}
-                subjectDistribution={subjectDistribution}
                 earnedBadges={earnedBadges}
                 evaluationStats={evaluationStats}
             />

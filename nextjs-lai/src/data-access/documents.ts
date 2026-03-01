@@ -58,16 +58,6 @@ export async function updateDocument(id: string, data: { title?: string; subject
     return prisma.document.update({ where: { id }, data: data as Parameters<typeof prisma.document.update>[0]['data'] })
 }
 
-export async function getSubjects(): Promise<string[]> {
-    const results = await prisma.document.findMany({
-        where: { subject: { not: null } },
-        select: { subject: true },
-        distinct: ['subject'],
-        orderBy: { subject: 'asc' },
-    })
-    return results.map(r => r.subject).filter((s): s is string => s !== null)
-}
-
 export async function deleteDocument(id: string) {
     return prisma.document.delete({ where: { id } })
 }

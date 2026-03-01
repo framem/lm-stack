@@ -6,7 +6,6 @@ import {
     getDocumentWithChunks,
     updateDocument as patchDocument,
     deleteDocument as removeDocument,
-    getSubjects as fetchSubjects,
     hasChunksWithoutEmbeddings as checkChunksWithoutEmbeddings,
 } from '@/src/data-access/documents'
 import { getModel } from '@/src/lib/llm'
@@ -25,11 +24,6 @@ export async function searchDocuments(query: string, subject?: string) {
     const trimmed = query.trim()
     if (!trimmed && !subject) return fetchDocuments()
     return queryDocuments(trimmed, subject)
-}
-
-// Get all unique subjects across documents
-export async function getSubjects() {
-    return fetchSubjects()
 }
 
 // Get a single document with all its chunks

@@ -12,13 +12,6 @@ export interface WeeklyTrend {
     avgScore: number
 }
 
-export interface SubjectDistribution {
-    subject: string
-    documents: number
-    quizzes: number
-    flashcards: number
-}
-
 // Get daily activity for the last N days (quiz attempts + flashcard reviews per day)
 export async function getDailyActivity(days: number = 90): Promise<DailyActivity[]> {
     const since = new Date()
@@ -86,56 +79,3 @@ export async function getKnowledgeTrend(weeks: number = 12): Promise<WeeklyTrend
     }))
 }
 
-// Get subject distribution (documents, quizzes, flashcards per subject)
-export async function getSubjectDistribution(): Promise<SubjectDistribution[]> {
-    const docs = await prisma.document.groupBy({
-        by: ['subject'],
-        _count: true,
-        where: { subject: { not: null } },
-    })
-
-    const subjects = new Map<string, SubjectDistribution>()
-
-    for (const doc of docs) {
-        if (!doc.subject) continue
-        subjects.set(doc.subject, {
-            subject: doc.subject,
-            documents: doc._count,
-            quizzes: 0,
-            flashcards: 0,
-        })
-    }
-
-    // Count quizzes per subject
-    const quizCounts = await prisma.quiz.groupBy({
-        by: ['documentId'],
-        _count: true,
-    })
-    const docSubjectMap = await prisma.document.findMany({
-        where: { subject: { not: null } },
-        select: { id: true, subject: true },
-    })
-    const docToSubject = new Map(docSubjectMap.map((d) => [d.id, d.subject!]))
-
-    for (const qc of quizCounts) {
-        const subject = qc.documentId ? docToSubject.get(qc.documentId) : undefined
-        if (!subject) continue
-        const entry = subjects.get(subject)
-        if (entry) entry.quizzes += qc._count
-    }
-
-    // Count flashcards per subject
-    const fcCounts = await prisma.flashcard.groupBy({
-        by: ['documentId'],
-        _count: true,
-    })
-
-    for (const fc of fcCounts) {
-        const subject = docToSubject.get(fc.documentId)
-        if (!subject) continue
-        const entry = subjects.get(subject)
-        if (entry) entry.flashcards += fc._count
-    }
-
-    return [...subjects.values()].sort((a, b) => b.documents - a.documents)
-}

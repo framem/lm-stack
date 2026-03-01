@@ -60,7 +60,7 @@ import {
     deleteFlashcard,
     deleteFlashcardsByDocument,
 } from '@/src/actions/flashcards'
-import { getDocuments, getSubjects } from '@/src/actions/documents'
+import { getDocuments } from '@/src/actions/documents'
 
 interface Document {
     id: string
@@ -98,8 +98,6 @@ export default function FlashcardsPage() {
     const [documents, setDocuments] = useState<Document[]>([])
     const [dueCount, setDueCount] = useState(0)
     const [loading, setLoading] = useState(true)
-    const [subjects, setSubjects] = useState<string[]>([])
-    const [activeSubject, setActiveSubject] = useState<string | null>(null)
     const [infoVisible, setInfoVisible] = useState(() => {
         if (typeof window === 'undefined') return true
         return localStorage.getItem('lai-flashcard-info-dismissed') !== 'true'
@@ -139,16 +137,14 @@ export default function FlashcardsPage() {
 
     async function loadData() {
         try {
-            const [cards, docs, due, subjectList] = await Promise.all([
+            const [cards, docs, due] = await Promise.all([
                 getFlashcards(),
                 getDocuments(),
                 getDueFlashcardCount(),
-                getSubjects(),
             ])
             setFlashcards(cards as unknown as FlashcardItem[])
             setDocuments(docs as unknown as Document[])
             setDueCount(due)
-            setSubjects(subjectList)
         } catch (err) {
             console.error('Failed to load flashcards:', err)
         } finally {
@@ -288,20 +284,9 @@ export default function FlashcardsPage() {
         )
     }
 
-    // Build docId → subject map for filtering
-    const docSubjectMap = new Map(documents.map((d) => [d.id, d.subject ?? null]))
-
-    // Filter flashcards by subject
-    const filteredFlashcards = activeSubject
-        ? flashcards.filter((c) => docSubjectMap.get(c.document.id) === activeSubject)
-        : flashcards
-    const filteredDocuments = activeSubject
-        ? documents.filter((d) => d.subject === activeSubject)
-        : documents
-
-    // Group filtered flashcards by document
+    // Group flashcards by document
     const grouped = new Map<string, { title: string; cards: FlashcardItem[] }>()
-    for (const card of filteredFlashcards) {
+    for (const card of flashcards) {
         const key = card.document.id
         if (!grouped.has(key)) {
             grouped.set(key, { title: card.document.title, cards: [] })
@@ -310,7 +295,7 @@ export default function FlashcardsPage() {
     }
 
     const hasDocuments = documents.length > 0
-    const hasCards = filteredFlashcards.length > 0
+    const hasCards = flashcards.length > 0
 
     return (
         <div className="p-6 max-w-5xl mx-auto space-y-8">
@@ -323,7 +308,7 @@ export default function FlashcardsPage() {
                     </h1>
                     <p className="text-muted-foreground mt-1">
                         {hasCards
-                            ? `${filteredFlashcards.length} Karteikarte${filteredFlashcards.length !== 1 ? 'n' : ''} vorhanden`
+                            ? `${flashcards.length} Karteikarte${flashcards.length !== 1 ? 'n' : ''} vorhanden`
                             : 'Erstelle Karteikarten aus deinem Lernmaterial oder manuell.'}
                     </p>
                 </div>
@@ -340,33 +325,6 @@ export default function FlashcardsPage() {
                     </div>
                 )}
             </div>
-
-            {/* Subject filter */}
-            {subjects.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                    <button
-                        type="button"
-                        onClick={() => setActiveSubject(null)}
-                        className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-                            !activeSubject ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-accent'
-                        }`}
-                    >
-                        Alle
-                    </button>
-                    {subjects.map((s) => (
-                        <button
-                            key={s}
-                            type="button"
-                            onClick={() => setActiveSubject(activeSubject === s ? null : s)}
-                            className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-                                activeSubject === s ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-accent'
-                            }`}
-                        >
-                            {s}
-                        </button>
-                    ))}
-                </div>
-            )}
 
             {/* Info box — explains spaced repetition and badges */}
             {infoVisible && hasCards && (
@@ -598,7 +556,7 @@ export default function FlashcardsPage() {
                                     <SelectValue placeholder="Bitte wählen..." />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {filteredDocuments.map((doc) => (
+                                    {documents.map((doc) => (
                                         <SelectItem key={doc.id} value={doc.id}>{doc.title}</SelectItem>
                                     ))}
                                 </SelectContent>
@@ -665,7 +623,7 @@ export default function FlashcardsPage() {
                                     <SelectValue placeholder="Bitte wählen..." />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {filteredDocuments.map((doc) => (
+                                    {documents.map((doc) => (
                                         <SelectItem key={doc.id} value={doc.id}>{doc.title}</SelectItem>
                                     ))}
                                 </SelectContent>

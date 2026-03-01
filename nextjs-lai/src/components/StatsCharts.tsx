@@ -3,8 +3,6 @@
 import {
     Area,
     AreaChart,
-    Bar,
-    BarChart,
     CartesianGrid,
     ResponsiveContainer,
     Tooltip,
@@ -12,12 +10,11 @@ import {
     YAxis,
 } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/card'
-import type { DailyActivity, WeeklyTrend, SubjectDistribution } from '@/src/data-access/stats'
+import type { DailyActivity, WeeklyTrend } from '@/src/data-access/stats'
 
 interface StatsChartsProps {
     dailyActivity: DailyActivity[]
     knowledgeTrend: WeeklyTrend[]
-    subjectDistribution: SubjectDistribution[]
 }
 
 // Color intensity for heatmap (0-4 scale)
@@ -104,7 +101,6 @@ function LearningHeatmap({ dailyActivity }: { dailyActivity: DailyActivity[] }) 
 export function StatsCharts({
     dailyActivity,
     knowledgeTrend,
-    subjectDistribution,
 }: StatsChartsProps) {
     return (
         <div className="space-y-6">
@@ -164,45 +160,6 @@ export function StatsCharts({
                 </CardContent>
             </Card>
 
-            {/* Subject Distribution */}
-            {subjectDistribution.length > 0 && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-base">Fach-Verteilung</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <ResponsiveContainer width="100%" height={Math.max(200, subjectDistribution.length * 50)}>
-                            <BarChart
-                                data={subjectDistribution}
-                                layout="vertical"
-                                margin={{ left: 8, right: 24, top: 0, bottom: 0 }}
-                            >
-                                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
-                                <XAxis
-                                    type="number"
-                                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
-                                />
-                                <YAxis
-                                    type="category"
-                                    dataKey="subject"
-                                    width={120}
-                                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
-                                />
-                                <Tooltip
-                                    contentStyle={{
-                                        backgroundColor: 'hsl(var(--popover))',
-                                        borderColor: 'hsl(var(--border))',
-                                        color: 'hsl(var(--popover-foreground))',
-                                    }}
-                                />
-                                <Bar dataKey="documents" name="Lernmaterial" fill="hsl(220, 70%, 55%)" radius={[0, 4, 4, 0]} maxBarSize={20} />
-                                <Bar dataKey="quizzes" name="Quizze" fill="hsl(38, 92%, 50%)" radius={[0, 4, 4, 0]} maxBarSize={20} />
-                                <Bar dataKey="flashcards" name="Karteikarten" fill="hsl(142, 71%, 45%)" radius={[0, 4, 4, 0]} maxBarSize={20} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </CardContent>
-                </Card>
-            )}
         </div>
     )
 }

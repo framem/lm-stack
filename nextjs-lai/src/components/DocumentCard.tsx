@@ -185,11 +185,6 @@ export function DocumentCard({ document, onDelete, onRename }: DocumentCardProps
                 {/* Bottom row: metadata + badges — wraps naturally on mobile */}
                 {!editing && (
                     <div className="flex flex-wrap items-center gap-2 pl-12">
-                        {document.subject && (
-                            <Badge className="text-xs bg-blue-600 hover:bg-blue-700">
-                                {document.subject}
-                            </Badge>
-                        )}
                         <Badge variant="secondary" className="text-xs">
                             {getFileLabel(document.fileType)}
                         </Badge>

@@ -42,11 +42,10 @@ export interface DocumentSummary {
 
 interface DocumentsClientProps {
     documents: DocumentSummary[]
-    subjects: string[]
     totalCount: number
 }
 
-export function DocumentsClient({ documents, subjects, totalCount }: DocumentsClientProps) {
+export function DocumentsClient({ documents, totalCount }: DocumentsClientProps) {
     const router = useRouter()
     const searchParams = useSearchParams()
     const [isPending, startTransition] = useTransition()
@@ -56,7 +55,6 @@ export function DocumentsClient({ documents, subjects, totalCount }: DocumentsCl
     const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
 
     const searchQuery = searchParams.get('search') ?? ''
-    const activeSubject = searchParams.get('subject')
 
     // Local state for search input (for instant UI feedback)
     const [searchInput, setSearchInput] = useState(searchQuery)
@@ -101,10 +99,6 @@ export function DocumentsClient({ documents, subjects, totalCount }: DocumentsCl
         debounceRef.current = setTimeout(() => {
             updateSearchParams('search', value || null)
         }, 300)
-    }, [updateSearchParams])
-
-    const handleSubjectChange = useCallback((subject: string | null) => {
-        updateSearchParams('subject', subject)
     }, [updateSearchParams])
 
     function handleDelete(id: string) {
@@ -179,35 +173,6 @@ export function DocumentsClient({ documents, subjects, totalCount }: DocumentsCl
                 </div>
             )}
 
-            {/* Subject filter chips */}
-            {subjects.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                    <button
-                        type="button"
-                        onClick={() => handleSubjectChange(null)}
-                        disabled={isPending}
-                        className={`px-3 py-1 rounded-full text-sm font-medium transition-colors disabled:opacity-50 ${
-                            !activeSubject ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-accent'
-                        }`}
-                    >
-                        Alle
-                    </button>
-                    {subjects.map((s) => (
-                        <button
-                            key={s}
-                            type="button"
-                            onClick={() => handleSubjectChange(activeSubject === s ? null : s)}
-                            disabled={isPending}
-                            className={`px-3 py-1 rounded-full text-sm font-medium transition-colors disabled:opacity-50 ${
-                                activeSubject === s ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-accent'
-                            }`}
-                        >
-                            {s}
-                        </button>
-                    ))}
-                </div>
-            )}
-
             {/* Document list */}
             {documents.length > 0 ? (
                 <div className="grid gap-4">
@@ -225,13 +190,12 @@ export function DocumentsClient({ documents, subjects, totalCount }: DocumentsCl
                         />
                     ))}
                 </div>
-            ) : searchQuery.trim() || activeSubject ? (
+            ) : searchQuery.trim() ? (
                 <div className="text-center py-12 text-muted-foreground">
                     <Search className="h-10 w-10 mx-auto mb-3 opacity-50" />
                     <p>
                         Kein Lernmaterial gefunden
                         {searchQuery.trim() && ` für "${searchQuery}"`}
-                        {activeSubject && ` in "${activeSubject}"`}
                     </p>
                 </div>
             ) : totalCount === 0 ? (

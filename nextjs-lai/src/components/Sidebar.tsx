@@ -12,7 +12,6 @@ import {
     Clock,
     Ellipsis,
     FileText,
-    FolderOpen,
     GraduationCap,
     HelpCircle,
     Home,
@@ -60,9 +59,7 @@ import {
 } from '@/src/components/ui/dropdown-menu'
 import { useTheme } from 'next-themes'
 import { Input } from '@/src/components/ui/input'
-import { Progress } from '@/src/components/ui/progress'
 import { getSessions, deleteSession, searchMessages, getBookmarkedMessages } from '@/src/actions/chat'
-import { getSubjectOverview } from '@/src/actions/subjects'
 import { getVocabularyLanguages } from '@/src/actions/flashcards'
 
 interface SessionItem {
@@ -70,7 +67,7 @@ interface SessionItem {
     title: string | null
 }
 
-// Sidebar groups (without Chat and Fächer — handled separately)
+// Sidebar groups (without Chat — handled separately)
 const learnItems = [
     { href: '/learn/session', label: 'Lern-Session', icon: GraduationCap, description: 'Dokument-Wiederholungen · tief lernen' },
     { href: '/learn/daily', label: 'Tagesübung', icon: Clock, description: 'Quick-Check · Streak sichern' },
@@ -87,12 +84,6 @@ const progressItems = [
     { href: '/learn/progress', label: 'Fortschritt', icon: TrendingUp },
 ]
 
-interface SubjectItem {
-    subject: string
-    avgProgress: number
-    dueReviews: number
-}
-
 const LANGUAGE_FLAGS: Record<string, string> = {
     'Spanisch': '🇪🇸',
     'Englisch': '🇬🇧',
@@ -108,7 +99,6 @@ export function AppSidebar() {
     const { resolvedTheme, setTheme } = useTheme()
     const mounted = useSyncExternalStore(() => () => {}, () => true, () => false)
     const activeSessionId = searchParams.get('sessionId')
-    const [subjects, setSubjects] = useState<SubjectItem[]>([])
     const [languages, setLanguages] = useState<string[]>([])
     const [sessions, setSessions] = useState<SessionItem[]>([])
     const [chatView, setChatView] = useState<'sessions' | 'search' | 'bookmarks'>('sessions')
@@ -162,15 +152,6 @@ export function AppSidebar() {
         }
     }
 
-    // Fetch subjects for the sidebar
-    useEffect(() => {
-        getSubjectOverview()
-            .then((data) => setSubjects(
-                data.map((s) => ({ subject: s.subject, avgProgress: s.avgProgress, dueReviews: s.dueReviews }))
-            ))
-            .catch(() => {})
-    }, [])
-
     // Fetch vocabulary languages for the sidebar
     useEffect(() => {
         getVocabularyLanguages()
@@ -198,7 +179,6 @@ export function AppSidebar() {
         return () => window.removeEventListener('session-created', fetchSessions)
     }, [])
 
-    const isSubjectsActive = pathname.startsWith('/learn/subjects')
     const isChatActive = pathname.startsWith('/learn/chat')
     const isLanguageActive = pathname.startsWith('/learn/language')
 
@@ -549,64 +529,6 @@ export function AppSidebar() {
                                 )
                             })}
 
-                            {/* Fächer with collapsible subject list */}
-                            <Collapsible
-                                asChild
-                                defaultOpen
-                                className="group/collapsible"
-                            >
-                                <SidebarMenuItem>
-                                    <CollapsibleTrigger asChild>
-                                        <SidebarMenuButton
-                                            isActive={isSubjectsActive}
-                                            tooltip="Fächer"
-                                        >
-                                            <FolderOpen />
-                                            <span>Fächer</span>
-                                            <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-                                        </SidebarMenuButton>
-                                    </CollapsibleTrigger>
-                                    <CollapsibleContent>
-                                        <SidebarMenuSub>
-                                            {subjects.length === 0 ? (
-                                                <SidebarMenuSubItem>
-                                                    <span className="px-2 py-1.5 text-xs text-muted-foreground">
-                                                        Keine Fächer
-                                                    </span>
-                                                </SidebarMenuSubItem>
-                                            ) : (
-                                                subjects.map((s) => (
-                                                    <SidebarMenuSubItem key={s.subject}>
-                                                        <SidebarMenuSubButton
-                                                            asChild
-                                                            isActive={pathname === `/learn/subjects/${encodeURIComponent(s.subject)}`}
-                                                        >
-                                                            <Link href={`/learn/subjects/${encodeURIComponent(s.subject)}`}>
-                                                                <div className="flex min-w-0 flex-1 flex-col gap-1">
-                                                                    <div className="flex items-center justify-between">
-                                                                        <span className="truncate text-sm">{s.subject}</span>
-                                                                        <span className="ml-2 shrink-0 text-[10px] tabular-nums text-muted-foreground">
-                                                                            {s.avgProgress}%
-                                                                        </span>
-                                                                    </div>
-                                                                    <Progress value={s.avgProgress} className="h-1" />
-                                                                </div>
-                                                            </Link>
-                                                        </SidebarMenuSubButton>
-                                                    </SidebarMenuSubItem>
-                                                ))
-                                            )}
-                                            <SidebarMenuSubItem>
-                                                <SidebarMenuSubButton asChild>
-                                                    <Link href="/learn/subjects" className="text-muted-foreground">
-                                                        <span>Alle Fächer</span>
-                                                    </Link>
-                                                </SidebarMenuSubButton>
-                                            </SidebarMenuSubItem>
-                                        </SidebarMenuSub>
-                                    </CollapsibleContent>
-                                </SidebarMenuItem>
-                            </Collapsible>
                         </SidebarMenu>
                     </SidebarGroupContent>
                 </SidebarGroup>

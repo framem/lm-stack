@@ -1,5 +1,5 @@
 import { Suspense } from 'react'
-import { getDocuments, searchDocuments, getSubjects } from '@/src/actions/documents'
+import { getDocuments, searchDocuments } from '@/src/actions/documents'
 import { DocumentsClient } from '@/src/components/documents/DocumentsClient'
 import { DocumentsLoading } from '@/src/components/documents/DocumentsLoading'
 
@@ -25,7 +25,7 @@ function serializeDocuments(docs: DocumentSummary[]): Array<Omit<DocumentSummary
 }
 
 interface PageProps {
-    searchParams: Promise<{ search?: string; subject?: string }>
+    searchParams: Promise<{ search?: string }>
 }
 
 export const dynamic = 'force-dynamic'
@@ -33,22 +33,17 @@ export const dynamic = 'force-dynamic'
 async function DocumentsContent({ searchParams }: PageProps) {
     const params = await searchParams
     const search = params.search ?? ''
-    const subject = params.subject
 
-    // Fetch documents and subjects in parallel
-    const [documents, subjects] = await Promise.all([
-        search || subject ? searchDocuments(search, subject) : getDocuments(),
-        getSubjects(),
-    ])
+    // Fetch documents (search or all)
+    const documents = search ? await searchDocuments(search) : await getDocuments()
 
     // Get total count from all documents (not just search results)
-    const allDocuments = search || subject ? await getDocuments() : documents
+    const allDocuments = search ? await getDocuments() : documents
     const totalCount = allDocuments.length
 
     return (
         <DocumentsClient
             documents={serializeDocuments(documents as DocumentSummary[])}
-            subjects={subjects}
             totalCount={totalCount}
         />
     )

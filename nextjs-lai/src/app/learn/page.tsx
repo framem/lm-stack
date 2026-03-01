@@ -385,9 +385,6 @@ export default async function DashboardPage() {
                                                         )}
                                                     </div>
                                                     <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
-                                                        {doc.subject && (
-                                                            <Badge variant="outline" className="text-xs">{doc.subject}</Badge>
-                                                        )}
                                                         <span>{doc.quizCount} Quizze</span>
                                                         <span>{doc.flashcardCount} Karteikarten</span>
                                                         {doc.dueItems > 0 && (

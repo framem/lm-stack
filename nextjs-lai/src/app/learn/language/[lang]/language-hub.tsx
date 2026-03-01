@@ -9,7 +9,6 @@ import {
     Clock,
     HelpCircle,
     Keyboard,
-    FolderOpen,
     Languages,
     Loader2,
     MessageSquare,
@@ -75,10 +74,9 @@ interface QuizItem {
 
 interface LanguageHubProps {
     language: string
-    subjectDocCount?: number
 }
 
-export function LanguageHub({ language, subjectDocCount = 0 }: LanguageHubProps) {
+export function LanguageHub({ language }: LanguageHubProps) {
     const [cards, setCards] = useState<VocabCard[]>([])
     const [quizzes, setQuizzes] = useState<QuizItem[]>([])
     const [loading, setLoading] = useState(true)
@@ -176,26 +174,6 @@ export function LanguageHub({ language, subjectDocCount = 0 }: LanguageHubProps)
             </div>
 
             <GamificationBar />
-
-            {/* Subject cross-link */}
-            {subjectDocCount > 0 && (
-                <Card className="border-blue-500/30 bg-gradient-to-r from-blue-500/5 to-background">
-                    <CardContent className="flex items-center justify-between p-4">
-                        <div className="flex items-center gap-3">
-                            <FolderOpen className="h-5 w-5 text-blue-500" />
-                            <span className="text-sm">
-                                {subjectDocCount} Dokument{subjectDocCount !== 1 ? 'e' : ''} im Fach <strong>{language}</strong>
-                            </span>
-                        </div>
-                        <Button size="sm" variant="outline" asChild>
-                            <Link href={`/learn/subjects/${encodeURIComponent(language)}`}>
-                                Zum Fach
-                                <ArrowLeft className="h-4 w-4 ml-1 rotate-180" />
-                            </Link>
-                        </Button>
-                    </CardContent>
-                </Card>
-            )}
 
             {/* Stats overview */}
             {totalCards > 0 && (
