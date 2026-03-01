@@ -2,7 +2,7 @@ import { Suspense } from 'react'
 import { notFound } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import { resolveLanguage } from '@/src/lib/language-utils'
-import { VocabContent } from '@/src/app/learn/vocabulary/vocab-content'
+import { VocabContent } from './vocab-content'
 
 interface Props {
     params: Promise<{ code: string }>
