@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Button } from '@/src/components/ui/button'
 import { Progress } from '@/src/components/ui/progress'
 import {
@@ -57,12 +57,29 @@ export function FlashcardPlayer({ cards: initialCards, onComplete }: FlashcardPl
         if (!flipped) setFlipped(true)
     }, [flipped])
 
-    const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault()
-            handleFlip()
+    // Keyboard shortcuts: 1-3 for ratings, Space to flip
+    useEffect(() => {
+        function handleGlobalKeyDown(e: KeyboardEvent) {
+            if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+
+            if (flipped && !submitting) {
+                const keyMap: Record<string, number> = { '1': 1, '2': 3, '3': 5 }
+                const quality = keyMap[e.key]
+                if (quality !== undefined) {
+                    e.preventDefault()
+                    handleRate(quality)
+                    return
+                }
+            }
+
+            if (!flipped && (e.key === ' ' || e.key === 'Enter')) {
+                e.preventDefault()
+                handleFlip()
+            }
         }
-    }, [handleFlip])
+        window.addEventListener('keydown', handleGlobalKeyDown)
+        return () => window.removeEventListener('keydown', handleGlobalKeyDown)
+    }, [flipped, submitting, handleFlip])
 
     async function handleRate(quality: number) {
         if (!card || submitting) return
@@ -134,7 +151,7 @@ export function FlashcardPlayer({ cards: initialCards, onComplete }: FlashcardPl
                         Wie gut konntest du die Antwort?
                     </p>
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3">
-                        {RATINGS.map((r) => (
+                        {RATINGS.map((r, i) => (
                             <Button
                                 key={r.quality}
                                 variant={r.variant}
@@ -143,7 +160,7 @@ export function FlashcardPlayer({ cards: initialCards, onComplete }: FlashcardPl
                                 className="w-full sm:w-auto sm:min-w-[140px]"
                             >
                                 {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-                                {r.label}
+                                {r.label} <kbd className="ml-1 text-[10px] opacity-50 font-mono">{i + 1}</kbd>
                             </Button>
                         ))}
                     </div>

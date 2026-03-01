@@ -177,6 +177,32 @@ export function VocabStudyContent() {
     const [aiLoading, setAiLoading] = useState(false)
     const [userTypedInput, setUserTypedInput] = useState('')
 
+    // Keyboard shortcuts: 1-4 for ratings, Space to flip
+    useEffect(() => {
+        function handleKeyDown(e: KeyboardEvent) {
+            // Don't trigger shortcuts when typing in an input
+            if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+
+            const canRate = flipped || typeResult
+            if (canRate && !submitting) {
+                const keyMap: Record<string, number> = { '1': Rating.Again, '2': Rating.Hard, '3': Rating.Good, '4': Rating.Easy }
+                const rating = keyMap[e.key]
+                if (rating !== undefined) {
+                    e.preventDefault()
+                    handleRate(rating)
+                    return
+                }
+            }
+
+            if (mode === 'flip' && !flipped && (e.key === ' ' || e.key === 'Enter')) {
+                e.preventDefault()
+                handleFlip()
+            }
+        }
+        window.addEventListener('keydown', handleKeyDown)
+        return () => window.removeEventListener('keydown', handleKeyDown)
+    }, [flipped, typeResult, submitting, mode, handleFlip])
+
     useEffect(() => {
         async function load() {
             try {
@@ -504,7 +530,7 @@ export function VocabStudyContent() {
                                 Wie gut konntest du die Antwort?
                             </p>
                             <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3">
-                                {RATINGS.map((r) => (
+                                {RATINGS.map((r, i) => (
                                     <Button
                                         key={r.rating}
                                         variant={r.variant}
@@ -514,7 +540,7 @@ export function VocabStudyContent() {
                                     >
                                         {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
                                         <span className="flex flex-col items-center leading-tight">
-                                            <span>{r.label}</span>
+                                            <span>{r.label} <kbd className="ml-1 text-[10px] opacity-50 font-mono">{i + 1}</kbd></span>
                                             {intervals && (
                                                 <span className="text-[10px] opacity-70">{intervals[r.rating]}</span>
                                             )}
@@ -606,7 +632,7 @@ export function VocabStudyContent() {
                                 Wie gut konntest du die Antwort?
                             </p>
                             <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3">
-                                {RATINGS.map((r) => (
+                                {RATINGS.map((r, i) => (
                                     <Button
                                         key={r.rating}
                                         variant={r.variant}
@@ -616,7 +642,7 @@ export function VocabStudyContent() {
                                     >
                                         {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
                                         <span className="flex flex-col items-center leading-tight">
-                                            <span>{r.label}</span>
+                                            <span>{r.label} <kbd className="ml-1 text-[10px] opacity-50 font-mono">{i + 1}</kbd></span>
                                             {intervals && (
                                                 <span className="text-[10px] opacity-70">{intervals[r.rating]}</span>
                                             )}
@@ -735,7 +761,7 @@ export function VocabStudyContent() {
                                 Wie gut konntest du die Antwort?
                             </p>
                             <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3">
-                                {RATINGS.map((r) => (
+                                {RATINGS.map((r, i) => (
                                     <Button
                                         key={r.rating}
                                         variant={r.variant}
@@ -745,7 +771,7 @@ export function VocabStudyContent() {
                                     >
                                         {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
                                         <span className="flex flex-col items-center leading-tight">
-                                            <span>{r.label}</span>
+                                            <span>{r.label} <kbd className="ml-1 text-[10px] opacity-50 font-mono">{i + 1}</kbd></span>
                                             {intervals && (
                                                 <span className="text-[10px] opacity-70">{intervals[r.rating]}</span>
                                             )}

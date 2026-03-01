@@ -115,6 +115,31 @@ export function SessionContent() {
     const progressPercent = items.length > 0 ? (currentIndex / items.length) * 100 : 0
     const totalItems = items.length
 
+    // Keyboard shortcuts: 1-3 for flashcard ratings, Space to flip
+    useEffect(() => {
+        function handleKeyDown(e: KeyboardEvent) {
+            if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+            if (!currentItem || currentItem.type !== 'flashcard') return
+
+            if (flipped && !submitting) {
+                const keyMap: Record<string, number> = { '1': 1, '2': 3, '3': 5 }
+                const quality = keyMap[e.key]
+                if (quality !== undefined) {
+                    e.preventDefault()
+                    handleFlashcardRate(quality)
+                    return
+                }
+            }
+
+            if (!flipped && (e.key === ' ' || e.key === 'Enter')) {
+                e.preventDefault()
+                setFlipped(true)
+            }
+        }
+        window.addEventListener('keydown', handleKeyDown)
+        return () => window.removeEventListener('keydown', handleKeyDown)
+    }, [currentItem, flipped, submitting])
+
     const resetItemState = useCallback(() => {
         setFlipped(false)
         setSelectedIndex(null)
@@ -407,7 +432,7 @@ function FlashcardItem({
                         Wie gut konntest du die Antwort?
                     </p>
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3">
-                        {FLASHCARD_RATINGS.map((r) => (
+                        {FLASHCARD_RATINGS.map((r, i) => (
                             <Button
                                 key={r.quality}
                                 variant={r.variant}
@@ -416,7 +441,7 @@ function FlashcardItem({
                                 className="w-full sm:w-auto sm:min-w-[140px]"
                             >
                                 {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-                                {r.label}
+                                {r.label} <kbd className="ml-1 text-[10px] opacity-50 font-mono">{i + 1}</kbd>
                             </Button>
                         ))}
                     </div>
