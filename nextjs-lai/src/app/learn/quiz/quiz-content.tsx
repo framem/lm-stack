@@ -41,11 +41,9 @@ import {
     TooltipTrigger,
 } from '@/src/components/ui/tooltip'
 import { QuizCard } from '@/src/components/QuizCard'
-import { getQuizzes, deleteQuiz, getDocumentProgress, getRecommendedQuizDifficulty } from '@/src/actions/quiz'
+import { getQuizzes, deleteQuiz, getRecommendedQuizDifficulty } from '@/src/actions/quiz'
 import { DIFFICULTY_LEVELS } from '@/src/lib/quiz-difficulty'
-import { getDocuments } from '@/src/actions/documents'
 import { listGeneratedScenarios } from '@/src/actions/generated-scenarios'
-import { getLearningGoals } from '@/src/actions/learning-goal'
 import { formatDate } from '@/src/lib/utils'
 import { isFreetextLikeType } from '@/src/lib/quiz-types'
 import { SCENARIOS, LANGUAGE_LABELS, type Language } from '@/src/lib/conversation-scenarios-constants'
@@ -133,13 +131,20 @@ const QUESTION_TYPES = [
     { value: 'sentenceOrder', label: 'Satzordnung' },
 ] as const
 
-export function QuizContent() {
+export interface QuizContentProps {
+    initialDocuments: Document[]
+    initialQuizzes: Quiz[]
+    initialProgress: DocumentProgressItem[]
+    initialLearningGoals: { language: string; targetLevel: string }[]
+}
+
+export function QuizContent({ initialDocuments, initialQuizzes, initialProgress, initialLearningGoals }: QuizContentProps) {
     const router = useRouter()
     const searchParams = useSearchParams()
-    const [documents, setDocuments] = useState<Document[]>([])
-    const [quizzes, setQuizzes] = useState<Quiz[]>([])
-    const [progress, setProgress] = useState<DocumentProgressItem[]>([])
-    const [loading, setLoading] = useState(true)
+    const [documents] = useState<Document[]>(initialDocuments)
+    const [quizzes, setQuizzes] = useState<Quiz[]>(initialQuizzes)
+    const [progress] = useState<DocumentProgressItem[]>(initialProgress)
+    const [loading] = useState(false)
     const [dialogOpen, setDialogOpen] = useState(false)
     const [selectedDocIds, setSelectedDocIds] = useState<string[]>(
         searchParams.get('documentId') ? [searchParams.get('documentId')!] : []
@@ -159,35 +164,14 @@ export function QuizContent() {
     const [scenarioLanguage, setScenarioLanguage] = useState<Language>('de')
     const [scenarioOptions, setScenarioOptions] = useState<ScenarioOption[]>([])
     const [selectedScenario, setSelectedScenario] = useState<ScenarioOption | null>(null)
-    const [learningGoals, setLearningGoals] = useState<{ language: string; targetLevel: string }[]>([])
+    const [learningGoals] = useState(initialLearningGoals)
 
+    // Pre-select when only one document exists
     useEffect(() => {
-        async function load() {
-            try {
-                const [docs, quizList, progressData, goals] = await Promise.all([
-                    getDocuments(),
-                    getQuizzes(),
-                    getDocumentProgress(),
-                    getLearningGoals(),
-                ])
-                const typedDocs = docs as unknown as Document[]
-                setDocuments(typedDocs)
-                setQuizzes(quizList as Quiz[])
-                setProgress(progressData as unknown as DocumentProgressItem[])
-                setLearningGoals(goals.map(g => ({ language: g.language, targetLevel: g.targetLevel })))
-
-                // Pre-select when only one document exists
-                if (typedDocs.length === 1 && !searchParams.get('documentId')) {
-                    setSelectedDocIds([typedDocs[0].id])
-                }
-            } catch (error) {
-                console.error('Failed to load data:', error)
-            } finally {
-                setLoading(false)
-            }
+        if (initialDocuments.length === 1 && !searchParams.get('documentId')) {
+            setSelectedDocIds([initialDocuments[0].id])
         }
-        load()
-    }, [searchParams])
+    }, [initialDocuments, searchParams])
 
     // Load scenario options when source mode or language changes
     useEffect(() => {
