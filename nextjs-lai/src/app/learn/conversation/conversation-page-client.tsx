@@ -18,6 +18,16 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/src/components/ui/dropdown-menu'
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/src/components/ui/alert-dialog'
 
 // DB record shape from Prisma
 interface GeneratedScenarioRecord {
@@ -67,6 +77,7 @@ export function ConversationPageClient({ bestEvaluations, generatedScenarios }: 
     const [activeScenario, setActiveScenario] = useState<ConversationScenario | null>(null)
     const [selectedLanguage, setSelectedLanguage] = useState<Language>('de')
     const [showGenerator, setShowGenerator] = useState(false)
+    const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
 
     // Auto-select scenario and language from URL params
     useEffect(() => {
@@ -127,14 +138,21 @@ export function ConversationPageClient({ bestEvaluations, generatedScenarios }: 
         (s) => s.language === selectedLanguage
     )
 
-    const handleDeleteGenerated = async (e: React.MouseEvent, id: string) => {
+    const handleDeleteGenerated = (e: React.MouseEvent, id: string) => {
         e.stopPropagation()
+        setDeleteTarget(id)
+    }
+
+    async function confirmDeleteGenerated() {
+        if (!deleteTarget) return
         try {
-            await removeGeneratedScenario(id)
+            await removeGeneratedScenario(deleteTarget)
             toast.success('Szenario gelöscht.')
             router.refresh()
         } catch {
             toast.error('Szenario konnte nicht gelöscht werden.')
+        } finally {
+            setDeleteTarget(null)
         }
     }
 
@@ -348,6 +366,23 @@ export function ConversationPageClient({ bestEvaluations, generatedScenarios }: 
                     </div>
                 )}
             </div>
+
+            <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Szenario löschen?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Das generierte Szenario wird unwiderruflich gelöscht.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmDeleteGenerated} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                            Löschen
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     )
 }
