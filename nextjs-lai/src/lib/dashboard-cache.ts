@@ -7,6 +7,8 @@ import { getDueFlashcardCount, getFlashcardCount, getFlashcardDocumentProgress, 
 import { getOrCreateUserStats } from '@/src/data-access/user-stats'
 import { getCefrProgress } from '@/src/data-access/learning-goal'
 import { getTodayTasks } from '@/src/data-access/study-plan'
+import { getDailyActivity, getKnowledgeTrend } from '@/src/data-access/stats'
+import { getEvaluationStats } from '@/src/data-access/conversation-evaluation'
 
 // React.cache() deduplicates identical calls within the same request.
 // This prevents the dashboard from making the same DB query multiple times
@@ -25,6 +27,9 @@ export const getCachedTodayTasks = cache(() => getTodayTasks())
 export const getCachedDueVocabByLanguage = cache(() => getDueVocabularyCountByLanguage())
 export const getCachedDueDocumentFlashcardCount = cache(() => getDueDocumentFlashcardCount())
 export const getCachedDueTomorrowVocabCount = cache(() => getDueTomorrowVocabularyCount())
+export const getCachedDailyActivity = cache(() => getDailyActivity(90))
+export const getCachedKnowledgeTrend = cache(() => getKnowledgeTrend(12))
+export const getCachedEvaluationStats = cache(() => getEvaluationStats())
 
 // Revalidation helpers — call after mutations to refresh dashboard
 export function revalidateDocuments() { revalidatePath('/learn') }

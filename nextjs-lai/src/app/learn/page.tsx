@@ -20,6 +20,9 @@ import {
     getCachedDueVocabByLanguage,
     getCachedDueDocumentFlashcardCount,
     getCachedDueTomorrowVocabCount,
+    getCachedDailyActivity,
+    getCachedKnowledgeTrend,
+    getCachedEvaluationStats,
 } from '@/src/lib/dashboard-cache'
 import {Badge} from '@/src/components/ui/badge'
 import {Progress} from '@/src/components/ui/progress'
@@ -32,9 +35,11 @@ import {BadgeShowcase} from '@/src/components/BadgeShowcase'
 import {getLearnerProfile} from '@/src/data-access/learning-paths'
 import {getEarnedBadges} from '@/src/data-access/badges'
 import {ConversationWidget} from '@/src/components/ConversationWidget'
+import {StatsCharts} from '@/src/components/StatsCharts'
+import {ConversationStats} from '@/src/components/ConversationStats'
 
 export default async function DashboardPage() {
-    const [documents, sessions, quizzes, quizProgress, flashcardProgress, dueQuizReviews, dueFlashcardReviews, totalFlashcards, userStats, cefrProgress, todayTasks, profile, earnedBadges, dueVocabByLanguage, dueDocumentFlashcards, dueTomorrowVocab] = await Promise.all([
+    const [documents, sessions, quizzes, quizProgress, flashcardProgress, dueQuizReviews, dueFlashcardReviews, totalFlashcards, userStats, cefrProgress, todayTasks, profile, earnedBadges, dueVocabByLanguage, dueDocumentFlashcards, dueTomorrowVocab, dailyActivity, knowledgeTrend, evaluationStats] = await Promise.all([
         getCachedDocuments(),
         getCachedSessions(),
         getCachedQuizzes(),
@@ -51,6 +56,9 @@ export default async function DashboardPage() {
         getCachedDueVocabByLanguage(),
         getCachedDueDocumentFlashcardCount(),
         getCachedDueTomorrowVocabCount(),
+        getCachedDailyActivity(),
+        getCachedKnowledgeTrend(),
+        getCachedEvaluationStats(),
     ])
 
     // Action labels for document cards
@@ -265,6 +273,19 @@ export default async function DashboardPage() {
             {/* Badge showcase */}
             {!isNewUser && earnedBadges.length > 0 && (
                 <BadgeShowcase earnedBadges={earnedBadges} />
+            )}
+
+            {/* Conversation evaluation scores */}
+            {!isNewUser && evaluationStats.totalEvaluations > 0 && (
+                <ConversationStats stats={evaluationStats} />
+            )}
+
+            {/* Activity heatmap and knowledge trend */}
+            {!isNewUser && (dailyActivity.length > 0 || knowledgeTrend.length > 0) && (
+                <StatsCharts
+                    dailyActivity={dailyActivity}
+                    knowledgeTrend={knowledgeTrend}
+                />
             )}
 
             {/* Compact stats badges - only show when user has data */}
