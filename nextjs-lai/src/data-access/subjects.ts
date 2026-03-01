@@ -15,7 +15,7 @@ export interface SubjectOverviewItem {
 // Get overview stats for all subjects
 export async function getSubjectOverview(): Promise<SubjectOverviewItem[]> {
     const subjects = await prisma.document.findMany({
-        where: { subject: { not: null } },
+        where: { subject: { not: null }, fileType: { not: 'language-set' } },
         select: {
             id: true,
             subject: true,
@@ -131,6 +131,13 @@ export async function getSubjectOverview(): Promise<SubjectOverviewItem[]> {
     }))
 }
 
+// Count non-language-set documents for a subject (used by Language Hub cross-link)
+export async function getSubjectDocCount(subject: string): Promise<number> {
+    return prisma.document.count({
+        where: { subject, fileType: { not: 'language-set' } },
+    })
+}
+
 // Detailed data for a single subject
 export interface SubjectDetail {
     subject: string
@@ -156,7 +163,7 @@ export interface SubjectDetail {
 
 export async function getSubjectDetail(subject: string): Promise<SubjectDetail | null> {
     const documents = await prisma.document.findMany({
-        where: { subject },
+        where: { subject, fileType: { not: 'language-set' } },
         orderBy: { createdAt: 'desc' },
         include: {
             quizzes: {

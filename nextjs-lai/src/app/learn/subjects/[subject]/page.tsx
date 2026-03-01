@@ -7,6 +7,7 @@ import {
     ArrowRight,
     FileText,
     HelpCircle,
+    Languages,
     Layers,
     Clock,
     FolderOpen,
@@ -17,6 +18,9 @@ import { Badge } from '@/src/components/ui/badge'
 import { Progress } from '@/src/components/ui/progress'
 import { getSubjectDetail } from '@/src/data-access/subjects'
 import { formatDate } from '@/src/lib/utils'
+
+// Subjects that have a dedicated language trainer
+const LANGUAGE_SUBJECTS = new Set(['Spanisch', 'Englisch', 'Deutsch', 'Französisch', 'Italienisch'])
 
 interface Props {
     params: Promise<{ subject: string }>
@@ -77,6 +81,26 @@ export default async function SubjectWorkspacePage({ params }: Props) {
                                 </Link>
                             </Button>
                         </div>
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* Language trainer cross-link */}
+            {LANGUAGE_SUBJECTS.has(subject) && (
+                <Card className="border-blue-500/30 bg-gradient-to-r from-blue-500/5 to-background">
+                    <CardContent className="flex items-center justify-between p-4">
+                        <div className="flex items-center gap-3">
+                            <Languages className="h-5 w-5 text-blue-500" />
+                            <span className="text-sm">
+                                Vokabeln für {subject} findest du im <strong>Sprachtrainer</strong>
+                            </span>
+                        </div>
+                        <Button size="sm" variant="outline" asChild>
+                            <Link href={`/learn/language/${encodeURIComponent(subject)}`}>
+                                Zum Sprachtrainer
+                                <ArrowRight className="h-4 w-4 ml-1" />
+                            </Link>
+                        </Button>
                     </CardContent>
                 </Card>
             )}
