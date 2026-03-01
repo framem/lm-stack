@@ -23,6 +23,7 @@ import { getDailyPracticeItems } from '@/src/actions/session'
 import { getUserStats } from '@/src/actions/user-stats'
 import { reviewFlashcard } from '@/src/actions/flashcards'
 import { evaluateAnswer } from '@/src/actions/quiz'
+import { FLASHCARD_RATINGS } from '@/src/lib/constants'
 
 interface FlashcardData {
     id: string
@@ -47,12 +48,6 @@ interface SessionItem {
     data: FlashcardData | QuizData
     overdueBy: number
 }
-
-const FLASHCARD_RATINGS = [
-    { quality: 1, label: 'Kenne ich nicht', variant: 'destructive' as const },
-    { quality: 3, label: 'Unsicher', variant: 'outline' as const },
-    { quality: 5, label: 'Kenne ich', variant: 'default' as const },
-]
 
 export default function DailyPracticePage() {
     const [items, setItems] = useState<SessionItem[]>([])

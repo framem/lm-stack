@@ -27,6 +27,7 @@ import { isFreetextLikeType } from '@/src/lib/quiz-types'
 import { SortableWordChips } from '@/src/components/quiz/SortableWordChips'
 import { FlashcardCard } from '@/src/components/FlashcardCard'
 import { toast } from 'sonner'
+import { FLASHCARD_RATINGS } from '@/src/lib/constants'
 
 interface FlashcardData {
     id: string
@@ -52,12 +53,6 @@ interface SessionItem {
     data: FlashcardData | QuizData
     overdueBy: number
 }
-
-const FLASHCARD_RATINGS = [
-    { quality: 1, label: 'Kenne ich nicht', variant: 'destructive' as const },
-    { quality: 3, label: 'Unsicher', variant: 'outline' as const },
-    { quality: 5, label: 'Kenne ich', variant: 'default' as const },
-]
 
 interface SessionStats {
     flashcardsReviewed: number

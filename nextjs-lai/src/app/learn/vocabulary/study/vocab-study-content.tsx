@@ -27,6 +27,7 @@ import { TTSButton } from '@/src/components/TTSButton'
 import { ConjugationTable } from '@/src/components/ConjugationTable'
 import { reviewFlashcard, getDueVocabularyFlashcards, getNewVocabularyFlashcards, getVocabularyFlashcards, getSchedulingPreview } from '@/src/actions/flashcards'
 import { Rating } from '@/src/lib/spaced-repetition'
+import { VOCAB_RATINGS as RATINGS } from '@/src/lib/constants'
 import { generateExampleSentences, generateMnemonic, explainWord, explainError } from '@/src/actions/vocab-ai'
 import { VocabSpeechInput } from '@/src/components/VocabSpeechInput'
 import { toast } from 'sonner'
@@ -145,13 +146,6 @@ function shuffle<T>(arr: T[]): T[] {
     }
     return a
 }
-
-const RATINGS = [
-    { rating: Rating.Again, label: 'Nochmal', variant: 'destructive' as const },
-    { rating: Rating.Hard, label: 'Schwer', variant: 'outline' as const },
-    { rating: Rating.Good, label: 'Gut', variant: 'default' as const },
-    { rating: Rating.Easy, label: 'Einfach', variant: 'secondary' as const },
-]
 
 export function VocabStudyContent() {
     const searchParams = useSearchParams()

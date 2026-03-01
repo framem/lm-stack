@@ -14,6 +14,7 @@ import { reviewFlashcard } from '@/src/actions/flashcards'
 import { Loader2, FileText, SkipForward } from 'lucide-react'
 import { toast } from 'sonner'
 import { FlashcardCard } from '@/src/components/FlashcardCard'
+import { FLASHCARD_RATINGS as RATINGS } from '@/src/lib/constants'
 
 interface FlashcardItem {
     id: string
@@ -33,12 +34,6 @@ interface FlashcardPlayerProps {
     cards: FlashcardItem[]
     onComplete: (results: ReviewResult[]) => void
 }
-
-const RATINGS = [
-    { quality: 1, label: 'Kenne ich nicht', variant: 'destructive' as const },
-    { quality: 3, label: 'Unsicher', variant: 'outline' as const },
-    { quality: 5, label: 'Kenne ich', variant: 'default' as const },
-]
 
 export function FlashcardPlayer({ cards: initialCards, onComplete }: FlashcardPlayerProps) {
     const [queue, setQueue] = useState<FlashcardItem[]>(initialCards)
