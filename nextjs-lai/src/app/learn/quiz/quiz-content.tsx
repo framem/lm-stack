@@ -328,15 +328,16 @@ export function QuizContent() {
 
     async function confirmDelete() {
         if (!deleteTarget) return
+        const previous = quizzes
+        setQuizzes((prev) => prev.filter((q) => q.id !== deleteTarget))
+        setDeleteTarget(null)
         try {
             await deleteQuiz(deleteTarget)
-            setQuizzes((prev) => prev.filter((q) => q.id !== deleteTarget))
             toast.success('Quiz gelöscht')
         } catch (error) {
             console.error('Quiz delete failed:', error)
+            setQuizzes(previous)
             toast.error('Quiz konnte nicht gelöscht werden.')
-        } finally {
-            setDeleteTarget(null)
         }
     }
 

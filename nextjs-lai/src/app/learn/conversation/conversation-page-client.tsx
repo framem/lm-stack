@@ -78,6 +78,7 @@ export function ConversationPageClient({ bestEvaluations, generatedScenarios }: 
     const [selectedLanguage, setSelectedLanguage] = useState<Language>('de')
     const [showGenerator, setShowGenerator] = useState(false)
     const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
+    const [removedIds, setRemovedIds] = useState<Set<string>>(new Set())
 
     // Auto-select scenario and language from URL params
     useEffect(() => {
@@ -135,7 +136,7 @@ export function ConversationPageClient({ bestEvaluations, generatedScenarios }: 
 
     // Filter generated scenarios by selected language
     const filteredGenerated = generatedScenarios.filter(
-        (s) => s.language === selectedLanguage
+        (s) => s.language === selectedLanguage && !removedIds.has(s.id)
     )
 
     const handleDeleteGenerated = (e: React.MouseEvent, id: string) => {
@@ -145,14 +146,15 @@ export function ConversationPageClient({ bestEvaluations, generatedScenarios }: 
 
     async function confirmDeleteGenerated() {
         if (!deleteTarget) return
+        setRemovedIds((prev) => new Set(prev).add(deleteTarget))
+        setDeleteTarget(null)
         try {
             await removeGeneratedScenario(deleteTarget)
             toast.success('Szenario gelöscht.')
             router.refresh()
         } catch {
+            setRemovedIds((prev) => { const next = new Set(prev); next.delete(deleteTarget); return next })
             toast.error('Szenario konnte nicht gelöscht werden.')
-        } finally {
-            setDeleteTarget(null)
         }
     }
 
