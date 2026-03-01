@@ -12,7 +12,8 @@
     "lint": "eslint .",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
-    "prisma": "npm run prisma:generate && npm run prisma:push",
+    "prisma:hnsw": "node -e \"require('dotenv').config();const pg=require('pg');const c=new pg.Client({connectionString:process.env.DATABASE_URL});c.connect().then(async()=>{await c.query('CREATE INDEX IF NOT EXISTS \\\"DocumentChunk_embedding_hnsw_idx\\\" ON \\\"DocumentChunk\\\" USING hnsw (embedding vector_cosine_ops) WITH (m=16,ef_construction=64)');console.log('HNSW index ensured');c.end()}).catch(e=>{console.error(e);c.end();process.exit(1)})\"",
+    "prisma": "npm run prisma:generate && npm run prisma:push && npm run prisma:hnsw",
     "test": "vitest run"
   },
   "devDependencies": {
@@ -80,5 +81,8 @@
     "ts-fsrs": "^5.2.3",
     "use-stick-to-bottom": "^1.1.3",
     "zod": "^4.3.6"
+  },
+  "overrides": {
+    "pdfjs-dist": "^5.4.624"
   }
 }

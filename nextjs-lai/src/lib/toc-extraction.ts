@@ -16,7 +16,7 @@ const tocSchema = z.object({
     sections: z.array(
         z.object({
             title: z.string().describe('Section/chapter title'),
-            level: z.number().min(1).max(3).describe('Heading level: 1=chapter, 2=section, 3=subsection'),
+            level: z.number().min(0).max(5).describe('Heading level: 0=document title, 1=chapter, 2=section, 3=subsection, 4-5=deeper'),
             startChunkIndex: z.number().describe('Index of the chunk where this section begins'),
         })
     ),

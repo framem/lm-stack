@@ -108,8 +108,16 @@ describe('Chunk operations', () => {
 
         expect(mockPrisma.documentChunk.createMany).toHaveBeenCalledWith({
             data: [
-                { documentId: 'doc1', content: 'chunk 1', chunkIndex: 0, pageNumber: 1, tokenCount: 50 },
-                { documentId: 'doc1', content: 'chunk 2', chunkIndex: 1, pageNumber: 1, tokenCount: 60 },
+                {
+                    documentId: 'doc1', content: 'chunk 1', chunkIndex: 0, pageNumber: 1, tokenCount: 50,
+                    chunkingStrategy: null, sectionHeading: null, questionNumber: null,
+                    questionText: null, examLabel: null, taskNumber: null, subTask: null, blockType: null,
+                },
+                {
+                    documentId: 'doc1', content: 'chunk 2', chunkIndex: 1, pageNumber: 1, tokenCount: 60,
+                    chunkingStrategy: null, sectionHeading: null, questionNumber: null,
+                    questionText: null, examLabel: null, taskNumber: null, subTask: null, blockType: null,
+                },
             ],
         })
     })
@@ -138,7 +146,7 @@ describe('Similarity search', () => {
             expect.stringContaining('ORDER BY c.embedding'),
             '[0.1,0.2]',
             5,
-            0.8
+            0.25 // 1 - 0.75 similarity threshold = 0.25 cosine distance
         )
         expect(result).toEqual(mockChunks)
     })

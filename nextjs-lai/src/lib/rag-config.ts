@@ -17,21 +17,21 @@ export interface ChunkingParams {
 /** Per-strategy chunking parameters */
 export const CHUNKING_PARAMS: Record<ChunkingStrategy, ChunkingParams> = {
     knowledgebase: {
-        targetChunkSizeTokens: 400,
+        targetChunkSizeTokens: 380,
         minChunkSizeTokens: 50,   // Short Q&A blocks are valid standalone chunks
-        maxChunkSizeTokens: 800,
+        maxChunkSizeTokens: 480,  // Must stay within embedding model context (512)
         overlapTokens: 40,
     },
     exam: {
-        targetChunkSizeTokens: 600,
+        targetChunkSizeTokens: 450,
         minChunkSizeTokens: 100,
-        maxChunkSizeTokens: 800,
+        maxChunkSizeTokens: 480,
         overlapTokens: 40,
     },
     sentence: {
-        targetChunkSizeTokens: 400,
+        targetChunkSizeTokens: 380,
         minChunkSizeTokens: 100,
-        maxChunkSizeTokens: 600,
+        maxChunkSizeTokens: 480,
         overlapTokens: 50,
     },
 }
@@ -63,7 +63,20 @@ export const EMBEDDING_CONFIG = {
     similarityMetric: 'cosine' as const,
     /** Batch size for embedding API calls */
     batchSize: 32,
+    /** Max tokens the embedding model supports */
+    maxModelTokens: 512,
 }
+
+// ── E5 instruction prefixes ──
+// multilingual-e5-large requires "query: " / "passage: " prefixes
+// for correct similarity scoring.
+
+export const E5_PREFIX = {
+    /** Prefix for search queries (retrieval time) */
+    query: 'query: ',
+    /** Prefix for document passages (indexing time) */
+    passage: 'passage: ',
+} as const
 
 // ── Retrieval parameters ──
 
@@ -80,5 +93,9 @@ export const RETRIEVAL_CONFIG = {
 
 // ── Token estimation ──
 
-/** Approximate chars per token for German text (~4 chars/token) */
-export const CHARS_PER_TOKEN = 4
+/**
+ * Approximate chars per token for German text with multilingual tokenizers.
+ * Multilingual models tokenize German compound words less efficiently
+ * than English (~3.3 vs ~4 chars/token).
+ */
+export const CHARS_PER_TOKEN = 3.3

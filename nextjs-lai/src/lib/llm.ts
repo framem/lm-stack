@@ -1,6 +1,7 @@
 import { createGateway, embed, embedMany } from 'ai'
 import { createOllama } from 'ai-sdk-ollama'
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
+import { E5_PREFIX, EMBEDDING_CONFIG, CHARS_PER_TOKEN } from '@/src/lib/rag-config'
 
 type LLMProvider = 'ollama' | 'lmstudio' | 'gateway'
 
@@ -91,24 +92,55 @@ function normalizeL2(vec: number[]): number[] {
     return vec.map(v => v / norm)
 }
 
+// ── Truncation safety net ──
+// Ensures text + prefix stays within the embedding model's token limit.
+
+const MAX_CONTENT_CHARS = Math.floor(
+    (EMBEDDING_CONFIG.maxModelTokens - 10) * CHARS_PER_TOKEN // 10 token buffer for prefix + special tokens
+)
+
+function truncateForEmbedding(text: string): string {
+    if (text.length <= MAX_CONTENT_CHARS) return text
+    // Cut at last space before limit to avoid splitting words
+    const cut = text.lastIndexOf(' ', MAX_CONTENT_CHARS)
+    return cut > 0 ? text.slice(0, cut) : text.slice(0, MAX_CONTENT_CHARS)
+}
+
+// ── E5 prefix helpers ──
+// multilingual-e5-large requires "query: " / "passage: " prefixes.
+
+function prefixQuery(text: string): string {
+    return E5_PREFIX.query + truncateForEmbedding(text)
+}
+
+function prefixPassage(text: string): string {
+    return E5_PREFIX.passage + truncateForEmbedding(text)
+}
+
+/**
+ * Embed a single query (retrieval time) — applies "query: " prefix.
+ */
 export async function createEmbedding(text: string): Promise<number[]> {
     const model = getEmbeddingModel()
-    const { embedding } = await embed({ model, value: text })
+    const { embedding } = await embed({ model, value: prefixQuery(text) })
     return normalizeL2(embedding)
 }
 
+/**
+ * Embed multiple passages (indexing time) — applies "passage: " prefix.
+ */
 export async function createEmbeddingsBatch(texts: string[]): Promise<number[][]> {
     if (texts.length === 0) return []
     const model = getEmbeddingModel()
-    const { embeddings } = await embedMany({ model, values: texts })
+    const { embeddings } = await embedMany({ model, values: texts.map(prefixPassage) })
     return embeddings.map(normalizeL2)
 }
 
 const EMBEDDING_BATCH_SIZE = 32
 
 /**
- * Process embeddings in smaller batches, calling onProgress after each batch.
- * Returns the full array of L2-normalized embeddings in the original order.
+ * Process passage embeddings in smaller batches, calling onProgress after each batch.
+ * Applies "passage: " prefix and L2 normalization.
  */
 export async function createEmbeddingsBatchWithProgress(
     texts: string[],
@@ -120,7 +152,7 @@ export async function createEmbeddingsBatchWithProgress(
 
     for (let i = 0; i < texts.length; i += EMBEDDING_BATCH_SIZE) {
         const slice = texts.slice(i, i + EMBEDDING_BATCH_SIZE)
-        const { embeddings } = await embedMany({ model, values: slice })
+        const { embeddings } = await embedMany({ model, values: slice.map(prefixPassage) })
         allEmbeddings.push(...embeddings.map(normalizeL2))
         onProgress(Math.min(i + EMBEDDING_BATCH_SIZE, texts.length), texts.length)
     }
