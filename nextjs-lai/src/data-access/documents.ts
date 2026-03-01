@@ -1,5 +1,6 @@
 import { prisma } from '@/src/lib/prisma'
 import type { Chunk } from '@/src/lib/chunking'
+import { RETRIEVAL_CONFIG } from '@/src/lib/rag-config'
 
 // ---- Document CRUD ----
 
@@ -111,6 +112,14 @@ export async function createChunks(documentId: string, chunks: Chunk[]) {
             chunkIndex: chunk.chunkIndex,
             pageNumber: chunk.pageNumber,
             tokenCount: chunk.tokenCount,
+            chunkingStrategy: chunk.chunkingStrategy ?? null,
+            sectionHeading: chunk.sectionHeading ?? null,
+            questionNumber: chunk.questionNumber ?? null,
+            questionText: chunk.questionText ?? null,
+            examLabel: chunk.examLabel ?? null,
+            taskNumber: chunk.taskNumber ?? null,
+            subTask: chunk.subTask ?? null,
+            blockType: chunk.blockType ?? null,
         })),
     })
 }
@@ -193,8 +202,15 @@ export async function findSimilarChunks(
     embedding: number[],
     options: { topK?: number; documentIds?: string[]; threshold?: number } = {}
 ): Promise<SimilarChunk[]> {
-    const { topK = 5, documentIds, threshold = 0.8 } = options
+    const {
+        topK = RETRIEVAL_CONFIG.topK,
+        documentIds,
+        threshold = RETRIEVAL_CONFIG.minScoreThreshold,
+    } = options
     const vectorString = `[${embedding.join(',')}]`
+    // Convert similarity threshold (0–1) to cosine distance threshold
+    // cosine distance = 1 - cosine similarity
+    const distanceThreshold = 1 - threshold
 
     if (documentIds && documentIds.length > 0) {
         return prisma.$queryRawUnsafe<SimilarChunk[]>(
@@ -210,7 +226,7 @@ export async function findSimilarChunks(
              LIMIT $2`,
             vectorString,
             topK,
-            threshold,
+            distanceThreshold,
             documentIds
         )
     }
@@ -227,6 +243,6 @@ export async function findSimilarChunks(
          LIMIT $2`,
         vectorString,
         topK,
-        threshold
+        distanceThreshold
     )
 }

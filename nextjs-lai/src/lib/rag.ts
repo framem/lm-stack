@@ -1,5 +1,6 @@
 import { createEmbedding } from '@/src/lib/llm'
 import { findSimilarChunks } from '@/src/data-access/documents'
+import { RETRIEVAL_CONFIG } from '@/src/lib/rag-config'
 
 export interface RetrievedContext {
     id: string
@@ -22,7 +23,7 @@ export async function retrieveContext(
     query: string,
     options: RetrieveOptions = {}
 ): Promise<RetrievedContext[]> {
-    const { topK = 5, documentIds, threshold = 0.5 } = options
+    const { topK = RETRIEVAL_CONFIG.topK, documentIds, threshold = RETRIEVAL_CONFIG.minScoreThreshold } = options
 
     const embedding = await createEmbedding(query)
 

@@ -81,24 +81,34 @@ export function getEmbeddingModel() {
     }
 }
 
+// ── L2 normalization for cosine-similarity storage ──
+
+function normalizeL2(vec: number[]): number[] {
+    let norm = 0
+    for (const v of vec) norm += v * v
+    norm = Math.sqrt(norm)
+    if (norm === 0) return vec
+    return vec.map(v => v / norm)
+}
+
 export async function createEmbedding(text: string): Promise<number[]> {
     const model = getEmbeddingModel()
     const { embedding } = await embed({ model, value: text })
-    return embedding
+    return normalizeL2(embedding)
 }
 
 export async function createEmbeddingsBatch(texts: string[]): Promise<number[][]> {
     if (texts.length === 0) return []
     const model = getEmbeddingModel()
     const { embeddings } = await embedMany({ model, values: texts })
-    return embeddings
+    return embeddings.map(normalizeL2)
 }
 
-const EMBEDDING_BATCH_SIZE = 50
+const EMBEDDING_BATCH_SIZE = 32
 
 /**
  * Process embeddings in smaller batches, calling onProgress after each batch.
- * Returns the full array of embeddings in the original order.
+ * Returns the full array of L2-normalized embeddings in the original order.
  */
 export async function createEmbeddingsBatchWithProgress(
     texts: string[],
@@ -111,7 +121,7 @@ export async function createEmbeddingsBatchWithProgress(
     for (let i = 0; i < texts.length; i += EMBEDDING_BATCH_SIZE) {
         const slice = texts.slice(i, i + EMBEDDING_BATCH_SIZE)
         const { embeddings } = await embedMany({ model, values: slice })
-        allEmbeddings.push(...embeddings)
+        allEmbeddings.push(...embeddings.map(normalizeL2))
         onProgress(Math.min(i + EMBEDDING_BATCH_SIZE, texts.length), texts.length)
     }
 

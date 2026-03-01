@@ -23,13 +23,21 @@ model Document {
 }
 
 model DocumentChunk {
-  id         String @id @default(cuid())
-  documentId String
-  content    String
-  chunkIndex Int
-  pageNumber Int?
-  tokenCount Int?
-  embedding  Unsupported("vector(768)")?
+  id               String @id @default(cuid())
+  documentId       String
+  content          String
+  chunkIndex       Int
+  pageNumber       Int?
+  tokenCount       Int?
+  embedding        Unsupported("vector(1024)")?
+  chunkingStrategy String?
+  sectionHeading   String?
+  questionNumber   String?
+  questionText     String?
+  examLabel        String?
+  taskNumber       String?
+  subTask          String?
+  blockType        String?
 
   document      Document       @relation(fields: [documentId], references: [id], onDelete: Cascade)
   quizQuestions QuizQuestion[]
