@@ -522,6 +522,11 @@ function splitWithOverlap(
                 overlapCount += sentences[j].length
                 if (overlapCount >= overlapChars) { newStart = j; break }
             }
+            // If overlap + current sentence would still exceed maxChars, drop the overlap
+            const overlapLen = sentences.slice(newStart, i).reduce((s, v) => s + v.length, 0)
+            if (overlapLen + sentences[i].length > maxChars) {
+                newStart = i
+            }
             startIdx = newStart
             currentChars = sentences.slice(startIdx, i).reduce((s, v) => s + v.length, 0)
         }
