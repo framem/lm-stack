@@ -47,7 +47,6 @@ import {
     skipTask,
     deleteStudyPlan,
 } from '@/src/actions/study-plan'
-import { getDocuments } from '@/src/actions/documents'
 
 interface Document {
     id: string
@@ -119,11 +118,16 @@ function groupByDate(tasks: StudyTask[]) {
     return groups
 }
 
-export function PlanContent() {
+export interface PlanContentProps {
+    initialPlans: StudyPlan[]
+    initialDocuments: Document[]
+}
+
+export function PlanContent({ initialPlans, initialDocuments }: PlanContentProps) {
     const router = useRouter()
-    const [plans, setPlans] = useState<StudyPlan[]>([])
-    const [documents, setDocuments] = useState<Document[]>([])
-    const [loading, setLoading] = useState(true)
+    const [plans, setPlans] = useState<StudyPlan[]>(initialPlans)
+    const [documents] = useState<Document[]>(initialDocuments)
+    const [loading] = useState(false)
     const [dialogOpen, setDialogOpen] = useState(false)
     const [generating, setGenerating] = useState(false)
     const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
@@ -134,26 +138,10 @@ export function PlanContent() {
     const [selectedDocIds, setSelectedDocIds] = useState<string[]>([])
     const [examDate, setExamDate] = useState('')
 
+    // Auto-expand today on mount
     useEffect(() => {
-        async function load() {
-            try {
-                const [planList, docList] = await Promise.all([
-                    getStudyPlans(),
-                    getDocuments(),
-                ])
-                setPlans(planList as StudyPlan[])
-                setDocuments(docList as unknown as Document[])
-
-                // Auto-expand today
-                const todayKey = new Date().toISOString().split('T')[0]
-                setExpandedDays(new Set([todayKey]))
-            } catch (error) {
-                console.error('Failed to load plans:', error)
-            } finally {
-                setLoading(false)
-            }
-        }
-        load()
+        const todayKey = new Date().toISOString().split('T')[0]
+        setExpandedDays(new Set([todayKey]))
     }, [])
 
     async function handleGenerate() {

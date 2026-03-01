@@ -20,7 +20,6 @@ import { Progress } from '@/src/components/ui/progress'
 import { RadioGroup, RadioGroupItem } from '@/src/components/ui/radio-group'
 import { Checkbox } from '@/src/components/ui/checkbox'
 import { Textarea } from '@/src/components/ui/textarea'
-import { getCombinedDueItems } from '@/src/actions/session'
 import { reviewFlashcard } from '@/src/actions/flashcards'
 import { evaluateAnswer } from '@/src/actions/quiz'
 import { isFreetextLikeType } from '@/src/lib/quiz-types'
@@ -61,10 +60,14 @@ interface SessionStats {
     quizCorrect: number
 }
 
-export function SessionContent() {
-    const [items, setItems] = useState<SessionItem[]>([])
+export interface SessionContentProps {
+    initialItems: SessionItem[]
+}
+
+export function SessionContent({ initialItems }: SessionContentProps) {
+    const [items] = useState<SessionItem[]>(initialItems)
     const [currentIndex, setCurrentIndex] = useState(0)
-    const [loading, setLoading] = useState(true)
+    const [loading] = useState(false)
     const [submitting, setSubmitting] = useState(false)
     const [completed, setCompleted] = useState(false)
     const [stats, setStats] = useState<SessionStats>({
@@ -91,20 +94,6 @@ export function SessionContent() {
         freeTextFeedback?: string
         correctAnswer?: string
     } | null>(null)
-
-    useEffect(() => {
-        async function load() {
-            try {
-                const data = await getCombinedDueItems(30, 'documents-only')
-                setItems(data as unknown as SessionItem[])
-            } catch (err) {
-                console.error('Failed to load session items:', err)
-            } finally {
-                setLoading(false)
-            }
-        }
-        load()
-    }, [])
 
     const currentItem = items[currentIndex]
     const progressPercent = items.length > 0 ? (currentIndex / items.length) * 100 : 0
