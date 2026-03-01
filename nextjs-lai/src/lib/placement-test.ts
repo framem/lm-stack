@@ -1,4 +1,4 @@
-import { getWordList, type CefrLevel, type CefrWord } from '@/src/data/cefr-reference'
+import { getWordList, type CefrLevel } from '@/src/data/cefr-reference'
 
 // Seeded random using a simple hash (deterministic per seed)
 function seededRandom(seed: number) {

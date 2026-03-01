@@ -76,27 +76,25 @@ export function ConversationPageClient({ language, bestEvaluations, generatedSce
 
     const basePath = `/learn/language/${language}/conversation`
 
-    // Auto-select scenario from URL params
-    useEffect(() => {
-        const scenarioKey = searchParams.get('scenario')
-
+    // Auto-select scenario from URL params (sync during render)
+    const scenarioKey = searchParams.get('scenario')
+    const [prevScenarioKey, setPrevScenarioKey] = useState(scenarioKey)
+    if (scenarioKey !== prevScenarioKey) {
+        setPrevScenarioKey(scenarioKey)
         if (scenarioKey) {
-            // Find the scenario in standard scenarios
             const standardScenario = SCENARIOS.find((s) => s.key === scenarioKey)
             if (standardScenario) {
                 setActiveScenario(standardScenario)
-                return
-            }
-
-            // Find in generated scenarios
-            const generatedScenario = generatedScenarios.find(
-                (s) => s.key === scenarioKey && s.language === language
-            )
-            if (generatedScenario) {
-                setActiveScenario(toConversationScenario(generatedScenario))
+            } else {
+                const generatedScenario = generatedScenarios.find(
+                    (s) => s.key === scenarioKey && s.language === language
+                )
+                if (generatedScenario) {
+                    setActiveScenario(toConversationScenario(generatedScenario))
+                }
             }
         }
-    }, [searchParams, generatedScenarios, language])
+    }
 
     if (activeScenario) {
         const translation = activeScenario.translations[language]

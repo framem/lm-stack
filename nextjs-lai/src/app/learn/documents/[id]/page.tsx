@@ -93,6 +93,20 @@ export default function DocumentDetailPage() {
     const [topics, setTopics] = useState<TopicCompetency[]>([])
     const [loadingTopics, setLoadingTopics] = useState(true)
 
+    const loadTopics = useCallback(async () => {
+        if (!params.id) return
+        setLoadingTopics(true)
+        try {
+            const competencies = await getCompetencies(params.id)
+            setTopics(competencies)
+        } catch (err) {
+            console.error('Error loading topics:', err)
+            setTopics([])
+        } finally {
+            setLoadingTopics(false)
+        }
+    }, [params.id])
+
     const fetchDocument = useCallback(async () => {
         try {
             if (!params.id) {
@@ -123,21 +137,7 @@ export default function DocumentDetailPage() {
         } finally {
             setLoading(false)
         }
-    }, [params.id])
-
-    const loadTopics = async () => {
-        if (!params.id) return
-        setLoadingTopics(true)
-        try {
-            const competencies = await getCompetencies(params.id)
-            setTopics(competencies)
-        } catch (err) {
-            console.error('Error loading topics:', err)
-            setTopics([])
-        } finally {
-            setLoadingTopics(false)
-        }
-    }
+    }, [params.id, loadTopics, setCurrentPageTitle])
 
     useEffect(() => {
         fetchDocument()
@@ -608,7 +608,7 @@ export default function DocumentDetailPage() {
                             <div>
                                 <p className="font-medium mb-1">Noch keine Themen extrahiert</p>
                                 <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                                    Klicke auf "Themen extrahieren", um KI-basierte Themen aus diesem Dokument zu extrahieren.
+                                    Klicke auf &bdquo;Themen extrahieren&ldquo;, um KI-basierte Themen aus diesem Dokument zu extrahieren.
                                 </p>
                             </div>
                         </div>

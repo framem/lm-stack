@@ -118,7 +118,7 @@ export function CefrProgressRing({ progress }: CefrProgressRingProps) {
                                             </TooltipTrigger>
                                             <TooltipContent className="max-w-xs">
                                                 <p>
-                                                    CEFR steht für "Common European Framework of Reference for Languages".
+                                                    CEFR steht für &bdquo;Common European Framework of Reference for Languages&ldquo;.
                                                     Es ist ein Standard zur Bewertung von Sprachkenntnissen: A1 (Anfänger),
                                                     A2 (Grundkenntnisse), B1 (fortgeschritten), bis C2 (muttersprachlich).
                                                 </p>
@@ -154,7 +154,7 @@ export function CefrProgressRing({ progress }: CefrProgressRingProps) {
                                     </TooltipTrigger>
                                     <TooltipContent className="max-w-xs">
                                         <p>
-                                            CEFR steht für "Common European Framework of Reference for Languages".
+                                            CEFR steht für &bdquo;Common European Framework of Reference for Languages&ldquo;.
                                             Es ist ein Standard zur Bewertung von Sprachkenntnissen: A1 (Anfänger),
                                             A2 (Grundkenntnisse), B1 (fortgeschritten), bis C2 (muttersprachlich).
                                         </p>
@@ -265,7 +265,7 @@ function GoalSetupDialog({ open, onOpenChange }: { open: boolean; onOpenChange: 
                                 </TooltipTrigger>
                                 <TooltipContent className="max-w-xs">
                                     <p>
-                                        CEFR steht für "Common European Framework of Reference for Languages".
+                                        CEFR steht für &bdquo;Common European Framework of Reference for Languages&ldquo;.
                                         Es ist ein Standard zur Bewertung von Sprachkenntnissen: A1 (Anfänger),
                                         A2 (Grundkenntnisse), B1 (fortgeschritten), bis C2 (muttersprachlich).
                                     </p>

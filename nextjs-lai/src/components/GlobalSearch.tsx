@@ -144,7 +144,7 @@ export function GlobalSearch() {
                     )}
 
                     {!loading && query.length >= 2 && !hasResults && (
-                        <CommandEmpty>Keine Ergebnisse für „{query}"</CommandEmpty>
+                        <CommandEmpty>Keine Ergebnisse für &bdquo;{query}&ldquo;</CommandEmpty>
                     )}
 
                     {!loading && results.documents.length > 0 && (

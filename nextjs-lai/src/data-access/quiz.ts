@@ -1,5 +1,6 @@
 import { prisma } from '@/src/lib/prisma'
-import { progressToCard, scheduleReview, quizQualityFromAnswer, Rating } from '@/src/lib/spaced-repetition'
+import type { Prisma } from '@/prisma/generated/prisma/client'
+import { progressToCard, scheduleReview, quizQualityFromAnswer } from '@/src/lib/spaced-repetition'
 import { isFreetextLikeType } from '@/src/lib/quiz-types'
 import type { DifficultyLevel } from '@/src/lib/quiz-difficulty'
 
@@ -254,7 +255,7 @@ export async function upsertQuestionProgress(
 
 // Get questions due for review (nextReviewAt <= now)
 export async function getDueQuestions(limit: number = 20, opts?: { excludeLanguageSets?: boolean; language?: string }) {
-    const where: any = {
+    const where: Prisma.QuizQuestionWhereInput = {
         progress: {
             nextReviewAt: { lte: new Date() },
         },
