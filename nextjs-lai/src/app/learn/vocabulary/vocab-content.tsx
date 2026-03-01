@@ -60,7 +60,7 @@ export function VocabContent({ language, languageCode }: VocabContentProps = {})
     // Build base path for study links depending on context
     const studyBase = languageCode
         ? `/learn/language/${languageCode}/study`
-        : '/learn/vocabulary/study'
+        : '/learn/language'
 
     useEffect(() => {
         async function load() {

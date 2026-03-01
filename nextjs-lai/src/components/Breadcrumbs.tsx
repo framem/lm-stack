@@ -32,9 +32,6 @@ const ROUTE_LABELS: Record<string, string> = {
     '/learn/quiz/review': 'Auswertung',
     '/learn/session': 'Lern-Session',
     '/learn/stats': 'Statistiken',
-    '/learn/vocabulary': 'Vokabeltrainer',
-    '/learn/vocabulary/sets': 'Sets',
-    '/learn/vocabulary/study': 'Üben',
 }
 
 export function Breadcrumbs() {
