@@ -47,15 +47,25 @@ interface VocabCard {
     } | null
 }
 
-export function VocabContent() {
+interface VocabContentProps {
+    language?: string
+    languageCode?: string
+}
+
+export function VocabContent({ language, languageCode }: VocabContentProps = {}) {
     const [cards, setCards] = useState<VocabCard[]>([])
     const [loading, setLoading] = useState(true)
     const [analyticsOpen, setAnalyticsOpen] = useState(false)
 
+    // Build base path for study links depending on context
+    const studyBase = languageCode
+        ? `/learn/language/${languageCode}/study`
+        : '/learn/vocabulary/study'
+
     useEffect(() => {
         async function load() {
             try {
-                const vocabCards = await getVocabularyFlashcards()
+                const vocabCards = await getVocabularyFlashcards(undefined, language)
                 setCards(vocabCards as unknown as VocabCard[])
             } catch (err) {
                 console.error('Failed to load vocabulary:', err)
@@ -64,7 +74,7 @@ export function VocabContent() {
             }
         }
         load()
-    }, [])
+    }, [language])
 
     if (loading) {
         return (
@@ -212,7 +222,7 @@ export function VocabContent() {
                     <div className="flex flex-wrap gap-3">
                         {trulyDueCount > 0 && (
                             <Button asChild>
-                                <Link href="/learn/vocabulary/study?mode=flip">
+                                <Link href={`${studyBase}?mode=flip`}>
                                     <RotateCcw className="h-4 w-4" />
                                     Fällige lernen ({trulyDueCount})
                                 </Link>
@@ -220,26 +230,26 @@ export function VocabContent() {
                         )}
                         {newCount > 0 && (
                             <Button variant={trulyDueCount === 0 ? 'default' : 'outline'} asChild>
-                                <Link href="/learn/vocabulary/study?mode=flip&new=true">
+                                <Link href={`${studyBase}?mode=flip&new=true`}>
                                     <Sparkles className="h-4 w-4" />
                                     Neue einführen ({newBatchCount} heute)
                                 </Link>
                             </Button>
                         )}
                         <Button variant="outline" asChild>
-                            <Link href="/learn/vocabulary/study?mode=flip&all=true">
+                            <Link href={`${studyBase}?mode=flip&all=true`}>
                                 <BookOpen className="h-4 w-4" />
                                 Alle lernen
                             </Link>
                         </Button>
                         <Button variant="outline" asChild>
-                            <Link href="/learn/vocabulary/study?mode=type">
+                            <Link href={`${studyBase}?mode=type`}>
                                 <Keyboard className="h-4 w-4" />
                                 Tipp-Modus
                             </Link>
                         </Button>
                         <Button variant="outline" asChild>
-                            <Link href="/learn/vocabulary/study?mode=speech">
+                            <Link href={`${studyBase}?mode=speech`}>
                                 <Mic className="h-4 w-4" />
                                 Sprech-Modus
                             </Link>
@@ -291,12 +301,12 @@ export function VocabContent() {
                                                         </div>
                                                         <div className="flex items-center justify-end gap-2 pt-1">
                                                             <Button size="sm" asChild>
-                                                                <Link href={`/learn/vocabulary/study?mode=flip&doc=${stats!.docId}`}>
+                                                                <Link href={`${studyBase}?mode=flip&doc=${stats!.docId}`}>
                                                                     Lernen
                                                                 </Link>
                                                             </Button>
                                                             <Button size="sm" variant="outline" asChild>
-                                                                <Link href={`/learn/vocabulary/sets/${set.id}`}>
+                                                                <Link href={`/learn/language/${set.id.split('-')[0]}/${set.id.split('-')[1]}`}>
                                                                     Details anzeigen →
                                                                 </Link>
                                                             </Button>
@@ -335,7 +345,7 @@ export function VocabContent() {
                                                 </div>
                                             </div>
                                             <Button size="sm" asChild>
-                                                <Link href={`/learn/vocabulary/study?mode=flip&doc=${docId}`}>
+                                                <Link href={`${studyBase}?mode=flip&doc=${docId}`}>
                                                     Lernen
                                                 </Link>
                                             </Button>

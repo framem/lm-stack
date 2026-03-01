@@ -233,7 +233,7 @@ export function LanguageHub({ code, language }: LanguageHubProps) {
                     <div className="flex flex-wrap gap-3">
                         {trulyDueCount > 0 && (
                             <Button asChild>
-                                <Link href={`/learn/vocabulary/study?mode=flip&language=${code}`}>
+                                <Link href={`/learn/language/${code}/study?mode=flip`}>
                                     <RotateCcw className="h-4 w-4" />
                                     Fällige lernen ({trulyDueCount})
                                 </Link>
@@ -241,26 +241,26 @@ export function LanguageHub({ code, language }: LanguageHubProps) {
                         )}
                         {newCount > 0 && (
                             <Button variant={trulyDueCount === 0 ? 'default' : 'outline'} asChild>
-                                <Link href={`/learn/vocabulary/study?mode=flip&new=true&language=${code}`}>
+                                <Link href={`/learn/language/${code}/study?mode=flip&new=true`}>
                                     <Sparkles className="h-4 w-4" />
                                     Neue lernen ({Math.min(newCount, 20)})
                                 </Link>
                             </Button>
                         )}
                         <Button variant="outline" asChild>
-                            <Link href={`/learn/vocabulary/study?mode=flip&all=true&language=${code}`}>
+                            <Link href={`/learn/language/${code}/study?mode=flip&all=true`}>
                                 <BookOpen className="h-4 w-4" />
                                 Alle lernen
                             </Link>
                         </Button>
                         <Button variant="outline" asChild>
-                            <Link href={`/learn/vocabulary/study?mode=type&language=${code}`}>
+                            <Link href={`/learn/language/${code}/study?mode=type`}>
                                 <Keyboard className="h-4 w-4" />
                                 Tipp-Modus
                             </Link>
                         </Button>
                         <Button variant="outline" asChild>
-                            <Link href={`/learn/vocabulary/study?mode=speech&language=${code}`}>
+                            <Link href={`/learn/language/${code}/study?mode=speech`}>
                                 <Mic className="h-4 w-4" />
                                 Sprech-Modus
                             </Link>
@@ -309,12 +309,12 @@ export function LanguageHub({ code, language }: LanguageHubProps) {
                                                 </div>
                                                 <div className="flex items-center justify-end gap-2 pt-1">
                                                     <Button size="sm" asChild>
-                                                        <Link href={`/learn/vocabulary/study?mode=flip&doc=${stats!.docId}`}>
+                                                        <Link href={`/learn/language/${code}/study?mode=flip&doc=${stats!.docId}`}>
                                                             Lernen
                                                         </Link>
                                                     </Button>
                                                     <Button size="sm" variant="outline" asChild>
-                                                        <Link href={`/learn/vocabulary/sets/${set.id}`}>
+                                                        <Link href={`/learn/language/${code}/${set.level.toLowerCase()}`}>
                                                             Details →
                                                         </Link>
                                                     </Button>
@@ -432,7 +432,7 @@ export function LanguageHub({ code, language }: LanguageHubProps) {
                             </p>
                         </div>
                         <Button variant={trulyDueCount > 0 ? 'default' : 'outline'} asChild>
-                            <Link href={`/learn/vocabulary/study?mode=flip&language=${code}`}>
+                            <Link href={`/learn/language/${code}/study?mode=flip`}>
                                 <Zap className="h-4 w-4" />
                                 {trulyDueCount > 0 ? 'Jetzt üben' : 'Neue lernen'}
                             </Link>

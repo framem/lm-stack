@@ -553,7 +553,7 @@ export default function AdminPage() {
                                                 asChild
                                                 className="ml-auto"
                                             >
-                                                <Link href={`/learn/vocabulary/sets/${set.id}`}>
+                                                <Link href={`/learn/language/${set.id.split('-')[0]}/${set.id.split('-')[1]}`}>
                                                     <ExternalLink className="h-3 w-3 mr-1" />
                                                     Anzeigen
                                                 </Link>

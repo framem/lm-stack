@@ -25,7 +25,7 @@ const STATIC_PAGES = [
     { label: 'Lernmaterial', href: '/learn/documents', icon: BookOpen },
     { label: 'Karteikarten', href: '/learn/flashcards', icon: Layers },
     { label: 'Quiz', href: '/learn/quiz', icon: HelpCircle },
-    { label: 'Vokabeltrainer', href: '/learn/vocabulary', icon: FileText },
+    { label: 'Vokabeltrainer', href: '/learn/language', icon: FileText },
     { label: 'Fortschritt', href: '/learn/progress', icon: BarChart2 },
 ]
 

@@ -313,7 +313,7 @@ export function VocabStudyContent() {
                     </p>
                 </div>
                 <Button asChild>
-                    <Link href="/learn/vocabulary">
+                    <Link href="/learn/language">
                         <Languages className="h-4 w-4" />
                         Zurück zum Vokabeltrainer
                     </Link>
@@ -377,7 +377,7 @@ export function VocabStudyContent() {
 
                 <div className="flex justify-center gap-3">
                     <Button variant="outline" asChild>
-                        <Link href="/learn/vocabulary">
+                        <Link href="/learn/language">
                             <Languages className="h-4 w-4" />
                             Zurück zum Vokabeltrainer
                         </Link>

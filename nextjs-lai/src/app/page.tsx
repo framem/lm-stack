@@ -116,7 +116,7 @@ const features = [
     title: "Vokabeltrainer",
     description:
       "Lerne Spanisch und Englisch mit fertigen Wortschatz-Sets (A1–A2) oder eigenen Vokabeln — mit intelligentem Spaced Repetition.",
-    href: "/learn/vocabulary",
+    href: "/learn/language",
     accent: "blue" as const,
   },
 ];
@@ -214,7 +214,7 @@ export default function LandingPage() {
                 <span>PDF/DOCX → KI-Analyse</span>
               </Link>
               <Link
-                href="/learn/vocabulary"
+                href="/learn/language"
                 className="flex items-center gap-1.5 rounded-full border bg-muted/50 px-3 py-1.5 text-xs transition-colors hover:border-orange-400/40 hover:bg-muted"
               >
                 <span className="shrink-0 leading-none">🇪🇸</span>
@@ -425,7 +425,7 @@ export default function LandingPage() {
                 viewport={{ once: true }}
                 transition={{ duration: 0.4, delay: i * 0.08 }}
               >
-                <Link href="/learn/vocabulary" className="group block h-full">
+                <Link href="/learn/language" className="group block h-full">
                   <div
                     className={`h-full rounded-xl border bg-gradient-to-br ${set.color} p-5 transition-all group-hover:border-primary/40 group-hover:shadow-md`}
                   >
@@ -456,7 +456,7 @@ export default function LandingPage() {
             transition={{ duration: 0.4, delay: 0.35 }}
           >
             <Button variant="outline" asChild>
-              <Link href="/learn/vocabulary">Alle Vokabel-Sets ansehen →</Link>
+              <Link href="/learn/language">Alle Vokabel-Sets ansehen →</Link>
             </Button>
           </motion.div>
         </div>

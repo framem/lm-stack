@@ -205,6 +205,7 @@ ${contextText}`
         await dbCreateFlashcards(dataToSave)
         revalidatePath('/learn/flashcards')
         revalidatePath('/learn/vocabulary')
+        revalidatePath('/learn/language')
         revalidateFlashcards()
         return { count: dataToSave.length }
     }

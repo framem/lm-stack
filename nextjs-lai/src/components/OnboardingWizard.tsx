@@ -596,7 +596,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
                             </div>
                             {isLanguage ? (
                                 <div className="grid gap-2">
-                                    <Button onClick={() => { markComplete(); router.push('/learn/vocabulary') }} className="w-full">
+                                    <Button onClick={() => { markComplete(); router.push('/learn/language') }} className="w-full">
                                         <BookOpen className="h-4 w-4" />
                                         Vokabeln lernen
                                     </Button>
