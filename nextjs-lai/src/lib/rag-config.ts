@@ -96,6 +96,7 @@ export const RETRIEVAL_CONFIG = {
 /**
  * Approximate chars per token for German text with multilingual tokenizers.
  * Multilingual models tokenize German compound words less efficiently
- * than English (~3.3 vs ~4 chars/token).
+ * than English.  Conservative value (3.0) ensures estimated token counts
+ * stay safely within the embedding model's 512-token context window.
  */
-export const CHARS_PER_TOKEN = 3.3
+export const CHARS_PER_TOKEN = 3.0

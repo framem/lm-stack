@@ -303,7 +303,10 @@ function chunkExam(text: string, pageBreaks?: number[]): Chunk[] {
                 })
             }
 
-            // Emit each sub-task as a chunk
+            // Collect raw subtask slices first, then merge tiny ones
+            interface SubtaskSlice { content: string; label: string; offset: number }
+            const rawSlices: SubtaskSlice[] = []
+
             for (let si = 0; si < subTaskPositions.length; si++) {
                 const stStart = subTaskPositions[si].index
                 const stEnd = si + 1 < subTaskPositions.length
@@ -314,37 +317,64 @@ function chunkExam(text: string, pageBreaks?: number[]): Chunk[] {
                 if (!subTaskContent) continue
 
                 // Prefix with block label for context
-                const contextPrefix = `${label}\n`
-                subTaskContent = contextPrefix + subTaskContent
+                subTaskContent = `${label}\n${subTaskContent}`
+                rawSlices.push({ content: subTaskContent, label: subTaskPositions[si].label, offset: stStart })
+            }
 
-                const subTaskLabel = subTaskPositions[si].label
-                const subTokens = estimateTokens(subTaskContent)
+            // Merge subtasks that are below minChunkSizeTokens into their successor
+            const mergedSlices: SubtaskSlice[] = []
+            for (const slice of rawSlices) {
+                if (
+                    mergedSlices.length > 0 &&
+                    estimateTokens(mergedSlices[mergedSlices.length - 1].content) < params.minChunkSizeTokens
+                ) {
+                    // Previous slice is too small — absorb current into it
+                    const prev = mergedSlices[mergedSlices.length - 1]
+                    prev.content += '\n' + slice.content
+                    prev.label += '+' + slice.label
+                } else {
+                    mergedSlices.push({ ...slice })
+                }
+            }
+            // If last merged slice is still tiny, fold it backward
+            if (
+                mergedSlices.length > 1 &&
+                estimateTokens(mergedSlices[mergedSlices.length - 1].content) < params.minChunkSizeTokens
+            ) {
+                const tiny = mergedSlices.pop()!
+                mergedSlices[mergedSlices.length - 1].content += '\n' + tiny.content
+                mergedSlices[mergedSlices.length - 1].label += '+' + tiny.label
+            }
+
+            // Emit merged subtask chunks
+            for (const s of mergedSlices) {
+                const subTokens = estimateTokens(s.content)
 
                 if (subTokens <= params.maxChunkSizeTokens) {
                     chunks.push({
-                        content: subTaskContent,
+                        content: s.content,
                         chunkIndex: chunks.length,
-                        pageNumber: getPageNumber(bStart + stStart, pageBreaks),
+                        pageNumber: getPageNumber(bStart + s.offset, pageBreaks),
                         tokenCount: subTokens,
                         chunkingStrategy: 'exam',
                         examLabel,
                         taskNumber,
-                        subTask: subTaskLabel,
+                        subTask: s.label,
                         blockType,
                     })
                 } else {
                     // Ebene 3: overflow split
-                    const subs = splitWithOverlap(subTaskContent, params)
+                    const subs = splitWithOverlap(s.content, params)
                     for (const sub of subs) {
                         chunks.push({
                             content: sub.text,
                             chunkIndex: chunks.length,
-                            pageNumber: getPageNumber(bStart + stStart + sub.offset, pageBreaks),
+                            pageNumber: getPageNumber(bStart + s.offset + sub.offset, pageBreaks),
                             tokenCount: estimateTokens(sub.text),
                             chunkingStrategy: 'exam',
                             examLabel,
                             taskNumber,
-                            subTask: subTaskLabel,
+                            subTask: s.label,
                             blockType,
                         })
                     }
@@ -430,50 +460,14 @@ function findExamLabel(offset: number, contextMap: { index: number; label: strin
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function chunkSentence(text: string, pageBreaks?: number[]): Chunk[] {
-    const params = CHUNKING_PARAMS.sentence
-    const targetChars = params.targetChunkSizeTokens * CHARS_PER_TOKEN
-    const overlapChars = params.overlapTokens * CHARS_PER_TOKEN
-
-    const sentences = splitSentences(text)
-    if (sentences.length === 0) return []
-
-    const chunks: Chunk[] = []
-    let currentChars = 0
-    let startIdx = 0
-
-    for (let i = 0; i < sentences.length; i++) {
-        currentChars += sentences[i].length
-
-        if (currentChars >= targetChars || i === sentences.length - 1) {
-            const chunkText = sentences.slice(startIdx, i + 1).join(' ').trim()
-
-            if (chunkText.length > 0) {
-                const chunkStartOffset = getCharOffset(sentences, startIdx)
-                chunks.push({
-                    content: chunkText,
-                    chunkIndex: chunks.length,
-                    pageNumber: getPageNumber(chunkStartOffset, pageBreaks),
-                    tokenCount: estimateTokens(chunkText),
-                    chunkingStrategy: 'sentence',
-                })
-            }
-
-            let overlapCount = 0
-            let newStart = i + 1
-            for (let j = i; j > startIdx; j--) {
-                overlapCount += sentences[j].length
-                if (overlapCount >= overlapChars) {
-                    newStart = j
-                    break
-                }
-            }
-
-            startIdx = newStart
-            currentChars = sentences.slice(startIdx, i + 1).reduce((sum, s) => sum + s.length, 0)
-        }
-    }
-
-    return chunks
+    const subChunks = splitWithOverlap(text, CHUNKING_PARAMS.sentence)
+    return subChunks.map((sub, i) => ({
+        content: sub.text,
+        chunkIndex: i,
+        pageNumber: getPageNumber(sub.offset, pageBreaks),
+        tokenCount: estimateTokens(sub.text),
+        chunkingStrategy: 'sentence' as const,
+    }))
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -489,15 +483,24 @@ interface SubChunk {
 /**
  * Split a block of text at sentence boundaries with overlap.
  * Used by all strategies for overflow handling.
+ *
+ * Enforces both a soft *target* (preferred split point) and a hard *max*
+ * (never exceeded unless a single sentence is already over the limit).
  */
 function splitWithOverlap(
     blockText: string,
-    params: { targetChunkSizeTokens: number; overlapTokens: number },
+    params: { targetChunkSizeTokens: number; maxChunkSizeTokens?: number; overlapTokens: number },
 ): SubChunk[] {
     const targetChars = params.targetChunkSizeTokens * CHARS_PER_TOKEN
+    const maxChars = params.maxChunkSizeTokens
+        ? params.maxChunkSizeTokens * CHARS_PER_TOKEN
+        : Math.ceil(targetChars * 1.3)
     const overlapChars = params.overlapTokens * CHARS_PER_TOKEN
 
-    const sentences = splitSentences(blockText)
+    // Split into sentences, then break any single sentence that exceeds maxChars
+    const sentences = splitSentences(blockText).flatMap(
+        s => s.length > maxChars ? splitAtWordBoundaries(s, maxChars) : [s],
+    )
     if (sentences.length === 0) return [{ text: blockText, offset: 0 }]
 
     const subChunks: SubChunk[] = []
@@ -505,25 +508,37 @@ function splitWithOverlap(
     let startIdx = 0
 
     for (let i = 0; i < sentences.length; i++) {
+        const wouldBe = currentChars + sentences[i].length
+
+        // ── Hard ceiling: emit *before* this sentence if it would exceed max ──
+        if (currentChars > 0 && wouldBe > maxChars) {
+            const chunkText = sentences.slice(startIdx, i).join(' ').trim()
+            if (chunkText.length > 0) {
+                subChunks.push({ text: chunkText, offset: getCharOffset(sentences, startIdx) })
+            }
+            let newStart = i
+            let overlapCount = 0
+            for (let j = i - 1; j >= startIdx; j--) {
+                overlapCount += sentences[j].length
+                if (overlapCount >= overlapChars) { newStart = j; break }
+            }
+            startIdx = newStart
+            currentChars = sentences.slice(startIdx, i).reduce((s, v) => s + v.length, 0)
+        }
+
         currentChars += sentences[i].length
 
+        // ── Soft target reached or last sentence ──
         if (currentChars >= targetChars || i === sentences.length - 1) {
             const chunkText = sentences.slice(startIdx, i + 1).join(' ').trim()
             if (chunkText.length > 0) {
-                subChunks.push({
-                    text: chunkText,
-                    offset: getCharOffset(sentences, startIdx),
-                })
+                subChunks.push({ text: chunkText, offset: getCharOffset(sentences, startIdx) })
             }
-
             let overlapCount = 0
             let newStart = i + 1
             for (let j = i; j > startIdx; j--) {
                 overlapCount += sentences[j].length
-                if (overlapCount >= overlapChars) {
-                    newStart = j
-                    break
-                }
+                if (overlapCount >= overlapChars) { newStart = j; break }
             }
             startIdx = newStart
             currentChars = sentences.slice(startIdx, i + 1).reduce((sum, s) => sum + s.length, 0)
@@ -531,6 +546,23 @@ function splitWithOverlap(
     }
 
     return subChunks
+}
+
+/** Split a long text at word boundaries so each piece is at most maxChars. */
+function splitAtWordBoundaries(text: string, maxChars: number): string[] {
+    const words = text.split(/\s+/)
+    const pieces: string[] = []
+    let current = ''
+    for (const w of words) {
+        if (current && current.length + 1 + w.length > maxChars) {
+            pieces.push(current)
+            current = w
+        } else {
+            current = current ? `${current} ${w}` : w
+        }
+    }
+    if (current) pieces.push(current)
+    return pieces.length > 0 ? pieces : [text]
 }
 
 /** Split text into sentences, preserving meaningful boundaries. */

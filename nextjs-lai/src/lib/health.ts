@@ -17,7 +17,12 @@ export async function checkLLMHealth(): Promise<boolean> {
     }
 
     try {
-        const url = provider === 'ollama' ? baseURL : baseURL.replace(/\/v1\/?$/, '')
+        // LM Studio exposes GET /v1/models as a lightweight health-check endpoint.
+        // Ollama uses its root URL.  Stripping /v1 and hitting "/" causes
+        // "Unexpected endpoint or method" errors in LM Studio.
+        const url = provider === 'ollama'
+            ? baseURL
+            : baseURL.replace(/\/v1\/?$/, '') + '/v1/models'
         const res = await fetch(url, { signal: AbortSignal.timeout(3000) })
         return res.ok
     } catch {
