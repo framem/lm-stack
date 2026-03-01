@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import {
     ArrowLeft,
@@ -11,6 +12,7 @@ import {
     Keyboard,
     Languages,
     Loader2,
+    Map as MapIcon,
     MessageSquare,
     Mic,
     RotateCcw,
@@ -22,11 +24,19 @@ import { Card, CardContent } from '@/src/components/ui/card'
 import { Button } from '@/src/components/ui/button'
 import { Badge } from '@/src/components/ui/badge'
 import { Progress } from '@/src/components/ui/progress'
+import { Skeleton } from '@/src/components/ui/skeleton'
 import { getVocabularyFlashcards } from '@/src/actions/flashcards'
 import { getQuizzes } from '@/src/actions/quiz'
+import { getCompetencies } from '@/src/app/learn/knowledge-map/actions'
 import { GamificationBar } from '@/src/components/GamificationBar'
 import { languageSets } from '@/src/data/language-sets'
 import { getLanguageFlag } from '@/src/lib/language-utils'
+import type { TopicCompetency } from '@/src/data-access/topics'
+
+const KnowledgeMapChart = dynamic(
+    () => import('@/src/components/KnowledgeMapChart').then((m) => m.KnowledgeMapChart),
+    { ssr: false, loading: () => <Skeleton className="h-[400px] w-full" /> },
+)
 
 // Map language-set document titles to their static set IDs
 const LANGUAGE_SET_ID_MAP: Record<string, string> = {
@@ -65,6 +75,7 @@ interface LanguageHubProps {
 export function LanguageHub({ code, language }: LanguageHubProps) {
     const [cards, setCards] = useState<VocabCard[]>([])
     const [quizzes, setQuizzes] = useState<QuizItem[]>([])
+    const [competencies, setCompetencies] = useState<TopicCompetency[]>([])
     const [loading, setLoading] = useState(true)
 
     const flag = getLanguageFlag(code)
@@ -72,9 +83,10 @@ export function LanguageHub({ code, language }: LanguageHubProps) {
     useEffect(() => {
         async function load() {
             try {
-                const [vocabCards, allQuizzes] = await Promise.all([
+                const [vocabCards, allQuizzes, allCompetencies] = await Promise.all([
                     getVocabularyFlashcards(undefined, language),
                     getQuizzes(),
+                    getCompetencies(),
                 ])
                 setCards(vocabCards as unknown as VocabCard[])
                 // Filter quizzes that belong to this language's documents
@@ -83,6 +95,14 @@ export function LanguageHub({ code, language }: LanguageHubProps) {
                     return title.includes(language.toLowerCase())
                 })
                 setQuizzes(langQuizzes)
+
+                // Filter competencies to documents belonging to this language
+                const langDocTitles = new Set(
+                    (vocabCards as unknown as VocabCard[])
+                        .map((c) => c.document?.id)
+                        .filter(Boolean),
+                )
+                setCompetencies(allCompetencies.filter((c) => langDocTitles.has(c.documentId)))
             } catch (err) {
                 console.error('Failed to load language hub data:', err)
             } finally {
@@ -466,17 +486,20 @@ export function LanguageHub({ code, language }: LanguageHubProps) {
                                 <p className="text-sm text-muted-foreground">Fortschritt</p>
                             </div>
                         </div>
-                        <div className="mt-4">
-                            <Button variant="outline" size="sm" className="w-full" asChild>
-                                <Link href="/learn/progress">
-                                    <TrendingUp className="h-4 w-4" />
-                                    Detaillierten Fortschritt anzeigen
-                                </Link>
-                            </Button>
-                        </div>
                     </CardContent>
                 </Card>
             </section>
+
+            {/* ── Wissenslandkarte Section ── */}
+            {competencies.length > 0 && (
+                <section className="space-y-4">
+                    <h2 className="text-lg font-semibold flex items-center gap-2">
+                        <MapIcon className="h-5 w-5" />
+                        Wissenslandkarte
+                    </h2>
+                    <KnowledgeMapChart competencies={competencies} />
+                </section>
+            )}
         </div>
     )
 }
