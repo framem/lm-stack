@@ -193,7 +193,13 @@ export function VocabStudyContent() {
         if (!card || submitting) return
         setSubmitting(true)
         try {
-            await reviewFlashcard(card.id, rating)
+            const reviewResult = await reviewFlashcard(card.id, rating)
+            if (reviewResult?.newBadges?.length) {
+                const { BadgeUnlockToast } = await import('@/src/components/BadgeUnlockToast')
+                for (const badge of reviewResult.newBadges) {
+                    BadgeUnlockToast(badge)
+                }
+            }
             const updated = [...results, { cardId: card.id, rating }]
             setResults(updated)
 

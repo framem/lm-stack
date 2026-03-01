@@ -20,13 +20,15 @@ import { Progress } from '@/src/components/ui/progress'
 import { RadioGroup, RadioGroupItem } from '@/src/components/ui/radio-group'
 import { Checkbox } from '@/src/components/ui/checkbox'
 import { Textarea } from '@/src/components/ui/textarea'
-import { reviewFlashcard } from '@/src/actions/flashcards'
+import { reviewFlashcard, getSchedulingPreview } from '@/src/actions/flashcards'
 import { evaluateAnswer } from '@/src/actions/quiz'
 import { isFreetextLikeType } from '@/src/lib/quiz-types'
 import { SortableWordChips } from '@/src/components/quiz/SortableWordChips'
 import { FlashcardCard } from '@/src/components/FlashcardCard'
 import { toast } from 'sonner'
-import { FLASHCARD_RATINGS } from '@/src/lib/constants'
+import { RATINGS } from '@/src/lib/constants'
+import { Rating } from '@/src/lib/spaced-repetition'
+import { BadgeUnlockToast } from '@/src/components/BadgeUnlockToast'
 
 interface FlashcardData {
     id: string
@@ -77,6 +79,7 @@ export function SessionContent({ initialItems }: SessionContentProps) {
 
     // Flashcard state
     const [flipped, setFlipped] = useState(false)
+    const [intervals, setIntervals] = useState<Record<number, string> | null>(null)
 
     // Quiz state
     const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
@@ -99,18 +102,34 @@ export function SessionContent({ initialItems }: SessionContentProps) {
     const progressPercent = items.length > 0 ? (currentIndex / items.length) * 100 : 0
     const totalItems = items.length
 
-    // Keyboard shortcuts: 1-3 for flashcard ratings, Space to flip
+    // Load scheduling preview when flashcard is flipped
+    useEffect(() => {
+        if (!currentItem || currentItem.type !== 'flashcard' || !flipped) return
+        let cancelled = false
+        setIntervals(null)
+        getSchedulingPreview(currentItem.id).then((preview) => {
+            if (!cancelled) setIntervals(preview)
+        }).catch(console.error)
+        return () => { cancelled = true }
+    }, [currentItem, flipped])
+
+    // Keyboard shortcuts: 1-4 for flashcard ratings, Space to flip
     useEffect(() => {
         function handleKeyDown(e: KeyboardEvent) {
             if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
             if (!currentItem || currentItem.type !== 'flashcard') return
 
             if (flipped && !submitting) {
-                const keyMap: Record<string, number> = { '1': 1, '2': 3, '3': 5 }
-                const quality = keyMap[e.key]
-                if (quality !== undefined) {
+                const keyMap: Record<string, number> = {
+                    '1': Rating.Again,
+                    '2': Rating.Hard,
+                    '3': Rating.Good,
+                    '4': Rating.Easy,
+                }
+                const rating = keyMap[e.key]
+                if (rating !== undefined) {
                     e.preventDefault()
-                    handleFlashcardRate(quality)
+                    handleFlashcardRate(rating)
                     return
                 }
             }
@@ -126,6 +145,7 @@ export function SessionContent({ initialItems }: SessionContentProps) {
 
     const resetItemState = useCallback(() => {
         setFlipped(false)
+        setIntervals(null)
         setSelectedIndex(null)
         setSelectedIndices([])
         setFreeTextAnswer('')
@@ -145,15 +165,20 @@ export function SessionContent({ initialItems }: SessionContentProps) {
     }, [currentIndex, items.length, resetItemState])
 
     // Flashcard handlers
-    const handleFlashcardRate = useCallback(async (quality: number) => {
+    const handleFlashcardRate = useCallback(async (rating: number) => {
         if (!currentItem || submitting) return
         setSubmitting(true)
         try {
-            await reviewFlashcard(currentItem.id, quality)
+            const result = await reviewFlashcard(currentItem.id, rating)
+            if (result?.newBadges?.length) {
+                for (const badge of result.newBadges) {
+                    BadgeUnlockToast(badge)
+                }
+            }
             setStats((s) => ({
                 ...s,
                 flashcardsReviewed: s.flashcardsReviewed + 1,
-                flashcardsKnown: s.flashcardsKnown + (quality === 5 ? 1 : 0),
+                flashcardsKnown: s.flashcardsKnown + (rating >= Rating.Good ? 1 : 0),
             }))
             advance()
         } catch (err) {
@@ -348,6 +373,7 @@ export function SessionContent({ initialItems }: SessionContentProps) {
                     onFlip={() => setFlipped(true)}
                     onRate={handleFlashcardRate}
                     submitting={submitting}
+                    intervals={intervals}
                 />
             ) : (
                 <QuizItem
@@ -386,12 +412,14 @@ function FlashcardItem({
     onFlip,
     onRate,
     submitting,
+    intervals,
 }: {
     card: FlashcardData
     flipped: boolean
     onFlip: () => void
-    onRate: (quality: number) => void
+    onRate: (rating: number) => void
     submitting: boolean
+    intervals: Record<number, string> | null
 }) {
     return (
         <div className="space-y-4">
@@ -416,16 +444,21 @@ function FlashcardItem({
                         Wie gut konntest du die Antwort?
                     </p>
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3">
-                        {FLASHCARD_RATINGS.map((r, i) => (
+                        {RATINGS.map((r, i) => (
                             <Button
-                                key={r.quality}
+                                key={r.rating}
                                 variant={r.variant}
-                                onClick={() => onRate(r.quality)}
+                                onClick={() => onRate(r.rating)}
                                 disabled={submitting}
                                 className="w-full sm:w-auto sm:min-w-[140px]"
                             >
                                 {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-                                {r.label} <kbd className="ml-1 text-[10px] opacity-50 font-mono">{i + 1}</kbd>
+                                <span className="flex flex-col items-center leading-tight">
+                                    <span>{r.label} <kbd className="ml-1 text-[10px] opacity-50 font-mono">{i + 1}</kbd></span>
+                                    {intervals && (
+                                        <span className="text-[10px] opacity-70">{intervals[r.rating]}</span>
+                                    )}
+                                </span>
                             </Button>
                         ))}
                     </div>

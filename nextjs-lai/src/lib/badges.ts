@@ -1,11 +1,17 @@
 /** Badge definitions and computation from user stats */
 
+export interface BadgeProgress {
+    current: number
+    target: number
+}
+
 export interface BadgeDefinition {
     id: string
     icon: string  // emoji
     title: string
     description: string
     check: (stats: BadgeStats) => boolean
+    progress?: (stats: BadgeStats) => BadgeProgress
 }
 
 export interface BadgeStats {
@@ -24,13 +30,23 @@ export interface EarnedBadge extends BadgeDefinition {
     earned: true
 }
 
-/** Serializable badge for Client Components (without check function) */
+/** Serializable badge for Client Components (without check/progress functions) */
 export interface SerializedBadge {
     id: string
     icon: string
     title: string
     description: string
     earned: true
+}
+
+/** Badge with progress info for unearned badges */
+export interface SerializedBadgeWithProgress {
+    id: string
+    icon: string
+    title: string
+    description: string
+    earned: boolean
+    progress?: BadgeProgress
 }
 
 export const BADGES: BadgeDefinition[] = [
@@ -41,6 +57,7 @@ export const BADGES: BadgeDefinition[] = [
         title: 'Erste Schritte',
         description: '10 Vokabeln gelernt',
         check: (s) => s.masteredVocab >= 10,
+        progress: (s) => ({ current: s.masteredVocab, target: 10 }),
     },
     {
         id: 'vocab-50',
@@ -48,6 +65,7 @@ export const BADGES: BadgeDefinition[] = [
         title: 'Wortschatz-Sammler',
         description: '50 Vokabeln gelernt',
         check: (s) => s.masteredVocab >= 50,
+        progress: (s) => ({ current: s.masteredVocab, target: 50 }),
     },
     {
         id: 'vocab-100',
@@ -55,6 +73,7 @@ export const BADGES: BadgeDefinition[] = [
         title: 'Wortschatz-Profi',
         description: '100 Vokabeln beherrscht',
         check: (s) => s.masteredVocab >= 100,
+        progress: (s) => ({ current: s.masteredVocab, target: 100 }),
     },
     {
         id: 'vocab-250',
@@ -62,6 +81,7 @@ export const BADGES: BadgeDefinition[] = [
         title: 'Vokabel-Champion',
         description: '250 Vokabeln beherrscht',
         check: (s) => s.masteredVocab >= 250,
+        progress: (s) => ({ current: s.masteredVocab, target: 250 }),
     },
 
     // Streak milestones
@@ -71,6 +91,7 @@ export const BADGES: BadgeDefinition[] = [
         title: 'Auf Kurs',
         description: '3-Tage-Streak erreicht',
         check: (s) => s.longestStreak >= 3,
+        progress: (s) => ({ current: s.longestStreak, target: 3 }),
     },
     {
         id: 'streak-7',
@@ -78,6 +99,7 @@ export const BADGES: BadgeDefinition[] = [
         title: 'Fleißig!',
         description: '7-Tage-Streak erreicht',
         check: (s) => s.longestStreak >= 7,
+        progress: (s) => ({ current: s.longestStreak, target: 7 }),
     },
     {
         id: 'streak-30',
@@ -85,6 +107,7 @@ export const BADGES: BadgeDefinition[] = [
         title: 'Lern-Maschine',
         description: '30-Tage-Streak erreicht',
         check: (s) => s.longestStreak >= 30,
+        progress: (s) => ({ current: s.longestStreak, target: 30 }),
     },
 
     // Quiz milestones
@@ -94,6 +117,7 @@ export const BADGES: BadgeDefinition[] = [
         title: 'Erstes Quiz',
         description: 'Erstes Quiz abgeschlossen',
         check: (s) => s.totalQuizzes >= 1,
+        progress: (s) => ({ current: s.totalQuizzes, target: 1 }),
     },
     {
         id: 'quiz-10',
@@ -101,6 +125,7 @@ export const BADGES: BadgeDefinition[] = [
         title: 'Quiz-Enthusiast',
         description: '10 Quizze absolviert',
         check: (s) => s.totalQuizzes >= 10,
+        progress: (s) => ({ current: s.totalQuizzes, target: 10 }),
     },
     {
         id: 'quiz-ace',
@@ -108,6 +133,7 @@ export const BADGES: BadgeDefinition[] = [
         title: 'Perfektionist',
         description: 'Quiz mit 100% bestanden',
         check: (s) => s.totalQuizzes >= 1 && s.quizCorrectRate >= 100,
+        progress: (s) => ({ current: s.quizCorrectRate, target: 100 }),
     },
 
     // Document milestones
@@ -117,6 +143,7 @@ export const BADGES: BadgeDefinition[] = [
         title: 'Erster Upload',
         description: 'Erstes Lernmaterial hochgeladen',
         check: (s) => s.totalDocuments >= 1,
+        progress: (s) => ({ current: s.totalDocuments, target: 1 }),
     },
     {
         id: 'doc-5',
@@ -124,6 +151,7 @@ export const BADGES: BadgeDefinition[] = [
         title: 'Bibliothek',
         description: '5 Lernmaterialien hochgeladen',
         check: (s) => s.totalDocuments >= 5,
+        progress: (s) => ({ current: s.totalDocuments, target: 5 }),
     },
 
     // XP milestones
@@ -133,6 +161,7 @@ export const BADGES: BadgeDefinition[] = [
         title: 'Lernbeginn',
         description: '100 XP gesammelt',
         check: (s) => s.totalXp >= 100,
+        progress: (s) => ({ current: s.totalXp, target: 100 }),
     },
     {
         id: 'xp-500',
@@ -140,6 +169,7 @@ export const BADGES: BadgeDefinition[] = [
         title: 'Aufsteiger',
         description: '500 XP gesammelt',
         check: (s) => s.totalXp >= 500,
+        progress: (s) => ({ current: s.totalXp, target: 500 }),
     },
     {
         id: 'xp-1000',
@@ -147,6 +177,7 @@ export const BADGES: BadgeDefinition[] = [
         title: 'Lern-Veteran',
         description: '1.000 XP gesammelt',
         check: (s) => s.totalXp >= 1000,
+        progress: (s) => ({ current: s.totalXp, target: 1000 }),
     },
 ]
 

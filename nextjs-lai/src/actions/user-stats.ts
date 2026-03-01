@@ -5,7 +5,7 @@ import {
     recordActivity as dbRecordActivity,
     updateDailyGoal as dbUpdateDailyGoal,
 } from '@/src/data-access/user-stats'
-import { getEarnedBadges as dbGetEarnedBadges } from '@/src/data-access/badges'
+import { getEarnedBadges as dbGetEarnedBadges, getAllBadgesWithProgress as dbGetAllBadgesWithProgress } from '@/src/data-access/badges'
 import { getAllBadgeDefinitions } from '@/src/lib/badges'
 
 export async function getUserStats() {
@@ -22,6 +22,10 @@ export async function getEarnedBadges() {
 
 export async function getAllBadges() {
     return getAllBadgeDefinitions()
+}
+
+export async function getAllBadgesWithProgress() {
+    return dbGetAllBadgesWithProgress()
 }
 
 export async function updateDailyGoal(goal: number) {

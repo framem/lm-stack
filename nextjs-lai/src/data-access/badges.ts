@@ -1,8 +1,8 @@
 import { prisma } from '@/src/lib/prisma'
-import { computeEarnedBadges, serializeBadges, type BadgeStats, type SerializedBadge } from '@/src/lib/badges'
+import { computeEarnedBadges, serializeBadges, BADGES, type BadgeStats, type SerializedBadge, type SerializedBadgeWithProgress } from '@/src/lib/badges'
 
-/** Get badge stats from existing data and compute earned badges */
-export async function getEarnedBadges(): Promise<SerializedBadge[]> {
+/** Gather badge stats from DB */
+async function getBadgeStats(): Promise<BadgeStats> {
     const [
         totalVocab,
         masteredVocab,
@@ -20,7 +20,6 @@ export async function getEarnedBadges(): Promise<SerializedBadge[]> {
         prisma.quiz.count(),
         prisma.document.count(),
         prisma.userStats.findFirst(),
-        // Get overall quiz correct rate from the most recent attempt per question
         prisma.quizAttempt.findMany({
             select: { isCorrect: true },
             orderBy: { createdAt: 'desc' },
@@ -35,7 +34,7 @@ export async function getEarnedBadges(): Promise<SerializedBadge[]> {
             )
             : 0
 
-    const stats: BadgeStats = {
+    return {
         totalVocab,
         masteredVocab,
         totalQuizzes,
@@ -46,7 +45,31 @@ export async function getEarnedBadges(): Promise<SerializedBadge[]> {
         totalDocuments,
         totalXp: userStats?.totalXp ?? 0,
     }
+}
 
+/** Get badge stats from existing data and compute earned badges */
+export async function getEarnedBadges(): Promise<SerializedBadge[]> {
+    const stats = await getBadgeStats()
     const earnedBadges = computeEarnedBadges(stats)
     return serializeBadges(earnedBadges)
+}
+
+/** Get all badges with progress info (earned + unearned with current/target) */
+export async function getAllBadgesWithProgress(): Promise<SerializedBadgeWithProgress[]> {
+    const stats = await getBadgeStats()
+    const earnedIds = new Set(
+        computeEarnedBadges(stats).map((b) => b.id)
+    )
+
+    return BADGES.map((badge) => {
+        const earned = earnedIds.has(badge.id)
+        return {
+            id: badge.id,
+            icon: badge.icon,
+            title: badge.title,
+            description: badge.description,
+            earned,
+            ...(!earned && badge.progress ? { progress: badge.progress(stats) } : {}),
+        }
+    })
 }

@@ -163,7 +163,6 @@ export async function upsertFlashcardProgress(flashcardId: string, rating: Ratin
     const next = result.card
 
     const progressData = {
-        // FSRS fields
         stability: next.stability,
         difficulty: next.difficulty,
         elapsedDays: next.elapsed_days,
@@ -173,12 +172,6 @@ export async function upsertFlashcardProgress(flashcardId: string, rating: Ratin
         state: next.state as number,
         due: next.due,
         lastReview: now,
-        // Legacy SM-2 fields (kept in sync for transition)
-        easeFactor: 2.5,
-        interval: Math.max(1, next.scheduled_days),
-        repetitions: next.reps,
-        nextReviewAt: next.due,
-        lastReviewedAt: now,
     }
 
     const [progress] = await prisma.$transaction([

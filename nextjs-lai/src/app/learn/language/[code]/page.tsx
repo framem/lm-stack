@@ -4,7 +4,7 @@ import { LanguageHub } from './language-hub'
 import { getVocabularyFlashcards } from '@/src/actions/flashcards'
 import { getQuizzes } from '@/src/actions/quiz'
 import { getCompetencies } from '@/src/app/learn/knowledge-map/actions'
-import { getUserStats, getEarnedBadges, getAllBadges } from '@/src/actions/user-stats'
+import { getUserStats, getAllBadgesWithProgress } from '@/src/actions/user-stats'
 
 interface LanguageHubPageProps {
     params: Promise<{ code: string }>
@@ -16,14 +16,13 @@ export default async function LanguageHubPage({ params }: LanguageHubPageProps) 
 
     if (!lang) notFound()
 
-    const [vocabCards, allQuizzes, competencies, userStats, earnedBadges, allBadges] =
+    const [vocabCards, allQuizzes, competencies, userStats, badges] =
         await Promise.all([
             getVocabularyFlashcards(undefined, lang.name),
             getQuizzes(),
             getCompetencies(),
             getUserStats(),
-            getEarnedBadges(),
-            getAllBadges(),
+            getAllBadgesWithProgress(),
         ])
 
     // Filter quizzes for this language
@@ -49,8 +48,7 @@ export default async function LanguageHubPage({ params }: LanguageHubPageProps) 
             quizzes={langQuizzes as never}
             competencies={langCompetencies}
             userStats={userStats as never}
-            earnedBadges={earnedBadges as never}
-            allBadges={allBadges as never}
+            badges={badges as never}
         />
     )
 }

@@ -30,6 +30,8 @@ import { Rating } from '@/src/lib/spaced-repetition'
 import { revalidatePath } from 'next/cache'
 import { revalidateFlashcards, revalidateUserStats } from '@/src/lib/dashboard-cache'
 import { recordActivity } from '@/src/data-access/user-stats'
+import { getEarnedBadges } from '@/src/data-access/badges'
+import type { SerializedBadge } from '@/src/lib/badges'
 
 // ── List flashcards ──
 
@@ -241,16 +243,26 @@ ${contextText}`
 
 // ── Review a flashcard (rate and update progress) ──
 
-export async function reviewFlashcard(flashcardId: string, rating: number) {
+export async function reviewFlashcard(flashcardId: string, rating: number): Promise<{ newBadges: SerializedBadge[] }> {
     if (!flashcardId) throw new Error('Karteikarten-ID ist erforderlich.')
     if (rating < 1 || rating > 4) throw new Error('Bewertung muss zwischen 1 und 4 liegen.')
 
+    // Badges before
+    const badgesBefore = await getEarnedBadges()
+    const beforeIds = new Set(badgesBefore.map((b) => b.id))
+
     await dbUpsertFlashcardProgress(flashcardId, rating as Rating)
+    await recordActivity()
+
+    // Badges after — diff to find newly earned
+    const badgesAfter = await getEarnedBadges()
+    const newBadges = badgesAfter.filter((b) => !beforeIds.has(b.id))
+
     revalidatePath('/learn/flashcards')
     revalidateFlashcards()
+    revalidateUserStats()
 
-    // Track activity for streaks (fire-and-forget)
-    recordActivity().then(() => revalidateUserStats()).catch(console.error)
+    return { newBadges }
 }
 
 // ── Get scheduling preview for rating buttons ──

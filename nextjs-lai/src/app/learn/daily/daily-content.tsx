@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import Link from 'next/link'
 import {
     Loader2,
@@ -19,9 +19,11 @@ import { Button } from '@/src/components/ui/button'
 import { Badge } from '@/src/components/ui/badge'
 import { Progress } from '@/src/components/ui/progress'
 import { RadioGroup, RadioGroupItem } from '@/src/components/ui/radio-group'
-import { reviewFlashcard } from '@/src/actions/flashcards'
+import { reviewFlashcard, getSchedulingPreview } from '@/src/actions/flashcards'
 import { evaluateAnswer } from '@/src/actions/quiz'
-import { FLASHCARD_RATINGS } from '@/src/lib/constants'
+import { RATINGS } from '@/src/lib/constants'
+import { Rating } from '@/src/lib/spaced-repetition'
+import { BadgeUnlockToast } from '@/src/components/BadgeUnlockToast'
 
 interface FlashcardData {
     id: string
@@ -63,6 +65,7 @@ export function DailyContent({ initialItems, initialStreak }: DailyContentProps)
 
     // Flashcard state
     const [flipped, setFlipped] = useState(false)
+    const [intervals, setIntervals] = useState<Record<number, string> | null>(null)
 
     // Quiz state
     const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
@@ -94,8 +97,20 @@ export function DailyContent({ initialItems, initialStreak }: DailyContentProps)
         return `${count} Aufgaben — du schaffst das!`
     }
 
+    // Load scheduling preview when flashcard is flipped
+    useEffect(() => {
+        if (!currentItem || currentItem.type !== 'flashcard' || !flipped) return
+        let cancelled = false
+        setIntervals(null)
+        getSchedulingPreview(currentItem.id).then((preview) => {
+            if (!cancelled) setIntervals(preview)
+        }).catch(console.error)
+        return () => { cancelled = true }
+    }, [currentItem, flipped])
+
     const resetState = useCallback(() => {
         setFlipped(false)
+        setIntervals(null)
         setSelectedIndex(null)
         setQuizResult(null)
     }, [])
@@ -109,13 +124,18 @@ export function DailyContent({ initialItems, initialStreak }: DailyContentProps)
         resetState()
     }
 
-    async function handleFlashcardRate(quality: number) {
+    async function handleFlashcardRate(rating: number) {
         if (!currentItem || submitting) return
         setSubmitting(true)
         try {
-            await reviewFlashcard(currentItem.id, quality)
+            const result = await reviewFlashcard(currentItem.id, rating)
+            if (result?.newBadges?.length) {
+                for (const badge of result.newBadges) {
+                    BadgeUnlockToast(badge)
+                }
+            }
             setScore((s) => ({
-                correct: s.correct + (quality >= 4 ? 1 : 0),
+                correct: s.correct + (rating >= Rating.Good ? 1 : 0),
                 total: s.total + 1,
             }))
             advance()
@@ -314,19 +334,26 @@ export function DailyContent({ initialItems, initialStreak }: DailyContentProps)
                     </div>
 
                     {flipped && (
-                        <div className="flex flex-col sm:flex-row items-center justify-center gap-2">
-                            {FLASHCARD_RATINGS.map((r) => (
-                                <Button
-                                    key={r.quality}
-                                    variant={r.variant}
-                                    onClick={() => handleFlashcardRate(r.quality)}
-                                    disabled={submitting}
-                                    className="w-full sm:w-auto sm:min-w-[130px]"
-                                >
-                                    {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-                                    {r.label}
-                                </Button>
-                            ))}
+                        <div className="space-y-2">
+                            <div className="flex flex-col sm:flex-row items-center justify-center gap-2">
+                                {RATINGS.map((r, i) => (
+                                    <Button
+                                        key={r.rating}
+                                        variant={r.variant}
+                                        onClick={() => handleFlashcardRate(r.rating)}
+                                        disabled={submitting}
+                                        className="w-full sm:w-auto sm:min-w-[130px]"
+                                    >
+                                        {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+                                        <span className="flex flex-col items-center leading-tight">
+                                            <span>{r.label} <kbd className="ml-1 text-[10px] opacity-50 font-mono">{i + 1}</kbd></span>
+                                            {intervals && (
+                                                <span className="text-[10px] opacity-70">{intervals[r.rating]}</span>
+                                            )}
+                                        </span>
+                                    </Button>
+                                ))}
+                            </div>
                         </div>
                     )}
                 </div>

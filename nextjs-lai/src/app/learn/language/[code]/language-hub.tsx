@@ -23,8 +23,7 @@ import { Button } from '@/src/components/ui/button'
 import { Badge } from '@/src/components/ui/badge'
 import { Progress } from '@/src/components/ui/progress'
 import { Skeleton } from '@/src/components/ui/skeleton'
-import { GamificationBar } from '@/src/components/GamificationBar'
-import type { GamificationBarProps } from '@/src/components/GamificationBar'
+import { GamificationBar, type GamificationBarProps } from '@/src/components/GamificationBar'
 import { languageSets } from '@/src/data/language-sets'
 import { getLanguageFlag } from '@/src/lib/language-utils'
 import type { TopicCompetency } from '@/src/data-access/topics'
@@ -70,8 +69,7 @@ interface LanguageHubProps {
     quizzes: QuizItem[]
     competencies: TopicCompetency[]
     userStats: GamificationBarProps['stats']
-    earnedBadges: GamificationBarProps['earnedBadges']
-    allBadges: GamificationBarProps['allBadges']
+    badges: GamificationBarProps['badges']
 }
 
 export function LanguageHub({
@@ -81,8 +79,7 @@ export function LanguageHub({
     quizzes,
     competencies,
     userStats,
-    earnedBadges,
-    allBadges,
+    badges,
 }: LanguageHubProps) {
     const flag = getLanguageFlag(code)
 
@@ -144,7 +141,7 @@ export function LanguageHub({
                 </div>
             </div>
 
-            <GamificationBar stats={userStats} earnedBadges={earnedBadges} allBadges={allBadges} />
+            <GamificationBar stats={userStats} badges={badges} />
 
             {/* Stats overview */}
             {totalCards > 0 && (

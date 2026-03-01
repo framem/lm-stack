@@ -10,11 +10,13 @@ import {
     SheetTitle,
     SheetDescription,
 } from '@/src/components/ui/sheet'
-import { reviewFlashcard } from '@/src/actions/flashcards'
+import { reviewFlashcard, getSchedulingPreview } from '@/src/actions/flashcards'
 import { Loader2, FileText, SkipForward } from 'lucide-react'
 import { toast } from 'sonner'
 import { FlashcardCard } from '@/src/components/FlashcardCard'
-import { FLASHCARD_RATINGS as RATINGS } from '@/src/lib/constants'
+import { BadgeUnlockToast } from '@/src/components/BadgeUnlockToast'
+import { RATINGS } from '@/src/lib/constants'
+import { Rating } from '@/src/lib/spaced-repetition'
 
 interface FlashcardItem {
     id: string
@@ -27,7 +29,7 @@ interface FlashcardItem {
 
 export interface ReviewResult {
     cardId: string
-    quality: number
+    rating: number
 }
 
 interface FlashcardPlayerProps {
@@ -42,6 +44,7 @@ export function FlashcardPlayer({ cards: initialCards, onComplete }: FlashcardPl
     const [submitting, setSubmitting] = useState(false)
     const [results, setResults] = useState<ReviewResult[]>([])
     const [sourceOpen, setSourceOpen] = useState(false)
+    const [intervals, setIntervals] = useState<Record<number, string> | null>(null)
 
     const card = queue[currentIndex]
     const remaining = queue.length - currentIndex
@@ -52,13 +55,29 @@ export function FlashcardPlayer({ cards: initialCards, onComplete }: FlashcardPl
         if (!flipped) setFlipped(true)
     }, [flipped])
 
-    const handleRate = useCallback(async (quality: number) => {
+    // Load scheduling preview when card is flipped
+    useEffect(() => {
+        if (!card || !flipped) return
+        let cancelled = false
+        setIntervals(null)
+        getSchedulingPreview(card.id).then((preview) => {
+            if (!cancelled) setIntervals(preview)
+        }).catch(console.error)
+        return () => { cancelled = true }
+    }, [card, flipped])
+
+    const handleRate = useCallback(async (rating: number) => {
         if (!card || submitting) return
         setSubmitting(true)
 
         try {
-            await reviewFlashcard(card.id, quality)
-            const updated = [...results, { cardId: card.id, quality }]
+            const result = await reviewFlashcard(card.id, rating)
+            if (result?.newBadges?.length) {
+                for (const badge of result.newBadges) {
+                    BadgeUnlockToast(badge)
+                }
+            }
+            const updated = [...results, { cardId: card.id, rating }]
             setResults(updated)
 
             if (isLast) {
@@ -69,6 +88,7 @@ export function FlashcardPlayer({ cards: initialCards, onComplete }: FlashcardPl
             setCurrentIndex((i) => i + 1)
             setFlipped(false)
             setSourceOpen(false)
+            setIntervals(null)
         } catch (err) {
             console.error('Rating failed:', err)
             toast.error('Bewertung fehlgeschlagen. Bitte versuche es erneut.')
@@ -77,17 +97,22 @@ export function FlashcardPlayer({ cards: initialCards, onComplete }: FlashcardPl
         }
     }, [card, submitting, results, isLast, onComplete])
 
-    // Keyboard shortcuts: 1-3 for ratings, Space to flip
+    // Keyboard shortcuts: 1-4 for ratings, Space to flip
     useEffect(() => {
         function handleGlobalKeyDown(e: KeyboardEvent) {
             if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
 
             if (flipped && !submitting) {
-                const keyMap: Record<string, number> = { '1': 1, '2': 3, '3': 5 }
-                const quality = keyMap[e.key]
-                if (quality !== undefined) {
+                const keyMap: Record<string, number> = {
+                    '1': Rating.Again,
+                    '2': Rating.Hard,
+                    '3': Rating.Good,
+                    '4': Rating.Easy,
+                }
+                const rating = keyMap[e.key]
+                if (rating !== undefined) {
                     e.preventDefault()
-                    handleRate(quality)
+                    handleRate(rating)
                     return
                 }
             }
@@ -111,6 +136,7 @@ export function FlashcardPlayer({ cards: initialCards, onComplete }: FlashcardPl
         })
         setFlipped(false)
         setSourceOpen(false)
+        setIntervals(null)
     }
 
     if (!card) return null
@@ -148,14 +174,19 @@ export function FlashcardPlayer({ cards: initialCards, onComplete }: FlashcardPl
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3">
                         {RATINGS.map((r, i) => (
                             <Button
-                                key={r.quality}
+                                key={r.rating}
                                 variant={r.variant}
-                                onClick={() => handleRate(r.quality)}
+                                onClick={() => handleRate(r.rating)}
                                 disabled={submitting}
                                 className="w-full sm:w-auto sm:min-w-[140px]"
                             >
                                 {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-                                {r.label} <kbd className="ml-1 text-[10px] opacity-50 font-mono">{i + 1}</kbd>
+                                <span className="flex flex-col items-center leading-tight">
+                                    <span>{r.label} <kbd className="ml-1 text-[10px] opacity-50 font-mono">{i + 1}</kbd></span>
+                                    {intervals && (
+                                        <span className="text-[10px] opacity-70">{intervals[r.rating]}</span>
+                                    )}
+                                </span>
                             </Button>
                         ))}
                     </div>
@@ -176,8 +207,8 @@ export function FlashcardPlayer({ cards: initialCards, onComplete }: FlashcardPl
                     {currentIndex === 0 && results.length === 0 && (
                         <p className="text-xs text-center text-muted-foreground">
                             Deine Bewertung steuert, wann die Karte wieder erscheint:
-                            {' '}<span className="font-medium">Kenne ich</span> = längere Pause,
-                            {' '}<span className="font-medium">Kenne ich nicht</span> = kommt bald wieder.
+                            {' '}<span className="font-medium">Nochmal</span> = kommt bald wieder,
+                            {' '}<span className="font-medium">Einfach</span> = längere Pause.
                         </p>
                     )}
                 </div>

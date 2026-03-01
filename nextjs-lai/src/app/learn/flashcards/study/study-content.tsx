@@ -8,6 +8,7 @@ import { Button } from '@/src/components/ui/button'
 import { Card, CardContent } from '@/src/components/ui/card'
 import { FlashcardPlayer, type ReviewResult } from '@/src/components/FlashcardPlayer'
 import { getDueFlashcards, getFlashcards } from '@/src/actions/flashcards'
+import { Rating } from '@/src/lib/spaced-repetition'
 
 interface FlashcardItem {
     id: string
@@ -95,9 +96,9 @@ export function StudyContent() {
 
     // Completion summary screen
     if (completed) {
-        const known = results.filter((r) => r.quality === 5).length
-        const unsure = results.filter((r) => r.quality === 3).length
-        const unknown = results.filter((r) => r.quality === 1).length
+        const known = results.filter((r) => r.rating >= Rating.Good).length
+        const unsure = results.filter((r) => r.rating === Rating.Hard).length
+        const unknown = results.filter((r) => r.rating === Rating.Again).length
         const total = results.length
 
         return (
