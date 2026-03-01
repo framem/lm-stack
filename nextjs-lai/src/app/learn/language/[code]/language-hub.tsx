@@ -1,6 +1,5 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import {
@@ -11,7 +10,6 @@ import {
     HelpCircle,
     Keyboard,
     Languages,
-    Loader2,
     Map as MapIcon,
     MessageSquare,
     Mic,
@@ -25,10 +23,8 @@ import { Button } from '@/src/components/ui/button'
 import { Badge } from '@/src/components/ui/badge'
 import { Progress } from '@/src/components/ui/progress'
 import { Skeleton } from '@/src/components/ui/skeleton'
-import { getVocabularyFlashcards } from '@/src/actions/flashcards'
-import { getQuizzes } from '@/src/actions/quiz'
-import { getCompetencies } from '@/src/app/learn/knowledge-map/actions'
 import { GamificationBar } from '@/src/components/GamificationBar'
+import type { GamificationBarProps } from '@/src/components/GamificationBar'
 import { languageSets } from '@/src/data/language-sets'
 import { getLanguageFlag } from '@/src/lib/language-utils'
 import type { TopicCompetency } from '@/src/data-access/topics'
@@ -70,55 +66,25 @@ interface QuizItem {
 interface LanguageHubProps {
     code: string
     language: string
+    cards: VocabCard[]
+    quizzes: QuizItem[]
+    competencies: TopicCompetency[]
+    userStats: GamificationBarProps['stats']
+    earnedBadges: GamificationBarProps['earnedBadges']
+    allBadges: GamificationBarProps['allBadges']
 }
 
-export function LanguageHub({ code, language }: LanguageHubProps) {
-    const [cards, setCards] = useState<VocabCard[]>([])
-    const [quizzes, setQuizzes] = useState<QuizItem[]>([])
-    const [competencies, setCompetencies] = useState<TopicCompetency[]>([])
-    const [loading, setLoading] = useState(true)
-
+export function LanguageHub({
+    code,
+    language,
+    cards,
+    quizzes,
+    competencies,
+    userStats,
+    earnedBadges,
+    allBadges,
+}: LanguageHubProps) {
     const flag = getLanguageFlag(code)
-
-    useEffect(() => {
-        async function load() {
-            try {
-                const [vocabCards, allQuizzes, allCompetencies] = await Promise.all([
-                    getVocabularyFlashcards(undefined, language),
-                    getQuizzes(),
-                    getCompetencies(),
-                ])
-                setCards(vocabCards as unknown as VocabCard[])
-                // Filter quizzes that belong to this language's documents
-                const langQuizzes = (allQuizzes as unknown as QuizItem[]).filter((q) => {
-                    const title = q.document?.title?.toLowerCase() ?? ''
-                    return title.includes(language.toLowerCase())
-                })
-                setQuizzes(langQuizzes)
-
-                // Filter competencies to documents belonging to this language
-                const langDocTitles = new Set(
-                    (vocabCards as unknown as VocabCard[])
-                        .map((c) => c.document?.id)
-                        .filter(Boolean),
-                )
-                setCompetencies(allCompetencies.filter((c) => langDocTitles.has(c.documentId)))
-            } catch (err) {
-                console.error('Failed to load language hub data:', err)
-            } finally {
-                setLoading(false)
-            }
-        }
-        load()
-    }, [language])
-
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center h-64">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
-        )
-    }
 
     // Vocab stats
     const now = new Date()
@@ -178,7 +144,7 @@ export function LanguageHub({ code, language }: LanguageHubProps) {
                 </div>
             </div>
 
-            <GamificationBar />
+            <GamificationBar stats={userStats} earnedBadges={earnedBadges} allBadges={allBadges} />
 
             {/* Stats overview */}
             {totalCards > 0 && (

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Flame, Zap, Target, Award, ChevronDown } from 'lucide-react'
 import { Progress } from '@/src/components/ui/progress'
-import { getUserStats, getEarnedBadges, getAllBadges } from '@/src/actions/user-stats'
+import { getUserStats, getEarnedBadges as fetchEarnedBadges, getAllBadges as fetchAllBadges } from '@/src/actions/user-stats'
 import {
     Tooltip,
     TooltipContent,
@@ -25,17 +25,29 @@ interface BadgeData {
     description: string
 }
 
-export function GamificationBar() {
-    const [stats, setStats] = useState<UserStatsData | null>(null)
-    const [earnedBadges, setEarnedBadges] = useState<BadgeData[]>([])
-    const [allBadges, setAllBadges] = useState<BadgeData[]>([])
-    const [showBadges, setShowBadges] = useState(false)
+export interface GamificationBarProps {
+    stats?: UserStatsData
+    earnedBadges?: BadgeData[]
+    allBadges?: BadgeData[]
+}
 
+export function GamificationBar(props: GamificationBarProps) {
+    const [showBadges, setShowBadges] = useState(false)
+    const [localStats, setLocalStats] = useState<UserStatsData | null>(props.stats ?? null)
+    const [localEarned, setLocalEarned] = useState<BadgeData[]>(props.earnedBadges ?? [])
+    const [localAll, setLocalAll] = useState<BadgeData[]>(props.allBadges ?? [])
+
+    // Client-side fallback when props are not provided (e.g. from vocab-content)
     useEffect(() => {
-        getUserStats().then((s) => setStats(s as UserStatsData)).catch(console.error)
-        getEarnedBadges().then(setEarnedBadges).catch(console.error)
-        getAllBadges().then(setAllBadges).catch(console.error)
-    }, [])
+        if (props.stats) return
+        getUserStats().then((s) => setLocalStats(s as UserStatsData)).catch(console.error)
+        fetchEarnedBadges().then(setLocalEarned).catch(console.error)
+        fetchAllBadges().then(setLocalAll).catch(console.error)
+    }, [props.stats])
+
+    const stats = localStats
+    const earnedBadges = localEarned
+    const allBadges = localAll
 
     if (!stats) return null
 

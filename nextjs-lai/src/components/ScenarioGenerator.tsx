@@ -7,6 +7,7 @@ import { Button } from '@/src/components/ui/button'
 import { Input } from '@/src/components/ui/input'
 import { Textarea } from '@/src/components/ui/textarea'
 import { Spinner } from '@/src/components/ui/spinner'
+import { generateAndSaveScenario } from '@/src/actions/generated-scenarios'
 import {
     Card,
     CardContent,
@@ -62,23 +63,17 @@ export function ScenarioGenerator({ onScenarioGenerated }: ScenarioGeneratorProp
         setGeneratedScenario(null)
 
         try {
-            const response = await fetch('/api/scenarios/generate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    language,
-                    difficulty,
-                    theme: theme.trim() || undefined,
-                    customContext: customContext.trim() || undefined,
-                }),
+            const topic = customContext?.trim()
+                ? `${theme ? theme.trim() + ': ' : ''}${customContext.trim()}`
+                : theme?.trim() || 'Alltagsgespräch'
+
+            const saved = await generateAndSaveScenario({
+                topic,
+                targetLanguage: language,
+                difficulty,
             })
 
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => null)
-                throw new Error(errorData?.error || 'Szenario konnte nicht generiert werden.')
-            }
-
-            const scenario: GeneratedScenarioResult = await response.json()
+            const scenario = saved as unknown as GeneratedScenarioResult
             setGeneratedScenario(scenario)
             toast.success('Szenario erfolgreich generiert!')
             onScenarioGenerated?.(scenario)

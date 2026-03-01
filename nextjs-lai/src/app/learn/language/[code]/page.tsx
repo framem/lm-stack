@@ -1,6 +1,10 @@
 import { notFound } from 'next/navigation'
 import { resolveLanguage } from '@/src/lib/language-utils'
 import { LanguageHub } from './language-hub'
+import { getVocabularyFlashcards } from '@/src/actions/flashcards'
+import { getQuizzes } from '@/src/actions/quiz'
+import { getCompetencies } from '@/src/app/learn/knowledge-map/actions'
+import { getUserStats, getEarnedBadges, getAllBadges } from '@/src/actions/user-stats'
 
 interface LanguageHubPageProps {
     params: Promise<{ code: string }>
@@ -12,5 +16,41 @@ export default async function LanguageHubPage({ params }: LanguageHubPageProps) 
 
     if (!lang) notFound()
 
-    return <LanguageHub code={code} language={lang.name} />
+    const [vocabCards, allQuizzes, competencies, userStats, earnedBadges, allBadges] =
+        await Promise.all([
+            getVocabularyFlashcards(undefined, lang.name),
+            getQuizzes(),
+            getCompetencies(),
+            getUserStats(),
+            getEarnedBadges(),
+            getAllBadges(),
+        ])
+
+    // Filter quizzes for this language
+    const langQuizzes = (allQuizzes as Array<Record<string, unknown>>).filter((q) => {
+        const doc = q.document as { title?: string } | null | undefined
+        const title = doc?.title?.toLowerCase() ?? ''
+        return title.includes(lang.name.toLowerCase())
+    })
+
+    // Filter competencies to documents belonging to this language
+    const langDocIds = new Set(
+        (vocabCards as Array<{ document?: { id: string } | null }>)
+            .map((c) => c.document?.id)
+            .filter(Boolean),
+    )
+    const langCompetencies = competencies.filter((c) => langDocIds.has(c.documentId))
+
+    return (
+        <LanguageHub
+            code={code}
+            language={lang.name}
+            cards={vocabCards as never}
+            quizzes={langQuizzes as never}
+            competencies={langCompetencies}
+            userStats={userStats as never}
+            earnedBadges={earnedBadges as never}
+            allBadges={allBadges as never}
+        />
+    )
 }
