@@ -26,22 +26,7 @@ import { getVocabularyFlashcards } from '@/src/actions/flashcards'
 import { getQuizzes } from '@/src/actions/quiz'
 import { GamificationBar } from '@/src/components/GamificationBar'
 import { languageSets } from '@/src/data/language-sets'
-
-const LANGUAGE_FLAGS: Record<string, string> = {
-    'Spanisch': '🇪🇸',
-    'Englisch': '🇬🇧',
-    'Deutsch': '🇩🇪',
-    'Französisch': '🇫🇷',
-    'Italienisch': '🇮🇹',
-}
-
-const LANGUAGE_CODES: Record<string, string> = {
-    'Spanisch': 'es',
-    'Englisch': 'en',
-    'Deutsch': 'de',
-    'Französisch': 'fr',
-    'Italienisch': 'it',
-}
+import { getLanguageFlag } from '@/src/lib/language-utils'
 
 // Map language-set document titles to their static set IDs
 const LANGUAGE_SET_ID_MAP: Record<string, string> = {
@@ -73,16 +58,16 @@ interface QuizItem {
 }
 
 interface LanguageHubProps {
+    code: string
     language: string
 }
 
-export function LanguageHub({ language }: LanguageHubProps) {
+export function LanguageHub({ code, language }: LanguageHubProps) {
     const [cards, setCards] = useState<VocabCard[]>([])
     const [quizzes, setQuizzes] = useState<QuizItem[]>([])
     const [loading, setLoading] = useState(true)
 
-    const flag = LANGUAGE_FLAGS[language] ?? '🌐'
-    const langCode = LANGUAGE_CODES[language] ?? 'de'
+    const flag = getLanguageFlag(code)
 
     useEffect(() => {
         async function load() {
@@ -248,7 +233,7 @@ export function LanguageHub({ language }: LanguageHubProps) {
                     <div className="flex flex-wrap gap-3">
                         {trulyDueCount > 0 && (
                             <Button asChild>
-                                <Link href={`/learn/vocabulary/study?mode=flip&language=${encodeURIComponent(language)}`}>
+                                <Link href={`/learn/vocabulary/study?mode=flip&language=${code}`}>
                                     <RotateCcw className="h-4 w-4" />
                                     Fällige lernen ({trulyDueCount})
                                 </Link>
@@ -256,26 +241,26 @@ export function LanguageHub({ language }: LanguageHubProps) {
                         )}
                         {newCount > 0 && (
                             <Button variant={trulyDueCount === 0 ? 'default' : 'outline'} asChild>
-                                <Link href={`/learn/vocabulary/study?mode=flip&new=true&language=${encodeURIComponent(language)}`}>
+                                <Link href={`/learn/vocabulary/study?mode=flip&new=true&language=${code}`}>
                                     <Sparkles className="h-4 w-4" />
                                     Neue lernen ({Math.min(newCount, 20)})
                                 </Link>
                             </Button>
                         )}
                         <Button variant="outline" asChild>
-                            <Link href={`/learn/vocabulary/study?mode=flip&all=true&language=${encodeURIComponent(language)}`}>
+                            <Link href={`/learn/vocabulary/study?mode=flip&all=true&language=${code}`}>
                                 <BookOpen className="h-4 w-4" />
                                 Alle lernen
                             </Link>
                         </Button>
                         <Button variant="outline" asChild>
-                            <Link href={`/learn/vocabulary/study?mode=type&language=${encodeURIComponent(language)}`}>
+                            <Link href={`/learn/vocabulary/study?mode=type&language=${code}`}>
                                 <Keyboard className="h-4 w-4" />
                                 Tipp-Modus
                             </Link>
                         </Button>
                         <Button variant="outline" asChild>
-                            <Link href={`/learn/vocabulary/study?mode=speech&language=${encodeURIComponent(language)}`}>
+                            <Link href={`/learn/vocabulary/study?mode=speech&language=${code}`}>
                                 <Mic className="h-4 w-4" />
                                 Sprech-Modus
                             </Link>
@@ -420,7 +405,7 @@ export function LanguageHub({ language }: LanguageHubProps) {
                             </p>
                         </div>
                         <Button asChild>
-                            <Link href={`/learn/conversation?language=${langCode}`}>
+                            <Link href={`/learn/conversation?language=${code}`}>
                                 <MessageSquare className="h-4 w-4" />
                                 Starten
                             </Link>
@@ -447,7 +432,7 @@ export function LanguageHub({ language }: LanguageHubProps) {
                             </p>
                         </div>
                         <Button variant={trulyDueCount > 0 ? 'default' : 'outline'} asChild>
-                            <Link href={`/learn/vocabulary/study?mode=flip&language=${encodeURIComponent(language)}`}>
+                            <Link href={`/learn/vocabulary/study?mode=flip&language=${code}`}>
                                 <Zap className="h-4 w-4" />
                                 {trulyDueCount > 0 ? 'Jetzt üben' : 'Neue lernen'}
                             </Link>

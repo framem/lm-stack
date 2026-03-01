@@ -180,7 +180,7 @@ export function CefrProgressRing({ progress }: CefrProgressRingProps) {
                             return (
                                 <div key={p.id} className="flex items-center gap-4">
                                     <Link
-                                        href={`/learn/language/${encodeURIComponent(LANGUAGE_LABELS[p.language] ?? p.language)}`}
+                                        href={`/learn/language/${p.language}`}
                                         className="flex items-center gap-4 flex-1 min-w-0 hover:opacity-80 transition-opacity"
                                     >
                                         <ProgressRing percentage={p.percentage} level={p.targetLevel} />

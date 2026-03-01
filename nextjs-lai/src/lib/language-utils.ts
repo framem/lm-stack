@@ -1,3 +1,60 @@
+// ── Central Language Registry ──────────────────────────────────────────
+
+export interface LanguageInfo {
+    code: string      // ISO 639-1 (e.g. 'es')
+    name: string      // German display name (e.g. 'Spanisch')
+    flag: string      // Emoji flag (e.g. '🇪🇸')
+    bcp47: string     // BCP-47 TTS code (e.g. 'es-ES')
+}
+
+const LANGUAGES: LanguageInfo[] = [
+    { code: 'es', name: 'Spanisch',     flag: '🇪🇸', bcp47: 'es-ES' },
+    { code: 'en', name: 'Englisch',     flag: '🇬🇧', bcp47: 'en-US' },
+    { code: 'de', name: 'Deutsch',      flag: '🇩🇪', bcp47: 'de-DE' },
+    { code: 'fr', name: 'Französisch',  flag: '🇫🇷', bcp47: 'fr-FR' },
+    { code: 'it', name: 'Italienisch',  flag: '🇮🇹', bcp47: 'it-IT' },
+]
+
+const byCode = new Map(LANGUAGES.map((l) => [l.code, l]))
+const byName = new Map(LANGUAGES.map((l) => [l.name, l]))
+
+/**
+ * Resolve a language by its ISO 639-1 code
+ * @returns LanguageInfo or undefined if unknown
+ */
+export function resolveLanguage(code: string): LanguageInfo | undefined {
+    return byCode.get(code)
+}
+
+/**
+ * Resolve an ISO 639-1 code from a German language name
+ * @returns code like 'es' or undefined
+ */
+export function resolveLanguageCode(name: string): string | undefined {
+    return byName.get(name)?.code
+}
+
+/**
+ * Get the emoji flag for a language (by code or name)
+ */
+export function getLanguageFlag(codeOrName: string): string {
+    return byCode.get(codeOrName)?.flag ?? byName.get(codeOrName)?.flag ?? '🌐'
+}
+
+/**
+ * Get the German display name for a language code
+ */
+export function getLanguageName(code: string): string | undefined {
+    return byCode.get(code)?.name
+}
+
+/**
+ * Get BCP-47 TTS code for a language (by code or name)
+ */
+export function getLanguageBcp47(codeOrName: string): string {
+    return byCode.get(codeOrName)?.bcp47 ?? byName.get(codeOrName)?.bcp47 ?? 'de-DE'
+}
+
 // Map conversation language codes to BCP-47 language codes for TTS
 export const CONVERSATION_LANG_MAP: Record<string, string> = {
     'de': 'de-DE',

@@ -5,6 +5,7 @@ import { Button } from '@/src/components/ui/button'
 import { Badge } from '@/src/components/ui/badge'
 import { getLearnerProfile } from '@/src/data-access/learning-paths'
 import { generateLearningRecommendation } from '@/src/lib/learning-path-generator'
+import { resolveLanguageCode } from '@/src/lib/language-utils'
 
 interface TodayActionWidgetProps {
     dueFlashcards: number
@@ -123,7 +124,7 @@ export async function TodayActionWidget({
                         {/* Per-language vocab badges */}
                         {dueVocabByLanguage && Object.entries(dueVocabByLanguage).map(([lang, count]) => (
                             count > 0 && (
-                                <Link key={lang} href={`/learn/language/${encodeURIComponent(lang)}`}>
+                                <Link key={lang} href={`/learn/language/${resolveLanguageCode(lang) ?? lang}`}>
                                     <Badge variant="secondary" className="gap-1 cursor-pointer hover:bg-secondary/80">
                                         <Languages className="h-3 w-3" />
                                         {count} {lang}-Vokabel{count !== 1 ? 'n' : ''}

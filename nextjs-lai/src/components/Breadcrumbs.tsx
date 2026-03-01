@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronRight } from 'lucide-react'
 import { useBreadcrumb } from '@/src/contexts/BreadcrumbContext'
+import { getLanguageName } from '@/src/lib/language-utils'
 
 // Static titles for dynamic language-set segments (avoids importing full vocab data)
 const LANGUAGE_SET_TITLES: Record<string, string> = {
@@ -23,7 +24,8 @@ const ROUTE_LABELS: Record<string, string> = {
     '/learn/flashcards': 'Karteikarten',
     '/learn/flashcards/study': 'Lernen',
     '/learn/knowledge-map': 'Wissenskarte',
-'/learn/placement-test': 'Einstufungstest',
+    '/learn/language': 'Sprachtrainer',
+    '/learn/placement-test': 'Einstufungstest',
     '/learn/plan': 'Lernplan',
     '/learn/progress': 'Fortschritt',
     '/learn/quiz': 'Quiz',
@@ -52,7 +54,7 @@ export function Breadcrumbs() {
         for (const part of parts) {
             currentPath += `/${part}`
             if (currentPath === '/learn') continue // suppress "Dashboard" for sub-pages
-            const label = ROUTE_LABELS[currentPath] ?? LANGUAGE_SET_TITLES[part]
+            const label = ROUTE_LABELS[currentPath] ?? LANGUAGE_SET_TITLES[part] ?? getLanguageName(part)
             if (label) {
                 segments.push({ label, href: currentPath })
             }

@@ -61,6 +61,7 @@ import { useTheme } from 'next-themes'
 import { Input } from '@/src/components/ui/input'
 import { getSessions, deleteSession, searchMessages, getBookmarkedMessages } from '@/src/actions/chat'
 import { getVocabularyLanguages } from '@/src/actions/flashcards'
+import { resolveLanguageCode, getLanguageFlag } from '@/src/lib/language-utils'
 
 interface SessionItem {
     id: string
@@ -84,13 +85,6 @@ const progressItems = [
     { href: '/learn/progress', label: 'Fortschritt', icon: TrendingUp },
 ]
 
-const LANGUAGE_FLAGS: Record<string, string> = {
-    'Spanisch': '🇪🇸',
-    'Englisch': '🇬🇧',
-    'Deutsch': '🇩🇪',
-    'Französisch': '🇫🇷',
-    'Italienisch': '🇮🇹',
-}
 
 export function AppSidebar() {
     const pathname = usePathname()
@@ -452,18 +446,21 @@ export function AppSidebar() {
                                                     </span>
                                                 </SidebarMenuSubItem>
                                             ) : (
-                                                languages.map((lang) => (
-                                                    <SidebarMenuSubItem key={lang}>
-                                                        <SidebarMenuSubButton
-                                                            asChild
-                                                            isActive={pathname === `/learn/language/${encodeURIComponent(lang)}`}
-                                                        >
-                                                            <Link href={`/learn/language/${encodeURIComponent(lang)}`}>
-                                                                <span>{LANGUAGE_FLAGS[lang] ?? '🌐'} {lang}</span>
-                                                            </Link>
-                                                        </SidebarMenuSubButton>
-                                                    </SidebarMenuSubItem>
-                                                ))
+                                                languages.map((lang) => {
+                                                    const code = resolveLanguageCode(lang) ?? lang
+                                                    return (
+                                                        <SidebarMenuSubItem key={lang}>
+                                                            <SidebarMenuSubButton
+                                                                asChild
+                                                                isActive={pathname === `/learn/language/${code}`}
+                                                            >
+                                                                <Link href={`/learn/language/${code}`}>
+                                                                    <span>{getLanguageFlag(lang)} {lang}</span>
+                                                                </Link>
+                                                            </SidebarMenuSubButton>
+                                                        </SidebarMenuSubItem>
+                                                    )
+                                                })
                                             )}
                                         </SidebarMenuSub>
                                     </CollapsibleContent>
