@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Layers, HelpCircle, BookOpen, Clock, Sparkles, GraduationCap, Zap, Languages } from 'lucide-react'
+import { Layers, HelpCircle, BookOpen, Clock, Sparkles, GraduationCap, Zap, Languages, CalendarDays } from 'lucide-react'
 import { Card, CardContent } from '@/src/components/ui/card'
 import { Button } from '@/src/components/ui/button'
 import { Badge } from '@/src/components/ui/badge'
@@ -12,6 +12,7 @@ interface TodayActionWidgetProps {
     dueQuizReviews: number
     dueVocabByLanguage?: Record<string, number>
     dueDocumentFlashcards?: number
+    dueTomorrowVocab?: number
     weakestDocument?: {
         id: string
         title: string
@@ -28,6 +29,7 @@ export async function TodayActionWidget({
     dueQuizReviews,
     dueVocabByLanguage,
     dueDocumentFlashcards,
+    dueTomorrowVocab,
     weakestDocument,
 }: TodayActionWidgetProps) {
     const vocabTotal = Object.values(dueVocabByLanguage ?? {}).reduce((a, b) => a + b, 0)
@@ -152,6 +154,14 @@ export async function TodayActionWidget({
                             </Badge>
                         )}
                     </div>
+                )}
+
+                {/* Tomorrow preview */}
+                {dueTomorrowVocab != null && dueTomorrowVocab > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                        <CalendarDays className="inline h-3 w-3 mr-1" />
+                        Morgen: {dueTomorrowVocab} Vokabel{dueTomorrowVocab !== 1 ? 'n' : ''} zur Wiederholung
+                    </p>
                 )}
 
                 {/* Secondary actions */}

@@ -346,6 +346,19 @@ export async function getDueVocabularyCount() {
     return newCards + dueCards
 }
 
+// Count vocabulary cards due tomorrow (between end of today and end of tomorrow)
+export async function getDueTomorrowVocabularyCount() {
+    const now = new Date()
+    const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
+    const endOfTomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 2)
+    return prisma.flashcardProgress.count({
+        where: {
+            due: { gt: endOfToday, lte: endOfTomorrow },
+            flashcard: { isVocabulary: true },
+        },
+    })
+}
+
 // Aggregate flashcard progress per document (for dashboard chart)
 export async function getFlashcardDocumentProgress() {
     const documents = await prisma.document.findMany({
