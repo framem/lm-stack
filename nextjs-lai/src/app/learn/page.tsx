@@ -37,6 +37,7 @@ import {getEarnedBadges} from '@/src/data-access/badges'
 import {ConversationWidget} from '@/src/components/ConversationWidget'
 import {StatsCharts} from '@/src/components/StatsCharts'
 import {ConversationStats} from '@/src/components/ConversationStats'
+import {WeeklyChallenges} from '@/src/components/WeeklyChallenges'
 
 export default async function DashboardPage() {
     const [documents, sessions, quizzes, quizProgress, flashcardProgress, dueQuizReviews, dueFlashcardReviews, totalFlashcards, userStats, cefrProgress, todayTasks, profile, earnedBadges, dueVocabByLanguage, dueDocumentFlashcards, dueTomorrowVocab, dailyActivity, knowledgeTrend, evaluationStats] = await Promise.all([
@@ -276,6 +277,18 @@ export default async function DashboardPage() {
             {/* Badge showcase */}
             {!isNewUser && earnedBadges.length > 0 && (
                 <BadgeShowcase earnedBadges={earnedBadges} />
+            )}
+
+            {/* Weekly challenges — motivation hook */}
+            {!isNewUser && !isBeginnerUser && (
+                <WeeklyChallenges
+                    totalConversations={evaluationStats.totalEvaluations}
+                    totalFlashcards={totalFlashcards}
+                    dueFlashcards={dueFlashcardReviews}
+                    dueVocab={Object.values(dueVocabByLanguage).reduce((sum: number, n: number) => sum + n, 0)}
+                    totalQuizzes={quizzes.length}
+                    targetLanguage={targetLanguage !== 'de' ? targetLanguage : undefined}
+                />
             )}
 
             {/* Beginner tip — show only for new-ish users */}

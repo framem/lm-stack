@@ -14,6 +14,7 @@ import {
     Lock,
     Sparkles,
     Mic,
+    MessageSquare,
     GraduationCap,
     Lightbulb,
 } from 'lucide-react'
@@ -167,6 +168,12 @@ export default async function LanguageLevelPage({ params }: Props) {
                             <Link href={`${studyBase}?mode=type&doc=${documentId}`}>
                                 <Keyboard className="h-4 w-4" />
                                 Tipp-Modus
+                            </Link>
+                        </Button>
+                        <Button variant="outline" asChild>
+                            <Link href={`/learn/language/${code}/conversation`}>
+                                <MessageSquare className="h-4 w-4" />
+                                Konversation üben
                             </Link>
                         </Button>
                     </div>
