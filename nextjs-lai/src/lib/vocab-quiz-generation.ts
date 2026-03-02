@@ -1,4 +1,5 @@
 import { distributeQuestions, type QuestionToSave } from './quiz-generation'
+import { shuffle } from '@/src/lib/utils'
 
 // ── Types ──
 
@@ -10,18 +11,6 @@ export interface VocabFlashcard {
     exampleSentence: string | null
     partOfSpeech: string | null
     conjugation: Record<string, Record<string, string>> | null
-}
-
-// ── Helpers ──
-
-/** Fisher-Yates shuffle (returns new array) */
-function shuffle<T>(arr: T[]): T[] {
-    const a = [...arr]
-    for (let i = a.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1))
-        ;[a[i], a[j]] = [a[j], a[i]]
-    }
-    return a
 }
 
 /** Pick n random items from array (without replacement) */

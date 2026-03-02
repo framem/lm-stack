@@ -32,6 +32,7 @@ import { VOCAB_RATINGS as RATINGS } from '@/src/lib/constants'
 import { generateExampleSentences, generateMnemonic, explainWord, explainError } from '@/src/actions/vocab-ai'
 import { VocabSpeechInput } from '@/src/components/VocabSpeechInput'
 import { toast } from 'sonner'
+import { shuffle } from '@/src/lib/utils'
 
 interface ConjugationData {
     present?: Record<string, string>
@@ -226,15 +227,6 @@ function RatingButtons({
             </div>
         </div>
     )
-}
-
-function shuffle<T>(arr: T[]): T[] {
-    const a = [...arr]
-    for (let i = a.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1))
-        ;[a[i], a[j]] = [a[j], a[i]]
-    }
-    return a
 }
 
 export function VocabStudyContent() {

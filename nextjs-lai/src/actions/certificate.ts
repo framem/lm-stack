@@ -62,11 +62,12 @@ export async function getCertificateData(
     // Certificate available when there is any learning activity
     if (detail.masteredCards === 0 && detail.totalCards - detail.newCards === 0) return null
 
-    const userStats = await prisma.userStats.findFirst()
-    const dailyData = await getDailyLearningTime(365)
+    const [userStats, dailyData, quizzesCompleted] = await Promise.all([
+        prisma.userStats.findFirst(),
+        getDailyLearningTime(365),
+        prisma.quiz.count(),
+    ])
     const totalLearningMinutes = dailyData.reduce((s, d) => s + d.minutes, 0)
-
-    const quizzesCompleted = await prisma.quiz.count()
 
     return {
         language,
@@ -101,17 +102,16 @@ export async function getCertificateLevelsForLanguage(
     language: string,
 ): Promise<CertificateLevelStatus[]> {
     const langSets = languageSets.filter((s) => s.subject === language)
-    const result: CertificateLevelStatus[] = []
+    const details = await Promise.all(langSets.map((s) => getLanguageSetDetail(s.id)))
 
-    for (const set of langSets) {
-        const detail = await getLanguageSetDetail(set.id)
+    return langSets.map((set, i) => {
+        const detail = details[i]
         if (detail && detail.imported) {
             const pct = detail.totalCards > 0
                 ? Math.round((detail.masteredCards / detail.totalCards) * 100)
                 : 0
-            // Available if user has any activity for this level
             const hasActivity = detail.masteredCards > 0 || (detail.totalCards - detail.newCards) > 0
-            result.push({
+            return {
                 level: set.level,
                 setTitle: set.title,
                 available: hasActivity,
@@ -119,20 +119,18 @@ export async function getCertificateLevelsForLanguage(
                 totalCards: detail.totalCards,
                 masteredCards: detail.masteredCards,
                 imported: true,
-            })
-        } else {
-            result.push({
-                level: set.level,
-                setTitle: set.title,
-                available: false,
-                masteredPct: 0,
-                totalCards: 0,
-                masteredCards: 0,
-                imported: false,
-            })
+            }
         }
-    }
-    return result
+        return {
+            level: set.level,
+            setTitle: set.title,
+            available: false,
+            masteredPct: 0,
+            totalCards: 0,
+            masteredCards: 0,
+            imported: false,
+        }
+    })
 }
 
 // Fetch full progress summary for a language (for progress export)
@@ -143,43 +141,45 @@ export async function getLanguageProgress(
 ): Promise<LanguageProgressSummary> {
     const langSets = languageSets.filter((s) => s.subject === language)
 
-    const levels: LanguageProgressSummary['levels'] = []
+    // Fetch all set details and global stats in parallel
+    const [details, userStats, dailyData, quizzesCompleted] = await Promise.all([
+        Promise.all(langSets.map((s) => getLanguageSetDetail(s.id))),
+        prisma.userStats.findFirst(),
+        getDailyLearningTime(365),
+        prisma.quiz.count(),
+    ])
+    const totalLearningMinutes = dailyData.reduce((s, d) => s + d.minutes, 0)
+
     let totalCards = 0
     let masteredCards = 0
-
-    for (const set of langSets) {
-        const detail = await getLanguageSetDetail(set.id)
+    const levels: LanguageProgressSummary['levels'] = langSets.map((set, i) => {
+        const detail = details[i]
         if (detail && detail.imported) {
             const pct = detail.totalCards > 0
                 ? Math.round((detail.masteredCards / detail.totalCards) * 100)
                 : 0
-            levels.push({
+            totalCards += detail.totalCards
+            masteredCards += detail.masteredCards
+            return {
                 level: set.level,
                 setTitle: set.title,
                 totalCards: detail.totalCards,
                 masteredCards: detail.masteredCards,
                 masteredPct: pct,
                 completed: pct >= 80,
-            })
-            totalCards += detail.totalCards
-            masteredCards += detail.masteredCards
-        } else {
-            levels.push({
-                level: set.level,
-                setTitle: set.title,
-                totalCards: 0,
-                masteredCards: 0,
-                masteredPct: 0,
-                completed: false,
-            })
+            }
         }
-    }
+        return {
+            level: set.level,
+            setTitle: set.title,
+            totalCards: 0,
+            masteredCards: 0,
+            masteredPct: 0,
+            completed: false,
+        }
+    })
 
     const masteredPct = totalCards > 0 ? Math.round((masteredCards / totalCards) * 100) : 0
-    const userStats = await prisma.userStats.findFirst()
-    const dailyData = await getDailyLearningTime(365)
-    const totalLearningMinutes = dailyData.reduce((s, d) => s + d.minutes, 0)
-    const quizzesCompleted = await prisma.quiz.count()
 
     return {
         language,

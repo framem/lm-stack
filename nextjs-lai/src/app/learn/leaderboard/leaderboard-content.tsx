@@ -30,7 +30,7 @@ import {
     deleteChallenge,
     updateChallengeProgress,
 } from '@/src/actions/weekly-challenges'
-import { CHALLENGE_TEMPLATES, type ChallengeTemplate } from '@/src/data-access/weekly-challenges'
+import { CHALLENGE_TEMPLATES, type ChallengeTemplate } from '@/src/data/challenge-templates'
 
 // ── Types ──
 

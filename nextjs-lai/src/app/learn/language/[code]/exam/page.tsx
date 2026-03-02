@@ -13,10 +13,7 @@ export default async function ExamPage({ params }: ExamPageProps) {
 
     return (
         <div className="p-6 max-w-5xl mx-auto">
-            <ExamContent
-                languageCode={code}
-                languageName={lang.name}
-            />
+            <ExamContent language={lang} />
         </div>
     )
 }

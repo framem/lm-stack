@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useCallback, useRef } from 'react'
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import {
     ArrowLeft,
@@ -30,17 +30,7 @@ import {
     type PronunciationExercise,
     type PhonemeGuide,
 } from './pronunciation-data'
-
-// ── Utility ────────────────────────────────────────────────────────────
-
-function shuffle<T>(arr: T[]): T[] {
-    const copy = [...arr]
-    for (let i = copy.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1))
-        ;[copy[i], copy[j]] = [copy[j], copy[i]]
-    }
-    return copy
-}
+import { shuffle } from '@/src/lib/utils'
 
 const CORRECT_THRESHOLD = 0.8
 const ALMOST_THRESHOLD = 0.6
@@ -221,6 +211,13 @@ function SpeechRecorder({
     const stopListening = useCallback(() => {
         recognitionRef.current?.stop()
         setListening(false)
+    }, [])
+
+    // Clean up speech recognition on unmount
+    useEffect(() => {
+        return () => {
+            recognitionRef.current?.abort()
+        }
     }, [])
 
     if (!supported) {

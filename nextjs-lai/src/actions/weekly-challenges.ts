@@ -7,9 +7,8 @@ import {
     updateChallengeProgress as dbUpdateChallengeProgress,
     deleteChallenge as dbDeleteChallenge,
     getChallengeStats as dbGetChallengeStats,
-    CHALLENGE_TEMPLATES,
-    type ChallengeTemplate,
 } from '@/src/data-access/weekly-challenges'
+import { type ChallengeTemplate } from '@/src/data/challenge-templates'
 
 export async function getActiveChallenges() {
     return dbGetActiveChallenges()
@@ -35,6 +34,3 @@ export async function getChallengeStats() {
     return dbGetChallengeStats()
 }
 
-export function getChallengeTemplates() {
-    return CHALLENGE_TEMPLATES
-}

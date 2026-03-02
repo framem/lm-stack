@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, PenLine, Puzzle, Shuffle, Loader2, CheckCircle2, XCircle, RotateCcw } from 'lucide-react'
 import { Button } from '@/src/components/ui/button'
@@ -95,7 +95,7 @@ function FreeWriting({ languageCode, languageName, level }: { languageCode: stri
     const [feedback, setFeedback] = useState<WritingFeedback | null>(null)
     const [error, setError] = useState<string | null>(null)
 
-    const prompts = getWritingPrompts(level)
+    const prompts = useMemo(() => getWritingPrompts(level), [level])
 
     async function handleEvaluate() {
         if (!text.trim()) return
@@ -132,7 +132,7 @@ function FreeWriting({ languageCode, languageName, level }: { languageCode: stri
                                         key={i}
                                         variant="outline"
                                         className="cursor-pointer hover:bg-accent"
-                                        onClick={() => setText('')}
+                                        onClick={() => setText(prompt)}
                                     >
                                         {prompt}
                                     </Badge>
@@ -241,7 +241,7 @@ function FeedbackDisplay({ feedback }: { feedback: WritingFeedback }) {
 // ── Cloze (Gap-fill) Mode ──
 
 function ClozeMode({ languageCode, level }: { languageCode: string; level: string }) {
-    const exercises = getExercises(languageCode, level)
+    const exercises = useMemo(() => getExercises(languageCode, level), [languageCode, level])
     const clozeItems = exercises.cloze
     const [answers, setAnswers] = useState<Record<number, string>>({})
     const [checked, setChecked] = useState(false)
@@ -348,7 +348,7 @@ function ClozeMode({ languageCode, level }: { languageCode: string; level: strin
 // ── Sentence Reordering Mode ──
 
 function ReorderMode({ languageCode, level }: { languageCode: string; level: string }) {
-    const exercises = getExercises(languageCode, level)
+    const exercises = useMemo(() => getExercises(languageCode, level), [languageCode, level])
     const reorderItems = exercises.reorder
     const [currentIndex, setCurrentIndex] = useState(0)
 

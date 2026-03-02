@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import {
     ArrowLeft,
@@ -26,6 +26,7 @@ import { RadioGroup, RadioGroupItem } from '@/src/components/ui/radio-group'
 import { Textarea } from '@/src/components/ui/textarea'
 import { useLearningSession } from '@/src/hooks/use-learning-session'
 import { cn } from '@/src/lib/utils'
+import type { LanguageInfo } from '@/src/lib/language-utils'
 import { getExamsForLanguage, type ExamTemplate, type ExamSection, type ExamQuestion } from './exam-data'
 
 // ── Result types ───────────────────────────────────────────────────────
@@ -47,8 +48,7 @@ interface ExamResults {
 // ── Props ──────────────────────────────────────────────────────────────
 
 interface ExamContentProps {
-    languageCode: string
-    languageName: string
+    language: LanguageInfo
 }
 
 // Section type icon mapping
@@ -63,14 +63,16 @@ const SECTION_TYPE_ICONS: Record<string, React.ReactNode> = {
 
 type Phase = 'selection' | 'confirm' | 'exam' | 'results'
 
-export function ExamContent({ languageCode, languageName }: ExamContentProps) {
+export function ExamContent({ language }: ExamContentProps) {
+    const languageCode = language.code
+    const languageName = language.name
     useLearningSession('exam')
 
     const [phase, setPhase] = useState<Phase>('selection')
     const [selectedExam, setSelectedExam] = useState<ExamTemplate | null>(null)
     const [results, setResults] = useState<ExamResults | null>(null)
 
-    const availableExams = getExamsForLanguage(languageCode)
+    const availableExams = useMemo(() => getExamsForLanguage(languageCode), [languageCode])
 
     function handleSelectExam(exam: ExamTemplate) {
         setSelectedExam(exam)
@@ -271,7 +273,6 @@ export function ExamContent({ languageCode, languageName }: ExamContentProps) {
                     <span>{selectedExam.name} &mdash; {selectedExam.level}</span>
                 </div>
                 <SimExamPlayer
-                    examTitle={selectedExam.name}
                     sections={selectedExam.sections}
                     totalTimeMinutes={selectedExam.totalTimeMinutes}
                     passingPercentage={selectedExam.passingPercentage}
@@ -452,7 +453,7 @@ function SimTimer({ totalMinutes, onTimeUp }: { totalMinutes: number; onTimeUp: 
     onTimeUpRef.current = onTimeUp
 
     useEffect(() => {
-        if (paused || secondsLeft <= 0) return
+        if (paused) return
         const interval = setInterval(() => {
             setSecondsLeft((prev) => {
                 if (prev <= 1) {
@@ -464,7 +465,7 @@ function SimTimer({ totalMinutes, onTimeUp }: { totalMinutes: number; onTimeUp: 
             })
         }, 1000)
         return () => clearInterval(interval)
-    }, [paused, secondsLeft])
+    }, [paused])
 
     const minutes = Math.floor(secondsLeft / 60)
     const seconds = secondsLeft % 60
@@ -523,7 +524,6 @@ function SimTimer({ totalMinutes, onTimeUp }: { totalMinutes: number; onTimeUp: 
 // ── Exam simulation player (inline) ────────────────────────────────────
 
 interface SimExamPlayerProps {
-    examTitle: string
     sections: ExamSection[]
     totalTimeMinutes: number
     passingPercentage: number
