@@ -17,6 +17,8 @@ interface CreateQuestionInput {
     questionIndex: number
     questionType?: string
     difficulty?: number
+    ttsText?: string | null
+    ttsLang?: string | null
 }
 
 // Create a new quiz — either from a document or a conversation scenario
@@ -46,6 +48,8 @@ export async function addQuestions(quizId: string, questions: CreateQuestionInpu
             questionIndex: q.questionIndex,
             questionType: q.questionType ?? 'singleChoice',
             difficulty: q.difficulty ?? 1,
+            ttsText: q.ttsText ?? undefined,
+            ttsLang: q.ttsLang ?? undefined,
         })),
     })
 }

@@ -103,12 +103,17 @@ export function QuizPlayer({ quizTitle, questions, onComplete, subject, scenario
     const isFillInBlanks = currentQuestion?.questionType === 'fillInBlanks'
     const isConjugation = currentQuestion?.questionType === 'conjugation'
     const isSentenceOrder = currentQuestion?.questionType === 'sentenceOrder'
+    const isListening = currentQuestion?.questionType === 'listening'
+    const listeningHasOptions = isListening && !!currentQuestion?.options
+    const listeningIsFreetext = isListening && !currentQuestion?.options
 
     async function handleSubmit() {
         if (!currentQuestion) return
         if (isMultipleChoice && selectedIndices.length === 0) return
-        if (!isMultipleChoice && !isFreetext && !isCloze && !isFillInBlanks && !isConjugation && !isSentenceOrder && selectedIndex === null) return
+        if (!isMultipleChoice && !isFreetext && !isCloze && !isFillInBlanks && !isConjugation && !isSentenceOrder && !isListening && selectedIndex === null) return
         if ((isFreetext || isCloze) && !freeTextAnswer.trim()) return
+        if (listeningHasOptions && selectedIndex === null) return
+        if (listeningIsFreetext && !freeTextAnswer.trim()) return
 
         setSubmitting(true)
 
@@ -120,14 +125,14 @@ export function QuizPlayer({ quizTitle, questions, onComplete, subject, scenario
             serializedFreeText = JSON.stringify(conjugationAnswers)
         } else if (isSentenceOrder) {
             serializedFreeText = orderedWords.join(' ')
-        } else if (isFreetext || isCloze) {
+        } else if (isFreetext || isCloze || listeningIsFreetext) {
             serializedFreeText = freeTextAnswer
         }
 
         try {
             const data = await evaluateAnswer(
                 currentQuestion.id,
-                isFreetextLikeType(currentQuestion.questionType) || isMultipleChoice ? null : selectedIndex,
+                isFreetextLikeType(currentQuestion.questionType) || isMultipleChoice || listeningIsFreetext ? null : selectedIndex,
                 serializedFreeText,
                 isMultipleChoice ? selectedIndices : undefined,
             ) as AnswerResult
@@ -223,7 +228,7 @@ export function QuizPlayer({ quizTitle, questions, onComplete, subject, scenario
     if (!currentQuestion) return null
 
     const options = currentQuestion.options
-    const canSubmit = (isFreetext || isCloze)
+    const canSubmit = (isFreetext || isCloze || listeningIsFreetext)
         ? !!freeTextAnswer.trim()
         : isFillInBlanks
             ? fillInBlanksAnswers.some((a) => a.trim())
@@ -235,9 +240,8 @@ export function QuizPlayer({ quizTitle, questions, onComplete, subject, scenario
                         ? selectedIndices.length > 0
                         : selectedIndex !== null
 
-    // For cloze/fillInBlanks: questionText is encoded as "<German question>\n\n<sentence with {{blank}}>"
+    // For cloze/fillInBlanks/listeningCloze: questionText is encoded as "<question>\n\n<sentence with {{blank}}>"
     // Split at the first double-newline to separate question from sentence template.
-    // Fall back to the full questionText as the sentence if no separator is found (legacy questions).
     function splitClozeText(raw: string): { question: string; sentence: string } {
         const idx = raw.indexOf('\n\n')
         if (idx !== -1) return { question: raw.slice(0, idx), sentence: raw.slice(idx + 2) }
@@ -245,10 +249,15 @@ export function QuizPlayer({ quizTitle, questions, onComplete, subject, scenario
     }
     const clozeQuestion = isCloze ? splitClozeText(currentQuestion.questionText) : null
     const fillInBlanksQuestion = isFillInBlanks ? splitClozeText(currentQuestion.questionText) : null
+    // Listening cloze: detect {{blank}} in questionText
+    const listeningCloze = listeningIsFreetext && currentQuestion.questionText.includes('{{blank}}')
+        ? splitClozeText(currentQuestion.questionText)
+        : null
 
-    // Split cloze/fillInBlanks sentence template around {{blank}}
+    // Split cloze/fillInBlanks/listeningCloze sentence template around {{blank}}
     const clozeParts = clozeQuestion ? clozeQuestion.sentence.split('{{blank}}') : []
     const fillInBlanksParts = fillInBlanksQuestion ? fillInBlanksQuestion.sentence.split('{{blank}}') : []
+    const listeningClozeParts = listeningCloze ? listeningCloze.sentence.split('{{blank}}') : []
 
     // TTS for language quizzes - use data from question, or derive from scenario/subject
     const ttsText = currentQuestion.ttsText ?? null
@@ -291,7 +300,33 @@ export function QuizPlayer({ quizTitle, questions, onComplete, subject, scenario
             <Card>
                 <CardHeader>
                     <div className="flex items-start gap-2">
-                        {!isFillInBlanks && !isCloze && (
+                        {/* Listening: show prominent TTS play button with minimal instruction */}
+                        {isListening && (
+                            <CardTitle className="text-lg flex-1">
+                                <div className="flex flex-col items-center gap-4 py-4">
+                                    <p className="text-sm text-muted-foreground">Höre zu:</p>
+                                    {ttsText && ttsLang && (
+                                        <TTSButton
+                                            text={ttsText}
+                                            lang={ttsLang}
+                                            size="lg"
+                                            className="h-16 w-16 rounded-full"
+                                            autoPlay
+                                        />
+                                    )}
+                                    {listeningHasOptions && (
+                                        <p className="text-sm text-muted-foreground">Wähle die richtige Übersetzung:</p>
+                                    )}
+                                    {listeningIsFreetext && !listeningCloze && (
+                                        <p className="text-sm text-muted-foreground">Schreibe auf, was du hörst:</p>
+                                    )}
+                                    {listeningCloze && (
+                                        <p className="text-sm text-muted-foreground">Welches Wort fehlt?</p>
+                                    )}
+                                </div>
+                            </CardTitle>
+                        )}
+                        {!isFillInBlanks && !isCloze && !isListening && (
                             <CardTitle className="text-lg flex-1">
                                 {/* Render question text with inline TTS button inside «...» */}
                                 {ttsText && ttsLang ? (
@@ -331,6 +366,107 @@ export function QuizPlayer({ quizTitle, questions, onComplete, subject, scenario
                     )}
                 </CardHeader>
                 <CardContent>
+                    {/* Listening comprehension: RadioGroup for options */}
+                    {listeningHasOptions && options && options.length > 0 && (
+                        <RadioGroup
+                            value={selectedIndex !== null ? String(selectedIndex) : ''}
+                            onValueChange={(v) => {
+                                if (!result) setSelectedIndex(Number(v))
+                            }}
+                            disabled={!!result}
+                        >
+                            {options.map((option, i) => {
+                                let itemClass = ''
+                                if (result && result.correctIndex !== null) {
+                                    if (i === result.correctIndex) {
+                                        itemClass = 'border-green-500 bg-green-50 dark:bg-green-950'
+                                    } else if (i === selectedIndex && !result.isCorrect) {
+                                        itemClass = 'border-red-500 bg-red-50 dark:bg-red-950'
+                                    }
+                                }
+
+                                return (
+                                    <label
+                                        key={i}
+                                        className={`flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors hover:bg-accent ${itemClass}`}
+                                    >
+                                        <RadioGroupItem value={String(i)} />
+                                        <span className="text-sm">{option}</span>
+                                        {result && result.correctIndex !== null && i === result.correctIndex && (
+                                            <CheckCircle2 className="h-4 w-4 text-green-600 ml-auto" />
+                                        )}
+                                        {result && i === selectedIndex && !result.isCorrect && result.correctIndex !== null && i !== result.correctIndex && (
+                                            <XCircle className="h-4 w-4 text-red-600 ml-auto" />
+                                        )}
+                                    </label>
+                                )
+                            })}
+                        </RadioGroup>
+                    )}
+
+                    {/* Listening cloze: sentence with blank + input */}
+                    {listeningCloze && listeningClozeParts.length > 0 && (
+                        <div className="space-y-2">
+                            <p className="text-lg leading-relaxed">
+                                {listeningClozeParts.map((part, i) => (
+                                    <span key={i}>
+                                        {part}
+                                        {i < listeningClozeParts.length - 1 && (
+                                            <input
+                                                type="text"
+                                                value={freeTextAnswer}
+                                                onChange={(e) => {
+                                                    if (!result) setFreeTextAnswer(e.target.value)
+                                                }}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter' && !result && canSubmit) handleSubmit()
+                                                }}
+                                                disabled={!!result}
+                                                autoFocus
+                                                className={`inline-block w-40 mx-1 px-2 py-0.5 text-center border-b-2 bg-transparent outline-none text-base ${
+                                                    result
+                                                        ? result.isCorrect || (result.freeTextScore ?? 0) >= 0.5
+                                                            ? 'border-green-500 text-green-700 dark:text-green-400'
+                                                            : 'border-red-500 text-red-700 dark:text-red-400'
+                                                        : 'border-primary focus:border-primary'
+                                                }`}
+                                                placeholder="___"
+                                                maxLength={100}
+                                            />
+                                        )}
+                                    </span>
+                                ))}
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Listening dictation: simple text input */}
+                    {listeningIsFreetext && !listeningCloze && (
+                        <div className="space-y-2">
+                            <input
+                                type="text"
+                                value={freeTextAnswer}
+                                onChange={(e) => {
+                                    if (!result) setFreeTextAnswer(e.target.value)
+                                }}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && !result && canSubmit) handleSubmit()
+                                }}
+                                disabled={!!result}
+                                autoFocus
+                                className={`w-full px-4 py-3 text-center text-lg border-2 rounded-lg bg-transparent outline-none ${
+                                    result
+                                        ? result.isCorrect || (result.freeTextScore ?? 0) >= 0.5
+                                            ? 'border-green-500 text-green-700 dark:text-green-400'
+                                            : 'border-red-500 text-red-700 dark:text-red-400'
+                                        : 'border-input focus:border-primary'
+                                }`}
+                                placeholder="Deine Antwort..."
+                                maxLength={200}
+                            />
+                        </div>
+                    )}
+
                     {/* Multi: show Checkboxes */}
                     {isMultipleChoice && options && options.length > 0 && (
                         <div className="space-y-2">
@@ -565,7 +701,7 @@ export function QuizPlayer({ quizTitle, questions, onComplete, subject, scenario
                     {result && (
                         <div className="mt-4 p-4 rounded-lg border bg-muted/50 space-y-3">
                             <div className="flex items-center gap-2">
-                                {isFreetextLikeType(currentQuestion.questionType) ? (
+                                {(isFreetextLikeType(currentQuestion.questionType) || (isListening && result.freeTextScore !== undefined)) ? (
                                     <Badge variant="outline">
                                         Bewertung: {Math.round((result.freeTextScore ?? 0) * 100)}%
                                     </Badge>
@@ -581,7 +717,7 @@ export function QuizPlayer({ quizTitle, questions, onComplete, subject, scenario
                                     ) : null
                                 })()}
                             </div>
-                            {(isCloze || isFillInBlanks || isSentenceOrder) && result.correctAnswer && (
+                            {(isCloze || isFillInBlanks || isSentenceOrder || listeningIsFreetext) && result.correctAnswer && (
                                 <p className="text-sm font-medium">
                                     Richtige Antwort: <span className="text-green-600">{result.correctAnswer}</span>
                                 </p>

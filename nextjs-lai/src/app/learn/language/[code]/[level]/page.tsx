@@ -15,6 +15,7 @@ import {
     Sparkles,
     Mic,
     MessageSquare,
+    Headphones,
     GraduationCap,
     Lightbulb,
 } from 'lucide-react'
@@ -174,6 +175,12 @@ export default async function LanguageLevelPage({ params }: Props) {
                             <Link href={`/learn/language/${code}/conversation`}>
                                 <MessageSquare className="h-4 w-4" />
                                 Konversation üben
+                            </Link>
+                        </Button>
+                        <Button variant="outline" asChild>
+                            <Link href={`/learn/language/${code}/listening`}>
+                                <Headphones className="h-4 w-4" />
+                                Hörverstehen
                             </Link>
                         </Button>
                     </div>
@@ -368,6 +375,12 @@ export default async function LanguageLevelPage({ params }: Props) {
                                                         <Link href={`${studyBase}?mode=speech&doc=${documentId}&category=${categoryParam}`}>
                                                             <Mic className="h-3.5 w-3.5" />
                                                             Sprech-Modus
+                                                        </Link>
+                                                    </Button>
+                                                    <Button size="sm" variant="outline" asChild>
+                                                        <Link href={`/learn/language/${code}/listening`}>
+                                                            <Headphones className="h-3.5 w-3.5" />
+                                                            Hörverstehen
                                                         </Link>
                                                     </Button>
                                                 </div>

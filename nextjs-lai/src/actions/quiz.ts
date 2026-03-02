@@ -63,6 +63,8 @@ export async function getQuiz(id: string) {
         questionIndex: q.questionIndex,
         questionType: q.questionType,
         difficulty: q.difficulty,
+        ttsText: q.ttsText,
+        ttsLang: q.ttsLang,
     }))
 
     return {
@@ -115,7 +117,7 @@ export async function generateQuiz(
         throw new Error('Lernmaterial-ID ist erforderlich.')
     }
 
-    const validTypes = ['singleChoice', 'multipleChoice', 'freetext', 'truefalse', 'cloze', 'fillInBlanks', 'conjugation', 'sentenceOrder']
+    const validTypes = ['singleChoice', 'multipleChoice', 'freetext', 'truefalse', 'cloze', 'fillInBlanks', 'conjugation', 'sentenceOrder', 'listening']
     const types = (Array.isArray(questionTypes) ? questionTypes : ['singleChoice'])
         .filter((t: string) => validTypes.includes(t))
     if (types.length === 0) {
@@ -268,6 +270,8 @@ export async function generateQuiz(
         questionIndex: i,
         questionType: q.questionType,
         difficulty: q.difficulty ?? difficulty,
+        ttsText: q.ttsText ?? null,
+        ttsLang: q.ttsLang ?? null,
     }))
 
     await dbAddQuestions(quiz.id, questionsToSave)
@@ -700,6 +704,12 @@ export async function evaluateAnswer(
         throw new Error('Eine Freitext-Antwort ist für diesen Fragetyp erforderlich.')
     }
 
+    // Validate: listening requires either selectedIndex (comprehension) or freeTextAnswer (dictation/cloze)
+    if (questionType === 'listening' &&
+        (selectedIndex === undefined || selectedIndex === null) && !freeTextAnswer) {
+        throw new Error('Eine Antwort ist erforderlich.')
+    }
+
     // Sanitize free-text answer (prompt injection protection)
     const sanitizedFreeText = typeof freeTextAnswer === 'string'
         ? freeTextAnswer.slice(0, 2000)
@@ -717,6 +727,12 @@ export async function evaluateAnswer(
         evalResult = await evaluateCloze(question, sanitizedFreeText!)
     } else if (questionType === 'freetext') {
         evalResult = await evaluateFreetext(question, sanitizedFreeText!)
+    } else if (questionType === 'listening') {
+        if (question.options && selectedIndex !== null && selectedIndex !== undefined) {
+            evalResult = await evaluateSelection(question, selectedIndex, sanitizedFreeText)
+        } else {
+            evalResult = await evaluateCloze(question, sanitizedFreeText!)
+        }
     } else if (questionType === 'multipleChoice') {
         evalResult = await evaluateMultipleChoiceSelection(question, selectedIndices!)
     } else {
@@ -750,6 +766,8 @@ export async function getReviewQuiz() {
         options: q.options,
         questionIndex: q.questionIndex,
         questionType: q.questionType,
+        ttsText: q.ttsText,
+        ttsLang: q.ttsLang,
     }))
 
     return {

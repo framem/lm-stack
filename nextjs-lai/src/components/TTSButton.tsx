@@ -9,18 +9,39 @@ interface TTSButtonProps {
     lang?: string
     className?: string
     size?: 'default' | 'sm' | 'lg' | 'icon'
+    autoPlay?: boolean
 }
 
-export function TTSButton({ text, lang = 'de-DE', className, size = 'icon' }: TTSButtonProps) {
+export function TTSButton({ text, lang = 'de-DE', className, size = 'icon', autoPlay }: TTSButtonProps) {
     const [speaking, setSpeaking] = useState(false)
     const [supported] = useState(() => typeof window !== 'undefined' && 'speechSynthesis' in window)
     const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null)
+    const autoPlayedRef = useRef(false)
 
     useEffect(() => {
         return () => {
             window.speechSynthesis?.cancel()
         }
     }, [])
+
+    // Auto-play on mount when autoPlay is true
+    useEffect(() => {
+        if (!autoPlay || !supported || autoPlayedRef.current) return
+        autoPlayedRef.current = true
+        const timer = setTimeout(() => {
+            const utterance = new SpeechSynthesisUtterance(text)
+            utterance.lang = lang
+            const voices = window.speechSynthesis.getVoices()
+            const match = voices.find((v) => v.lang.startsWith(lang.split('-')[0]))
+            if (match) utterance.voice = match
+            utterance.onend = () => setSpeaking(false)
+            utterance.onerror = () => setSpeaking(false)
+            utteranceRef.current = utterance
+            setSpeaking(true)
+            window.speechSynthesis.speak(utterance)
+        }, 300)
+        return () => clearTimeout(timer)
+    }, [autoPlay, text, lang, supported])
 
     const handleClick = useCallback((e: React.MouseEvent) => {
         e.stopPropagation()
@@ -64,9 +85,9 @@ export function TTSButton({ text, lang = 'de-DE', className, size = 'icon' }: TT
             aria-label={speaking ? 'Vorlesen stoppen' : 'Vorlesen'}
         >
             {speaking ? (
-                <VolumeX className="h-4 w-4" />
+                <VolumeX className={size === 'lg' ? 'h-8 w-8' : 'h-4 w-4'} />
             ) : (
-                <Volume2 className="h-4 w-4" />
+                <Volume2 className={size === 'lg' ? 'h-8 w-8' : 'h-4 w-4'} />
             )}
         </Button>
     )

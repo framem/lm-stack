@@ -561,6 +561,115 @@ function generateVocabSentenceOrder(
     return questions.slice(0, count)
 }
 
+// ── Listening Question Generators ──
+
+/**
+ * Listening Comprehension: TTS plays a sentence, user picks the correct German translation.
+ * "Höre den Satz und wähle die richtige Übersetzung:"
+ */
+function generateListeningComprehension(
+    cards: VocabFlashcard[],
+    count: number,
+    langCode: string,
+): QuestionToSave[] {
+    // Only cards with example sentences
+    const eligible = cards.filter((c) => c.exampleSentence)
+    if (eligible.length < 4) return []
+
+    const selected = sample(eligible, count)
+    const questions: QuestionToSave[] = []
+
+    for (const card of selected) {
+        // Build 3 distractor translations from other cards' backs
+        const distractors = pickDistractors(card, cards, 3)
+        if (distractors.length < 3) continue
+
+        // Correct option: the German back of the card (rough sentence translation)
+        const correctTranslation = card.back
+        const distractorTranslations = distractors.map((d) => d.back)
+
+        const options = shuffle([correctTranslation, ...distractorTranslations])
+        const correctIndex = options.indexOf(correctTranslation)
+
+        questions.push({
+            questionText: `Höre den Satz und wähle die richtige Übersetzung:`,
+            options,
+            correctIndex,
+            explanation: `Der Satz «${card.exampleSentence}» enthält «${card.front}» = «${card.back}».`,
+            sourceSnippet: `${card.front} — ${card.back}`,
+            questionType: 'listening',
+            ttsText: card.exampleSentence!,
+            ttsLang: langCode,
+        })
+    }
+
+    return questions.slice(0, count)
+}
+
+/**
+ * Listening Dictation: TTS plays a word, user types what they hear.
+ * "Schreibe auf, was du hörst:"
+ */
+function generateListeningDictation(
+    cards: VocabFlashcard[],
+    count: number,
+    langCode: string,
+): QuestionToSave[] {
+    const selected = sample(cards, count)
+    const questions: QuestionToSave[] = []
+
+    for (const card of selected) {
+        questions.push({
+            questionText: `Schreibe auf, was du hörst:`,
+            options: null,
+            correctIndex: null,
+            correctAnswer: card.front,
+            explanation: `Das Wort lautet «${card.front}» (= ${card.back}).`,
+            sourceSnippet: `${card.front} — ${card.back}`,
+            questionType: 'listening',
+            ttsText: card.front,
+            ttsLang: langCode,
+        })
+    }
+
+    return questions.slice(0, count)
+}
+
+/**
+ * Listening Cloze: TTS plays full sentence, one word is blanked in the displayed text.
+ * "Höre den Satz. Welches Wort fehlt?"
+ */
+function generateListeningCloze(
+    cards: VocabFlashcard[],
+    count: number,
+    langCode: string,
+): QuestionToSave[] {
+    const eligible = cards.filter((c) => c.exampleSentence)
+    const selected = sample(eligible, count * 2) // oversample for failures
+    const questions: QuestionToSave[] = []
+
+    for (const card of selected) {
+        if (questions.length >= count) break
+
+        const result = blankOutWord(card)
+        if (!result) continue
+
+        questions.push({
+            questionText: `Höre den Satz. Welches Wort fehlt?\n\n${result.blanked}`,
+            options: null,
+            correctIndex: null,
+            correctAnswer: result.answer,
+            explanation: `Der vollständige Satz lautet: «${card.exampleSentence}». «${card.front}» bedeutet «${card.back}».`,
+            sourceSnippet: `${card.front} — ${card.back}`,
+            questionType: 'listening',
+            ttsText: card.exampleSentence!,
+            ttsLang: langCode,
+        })
+    }
+
+    return questions.slice(0, count)
+}
+
 // ── Main Entry Point ──
 
 // Map language name to BCP-47 code for TTS
@@ -646,6 +755,16 @@ export function generateVocabQuizQuestions(
 
     if (distribution['sentenceOrder']) {
         allQuestions.push(...generateVocabSentenceOrder(flashcards, distribution['sentenceOrder']))
+    }
+
+    if (distribution['listening']) {
+        const lCount = distribution['listening']
+        const compCount = Math.ceil(lCount * 0.4)
+        const dictCount = Math.floor(lCount * 0.3)
+        const clozeCount = lCount - compCount - dictCount
+        allQuestions.push(...generateListeningComprehension(flashcards, compCount, langCode ?? 'es-ES'))
+        allQuestions.push(...generateListeningDictation(flashcards, dictCount, langCode ?? 'es-ES'))
+        allQuestions.push(...generateListeningCloze(flashcards, clozeCount, langCode ?? 'es-ES'))
     }
 
     return shuffle(allQuestions).slice(0, count)

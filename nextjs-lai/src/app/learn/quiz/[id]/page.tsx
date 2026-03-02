@@ -14,6 +14,8 @@ interface Question {
     questionIndex: number
     questionType?: string
     difficulty?: number
+    ttsText?: string | null
+    ttsLang?: string | null
 }
 
 interface QuizData {
