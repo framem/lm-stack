@@ -9,11 +9,12 @@ interface VocabSpeechInputProps {
     correctAnswer: string
     lang: string // BCP-47 language code
     onResult: (isCorrect: boolean, similarity: number) => void
+    onTranscript?: (text: string) => void
 }
 
 const CORRECT_THRESHOLD = 0.8
 
-export function VocabSpeechInput({ correctAnswer, lang, onResult }: VocabSpeechInputProps) {
+export function VocabSpeechInput({ correctAnswer, lang, onResult, onTranscript }: VocabSpeechInputProps) {
     const [listening, setListening] = useState(false)
     const [transcript, setTranscript] = useState('')
     const [submitted, setSubmitted] = useState(false)
@@ -39,6 +40,7 @@ export function VocabSpeechInput({ correctAnswer, lang, onResult }: VocabSpeechI
             const result = event.results[0][0].transcript
             setTranscript(result)
             setListening(false)
+            onTranscript?.(result)
 
             const sim = normalizedLevenshtein(result, correctAnswer)
             setSimilarity(sim)
@@ -59,7 +61,7 @@ export function VocabSpeechInput({ correctAnswer, lang, onResult }: VocabSpeechI
         setSubmitted(false)
         setListening(true)
         recognition.start()
-    }, [correctAnswer, lang, onResult])
+    }, [correctAnswer, lang, onResult, onTranscript])
 
     const stopListening = useCallback(() => {
         recognitionRef.current?.stop()

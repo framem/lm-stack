@@ -94,3 +94,38 @@ Erkläre:
     })
     return output ?? { explanation: '', tip: '' }
 }
+
+// ── Lookup word from reading text ──
+
+const lookupSchema = z.object({
+    translation: z.string(),
+    exampleSentence: z.string(),
+    partOfSpeech: z.string(),
+    conjugation: z.object({
+        present: z.record(z.string(), z.string()).optional(),
+        past: z.record(z.string(), z.string()).optional(),
+        perfect: z.record(z.string(), z.string()).optional(),
+    }).optional(),
+})
+
+export type WordLookupResult = z.infer<typeof lookupSchema>
+
+export async function lookupWord(word: string, language: string, context?: string) {
+    const contextHint = context
+        ? `\nDer Satz, in dem das Wort vorkommt: "${context}"`
+        : ''
+
+    const { output } = await generateText({
+        model: getModel(),
+        system: 'Du bist ein Sprachexperte und hilfst beim Vokabellernen. Antworte präzise und lernfreundlich.',
+        output: Output.object({ schema: lookupSchema }),
+        prompt: `Analysiere das ${language}-Wort "${word}".${contextHint}
+
+Gib zurück:
+- translation: Deutsche Übersetzung (kurz und prägnant)
+- exampleSentence: Ein natürlicher Beispielsatz auf ${language} mit dem Wort (Niveau A1-B1)
+- partOfSpeech: Wortart auf Deutsch (z.B. "Verb", "Nomen", "Adjektiv", "Adverb", "Präposition")
+- conjugation: Nur bei Verben — Konjugationstabelle mit Schlüsseln {ich, du, er/sie/es, wir, ihr, sie} für present, past, perfect. Bei Nicht-Verben weglassen.`,
+    })
+    return output ?? { translation: '', exampleSentence: '', partOfSpeech: '' }
+}

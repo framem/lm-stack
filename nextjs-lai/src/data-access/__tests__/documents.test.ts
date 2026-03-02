@@ -27,7 +27,8 @@ import {
     findSimilarChunks,
 } from '@/src/data-access/documents'
 
-const mockPrisma = vi.mocked(prisma)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const mockPrisma = prisma as any
 
 beforeEach(() => {
     vi.clearAllMocks()

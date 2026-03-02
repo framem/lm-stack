@@ -113,36 +113,6 @@ export function SessionContent({ initialItems }: SessionContentProps) {
         return () => { cancelled = true }
     }, [currentItem, flipped])
 
-    // Keyboard shortcuts: 1-4 for flashcard ratings, Space to flip
-    useEffect(() => {
-        function handleKeyDown(e: KeyboardEvent) {
-            if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
-            if (!currentItem || currentItem.type !== 'flashcard') return
-
-            if (flipped && !submitting) {
-                const keyMap: Record<string, number> = {
-                    '1': Rating.Again,
-                    '2': Rating.Hard,
-                    '3': Rating.Good,
-                    '4': Rating.Easy,
-                }
-                const rating = keyMap[e.key]
-                if (rating !== undefined) {
-                    e.preventDefault()
-                    handleFlashcardRate(rating)
-                    return
-                }
-            }
-
-            if (!flipped && (e.key === ' ' || e.key === 'Enter')) {
-                e.preventDefault()
-                setFlipped(true)
-            }
-        }
-        window.addEventListener('keydown', handleKeyDown)
-        return () => window.removeEventListener('keydown', handleKeyDown)
-    }, [currentItem, flipped, submitting, handleFlashcardRate])
-
     const resetItemState = useCallback(() => {
         setFlipped(false)
         setIntervals(null)
@@ -188,6 +158,36 @@ export function SessionContent({ initialItems }: SessionContentProps) {
             setSubmitting(false)
         }
     }, [currentItem, submitting, advance])
+
+    // Keyboard shortcuts: 1-4 for flashcard ratings, Space to flip
+    useEffect(() => {
+        function handleKeyDown(e: KeyboardEvent) {
+            if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+            if (!currentItem || currentItem.type !== 'flashcard') return
+
+            if (flipped && !submitting) {
+                const keyMap: Record<string, number> = {
+                    '1': Rating.Again,
+                    '2': Rating.Hard,
+                    '3': Rating.Good,
+                    '4': Rating.Easy,
+                }
+                const rating = keyMap[e.key]
+                if (rating !== undefined) {
+                    e.preventDefault()
+                    handleFlashcardRate(rating)
+                    return
+                }
+            }
+
+            if (!flipped && (e.key === ' ' || e.key === 'Enter')) {
+                e.preventDefault()
+                setFlipped(true)
+            }
+        }
+        window.addEventListener('keydown', handleKeyDown)
+        return () => window.removeEventListener('keydown', handleKeyDown)
+    }, [currentItem, flipped, submitting, handleFlashcardRate])
 
     // Quiz handlers
     async function handleQuizSubmit() {

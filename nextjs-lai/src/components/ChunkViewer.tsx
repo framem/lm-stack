@@ -78,6 +78,7 @@ export const ChunkViewer = forwardRef<ChunkViewerHandle, ChunkViewerProps>(
                                 <Card
                                     key={chunk.id}
                                     id={`chunk-${chunk.chunkIndex}`}
+                                    data-chunk-id={chunk.id}
                                     className="cursor-pointer transition-colors hover:bg-accent/30"
                                     onClick={() => setExpandedId(isExpanded ? null : chunk.id)}
                                 >

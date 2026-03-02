@@ -177,7 +177,7 @@ export async function upsertFlashcardProgress(flashcardId: string, rating: Ratin
     const [progress] = await prisma.$transaction([
         prisma.flashcardProgress.upsert({
             where: { flashcardId },
-            create: { flashcardId, ...progressData },
+            create: { flashcardId, ...progressData, nextReviewAt: progressData.due },
             update: progressData,
         }),
         prisma.reviewLog.create({

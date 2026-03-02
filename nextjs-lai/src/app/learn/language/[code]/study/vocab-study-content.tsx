@@ -138,6 +138,95 @@ function AiResultDisplay({ type, result }: { type: AiPanelType; result: any }) {
     return null
 }
 
+function AiToolbar({
+    showErrorButton,
+    aiPanel,
+    aiLoading,
+    aiResult,
+    onAction,
+}: {
+    showErrorButton: boolean
+    aiPanel: AiPanelType
+    aiLoading: boolean
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    aiResult: any
+    onAction: (type: AiPanelType) => void
+}) {
+    return (
+        <div className="space-y-3">
+            <div className="flex flex-wrap items-center justify-center gap-2">
+                <Button variant="ghost" size="sm" onClick={() => onAction('sentences')} disabled={aiLoading && aiPanel !== 'sentences'}>
+                    <BookText className="h-4 w-4" />
+                    Beispielsätze
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => onAction('mnemonic')} disabled={aiLoading && aiPanel !== 'mnemonic'}>
+                    <Lightbulb className="h-4 w-4" />
+                    Eselsbrücke
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => onAction('explain')} disabled={aiLoading && aiPanel !== 'explain'}>
+                    <Brain className="h-4 w-4" />
+                    Wort erklären
+                </Button>
+                {showErrorButton && (
+                    <Button variant="ghost" size="sm" onClick={() => onAction('error')} disabled={aiLoading && aiPanel !== 'error'}>
+                        <MessageCircleQuestion className="h-4 w-4" />
+                        Fehler erklären
+                    </Button>
+                )}
+            </div>
+            {aiPanel && (
+                <div className="rounded-lg border bg-muted/50 p-4">
+                    {aiLoading ? (
+                        <div className="flex items-center justify-center gap-2 py-2">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <span className="text-sm text-muted-foreground">KI denkt nach...</span>
+                        </div>
+                    ) : (
+                        <AiResultDisplay type={aiPanel} result={aiResult} />
+                    )}
+                </div>
+            )}
+        </div>
+    )
+}
+
+function RatingButtons({
+    intervals,
+    submitting,
+    onRate,
+}: {
+    intervals: IntervalMap | null
+    submitting: boolean
+    onRate: (rating: number) => void
+}) {
+    return (
+        <div className="space-y-3">
+            <p className="text-xs text-center text-muted-foreground">
+                Wie gut konntest du die Antwort?
+            </p>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3">
+                {RATINGS.map((r, i) => (
+                    <Button
+                        key={r.rating}
+                        variant={r.variant}
+                        onClick={() => onRate(r.rating)}
+                        disabled={submitting}
+                        className="w-full sm:w-auto sm:min-w-[120px]"
+                    >
+                        {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+                        <span className="flex flex-col items-center leading-tight">
+                            <span>{r.label} <kbd className="ml-1 text-[10px] opacity-50 font-mono">{i + 1}</kbd></span>
+                            {intervals && (
+                                <span className="text-[10px] opacity-70">{intervals[r.rating]}</span>
+                            )}
+                        </span>
+                    </Button>
+                ))}
+            </div>
+        </div>
+    )
+}
+
 function shuffle<T>(arr: T[]): T[] {
     const a = [...arr]
     for (let i = a.length - 1; i > 0; i--) {
@@ -478,6 +567,7 @@ export function VocabStudyContent() {
                         correctAnswer={displayBack}
                         lang={backLang}
                         onResult={handleTypeResult}
+                        onTranscript={setUserTypedInput}
                     />
 
                     {/* Show example sentence after answering */}
@@ -491,64 +581,11 @@ export function VocabStudyContent() {
                         </div>
                     )}
 
-                    {/* AI toolbar after speech */}
                     {typeResult && (
-                        <div className="space-y-3">
-                            <div className="flex flex-wrap items-center justify-center gap-2">
-                                <Button variant="ghost" size="sm" onClick={() => handleAiAction('sentences')} disabled={aiLoading && aiPanel !== 'sentences'}>
-                                    <BookText className="h-4 w-4" />
-                                    Beispielsätze
-                                </Button>
-                                <Button variant="ghost" size="sm" onClick={() => handleAiAction('mnemonic')} disabled={aiLoading && aiPanel !== 'mnemonic'}>
-                                    <Lightbulb className="h-4 w-4" />
-                                    Eselsbrücke
-                                </Button>
-                                <Button variant="ghost" size="sm" onClick={() => handleAiAction('explain')} disabled={aiLoading && aiPanel !== 'explain'}>
-                                    <Brain className="h-4 w-4" />
-                                    Wort erklären
-                                </Button>
-                            </div>
-                            {aiPanel && (
-                                <div className="rounded-lg border bg-muted/50 p-4">
-                                    {aiLoading ? (
-                                        <div className="flex items-center justify-center gap-2 py-2">
-                                            <Loader2 className="h-4 w-4 animate-spin" />
-                                            <span className="text-sm text-muted-foreground">KI denkt nach...</span>
-                                        </div>
-                                    ) : (
-                                        <AiResultDisplay type={aiPanel} result={aiResult} />
-                                    )}
-                                </div>
-                            )}
-                        </div>
+                        <AiToolbar showErrorButton={!typeResult.isCorrect} aiPanel={aiPanel} aiLoading={aiLoading} aiResult={aiResult} onAction={handleAiAction} />
                     )}
-
-                    {/* Rating buttons after speech */}
                     {typeResult && (
-                        <div className="space-y-3">
-                            <p className="text-xs text-center text-muted-foreground">
-                                Wie gut konntest du die Antwort?
-                            </p>
-                            <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3">
-                                {RATINGS.map((r, i) => (
-                                    <Button
-                                        key={r.rating}
-                                        variant={r.variant}
-                                        onClick={() => handleRate(r.rating)}
-                                        disabled={submitting}
-                                        className="w-full sm:w-auto sm:min-w-[120px]"
-                                    >
-                                        {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-                                        <span className="flex flex-col items-center leading-tight">
-                                            <span>{r.label} <kbd className="ml-1 text-[10px] opacity-50 font-mono">{i + 1}</kbd></span>
-                                            {intervals && (
-                                                <span className="text-[10px] opacity-70">{intervals[r.rating]}</span>
-                                            )}
-                                        </span>
-                                    </Button>
-                                ))}
-                            </div>
-                        </div>
+                        <RatingButtons intervals={intervals} submitting={submitting} onRate={handleRate} />
                     )}
                 </div>
             ) : mode === 'type' ? (
@@ -587,70 +624,11 @@ export function VocabStudyContent() {
                         </div>
                     )}
 
-                    {/* AI toolbar after typing */}
                     {typeResult && (
-                        <div className="space-y-3">
-                            <div className="flex flex-wrap items-center justify-center gap-2">
-                                <Button variant="ghost" size="sm" onClick={() => handleAiAction('sentences')} disabled={aiLoading && aiPanel !== 'sentences'}>
-                                    <BookText className="h-4 w-4" />
-                                    Beispielsätze
-                                </Button>
-                                <Button variant="ghost" size="sm" onClick={() => handleAiAction('mnemonic')} disabled={aiLoading && aiPanel !== 'mnemonic'}>
-                                    <Lightbulb className="h-4 w-4" />
-                                    Eselsbrücke
-                                </Button>
-                                <Button variant="ghost" size="sm" onClick={() => handleAiAction('explain')} disabled={aiLoading && aiPanel !== 'explain'}>
-                                    <Brain className="h-4 w-4" />
-                                    Wort erklären
-                                </Button>
-                                {typeResult && !typeResult.isCorrect && (
-                                    <Button variant="ghost" size="sm" onClick={() => handleAiAction('error')} disabled={aiLoading && aiPanel !== 'error'}>
-                                        <MessageCircleQuestion className="h-4 w-4" />
-                                        Fehler erklären
-                                    </Button>
-                                )}
-                            </div>
-                            {aiPanel && (
-                                <div className="rounded-lg border bg-muted/50 p-4">
-                                    {aiLoading ? (
-                                        <div className="flex items-center justify-center gap-2 py-2">
-                                            <Loader2 className="h-4 w-4 animate-spin" />
-                                            <span className="text-sm text-muted-foreground">KI denkt nach...</span>
-                                        </div>
-                                    ) : (
-                                        <AiResultDisplay type={aiPanel} result={aiResult} />
-                                    )}
-                                </div>
-                            )}
-                        </div>
+                        <AiToolbar showErrorButton={!typeResult.isCorrect} aiPanel={aiPanel} aiLoading={aiLoading} aiResult={aiResult} onAction={handleAiAction} />
                     )}
-
-                    {/* Rating buttons after typing */}
                     {typeResult && (
-                        <div className="space-y-3">
-                            <p className="text-xs text-center text-muted-foreground">
-                                Wie gut konntest du die Antwort?
-                            </p>
-                            <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3">
-                                {RATINGS.map((r, i) => (
-                                    <Button
-                                        key={r.rating}
-                                        variant={r.variant}
-                                        onClick={() => handleRate(r.rating)}
-                                        disabled={submitting}
-                                        className="w-full sm:w-auto sm:min-w-[120px]"
-                                    >
-                                        {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-                                        <span className="flex flex-col items-center leading-tight">
-                                            <span>{r.label} <kbd className="ml-1 text-[10px] opacity-50 font-mono">{i + 1}</kbd></span>
-                                            {intervals && (
-                                                <span className="text-[10px] opacity-70">{intervals[r.rating]}</span>
-                                            )}
-                                        </span>
-                                    </Button>
-                                ))}
-                            </div>
-                        </div>
+                        <RatingButtons intervals={intervals} submitting={submitting} onRate={handleRate} />
                     )}
                 </div>
             ) : (
@@ -722,64 +700,11 @@ export function VocabStudyContent() {
                         </div>
                     </div>
 
-                    {/* AI toolbar after flip */}
                     {flipped && (
-                        <div className="space-y-3">
-                            <div className="flex flex-wrap items-center justify-center gap-2">
-                                <Button variant="ghost" size="sm" onClick={() => handleAiAction('sentences')} disabled={aiLoading && aiPanel !== 'sentences'}>
-                                    <BookText className="h-4 w-4" />
-                                    Beispielsätze
-                                </Button>
-                                <Button variant="ghost" size="sm" onClick={() => handleAiAction('mnemonic')} disabled={aiLoading && aiPanel !== 'mnemonic'}>
-                                    <Lightbulb className="h-4 w-4" />
-                                    Eselsbrücke
-                                </Button>
-                                <Button variant="ghost" size="sm" onClick={() => handleAiAction('explain')} disabled={aiLoading && aiPanel !== 'explain'}>
-                                    <Brain className="h-4 w-4" />
-                                    Wort erklären
-                                </Button>
-                            </div>
-                            {aiPanel && (
-                                <div className="rounded-lg border bg-muted/50 p-4">
-                                    {aiLoading ? (
-                                        <div className="flex items-center justify-center gap-2 py-2">
-                                            <Loader2 className="h-4 w-4 animate-spin" />
-                                            <span className="text-sm text-muted-foreground">KI denkt nach...</span>
-                                        </div>
-                                    ) : (
-                                        <AiResultDisplay type={aiPanel} result={aiResult} />
-                                    )}
-                                </div>
-                            )}
-                        </div>
+                        <AiToolbar showErrorButton={false} aiPanel={aiPanel} aiLoading={aiLoading} aiResult={aiResult} onAction={handleAiAction} />
                     )}
-
-                    {/* Rating buttons after flip */}
                     {flipped && (
-                        <div className="space-y-3">
-                            <p className="text-xs text-center text-muted-foreground">
-                                Wie gut konntest du die Antwort?
-                            </p>
-                            <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3">
-                                {RATINGS.map((r, i) => (
-                                    <Button
-                                        key={r.rating}
-                                        variant={r.variant}
-                                        onClick={() => handleRate(r.rating)}
-                                        disabled={submitting}
-                                        className="w-full sm:w-auto sm:min-w-[120px]"
-                                    >
-                                        {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-                                        <span className="flex flex-col items-center leading-tight">
-                                            <span>{r.label} <kbd className="ml-1 text-[10px] opacity-50 font-mono">{i + 1}</kbd></span>
-                                            {intervals && (
-                                                <span className="text-[10px] opacity-70">{intervals[r.rating]}</span>
-                                            )}
-                                        </span>
-                                    </Button>
-                                ))}
-                            </div>
-                        </div>
+                        <RatingButtons intervals={intervals} submitting={submitting} onRate={handleRate} />
                     )}
                 </div>
             )}

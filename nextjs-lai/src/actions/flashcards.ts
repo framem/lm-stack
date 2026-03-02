@@ -80,6 +80,37 @@ export async function createFlashcard(
     return card
 }
 
+// ── Create vocabulary flashcard from word lookup ──
+
+export async function createVocabFromLookup(data: {
+    documentId: string
+    chunkId?: string
+    front: string
+    back: string
+    exampleSentence?: string
+    partOfSpeech?: string
+    conjugation?: Record<string, Record<string, string>>
+}) {
+    if (!data.documentId) throw new Error('Lernmaterial-ID ist erforderlich.')
+    if (!data.front.trim()) throw new Error('Vorderseite darf nicht leer sein.')
+    if (!data.back.trim()) throw new Error('Rückseite darf nicht leer sein.')
+
+    const card = await dbCreateFlashcard({
+        documentId: data.documentId,
+        chunkId: data.chunkId || undefined,
+        front: data.front.trim(),
+        back: data.back.trim(),
+        isVocabulary: true,
+        exampleSentence: data.exampleSentence?.trim() || undefined,
+        partOfSpeech: data.partOfSpeech?.trim() || undefined,
+        conjugation: data.conjugation ?? undefined,
+    })
+
+    revalidateFlashcards()
+    revalidatePath('/learn/flashcards')
+    return card
+}
+
 // ── Update a flashcard ──
 
 export async function updateFlashcard(

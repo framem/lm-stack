@@ -39,7 +39,8 @@ import { prisma } from '@/src/lib/prisma'
 import { createEmbeddingsBatchWithProgress } from '@/src/lib/llm'
 import { chunkDocument } from '@/src/lib/chunking'
 
-const mockPrisma = vi.mocked(prisma)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const mockPrisma = prisma as any
 const mockCreateEmbeddingsBatchWithProgress = vi.mocked(createEmbeddingsBatchWithProgress)
 const mockChunkDocument = vi.mocked(chunkDocument)
 

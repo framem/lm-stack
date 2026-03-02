@@ -12,6 +12,7 @@ import { Badge } from '@/src/components/ui/badge'
 import { Card, CardContent } from '@/src/components/ui/card'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/src/components/ui/tabs'
 import { ChunkViewer, type ChunkViewerHandle } from '@/src/components/ChunkViewer'
+import { VocabExtractPopover } from '@/src/components/VocabExtractPopover'
 import { ChatInterface } from '@/src/components/ChatInterface'
 import { DocumentQuizzesTab } from '@/src/components/DocumentQuizzesTab'
 import { DocumentFlashcardsTab } from '@/src/components/DocumentFlashcardsTab'
@@ -57,6 +58,7 @@ interface DocumentDetail {
     fileType: string
     fileSize: number | null
     content: string
+    subject: string | null
     summary: string | null
     tableOfContents: TocSection[] | null
     createdAt: string
@@ -501,7 +503,13 @@ export default function DocumentDetailPage() {
                     {/* Chunks */}
                     <div>
                         <h2 className="text-lg font-semibold mb-3">Abschnitte</h2>
-                        <ChunkViewer ref={chunkViewerRef} chunks={document.chunks} />
+                        <VocabExtractPopover
+                            documentId={document.id}
+                            defaultLanguage={document.subject ?? undefined}
+                            chunks={document.chunks}
+                        >
+                            <ChunkViewer ref={chunkViewerRef} chunks={document.chunks} />
+                        </VocabExtractPopover>
                     </div>
                 </TabsContent>
 
