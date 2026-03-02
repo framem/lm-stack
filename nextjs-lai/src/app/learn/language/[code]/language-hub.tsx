@@ -4,9 +4,11 @@ import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import {
     ArrowLeft,
+    Award,
     BookOpen,
     CheckCircle2,
     Clock,
+    Compass,
     HelpCircle,
     Keyboard,
     Languages,
@@ -16,6 +18,7 @@ import {
     RotateCcw,
     Sparkles,
     TrendingUp,
+    Trophy,
     Zap,
 } from 'lucide-react'
 import { Card, CardContent } from '@/src/components/ui/card'
@@ -24,9 +27,12 @@ import { Badge } from '@/src/components/ui/badge'
 import { Progress } from '@/src/components/ui/progress'
 import { Skeleton } from '@/src/components/ui/skeleton'
 import { GamificationBar, type GamificationBarProps } from '@/src/components/GamificationBar'
+import { AdaptiveLearningPanel } from '@/src/components/AdaptiveLearningPanel'
+import { CertificateGenerator } from '@/src/components/CertificateGenerator'
 import { languageSets } from '@/src/data/language-sets'
 import { getLanguageFlag } from '@/src/lib/language-utils'
 import type { TopicCompetency } from '@/src/data-access/topics'
+import type { AdaptiveLearningData } from '@/src/data-access/adaptive-learning'
 
 const KnowledgeMapChart = dynamic(
     () => import('@/src/components/KnowledgeMapChart').then((m) => m.KnowledgeMapChart),
@@ -70,6 +76,7 @@ interface LanguageHubProps {
     competencies: TopicCompetency[]
     userStats: GamificationBarProps['stats']
     badges: GamificationBarProps['badges']
+    adaptiveData: AdaptiveLearningData
 }
 
 export function LanguageHub({
@@ -80,6 +87,7 @@ export function LanguageHub({
     competencies,
     userStats,
     badges,
+    adaptiveData,
 }: LanguageHubProps) {
     const flag = getLanguageFlag(code)
 
@@ -427,6 +435,15 @@ export function LanguageHub({
                 </Card>
             </section>
 
+            {/* ── Adaptive Lernpfade Section ── */}
+            <section className="space-y-4">
+                <h2 className="text-lg font-semibold flex items-center gap-2">
+                    <Compass className="h-5 w-5" />
+                    Adaptive Lernpfade
+                </h2>
+                <AdaptiveLearningPanel data={adaptiveData} />
+            </section>
+
             {/* ── Fortschritt Section ── */}
             <section className="space-y-4">
                 <h2 className="text-lg font-semibold flex items-center gap-2">
@@ -449,6 +466,55 @@ export function LanguageHub({
                                 <p className="text-sm text-muted-foreground">Fortschritt</p>
                             </div>
                         </div>
+                    </CardContent>
+                </Card>
+            </section>
+
+            {/* ── Zertifikate & Export Section ── */}
+            {langSets.length > 0 && (
+                <section className="space-y-4">
+                    <h2 className="text-lg font-semibold flex items-center gap-2">
+                        <Award className="h-5 w-5" />
+                        Zertifikate & Export
+                    </h2>
+                    <CertificateGenerator
+                        languageCode={code}
+                        language={language}
+                        flag={flag}
+                        levels={langSets.map((set) => {
+                            const stats = setIdToDocGroup.get(set.id)
+                            return {
+                                level: set.level.toLowerCase(),
+                                masteredPct: stats && stats.total > 0
+                                    ? Math.round((stats.mastered / stats.total) * 100)
+                                    : 0,
+                                imported: !!stats,
+                            }
+                        })}
+                    />
+                </section>
+            )}
+
+            {/* ── Bestenliste & Erfolge Section ── */}
+            <section className="space-y-4">
+                <h2 className="text-lg font-semibold flex items-center gap-2">
+                    <Trophy className="h-5 w-5" />
+                    Bestenliste & Erfolge
+                </h2>
+                <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-background">
+                    <CardContent className="flex items-center justify-between p-6">
+                        <div>
+                            <h3 className="font-semibold">Deine Erfolge & Challenges</h3>
+                            <p className="text-sm text-muted-foreground">
+                                Setze wöchentliche Ziele, sammle Badges und teile deine Fortschritte
+                            </p>
+                        </div>
+                        <Button asChild>
+                            <Link href="/learn/leaderboard">
+                                <Trophy className="h-4 w-4" />
+                                Öffnen
+                            </Link>
+                        </Button>
                     </CardContent>
                 </Card>
             </section>

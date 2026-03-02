@@ -2,8 +2,9 @@
 
 import { useState, useCallback, useRef } from 'react'
 import { Button } from '@/src/components/ui/button'
-import { Mic, MicOff, CheckCircle2, XCircle, AlertTriangle, HelpCircle } from 'lucide-react'
+import { Mic, MicOff, CheckCircle2, XCircle, AlertTriangle, HelpCircle, ChevronDown, ChevronUp } from 'lucide-react'
 import { normalizedLevenshtein } from '@/src/lib/string-similarity'
+import { PronunciationFeedback } from '@/src/components/PronunciationFeedback'
 
 interface VocabSpeechInputProps {
     correctAnswer: string
@@ -19,7 +20,9 @@ export function VocabSpeechInput({ correctAnswer, lang, onResult, onTranscript }
     const [transcript, setTranscript] = useState('')
     const [submitted, setSubmitted] = useState(false)
     const [similarity, setSimilarity] = useState(0)
+    const [confidence, setConfidence] = useState(0)
     const [supported, setSupported] = useState(true)
+    const [showFeedback, setShowFeedback] = useState(false)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const recognitionRef = useRef<any>(null)
 
@@ -37,8 +40,11 @@ export function VocabSpeechInput({ correctAnswer, lang, onResult, onTranscript }
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         recognition.onresult = (event: any) => {
-            const result = event.results[0][0].transcript
+            const resultObj = event.results[0][0]
+            const result: string = resultObj.transcript
+            const conf: number = resultObj.confidence ?? 0.5
             setTranscript(result)
+            setConfidence(conf)
             setListening(false)
             onTranscript?.(result)
 
@@ -59,6 +65,8 @@ export function VocabSpeechInput({ correctAnswer, lang, onResult, onTranscript }
         recognitionRef.current = recognition
         setTranscript('')
         setSubmitted(false)
+        setShowFeedback(false)
+        setConfidence(0)
         setListening(true)
         recognition.start()
     }, [correctAnswer, lang, onResult, onTranscript])
@@ -72,9 +80,19 @@ export function VocabSpeechInput({ correctAnswer, lang, onResult, onTranscript }
         recognitionRef.current?.stop()
         setListening(false)
         setSimilarity(0)
+        setConfidence(0)
         setSubmitted(true)
         onResult(false, 0)
     }, [onResult])
+
+    // Retry handler: reset state so user can re-record
+    const handleRetry = useCallback(() => {
+        setTranscript('')
+        setSubmitted(false)
+        setSimilarity(0)
+        setConfidence(0)
+        setShowFeedback(false)
+    }, [])
 
     if (!supported) {
         return (
@@ -159,6 +177,32 @@ export function VocabSpeechInput({ correctAnswer, lang, onResult, onTranscript }
                                 Korrekte Antwort: <span className="font-medium text-foreground">{correctAnswer}</span>
                             </p>
                         </div>
+                    )}
+                </div>
+            )}
+
+            {/* Detailed feedback toggle */}
+            {submitted && transcript && (
+                <div className="space-y-3">
+                    <button
+                        type="button"
+                        onClick={() => setShowFeedback(f => !f)}
+                        className="flex items-center justify-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors w-full"
+                    >
+                        {showFeedback
+                            ? <><ChevronUp className="h-4 w-4" /> Detailliertes Feedback ausblenden</>
+                            : <><ChevronDown className="h-4 w-4" /> Detailliertes Feedback anzeigen</>
+                        }
+                    </button>
+
+                    {showFeedback && (
+                        <PronunciationFeedback
+                            expected={correctAnswer}
+                            recognized={transcript}
+                            confidence={confidence}
+                            language={lang}
+                            onRetry={handleRetry}
+                        />
                     )}
                 </div>
             )}

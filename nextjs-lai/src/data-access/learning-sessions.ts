@@ -1,6 +1,6 @@
 import { prisma } from '@/src/lib/prisma'
 
-export type ActivityType = 'flashcards' | 'quiz' | 'vocabulary' | 'reading' | 'chat'
+export type ActivityType = 'flashcards' | 'quiz' | 'vocabulary' | 'reading' | 'chat' | 'writing' | 'grammar' | 'exam' | 'pronunciation'
 
 // Start a new learning session
 export async function startSession(activityType: ActivityType) {

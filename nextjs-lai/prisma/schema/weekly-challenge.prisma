@@ -1,0 +1,16 @@
+model WeeklyChallenge {
+  id          String   @id @default(cuid())
+  userId      String?  @default("default")
+  title       String
+  description String
+  area        String   // vocabulary, grammar, listening, reading, writing, speaking, general
+  targetValue Int      // e.g. 50 for "learn 50 vocab"
+  currentValue Int     @default(0)
+  startDate   DateTime @default(now())
+  endDate     DateTime
+  completed   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([endDate])
+}
