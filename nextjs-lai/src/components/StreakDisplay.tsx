@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Flame, Target, Trophy, Pencil, Check, Zap } from 'lucide-react'
+import Link from 'next/link'
+import { Flame, Target, Trophy, Pencil, Check, Zap, Play } from 'lucide-react'
 import { Card, CardContent } from '@/src/components/ui/card'
 import { Progress } from '@/src/components/ui/progress'
 import { Button } from '@/src/components/ui/button'
@@ -14,6 +15,7 @@ interface StreakDisplayProps {
     dailyGoal: number
     dailyProgress: number
     totalXp?: number
+    targetLanguage?: 'en' | 'es'
 }
 
 export function StreakDisplay({
@@ -22,6 +24,7 @@ export function StreakDisplay({
     dailyGoal,
     dailyProgress,
     totalXp = 0,
+    targetLanguage,
 }: StreakDisplayProps) {
     const [editing, setEditing] = useState(false)
     const [goalInput, setGoalInput] = useState(String(dailyGoal))
@@ -83,12 +86,12 @@ export function StreakDisplay({
                         </div>
                     )}
 
-                    {/* Daily goal progress */}
+                    {/* Daily goal progress + CTA */}
                     <div className="flex-1 space-y-2">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-1.5 text-sm font-medium">
                                 <Target className="h-4 w-4 text-muted-foreground" />
-                                Tagesziel
+                                Heute: {dailyProgress}/{goal}
                             </div>
                             {editing ? (
                                 <div className="flex items-center gap-1">
@@ -127,11 +130,18 @@ export function StreakDisplay({
                             )}
                         </div>
                         <Progress value={progressPercent} className="h-2" />
-                        {progressPercent >= 100 && (
+                        {progressPercent >= 100 ? (
                             <p className="text-xs text-green-600 dark:text-green-400 font-medium">
                                 Tagesziel erreicht!
                             </p>
-                        )}
+                        ) : targetLanguage ? (
+                            <Button size="sm" variant="outline" className="h-7 text-xs gap-1" asChild>
+                                <Link href={`/learn/language/${targetLanguage}`}>
+                                    <Play className="h-3 w-3" />
+                                    Jetzt lernen
+                                </Link>
+                            </Button>
+                        ) : null}
                     </div>
                 </div>
             </CardContent>

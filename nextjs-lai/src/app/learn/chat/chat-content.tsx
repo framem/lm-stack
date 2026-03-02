@@ -2,9 +2,11 @@
 
 import { useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
+import { useLearningSession } from '@/src/hooks/use-learning-session'
 import { ChatInterface } from '@/src/components/ChatInterface'
 
 export function ChatContent() {
+    useLearningSession('chat')
     const searchParams = useSearchParams()
     const router = useRouter()
     const sessionId = searchParams.get('sessionId') ?? undefined

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
+import { useLearningSession } from '@/src/hooks/use-learning-session'
 import Link from 'next/link'
 import { Loader2, CheckCircle2, Layers, XCircle, HelpCircle } from 'lucide-react'
 import { Button } from '@/src/components/ui/button'
@@ -30,6 +31,7 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 export function StudyContent() {
+    useLearningSession('flashcards')
     const searchParams = useSearchParams()
     const practiceAll = searchParams.get('all') === 'true'
 

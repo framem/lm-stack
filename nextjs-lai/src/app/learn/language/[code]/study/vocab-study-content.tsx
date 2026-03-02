@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
+import { useLearningSession } from '@/src/hooks/use-learning-session'
 import Link from 'next/link'
 import {
     Loader2,
@@ -237,6 +238,7 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 export function VocabStudyContent() {
+    useLearningSession('vocabulary')
     const searchParams = useSearchParams()
     const mode = searchParams.get('mode') || 'flip'
     const practiceAll = searchParams.get('all') === 'true'

@@ -371,10 +371,48 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
                                     </div>
                                 </button>
                             </div>
-                            <Button onClick={handleContinueToStep1} disabled={!choice} className="w-full">
-                                Weiter
-                                <ArrowRight className="h-4 w-4" />
-                            </Button>
+                            {/* Prior knowledge branching for language learners */}
+                            {(choice === 'en' || choice === 'es') && (
+                                <div className="bg-muted/50 rounded-lg p-3 space-y-2">
+                                    <p className="text-xs font-medium">
+                                        Hast du bereits Vorkenntnisse in {LANGUAGE_STARTERS[choice].label}?
+                                    </p>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={handleContinueToStep1}
+                                            className="text-xs"
+                                        >
+                                            Nein, Anfänger
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => {
+                                                markComplete()
+                                                router.push('/learn/placement-test')
+                                            }}
+                                            className="text-xs"
+                                        >
+                                            <GraduationCap className="h-3 w-3" />
+                                            Ja, Einstufungstest
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
+                            {choice === 'subject' && (
+                                <Button onClick={handleContinueToStep1} className="w-full">
+                                    Weiter
+                                    <ArrowRight className="h-4 w-4" />
+                                </Button>
+                            )}
+                            {!choice && (
+                                <Button disabled className="w-full">
+                                    Weiter
+                                    <ArrowRight className="h-4 w-4" />
+                                </Button>
+                            )}
                         </>
                     )}
 
@@ -589,20 +627,43 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
                                 <h3 className="font-bold text-lg">Alles eingerichtet!</h3>
                                 <p className="text-sm text-muted-foreground mt-1">
                                     {isLanguage
-                                        ? 'Dein Starter-Paket ist importiert. Starte jetzt mit Vokabeln, Karteikarten oder Konversationsübungen.'
+                                        ? 'Dein Starter-Paket ist importiert. Hier ist dein Fahrplan:'
                                         : 'Du kannst jetzt eigene Lernmaterialien hochladen, Quizze erstellen und mit Karteikarten lernen.'
                                     }
                                 </p>
                             </div>
                             {isLanguage ? (
-                                <div className="grid gap-2">
-                                    <Button onClick={() => { markComplete(); router.push('/learn/language') }} className="w-full">
-                                        <BookOpen className="h-4 w-4" />
-                                        Vokabeln lernen
-                                    </Button>
-                                    <Button variant="outline" onClick={() => { markComplete(); router.push(`/learn/language/${choice}/conversation`) }} className="w-full">
-                                        Konversation üben
-                                    </Button>
+                                <div className="space-y-4">
+                                    <div className="text-left bg-muted/50 rounded-lg p-4 space-y-2">
+                                        <p className="text-sm font-semibold">Dein 4-Wochen-Plan:</p>
+                                        <div className="grid gap-1.5 text-xs text-muted-foreground">
+                                            <div className="flex items-center gap-2">
+                                                <Badge variant="outline" className="text-[10px] px-1.5 shrink-0">Wo 1</Badge>
+                                                Begrüßungen &amp; Familie — Grundvokabeln lernen
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <Badge variant="outline" className="text-[10px] px-1.5 shrink-0">Wo 2</Badge>
+                                                Essen &amp; Zahlen — Alltagswortschatz aufbauen
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <Badge variant="outline" className="text-[10px] px-1.5 shrink-0">Wo 3</Badge>
+                                                Haus &amp; Alltag — Konversation üben
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <Badge variant="outline" className="text-[10px] px-1.5 shrink-0">Wo 4</Badge>
+                                                Wiederholung &amp; erste echte Gespräche
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Button onClick={() => { markComplete(); router.push(`/learn/language/${choice}`) }} className="w-full">
+                                            <BookOpen className="h-4 w-4" />
+                                            Zum Sprachkurs
+                                        </Button>
+                                        <Button variant="outline" onClick={() => { markComplete(); router.push(`/learn/language/${choice}/conversation`) }} className="w-full">
+                                            Konversation üben
+                                        </Button>
+                                    </div>
                                 </div>
                             ) : (
                                 <Button onClick={markComplete} className="w-full">

@@ -115,6 +115,8 @@ export default async function DashboardPage() {
     const recentSessions = sessions.slice(0, 5)
     const recentQuizzes = quizzes.slice(0, 5)
     const isNewUser = documents.length === 0
+    // Beginner: has documents but little activity — show simpler dashboard
+    const isBeginnerUser = !isNewUser && totalFlashcards < 10 && sessions.length < 3 && quizzes.length < 2
 
     // Detect primary target language from document subjects (only languages supported in conversation)
     const targetLanguage = (() => {
@@ -217,6 +219,18 @@ export default async function DashboardPage() {
                 />
             )}
 
+            {/* Streak + daily goal — prominent position */}
+            {!isNewUser && (
+                <StreakDisplay
+                    currentStreak={userStats.currentStreak}
+                    longestStreak={userStats.longestStreak}
+                    dailyGoal={userStats.dailyGoal}
+                    dailyProgress={userStats.dailyProgress}
+                    totalXp={(userStats as { totalXp?: number }).totalXp ?? 0}
+                    targetLanguage={targetLanguage !== 'de' ? targetLanguage : undefined}
+                />
+            )}
+
             {/* Conversation quick-start */}
             {!isNewUser && (
                 <ConversationWidget targetLanguage={targetLanguage} />
@@ -259,37 +273,57 @@ export default async function DashboardPage() {
                 <CefrProgressRing progress={cefrProgress} />
             )}
 
-            {/* Streak display */}
-            {!isNewUser && (
-                <StreakDisplay
-                    currentStreak={userStats.currentStreak}
-                    longestStreak={userStats.longestStreak}
-                    dailyGoal={userStats.dailyGoal}
-                    dailyProgress={userStats.dailyProgress}
-                    totalXp={(userStats as { totalXp?: number }).totalXp ?? 0}
-                />
-            )}
-
             {/* Badge showcase */}
             {!isNewUser && earnedBadges.length > 0 && (
                 <BadgeShowcase earnedBadges={earnedBadges} />
             )}
 
-            {/* Conversation evaluation scores */}
-            {!isNewUser && evaluationStats.totalEvaluations > 0 && (
+            {/* Beginner tip — show only for new-ish users */}
+            {isBeginnerUser && targetLanguage !== 'de' && (
+                <Card className="border-blue-500/20 bg-gradient-to-br from-blue-500/5 via-background to-primary/5">
+                    <CardContent className="p-6 space-y-3">
+                        <h3 className="font-semibold flex items-center gap-2">
+                            <Sparkles className="h-5 w-5 text-blue-500" />
+                            Tipp für den Einstieg
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                            Starte mit <strong>5–10 neuen Vokabeln pro Tag</strong> im Flip-Modus.
+                            Nach ein paar Tagen probiere den <strong>Konversations-Modus</strong> aus —
+                            dort übst du das Gelernte in echten Dialogen mit der KI.
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                            <Button size="sm" asChild>
+                                <Link href={`/learn/language/${targetLanguage}`}>
+                                    <BookOpen className="h-4 w-4" />
+                                    Vokabeln lernen
+                                </Link>
+                            </Button>
+                            <Button size="sm" variant="outline" asChild>
+                                <Link href={`/learn/language/${targetLanguage}/conversation`}>
+                                    <MessageSquare className="h-4 w-4" />
+                                    Konversation üben
+                                </Link>
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* Conversation evaluation scores — hide for beginners */}
+            {!isNewUser && !isBeginnerUser && evaluationStats.totalEvaluations > 0 && (
                 <ConversationStats stats={evaluationStats} />
             )}
 
-            {/* Activity heatmap and knowledge trend */}
-            {!isNewUser && (dailyActivity.length > 0 || knowledgeTrend.length > 0) && (
+            {/* Activity heatmap and knowledge trend — hide for beginners */}
+            {!isNewUser && !isBeginnerUser && (dailyActivity.length > 0 || knowledgeTrend.length > 0) && (
                 <StatsCharts
                     dailyActivity={dailyActivity}
                     knowledgeTrend={knowledgeTrend}
                 />
             )}
 
-            {/* Compact stats badges - only show when user has data */}
-            {!isNewUser && (
+            {/* Compact stats badges — hide for beginners */}
+            {!isNewUser && !isBeginnerUser && (
                 <div className="flex flex-wrap items-center gap-3">
                     <Badge variant="outline" className="gap-1.5 px-3 py-1.5">
                         <FileText className="h-3.5 w-3.5" />
@@ -357,8 +391,8 @@ export default async function DashboardPage() {
                 </div>
             )}
 
-            {/* Top Documents by Priority */}
-            {!isNewUser && profile.prioritizedDocuments.length > 0 && (
+            {/* Top Documents by Priority — hide for beginners */}
+            {!isNewUser && !isBeginnerUser && profile.prioritizedDocuments.length > 0 && (
                 <section className="space-y-4">
                     <h2 className="text-lg font-semibold flex items-center gap-2">
                         <TrendingUp className="h-5 w-5" />

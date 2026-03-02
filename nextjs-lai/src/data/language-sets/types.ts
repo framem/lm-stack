@@ -13,6 +13,12 @@ export interface VocabItem {
 export interface VocabCategory {
     name: string
     items: VocabItem[]
+    learningOutcomes?: string[]  // "Nach dieser Lektion kannst du..."
+    grammarTip?: {
+        title: string
+        explanation: string
+        examples: string[]
+    }
 }
 
 export interface LanguageSet {

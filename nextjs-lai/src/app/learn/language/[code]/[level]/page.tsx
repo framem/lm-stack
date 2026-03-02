@@ -14,6 +14,8 @@ import {
     Lock,
     Sparkles,
     Mic,
+    GraduationCap,
+    Lightbulb,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/card'
 import { Button } from '@/src/components/ui/button'
@@ -22,6 +24,7 @@ import { Progress } from '@/src/components/ui/progress'
 import { getLanguageSetDetail } from '@/src/data-access/language-sets'
 import { getLanguageSet } from '@/src/data/language-sets'
 import { TTSButton } from '@/src/components/TTSButton'
+import { CefrBadge } from '@/src/components/CefrBadge'
 import { resolveLanguage, getLanguageBcp47 } from '@/src/lib/language-utils'
 
 interface Props {
@@ -56,7 +59,7 @@ export default async function LanguageLevelPage({ params }: Props) {
                 <div className="flex-1">
                     <div className="flex items-center gap-3 flex-wrap">
                         <h1 className="text-3xl font-bold">{set.title}</h1>
-                        <Badge variant="outline" className="text-base px-3 py-0.5">{set.level}</Badge>
+                        <CefrBadge level={set.level} className="text-base px-3 py-0.5" />
                     </div>
                     <p className="text-muted-foreground mt-1 max-w-2xl">{set.description}</p>
                 </div>
@@ -229,6 +232,7 @@ export default async function LanguageLevelPage({ params }: Props) {
                                 const isCompleted = cat.completedPct >= 80
                                 const isActive = cat.unlocked && !isCompleted
                                 const categoryParam = encodeURIComponent(cat.name)
+                                const staticCat = staticSet.categories.find(c => c.name === cat.name)
 
                                 return (
                                     <Card
@@ -286,6 +290,47 @@ export default async function LanguageLevelPage({ params }: Props) {
                                                     </p>
                                                 )}
                                             </div>
+
+                                            {/* Learning outcomes */}
+                                            {staticCat?.learningOutcomes && cat.unlocked && (
+                                                <div className="bg-muted/50 rounded-lg p-3 space-y-1.5">
+                                                    <p className="text-xs font-semibold flex items-center gap-1.5">
+                                                        <GraduationCap className="h-3.5 w-3.5 text-primary" />
+                                                        Nach dieser Lektion kannst du:
+                                                    </p>
+                                                    <ul className="space-y-0.5">
+                                                        {staticCat.learningOutcomes.map((outcome, i) => (
+                                                            <li key={i} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                                                <CheckCircle2 className={`h-3 w-3 shrink-0 ${isCompleted ? 'text-green-500' : 'text-muted-foreground/40'}`} />
+                                                                {outcome}
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            )}
+
+                                            {/* Grammar tip */}
+                                            {staticCat?.grammarTip && cat.unlocked && (
+                                                <details className="group">
+                                                    <summary className="flex items-center gap-1.5 text-xs font-semibold cursor-pointer hover:text-foreground transition-colors select-none">
+                                                        <Lightbulb className="h-3.5 w-3.5 text-yellow-500" />
+                                                        Grammatik-Tipp: {staticCat.grammarTip.title}
+                                                    </summary>
+                                                    <div className="mt-2 bg-yellow-500/5 border border-yellow-500/20 rounded-lg p-3 space-y-2">
+                                                        <p className="text-xs text-muted-foreground">
+                                                            {staticCat.grammarTip.explanation}
+                                                        </p>
+                                                        <div className="space-y-1">
+                                                            {staticCat.grammarTip.examples.map((ex, i) => (
+                                                                <div key={i} className="flex items-center gap-2 text-xs">
+                                                                    <TTSButton text={ex} lang={ttsLang} size="sm" className="-my-0.5" />
+                                                                    <code className="font-mono text-primary">{ex}</code>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                </details>
+                                            )}
 
                                             {/* Action buttons for unlocked lessons */}
                                             {cat.unlocked && (

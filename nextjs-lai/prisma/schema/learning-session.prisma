@@ -1,0 +1,11 @@
+model LearningSession {
+  id             String    @id @default(cuid())
+  activityType   String    // flashcards, quiz, vocabulary, reading, chat
+  startedAt      DateTime  @default(now())
+  endedAt        DateTime?
+  durationSeconds Int?
+  heartbeatAt    DateTime  @default(now())
+
+  @@index([startedAt])
+  @@index([activityType])
+}

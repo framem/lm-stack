@@ -10,6 +10,16 @@ export const esA2: LanguageSet = {
         // ── 1. Familie & Zeit ──
         {
             name: 'Familie & Zeit',
+            learningOutcomes: [
+                'Erweiterte Familienmitglieder auf Spanisch benennen',
+                'Zeitausdrücke wie „antes" und „después" verwenden',
+                'Über vergangene Gewohnheiten sprechen',
+            ],
+            grammarTip: {
+                title: 'Imperfecto — Früher habe ich…',
+                explanation: 'Das Imperfecto beschreibt Gewohnheiten und Zustände in der Vergangenheit. Regelmäßige Formen: -ar → -aba, -er/-ir → -ía.',
+                examples: ['Antes vivía en el campo. (Früher lebte ich auf dem Land.)', 'Cuando era niño, jugaba mucho. (Als Kind spielte ich viel.)'],
+            },
             items: [
                 { front: 'la tía', back: 'Tante', partOfSpeech: 'Nomen', exampleSentence: 'Mi tía nos visita cada domingo.' },
                 { front: 'el tío', back: 'Onkel', partOfSpeech: 'Nomen', exampleSentence: 'Mi tío tiene un coche grande.' },
@@ -27,6 +37,16 @@ export const esA2: LanguageSet = {
         // ── 2. Essen & Küche ──
         {
             name: 'Essen & Küche',
+            learningOutcomes: [
+                'Lebensmittel und Mahlzeiten auf Spanisch benennen',
+                'Im Restaurant bestellen und Vorlieben ausdrücken',
+                'Über Essgewohnheiten sprechen',
+            ],
+            grammarTip: {
+                title: 'Mengenangaben — mucho/a/os/as',
+                explanation: 'Mengenangaben passen sich in Geschlecht und Zahl an das Nomen an: mucho café (m. Sg.), mucha fruta (f. Sg.), muchos amigos (m. Pl.), muchas verduras (f. Pl.).',
+                examples: ['Como mucha fruta. (Ich esse viel Obst.)', 'No bebo mucho café. (Ich trinke nicht viel Kaffee.)', 'Hay muchas verduras en la ensalada.'],
+            },
             items: [
                 { front: 'el queso', back: 'Käse', partOfSpeech: 'Nomen', exampleSentence: 'Este queso es de España.' },
                 { front: 'el azúcar', back: 'Zucker', partOfSpeech: 'Nomen', exampleSentence: 'Pongo azúcar en el café.' },
@@ -44,6 +64,16 @@ export const esA2: LanguageSet = {
         // ── 3. Kleidung ──
         {
             name: 'Kleidung',
+            learningOutcomes: [
+                'Kleidungsstücke auf Spanisch benennen',
+                'Farben und Größen beschreiben',
+                'In einem Geschäft einkaufen',
+            ],
+            grammarTip: {
+                title: 'Demonstrativpronomen — este, esta, estos, estas',
+                explanation: 'Demonstrativpronomen zeigen auf etwas Bestimmtes. Sie passen sich in Geschlecht und Zahl an: este (m.), esta (f.), estos (m.Pl.), estas (f.Pl.).',
+                examples: ['Esta falda es azul. (Dieser Rock ist blau.)', 'Estos pantalones son largos. (Diese Hosen sind lang.)', '¿Cuánto cuesta este vestido?'],
+            },
             items: [
                 { front: 'la camisa', back: 'Hemd', partOfSpeech: 'Nomen', exampleSentence: 'Él lleva una camisa blanca.' },
                 { front: 'los pantalones', back: 'Hose', partOfSpeech: 'Nomen', exampleSentence: 'Estos pantalones son demasiado largos.' },
@@ -59,6 +89,16 @@ export const esA2: LanguageSet = {
         // ── 4. Haus & Wohnung ──
         {
             name: 'Haus & Wohnung',
+            learningOutcomes: [
+                'Räume und Möbel auf Spanisch benennen',
+                'Die eigene Wohnung beschreiben',
+                'Einfache Anweisungen geben (öffne, schließe)',
+            ],
+            grammarTip: {
+                title: 'Imperativo — Mach das! / Öffne!',
+                explanation: 'Der Imperativ gibt Anweisungen. Bei regelmäßigen Verben: -ar → -a (tú), -er → -e (tú), -ir → -e (tú). Einige sind unregelmäßig: pon, ven, sal.',
+                examples: ['Cierra la puerta. (Schließ die Tür.)', 'Abre la ventana. (Öffne das Fenster.)', 'Pon la leche en el frigorífico.'],
+            },
             items: [
                 { front: 'el dormitorio', back: 'Schlafzimmer', partOfSpeech: 'Nomen', exampleSentence: 'El dormitorio tiene una ventana grande.' },
                 { front: 'el salón', back: 'Wohnzimmer', partOfSpeech: 'Nomen', exampleSentence: 'Vemos la tele en el salón.' },
@@ -75,6 +115,16 @@ export const esA2: LanguageSet = {
         // ── 5. Wetter & Natur ──
         {
             name: 'Wetter & Natur',
+            learningOutcomes: [
+                'Das Wetter auf Spanisch beschreiben',
+                'Landschaften und Natur benennen',
+                'Temperaturen und Jahreszeiten vergleichen',
+            ],
+            grammarTip: {
+                title: 'Comparativos — Vergleiche',
+                explanation: 'Vergleiche bildet man mit „más…que" (mehr als), „menos…que" (weniger als) und „tan…como" (so…wie).',
+                examples: ['Hoy hace más calor que ayer. (Heute ist es wärmer als gestern.)', 'El río es menos largo que el mar.', 'La montaña es tan bonita como la playa.'],
+            },
             items: [
                 { front: 'la nieve', back: 'Schnee', partOfSpeech: 'Nomen', exampleSentence: 'A los niños les gusta la nieve.' },
                 { front: 'la nube', back: 'Wolke', partOfSpeech: 'Nomen', exampleSentence: 'Hay muchas nubes en el cielo.' },
@@ -91,6 +141,16 @@ export const esA2: LanguageSet = {
         // ── 6. Körper & Gesundheit ──
         {
             name: 'Körper & Gesundheit',
+            learningOutcomes: [
+                'Körperteile auf Spanisch benennen',
+                'Symptome und Schmerzen beschreiben',
+                'Beim Arzt kommunizieren',
+            ],
+            grammarTip: {
+                title: 'Doler — Mir tut … weh',
+                explanation: '„Doler" funktioniert wie „gustar": me duele + Singular, me duelen + Plural. Das Verb richtet sich nach dem, was wehtut, nicht nach der Person.',
+                examples: ['Me duele la cabeza. (Mir tut der Kopf weh.)', 'Me duelen las piernas. (Mir tun die Beine weh.)', '¿Te duele el brazo?'],
+            },
             items: [
                 { front: 'la cabeza', back: 'Kopf', partOfSpeech: 'Nomen', exampleSentence: 'Me duele la cabeza.' },
                 { front: 'el brazo', back: 'Arm', partOfSpeech: 'Nomen', exampleSentence: 'Me rompí el brazo.' },
@@ -107,6 +167,16 @@ export const esA2: LanguageSet = {
         // ── 7. Hobbys & Freizeit ──
         {
             name: 'Hobbys & Freizeit',
+            learningOutcomes: [
+                'Hobbys und Freizeitaktivitäten benennen',
+                'Über das Wochenende in der Vergangenheit sprechen',
+                'Vorlieben mit „me gusta" und „me encanta" ausdrücken',
+            ],
+            grammarTip: {
+                title: 'Pretérito Indefinido — Ich war / Ich ging',
+                explanation: 'Das Indefinido beschreibt abgeschlossene Handlungen in der Vergangenheit. Regelmäßig: -ar → -é, -aste, -ó; -er/-ir → -í, -iste, -ió. Achtung: „ir" und „ser" sind im Indefinido identisch (fui, fuiste, fue).',
+                examples: ['Fui al cine el sábado. (Ich ging am Samstag ins Kino.)', 'Jugué al fútbol ayer. (Ich spielte gestern Fußball.)', 'El viaje fue increíble.'],
+            },
             items: [
                 { front: 'el deporte', back: 'Sport', partOfSpeech: 'Nomen', exampleSentence: 'Hago deporte tres veces a la semana.' },
                 { front: 'el fútbol', back: 'Fußball', partOfSpeech: 'Nomen', exampleSentence: 'Juego al fútbol los sábados.' },
@@ -122,6 +192,16 @@ export const esA2: LanguageSet = {
         // ── 8. Berufe & Arbeit ──
         {
             name: 'Berufe & Arbeit',
+            learningOutcomes: [
+                'Berufe auf Spanisch benennen',
+                'Über die eigene Arbeit sprechen',
+                'Termine und Besprechungen vereinbaren',
+            ],
+            grammarTip: {
+                title: 'Género bei Berufen — der/die',
+                explanation: 'Viele Berufsbezeichnungen haben männliche (-o) und weibliche (-a) Formen: profesor/profesora, médico/médica, cocinero/cocinera. Manche sind unveränderlich: el/la policía, el/la artista.',
+                examples: ['Mi profesora es muy simpática. (Meine Lehrerin ist sehr nett.)', 'El cocinero prepara la comida.', 'Ella es policía.'],
+            },
             items: [
                 { front: 'el profesor / la profesora', back: 'Lehrer / Lehrerin', partOfSpeech: 'Nomen', exampleSentence: 'Mi profesora de español es muy simpática.' },
                 { front: 'el médico / la médica', back: 'Arzt / Ärztin', partOfSpeech: 'Nomen', exampleSentence: 'El médico me recetó antibióticos.' },
@@ -136,6 +216,16 @@ export const esA2: LanguageSet = {
         // ── 9. Transport & Reise ──
         {
             name: 'Transport & Reise',
+            learningOutcomes: [
+                'Transportmittel auf Spanisch benennen',
+                'Am Bahnhof oder Flughafen kommunizieren',
+                'Nach dem Weg fragen und Wegbeschreibungen verstehen',
+            ],
+            grammarTip: {
+                title: 'Viajar + en — Reisen mit…',
+                explanation: 'Transportmittel werden mit „en" verbunden: en avión, en tren, en coche, en autobús. Ausnahme: „a pie" (zu Fuß).',
+                examples: ['Viajamos en avión a México. (Wir fliegen nach Mexiko.)', 'Voy al trabajo en autobús.', 'Prefiero ir a pie.'],
+            },
             items: [
                 { front: 'el aeropuerto', back: 'Flughafen', partOfSpeech: 'Nomen', exampleSentence: 'El aeropuerto está a veinte kilómetros.' },
                 { front: 'el avión', back: 'Flugzeug', partOfSpeech: 'Nomen', exampleSentence: 'Viajamos en avión a México.' },
@@ -150,6 +240,16 @@ export const esA2: LanguageSet = {
         // ── 10. Gefühle & Eigenschaften ──
         {
             name: 'Gefühle & Eigenschaften',
+            learningOutcomes: [
+                'Gefühle und Stimmungen auf Spanisch ausdrücken',
+                'Personen mit Adjektiven beschreiben',
+                'Zwischen ser und estar bei Eigenschaften unterscheiden',
+            ],
+            grammarTip: {
+                title: 'Ser vs. Estar bei Adjektiven',
+                explanation: '„Ser" beschreibt dauerhafte Eigenschaften (Charakter, Herkunft), „estar" beschreibt vorübergehende Zustände (Gefühle, Gesundheit). Es simpático (er IST nett) vs. Está cansado (er IST müde).',
+                examples: ['Ella es inteligente. (Sie ist klug — Eigenschaft.)', 'Estoy cansado. (Ich bin müde — Zustand.)', 'Mi vecino es simpático, pero hoy está nervioso.'],
+            },
             items: [
                 { front: 'contento', back: 'zufrieden / froh', partOfSpeech: 'Adjektiv', exampleSentence: 'Estoy muy contento con mi trabajo.' },
                 { front: 'triste', back: 'traurig', partOfSpeech: 'Adjektiv', exampleSentence: 'Estaba triste cuando se fue.' },
@@ -165,6 +265,16 @@ export const esA2: LanguageSet = {
         // ── 11. Adjektive & Adverbien ──
         {
             name: 'Adjektive & Adverbien',
+            learningOutcomes: [
+                'Mengen und Häufigkeiten ausdrücken',
+                'Zeitliche Angaben mit todavía und ya verwenden',
+                'Entfernungen und Abstufungen beschreiben',
+            ],
+            grammarTip: {
+                title: 'Todavía vs. Ya — noch vs. schon',
+                explanation: '„Todavía" drückt aus, dass etwas noch andauert (noch/immer noch). „Ya" bedeutet, dass etwas bereits geschehen ist (schon/bereits). In Fragen: ¿ya? = schon?, ¿todavía? = noch?.',
+                examples: ['Todavía estudio español. (Ich lerne immer noch Spanisch.)', '¿Ya has comido? (Hast du schon gegessen?)', 'Ya no vivo allí. (Ich lebe dort nicht mehr.)'],
+            },
             items: [
                 { front: 'mucho', back: 'viel', partOfSpeech: 'Adverb', exampleSentence: 'Hay mucho trabajo hoy.' },
                 { front: 'poco', back: 'wenig', partOfSpeech: 'Adverb', exampleSentence: 'Hablo poco español.' },
@@ -180,6 +290,16 @@ export const esA2: LanguageSet = {
         // ── 12. Verben ──
         {
             name: 'Verben',
+            learningOutcomes: [
+                'Wichtige unregelmäßige Verben im Präsens und Indefinido konjugieren',
+                'Modalverben (poder, querer, saber) korrekt einsetzen',
+                'Alltagssituationen mit vielfältigen Verben beschreiben',
+            ],
+            grammarTip: {
+                title: 'Stammwechsel — poder → puedo, querer → quiero',
+                explanation: 'Viele spanische Verben ändern ihren Stammvokal in den konjugierten Formen (außer nosotros/vosotros): o → ue (poder → puedo), e → ie (querer → quiero), e → i (decir → digo).',
+                examples: ['Puedo hablar español. (Ich kann Spanisch sprechen.)', 'Quiero ir al cine. (Ich will ins Kino gehen.)', '¿Qué dices? No te entiendo.'],
+            },
             items: [
                 {
                     front: 'poder',

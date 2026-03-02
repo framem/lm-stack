@@ -884,4 +884,229 @@ Termina la conversación de forma natural cuando el trámite esté completado o 
             },
         },
     },
+    {
+        key: 'kennenlernen',
+        difficulty: 'A1',
+        icon: '🤝',
+        heroImage: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=600&h=400&fit=crop',
+        translations: {
+            de: {
+                title: 'Sich vorstellen',
+                description: 'Lerne jemanden kennen — stelle dich vor, frage nach Name, Herkunft und Hobbys.',
+                systemPrompt: `Du bist eine freundliche Person bei einer Sprachkurs-Kennenlernrunde. Stelle dich vor und lerne den anderen kennen.
+
+Verhalten:
+- Stelle dich vor (Name, Herkunft, Beruf)
+- Frage nach Name, woher die Person kommt, was sie arbeitet
+- Frage nach Hobbys und Interessen
+- Teile auch eigene Hobbys
+- Halte das Gespräch locker und freundlich
+- Sage am Ende "Schön, dich kennenzulernen!"
+
+Sprachniveau: SEHR einfaches Deutsch (A1). Nur kurze Sätze, Grundwortschatz.
+Antworte IMMER auf Deutsch. Korrigiere NICHT, führe das Gespräch natürlich weiter.`,
+                suggestions: [
+                    'Hallo, ich bin... Und du?',
+                    'Woher kommst du?',
+                    'Was machst du beruflich?',
+                    'Was sind deine Hobbys?',
+                ],
+            },
+            en: {
+                title: 'Meeting Someone',
+                description: 'Meet a new person — introduce yourself, ask about name, country and hobbies.',
+                systemPrompt: `You are a friendly person at a language course ice-breaker session. Introduce yourself and get to know the other person.
+
+Behavior:
+- Introduce yourself (name, where you're from, job)
+- Ask about their name, where they come from, what they do
+- Ask about hobbies and interests
+- Share your own hobbies too
+- Keep the conversation relaxed and friendly
+- End with "Nice to meet you!"
+
+Language level: VERY simple English (A1). Only short sentences, basic vocabulary.
+ALWAYS answer in English. Do NOT correct, just continue the conversation naturally.`,
+                suggestions: [
+                    'Hi, my name is... What\'s your name?',
+                    'Where are you from?',
+                    'What do you do for work?',
+                    'What are your hobbies?',
+                ],
+            },
+            es: {
+                title: 'Conocerse',
+                description: 'Conoce a alguien nuevo — preséntate y pregunta por nombre, país y aficiones.',
+                systemPrompt: `Eres una persona amable en una ronda de presentación de un curso de idiomas. Preséntate y conoce a la otra persona.
+
+Comportamiento:
+- Preséntate (nombre, de dónde eres, profesión)
+- Pregunta por nombre, de dónde viene, a qué se dedica
+- Pregunta por aficiones e intereses
+- Comparte también tus aficiones
+- Mantén la conversación relajada y amistosa
+- Termina con "¡Encantado/a de conocerte!"
+
+Nivel de idioma: Español MUY sencillo (A1). Solo frases cortas, vocabulario básico.
+SIEMPRE responde en español. NO corrijas, continúa la conversación de forma natural.`,
+                suggestions: [
+                    'Hola, me llamo... ¿Y tú?',
+                    '¿De dónde eres?',
+                    '¿A qué te dedicas?',
+                    '¿Cuáles son tus aficiones?',
+                ],
+            },
+        },
+    },
+    {
+        key: 'wohnung',
+        difficulty: 'A1',
+        icon: '🏠',
+        heroImage: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=600&h=400&fit=crop',
+        translations: {
+            de: {
+                title: 'Wohnungsbesichtigung',
+                description: 'Besichtige eine Wohnung — frage nach Zimmern, Miete und Einzugsdatum.',
+                systemPrompt: `Du bist ein Vermieter/eine Vermieterin, der/die eine kleine 2-Zimmer-Wohnung zeigt. Beantworte Fragen des Interessenten.
+
+Verhalten:
+- Begrüße den Interessenten ("Willkommen! Kommen Sie rein.")
+- Zeige die Räume (Wohnzimmer, Schlafzimmer, Küche, Bad)
+- Nenne die Miete (650€ warm) und Kaution (2 Monatsmieten)
+- Beantworte Fragen zu Größe (55 m²), Stockwerk (2. OG), Balkon (ja)
+- Erkläre Nebenkosten (Heizung, Wasser inklusive)
+- Frage, wann der Interessent einziehen möchte
+
+Sprachniveau: Einfaches Deutsch (A1). Kurze, klare Sätze.
+Antworte IMMER auf Deutsch.`,
+                suggestions: [
+                    'Hallo, ich suche eine Wohnung.',
+                    'Wie viele Zimmer hat die Wohnung?',
+                    'Wie hoch ist die Miete?',
+                    'Wann kann ich einziehen?',
+                ],
+            },
+            en: {
+                title: 'Apartment Viewing',
+                description: 'Visit an apartment — ask about rooms, rent and move-in date.',
+                systemPrompt: `You are a landlord showing a small 2-bedroom apartment. Answer the visitor's questions.
+
+Behavior:
+- Welcome the visitor ("Welcome! Come in.")
+- Show the rooms (living room, bedroom, kitchen, bathroom)
+- State the rent (£800/month including bills) and deposit (one month)
+- Answer questions about size (55 m²), floor (2nd floor), balcony (yes)
+- Explain what's included (heating, water)
+- Ask when they'd like to move in
+
+Language level: Simple English (A1). Short, clear sentences.
+ALWAYS answer in English.`,
+                suggestions: [
+                    'Hello, I\'m looking for an apartment.',
+                    'How many rooms does it have?',
+                    'How much is the rent?',
+                    'When can I move in?',
+                ],
+            },
+            es: {
+                title: 'Visita a un piso',
+                description: 'Visita un piso — pregunta por habitaciones, alquiler y fecha de entrada.',
+                systemPrompt: `Eres un propietario/una propietaria que enseña un pequeño piso de 2 habitaciones. Responde a las preguntas del interesado.
+
+Comportamiento:
+- Da la bienvenida ("¡Bienvenido/a! Pase.")
+- Muestra las habitaciones (salón, dormitorio, cocina, baño)
+- Indica el alquiler (650€ con gastos) y la fianza (2 meses)
+- Responde a preguntas sobre tamaño (55 m²), planta (2ª planta), balcón (sí)
+- Explica los gastos incluidos (calefacción, agua)
+- Pregunta cuándo quiere mudarse
+
+Nivel de idioma: Español sencillo (A1). Frases cortas y claras.
+SIEMPRE responde en español.`,
+                suggestions: [
+                    'Hola, estoy buscando un piso.',
+                    '¿Cuántas habitaciones tiene?',
+                    '¿Cuánto es el alquiler?',
+                    '¿Cuándo puedo mudarme?',
+                ],
+            },
+        },
+    },
+    {
+        key: 'kleidung',
+        difficulty: 'A1',
+        icon: '👕',
+        heroImage: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=600&h=400&fit=crop',
+        translations: {
+            de: {
+                title: 'Im Kleidungsgeschäft',
+                description: 'Kaufe Kleidung — frage nach Größen, Farben und Preisen.',
+                systemPrompt: `Du bist ein Verkäufer/eine Verkäuferin in einem Kleidungsgeschäft. Hilf dem Kunden bei der Auswahl.
+
+Verhalten:
+- Begrüße den Kunden ("Hallo! Kann ich Ihnen helfen?")
+- Frage, was der Kunde sucht
+- Zeige verschiedene Optionen (T-Shirt, Hose, Jacke, Kleid)
+- Frage nach Größe (S, M, L, XL) und Lieblingsfarbe
+- Nenne Preise (T-Shirt 19€, Hose 39€, Jacke 59€)
+- Zeige die Umkleidekabine
+- Frage, ob der Kunde zufrieden ist
+
+Sprachniveau: Einfaches Deutsch (A1). Kurze Sätze, Grundwortschatz.
+Antworte IMMER auf Deutsch.`,
+                suggestions: [
+                    'Hallo, ich suche ein T-Shirt.',
+                    'Haben Sie das in Größe M?',
+                    'Welche Farben haben Sie?',
+                    'Wo kann ich das anprobieren?',
+                ],
+            },
+            en: {
+                title: 'Clothes Shopping',
+                description: 'Buy clothes — ask about sizes, colours and prices.',
+                systemPrompt: `You are a shop assistant in a clothing store. Help the customer choose.
+
+Behavior:
+- Greet the customer ("Hello! Can I help you?")
+- Ask what they're looking for
+- Show different options (T-shirt, trousers, jacket, dress)
+- Ask about size (S, M, L, XL) and favourite colour
+- State prices (T-shirt £15, trousers £30, jacket £45)
+- Show the fitting room
+- Ask if the customer is happy with their choice
+
+Language level: Simple English (A1). Short sentences, basic vocabulary.
+ALWAYS answer in English.`,
+                suggestions: [
+                    'Hello, I\'m looking for a T-shirt.',
+                    'Do you have this in size M?',
+                    'What colours do you have?',
+                    'Where can I try it on?',
+                ],
+            },
+            es: {
+                title: 'En la tienda de ropa',
+                description: 'Compra ropa — pregunta por tallas, colores y precios.',
+                systemPrompt: `Eres un dependiente/una dependienta en una tienda de ropa. Ayuda al cliente a elegir.
+
+Comportamiento:
+- Saluda al cliente ("¡Hola! ¿Le puedo ayudar?")
+- Pregunta qué busca
+- Muestra diferentes opciones (camiseta, pantalón, chaqueta, vestido)
+- Pregunta por talla (S, M, L, XL) y color preferido
+- Indica precios (camiseta 15€, pantalón 35€, chaqueta 50€)
+- Muestra el probador
+- Pregunta si el cliente está contento
+
+Nivel de idioma: Español sencillo (A1). Frases cortas, vocabulario básico.
+SIEMPRE responde en español.`,
+                suggestions: [
+                    'Hola, busco una camiseta.',
+                    '¿Tiene esto en talla M?',
+                    '¿Qué colores tienen?',
+                    '¿Dónde puedo probármelo?',
+                ],
+            },
+        },
+    },
 ]

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Image from "next/image";
 import { usePathname, useSearchParams, useRouter } from 'next/navigation'
 import {
+    BarChart3,
     Bookmark,
     CalendarDays,
     ChevronRight,
@@ -79,6 +80,7 @@ const manageItems = [
     { href: '/learn/quiz', label: 'Quiz', icon: HelpCircle },
     { href: '/learn/flashcards', label: 'Karteikarten', icon: Layers },
     { href: '/learn/plan', label: 'Lernplan', icon: CalendarDays },
+    { href: '/learn/stats', label: 'Statistiken', icon: BarChart3 },
 ]
 
 

@@ -277,6 +277,135 @@ function EvaluationCard({ evaluation }: { evaluation: ConversationEvaluation }) 
     )
 }
 
+// Self-assessment reflection panel shown after evaluation
+function ReflectionPanel({ evaluation }: { evaluation: ConversationEvaluation }) {
+    const [mood, setMood] = useState<string | null>(null)
+    const [expanded, setExpanded] = useState(true)
+
+    const overallScore = (evaluation as { overallScore?: number }).overallScore
+        ?? Math.round((evaluation.grammar + evaluation.vocabulary + evaluation.communication) / 3)
+
+    const tips = (evaluation as { tips?: string[] }).tips ?? []
+
+    // Determine strengths from scores
+    const strengths: string[] = []
+    if (evaluation.grammar >= 7) strengths.push('Gute Grammatik')
+    if (evaluation.vocabulary >= 7) strengths.push('Vielfältiger Wortschatz')
+    if (evaluation.communication >= 7) strengths.push('Klare Kommunikation')
+
+    const improvements: string[] = []
+    if (evaluation.grammar < 6) improvements.push('Grammatik üben')
+    if (evaluation.vocabulary < 6) improvements.push('Wortschatz erweitern')
+    if (evaluation.communication < 6) improvements.push('Gesprächsfluss verbessern')
+
+    const moods = [
+        { emoji: '😍', label: 'Super!', value: 'great' },
+        { emoji: '🤔', label: 'OK', value: 'ok' },
+        { emoji: '😬', label: 'Schwierig', value: 'hard' },
+    ]
+
+    if (!expanded) {
+        return (
+            <button
+                type="button"
+                onClick={() => setExpanded(true)}
+                className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+                <MessageSquare className="h-3.5 w-3.5" />
+                Selbsteinschätzung anzeigen
+            </button>
+        )
+    }
+
+    return (
+        <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-4">
+            <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4 text-primary" />
+                    Selbsteinschätzung
+                </p>
+                <button
+                    type="button"
+                    onClick={() => setExpanded(false)}
+                    className="text-xs text-muted-foreground hover:text-foreground"
+                >
+                    Einklappen
+                </button>
+            </div>
+
+            {/* Mood selector */}
+            <div className="space-y-1.5">
+                <p className="text-xs text-muted-foreground">Wie hat sich das Gespräch angefühlt?</p>
+                <div className="flex gap-2">
+                    {moods.map(m => (
+                        <button
+                            key={m.value}
+                            type="button"
+                            onClick={() => setMood(m.value)}
+                            className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm transition-colors ${
+                                mood === m.value
+                                    ? 'border-primary bg-primary/10 font-medium'
+                                    : 'hover:bg-accent'
+                            }`}
+                        >
+                            <span className="text-lg">{m.emoji}</span>
+                            {m.label}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* Strengths */}
+            {strengths.length > 0 && (
+                <div className="space-y-1">
+                    <p className="text-xs font-medium text-green-600 dark:text-green-400">
+                        Was gut lief:
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                        {strengths.map(s => (
+                            <span key={s} className="inline-flex items-center gap-1 rounded-full bg-green-500/10 px-2.5 py-0.5 text-xs text-green-700 dark:text-green-300">
+                                <Check className="h-3 w-3" /> {s}
+                            </span>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Areas to improve */}
+            {improvements.length > 0 && (
+                <div className="space-y-1">
+                    <p className="text-xs font-medium text-orange-600 dark:text-orange-400">
+                        Nächstes Mal fokussieren auf:
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                        {improvements.map(s => (
+                            <span key={s} className="inline-flex items-center gap-1 rounded-full bg-orange-500/10 px-2.5 py-0.5 text-xs text-orange-700 dark:text-orange-300">
+                                {s}
+                            </span>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* AI tips summary */}
+            {tips.length > 0 && (
+                <div className="space-y-1.5 border-t border-border pt-3">
+                    <p className="text-xs font-medium">KI-Empfehlung für nächstes Gespräch:</p>
+                    <p className="text-xs text-muted-foreground">{tips[0]}</p>
+                </div>
+            )}
+
+            {/* Score summary */}
+            <div className="text-xs text-muted-foreground text-center pt-1 border-t border-border">
+                Gesamtbewertung: <span className="font-semibold">{overallScore}/10</span>
+                {overallScore >= 7 && ' — Weiter so!'}
+                {overallScore >= 5 && overallScore < 7 && ' — Guter Anfang, übe weiter!'}
+                {overallScore < 5 && ' — Übe regelmäßig, du wirst besser!'}
+            </div>
+        </div>
+    )
+}
+
 // Full chat interface with message list, input, and source detail panel
 export function ChatInterface({ sessionId, documentId, mode = 'learning', scenario, scenarioTitle, scenarioDescription, scenarioLanguage, scenarioSuggestions, onSessionCreated }: ChatInterfaceProps) {
     const [activeSessionId, setActiveSessionId] = useState(sessionId)
@@ -760,6 +889,7 @@ export function ChatInterface({ sessionId, documentId, mode = 'learning', scenar
                         {isConversation && messages.length >= 2 && !isLoading && (
                             <div className="space-y-4 pt-4">
                                 {evaluation && <EvaluationCard evaluation={evaluation} />}
+                                {evaluation && <ReflectionPanel evaluation={evaluation} />}
                                 <button
                                     type="button"
                                     onClick={handleEvaluate}

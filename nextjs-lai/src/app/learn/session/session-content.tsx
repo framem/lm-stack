@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
+import { useLearningSession } from '@/src/hooks/use-learning-session'
 import {
     Loader2,
     CheckCircle2,
@@ -67,6 +68,7 @@ export interface SessionContentProps {
 }
 
 export function SessionContent({ initialItems }: SessionContentProps) {
+    useLearningSession('flashcards')
     const [items] = useState<SessionItem[]>(initialItems)
     const [currentIndex, setCurrentIndex] = useState(0)
     const [loading] = useState(false)

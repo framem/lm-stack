@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import { useLearningSession } from '@/src/hooks/use-learning-session'
 import { toast } from 'sonner'
 import { FileText, Trash2, Pencil, Check, X, Loader2, ChevronDown, ChevronRight, List, MessageSquare, Brain, CreditCard, RefreshCw, Layers, MoreVertical, HelpCircle } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
@@ -72,6 +73,7 @@ interface DocumentDetail {
 }
 
 export default function DocumentDetailPage() {
+    useLearningSession('reading')
     const params = useParams<{ id: string }>()
     const router = useRouter()
     const { setCurrentPageTitle } = useBreadcrumb()

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { useLearningSession } from '@/src/hooks/use-learning-session'
 import { toast } from 'sonner'
 import { HelpCircle, Loader2, FileText, TrendingUp, Plus } from 'lucide-react'
 import { Card, CardContent } from '@/src/components/ui/card'
@@ -139,6 +140,7 @@ export interface QuizContentProps {
 }
 
 export function QuizContent({ initialDocuments, initialQuizzes, initialProgress, initialLearningGoals }: QuizContentProps) {
+    useLearningSession('quiz')
     const router = useRouter()
     const searchParams = useSearchParams()
     const [documents] = useState<Document[]>(initialDocuments)

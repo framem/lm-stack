@@ -10,6 +10,16 @@ export const enA2: LanguageSet = {
         // ── 1. Familie & Zeit ──
         {
             name: 'Familie & Zeit',
+            learningOutcomes: [
+                'Erweiterte Familienmitglieder auf Englisch benennen',
+                'Zeitausdrücke wie „before" und „after" korrekt verwenden',
+                'Über vergangene Ereignisse mit Simple Past sprechen',
+            ],
+            grammarTip: {
+                title: 'Simple Past — Regelmäßig vs. Unregelmäßig',
+                explanation: 'Das Simple Past beschreibt abgeschlossene Handlungen. Regelmäßig: Verb + -ed (visited, worked). Unregelmäßig: eigene Form (went, had, was/were). Verneinung: didn\'t + Grundform.',
+                examples: ['My aunt visited us last Sunday.', 'I didn\'t go to the party yesterday.', 'Were you at home last night?'],
+            },
             items: [
                 { front: 'aunt', back: 'Tante', partOfSpeech: 'Nomen', exampleSentence: 'My aunt visits us every Sunday.' },
                 { front: 'uncle', back: 'Onkel', partOfSpeech: 'Nomen', exampleSentence: 'My uncle has a big car.' },
@@ -27,6 +37,16 @@ export const enA2: LanguageSet = {
         // ── 2. Essen & Küche ──
         {
             name: 'Essen & Küche',
+            learningOutcomes: [
+                'Lebensmittel und Mahlzeiten auf Englisch benennen',
+                'Im Restaurant bestellen und Vorlieben ausdrücken',
+                'Zwischen zählbaren und unzählbaren Nomen unterscheiden',
+            ],
+            grammarTip: {
+                title: 'Countable vs. Uncountable — much/many',
+                explanation: 'Zählbare Nomen (apples, eggs) verwenden „many" und „a few". Unzählbare Nomen (cheese, sugar, meat) verwenden „much" und „a little". „A lot of" passt für beides.',
+                examples: ['I don\'t eat much meat. (unzählbar)', 'How many eggs do we need? (zählbar)', 'There is a lot of sugar in this cake.'],
+            },
             items: [
                 { front: 'cheese', back: 'Käse', partOfSpeech: 'Nomen', exampleSentence: 'This cheese is from France.' },
                 { front: 'sugar', back: 'Zucker', partOfSpeech: 'Nomen', exampleSentence: 'I take sugar in my coffee.' },
@@ -44,6 +64,16 @@ export const enA2: LanguageSet = {
         // ── 3. Kleidung ──
         {
             name: 'Kleidung',
+            learningOutcomes: [
+                'Kleidungsstücke auf Englisch benennen',
+                'Farben und Größen beschreiben',
+                'In einem Geschäft nach Kleidung fragen',
+            ],
+            grammarTip: {
+                title: 'This/That/These/Those — Demonstrativpronomen',
+                explanation: '„This/these" zeigt auf etwas Nahes: this shirt (dieses Hemd), these trousers (diese Hosen). „That/those" zeigt auf etwas Entferntes: that dress (jenes Kleid), those shoes (jene Schuhe).',
+                examples: ['This sweater is very warm.', 'These trousers are too long.', 'How much is that dress over there?'],
+            },
             items: [
                 { front: 'shirt', back: 'Hemd', partOfSpeech: 'Nomen', exampleSentence: 'He wears a white shirt.' },
                 { front: 'trousers', back: 'Hose', partOfSpeech: 'Nomen', exampleSentence: 'These trousers are too long.' },
@@ -59,6 +89,16 @@ export const enA2: LanguageSet = {
         // ── 4. Haus & Wohnung ──
         {
             name: 'Haus & Wohnung',
+            learningOutcomes: [
+                'Räume und Möbel auf Englisch benennen',
+                'Die eigene Wohnung beschreiben',
+                'Höfliche Bitten und Anweisungen formulieren',
+            ],
+            grammarTip: {
+                title: 'There is / There are — Es gibt',
+                explanation: '„There is" wird für Singular und unzählbare Nomen verwendet, „there are" für Plural. Fragen: Is there…? / Are there…? Verneinung: There isn\'t / There aren\'t.',
+                examples: ['There is a lamp on the table.', 'There are three bedrooms in my flat.', 'Is there a fridge in the kitchen?'],
+            },
             items: [
                 { front: 'bedroom', back: 'Schlafzimmer', partOfSpeech: 'Nomen', exampleSentence: 'The bedroom has a large window.' },
                 { front: 'living room', back: 'Wohnzimmer', partOfSpeech: 'Nomen', exampleSentence: 'We watch TV in the living room.' },
@@ -75,6 +115,16 @@ export const enA2: LanguageSet = {
         // ── 5. Wetter & Natur ──
         {
             name: 'Wetter & Natur',
+            learningOutcomes: [
+                'Das Wetter auf Englisch beschreiben',
+                'Landschaften und Natur benennen',
+                'Adjektive steigern und Vergleiche anstellen',
+            ],
+            grammarTip: {
+                title: 'Comparative & Superlative — Vergleiche',
+                explanation: 'Kurze Adjektive: -er (warmer), -est (warmest). Lange Adjektive: more/most (more beautiful, most beautiful). Unregelmäßig: good → better → best, bad → worse → worst.',
+                examples: ['Today is warmer than yesterday.', 'The mountain is the highest in the country.', 'Summer is better than winter for me.'],
+            },
             items: [
                 { front: 'snow', back: 'Schnee', partOfSpeech: 'Nomen', exampleSentence: 'Children love snow.' },
                 { front: 'cloud', back: 'Wolke', partOfSpeech: 'Nomen', exampleSentence: 'There are many clouds in the sky.' },
@@ -91,6 +141,16 @@ export const enA2: LanguageSet = {
         // ── 6. Körper & Gesundheit ──
         {
             name: 'Körper & Gesundheit',
+            learningOutcomes: [
+                'Körperteile auf Englisch benennen',
+                'Symptome und Schmerzen beschreiben',
+                'Beim Arzt kommunizieren und Ratschläge verstehen',
+            ],
+            grammarTip: {
+                title: 'Should / Shouldn\'t — Ratschläge geben',
+                explanation: '„Should" drückt einen Ratschlag oder eine Empfehlung aus. Es wird für alle Personen gleich verwendet. Verneinung: shouldn\'t.',
+                examples: ['You should see a doctor. (Du solltest zum Arzt gehen.)', 'You shouldn\'t go to work if you\'re ill.', 'Should I take this medicine?'],
+            },
             items: [
                 { front: 'head', back: 'Kopf', partOfSpeech: 'Nomen', exampleSentence: 'I have a headache.' },
                 { front: 'arm', back: 'Arm', partOfSpeech: 'Nomen', exampleSentence: 'I broke my arm.' },
@@ -107,6 +167,16 @@ export const enA2: LanguageSet = {
         // ── 7. Hobbys & Freizeit ──
         {
             name: 'Hobbys & Freizeit',
+            learningOutcomes: [
+                'Hobbys und Freizeitaktivitäten auf Englisch benennen',
+                'Über vergangene Erlebnisse im Simple Past sprechen',
+                'Vorlieben mit „I like/love/enjoy + -ing" ausdrücken',
+            ],
+            grammarTip: {
+                title: 'Gerund nach Verben — I enjoy swimming',
+                explanation: 'Nach bestimmten Verben folgt die -ing-Form (Gerund): enjoy, like, love, hate, finish, stop, keep. Nicht der Infinitiv!',
+                examples: ['I enjoy playing football.', 'She loves taking photos on holiday.', 'I finished reading the book yesterday.'],
+            },
             items: [
                 { front: 'sport', back: 'Sport', partOfSpeech: 'Nomen', exampleSentence: 'I do sport three times a week.' },
                 { front: 'football', back: 'Fußball', partOfSpeech: 'Nomen', exampleSentence: 'I play football on Saturdays.' },
@@ -122,6 +192,16 @@ export const enA2: LanguageSet = {
         // ── 8. Berufe & Arbeit ──
         {
             name: 'Berufe & Arbeit',
+            learningOutcomes: [
+                'Berufe auf Englisch benennen',
+                'Über die eigene Arbeit und den Arbeitsplatz sprechen',
+                'Termine und Besprechungen vereinbaren',
+            ],
+            grammarTip: {
+                title: 'Present Continuous — Ich arbeite gerade',
+                explanation: 'Das Present Continuous (am/is/are + -ing) beschreibt, was gerade passiert oder geplante Zukunft. Nicht verwechseln mit Simple Present (Gewohnheiten).',
+                examples: ['I am working in the office today. (gerade jetzt)', 'She is having a meeting at ten. (geplant)', 'Are you coming to the party tonight?'],
+            },
             items: [
                 { front: 'teacher', back: 'Lehrer / Lehrerin', partOfSpeech: 'Nomen', exampleSentence: 'My English teacher is very nice.' },
                 { front: 'doctor', back: 'Arzt / Ärztin', partOfSpeech: 'Nomen', exampleSentence: 'The doctor gave me antibiotics.' },
@@ -136,6 +216,16 @@ export const enA2: LanguageSet = {
         // ── 9. Transport & Reise ──
         {
             name: 'Transport & Reise',
+            learningOutcomes: [
+                'Transportmittel auf Englisch benennen',
+                'Am Bahnhof oder Flughafen kommunizieren',
+                'Nach dem Weg fragen und Wegbeschreibungen verstehen',
+            ],
+            grammarTip: {
+                title: 'Prepositions of Transport — by/on/in',
+                explanation: 'Transportmittel verwenden „by": by plane, by train, by bus, by car. Aber: on foot (zu Fuß), on the bus (im Bus sitzend), in the car (im Auto sitzend).',
+                examples: ['We travelled by plane to Mexico.', 'I go to work by bus.', 'Let\'s go on foot — it\'s not far.'],
+            },
             items: [
                 { front: 'airport', back: 'Flughafen', partOfSpeech: 'Nomen', exampleSentence: 'The airport is twenty kilometres away.' },
                 { front: 'plane', back: 'Flugzeug', partOfSpeech: 'Nomen', exampleSentence: 'We travelled by plane to Mexico.' },
@@ -150,6 +240,16 @@ export const enA2: LanguageSet = {
         // ── 10. Gefühle & Eigenschaften ──
         {
             name: 'Gefühle & Eigenschaften',
+            learningOutcomes: [
+                'Gefühle und Stimmungen auf Englisch ausdrücken',
+                'Personen mit Adjektiven beschreiben',
+                'Zwischen -ed und -ing Adjektiven unterscheiden',
+            ],
+            grammarTip: {
+                title: '-ed vs. -ing Adjektive — bored vs. boring',
+                explanation: 'Adjektive auf „-ed" beschreiben das Gefühl einer Person (I am tired). Adjektive auf „-ing" beschreiben die Eigenschaft von etwas (The film is boring). Häufiger Fehler: „I am boring" statt „I am bored".',
+                examples: ['I am tired after work. (Ich bin müde.)', 'The film was boring. (Der Film war langweilig.)', 'She is interested in music. (nicht: interesting)'],
+            },
             items: [
                 { front: 'pleased', back: 'zufrieden / erfreut', partOfSpeech: 'Adjektiv', exampleSentence: 'I am very pleased with my work.' },
                 { front: 'sad', back: 'traurig', partOfSpeech: 'Adjektiv', exampleSentence: 'She was sad when he left.' },
@@ -165,6 +265,16 @@ export const enA2: LanguageSet = {
         // ── 11. Adjektive & Adverbien ──
         {
             name: 'Adjektive & Adverbien',
+            learningOutcomes: [
+                'Mengen und Häufigkeiten auf Englisch ausdrücken',
+                'Zeitliche Angaben mit „still" und „already" verwenden',
+                'Entfernungen und Abstufungen beschreiben',
+            ],
+            grammarTip: {
+                title: 'Still vs. Already vs. Yet',
+                explanation: '„Still" bedeutet „noch/immer noch" (Situation dauert an). „Already" bedeutet „schon/bereits" (früher als erwartet). „Yet" wird in Fragen und Verneinungen verwendet: „Have you finished yet?" (Hast du schon fertig?).',
+                examples: ['I am still studying English.', 'I have already eaten, thanks.', 'Have you bought the tickets yet?'],
+            },
             items: [
                 { front: 'a lot', back: 'viel', partOfSpeech: 'Adverb', exampleSentence: 'There is a lot of work today.' },
                 { front: 'a little', back: 'ein wenig', partOfSpeech: 'Adverb', exampleSentence: 'I speak a little Spanish.' },
@@ -180,6 +290,16 @@ export const enA2: LanguageSet = {
         // ── 12. Verben ──
         {
             name: 'Verben',
+            learningOutcomes: [
+                'Wichtige unregelmäßige Verben im Simple Past verwenden',
+                'Zwischen regelmäßigen und unregelmäßigen Verben unterscheiden',
+                'Alltagssituationen mit vielfältigen Verben beschreiben',
+            ],
+            grammarTip: {
+                title: 'Irregular Past Forms — went, saw, made',
+                explanation: 'Unregelmäßige Verben bilden das Simple Past nicht mit -ed, sondern haben eigene Formen: go → went, see → saw, make → made, know → knew, write → wrote. Diese muss man auswendig lernen.',
+                examples: ['I went to the cinema last night.', 'She saw her friend at the shop.', 'We made a cake for his birthday.'],
+            },
             items: [
                 {
                     front: 'to want',
