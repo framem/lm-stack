@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
     ArrowLeft,
@@ -46,18 +47,37 @@ interface ReadingContentProps {
 export function ReadingContent({ language }: ReadingContentProps) {
     useLearningSession('reading')
 
-    const [phase, setPhase] = useState<Phase>('selection')
-    const [selectedText, setSelectedText] = useState<ReadingText | null>(null)
+    const searchParams = useSearchParams()
+    const router = useRouter()
+    const textId = searchParams.get('text')
+
     const [showVocab, setShowVocab] = useState(false)
     const [answers, setAnswers] = useState<Record<string, string | number | boolean | null>>({})
     const [submitted, setSubmitted] = useState(false)
     const [levelFilter, setLevelFilter] = useState('all')
+    const [readingPhase, setReadingPhase] = useState<'reading' | 'questions' | 'results'>('reading')
 
     // Filter texts for current language
     const textsForLanguage = useMemo(
         () => readingTexts.filter((t) => t.language === language.code),
         [language.code],
     )
+
+    // Derive selected text from URL
+    const selectedText = useMemo(
+        () => textId ? textsForLanguage.find((t) => t.id === textId) ?? null : null,
+        [textId, textsForLanguage],
+    )
+
+    const phase: Phase = selectedText ? readingPhase : 'selection'
+
+    // Reset sub-state when text changes
+    useEffect(() => {
+        setReadingPhase('reading')
+        setShowVocab(false)
+        setAnswers({})
+        setSubmitted(false)
+    }, [textId])
 
     const filteredTexts = useMemo(
         () => levelFilter === 'all'
@@ -74,15 +94,11 @@ export function ReadingContent({ language }: ReadingContentProps) {
 
     // ── Handlers ───────────────────────────────────────────────────────
     function selectText(text: ReadingText) {
-        setSelectedText(text)
-        setPhase('reading')
-        setShowVocab(false)
-        setAnswers({})
-        setSubmitted(false)
+        router.push(`/learn/language/${language.code}/reading?text=${text.id}`, { scroll: false })
     }
 
     function goToQuestions() {
-        setPhase('questions')
+        setReadingPhase('questions')
     }
 
     function handleAnswer(questionId: string, value: string | number | boolean) {
@@ -91,12 +107,11 @@ export function ReadingContent({ language }: ReadingContentProps) {
 
     function submitAnswers() {
         setSubmitted(true)
-        setPhase('results')
+        setReadingPhase('results')
     }
 
     function backToSelection() {
-        setPhase('selection')
-        setSelectedText(null)
+        router.push(`/learn/language/${language.code}/reading`, { scroll: false })
     }
 
     // ── Score calculation ──────────────────────────────────────────────
@@ -275,7 +290,7 @@ export function ReadingContent({ language }: ReadingContentProps) {
             <div className="p-6 max-w-4xl mx-auto space-y-6">
                 {/* Header */}
                 <div className="flex items-center gap-3">
-                    <Button variant="ghost" size="icon" onClick={() => setPhase('reading')}>
+                    <Button variant="ghost" size="icon" onClick={() => setReadingPhase('reading')}>
                         <ArrowLeft className="h-5 w-5" />
                     </Button>
                     <div className="flex-1">
@@ -332,7 +347,7 @@ export function ReadingContent({ language }: ReadingContentProps) {
                         </Button>
                     ) : (
                         <>
-                            <Button variant="outline" onClick={() => setPhase('reading')}>
+                            <Button variant="outline" onClick={() => setReadingPhase('reading')}>
                                 <ArrowLeft className="h-4 w-4" />
                                 Zurück zum Text
                             </Button>
@@ -357,11 +372,21 @@ function HighlightedText({
     text: string
     vocabulary: ReadingText['vocabulary']
 }) {
-    // Build a case-insensitive regex matching any vocab word
+    // Build a case-insensitive regex matching any vocab word or its text forms
     if (vocabulary.length === 0) return <>{text}</>
 
-    const escaped = vocabulary.map((v) =>
-        v.word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+    const allForms: { form: string; vocab: ReadingText['vocabulary'][number] }[] = []
+    for (const v of vocabulary) {
+        allForms.push({ form: v.word, vocab: v })
+        for (const f of v.textForms ?? []) {
+            allForms.push({ form: f, vocab: v })
+        }
+    }
+    // Sort longest first so longer matches take priority
+    allForms.sort((a, b) => b.form.length - a.form.length)
+
+    const escaped = allForms.map((f) =>
+        f.form.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
     )
     const pattern = new RegExp(`\\b(${escaped.join('|')})\\b`, 'gi')
     const parts = text.split(pattern)
@@ -369,9 +394,9 @@ function HighlightedText({
     return (
         <>
             {parts.map((part, i) => {
-                const match = vocabulary.find(
-                    (v) => v.word.toLowerCase() === part.toLowerCase(),
-                )
+                const match = allForms.find(
+                    (f) => f.form.toLowerCase() === part.toLowerCase(),
+                )?.vocab
                 if (match) {
                     return (
                         <Tooltip key={i}>

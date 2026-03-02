@@ -27,6 +27,7 @@ import type { LanguageInfo } from '@/src/lib/language-utils'
 import {
     getPronunciationExercises,
     getPhonemeGuides,
+    getPhonemeLabel,
     type PronunciationExercise,
     type PhonemeGuide,
 } from './pronunciation-data'
@@ -34,6 +35,19 @@ import { shuffle } from '@/src/lib/utils'
 
 const CORRECT_THRESHOLD = 0.8
 const ALMOST_THRESHOLD = 0.6
+
+/** Speak a short text snippet via Web Speech API */
+function speakText(text: string, lang: string) {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return
+    window.speechSynthesis.cancel()
+    const utterance = new SpeechSynthesisUtterance(text)
+    utterance.lang = lang
+    utterance.rate = 0.85
+    const voices = window.speechSynthesis.getVoices()
+    const match = voices.find((v) => v.lang.startsWith(lang.split('-')[0]))
+    if (match) utterance.voice = match
+    window.speechSynthesis.speak(utterance)
+}
 
 // ── Phonetic Comparison Display ────────────────────────────────────────
 // Character-level diff: highlights matching/mismatching segments
@@ -426,11 +440,21 @@ function PracticeDrill({
                     {/* Focused phonemes */}
                     <div className="flex items-center justify-center gap-2 flex-wrap">
                         <span className="text-xs text-muted-foreground">Fokus-Laute:</span>
-                        {exercise.phonemesFocus.map((p, i) => (
-                            <Badge key={i} variant="secondary" className="font-mono text-sm">
-                                /{p}/
-                            </Badge>
-                        ))}
+                        {exercise.phonemesFocus.map((p, i) => {
+                            const label = getPhonemeLabel(p, exercise.language)
+                            return (
+                                <Badge
+                                    key={i}
+                                    variant="secondary"
+                                    className={`text-sm gap-1.5 ${label.example ? 'cursor-pointer hover:bg-accent transition-colors' : ''}`}
+                                    onClick={label.example ? () => speakText(label.example!, bcp47) : undefined}
+                                >
+                                    {label.example && <Volume2 className="h-3 w-3 text-muted-foreground" />}
+                                    <span className="font-semibold">{label.letter}</span>
+                                    <span className="font-mono text-muted-foreground">/{label.ipa}/</span>
+                                </Badge>
+                            )
+                        })}
                     </div>
 
                     {/* Speech recorder */}
@@ -583,9 +607,11 @@ function PhonemeGuidePanel({ guides }: { guides: PhonemeGuide[] }) {
 function DifficultSoundsPractice({
     exercises,
     bcp47,
+    languageCode,
 }: {
     exercises: PronunciationExercise[]
     bcp47: string
+    languageCode: string
 }) {
     // Filter to only hard/medium exercises
     const difficultExercises = useMemo(
@@ -634,16 +660,29 @@ function DifficultSoundsPractice({
                 >
                     Alle
                 </Badge>
-                {phonemes.map(p => (
-                    <Badge
-                        key={p}
-                        variant={selectedPhoneme === p ? 'default' : 'outline'}
-                        className="cursor-pointer font-mono text-sm py-1 px-3"
-                        onClick={() => setSelectedPhoneme(p)}
-                    >
-                        /{p}/
-                    </Badge>
-                ))}
+                {phonemes.map(p => {
+                    const label = getPhonemeLabel(p, languageCode)
+                    return (
+                        <Badge
+                            key={p}
+                            variant={selectedPhoneme === p ? 'default' : 'outline'}
+                            className="cursor-pointer text-sm py-1 px-3 gap-1.5"
+                            onClick={() => setSelectedPhoneme(p)}
+                        >
+                            {label.example && (
+                                <button
+                                    type="button"
+                                    className="hover:text-primary transition-colors"
+                                    onClick={(e) => { e.stopPropagation(); speakText(label.example!, bcp47) }}
+                                >
+                                    <Volume2 className="h-3 w-3" />
+                                </button>
+                            )}
+                            <span className="font-semibold">{label.letter}</span>
+                            <span className="font-mono text-muted-foreground">/{label.ipa}/</span>
+                        </Badge>
+                    )
+                })}
             </div>
 
             {/* Drill with filtered exercises */}
@@ -704,7 +743,7 @@ export function PronunciationContent({ language }: PronunciationContentProps) {
                     <PracticeDrill exercises={exercises} bcp47={language.bcp47} />
                 </TabsContent>
                 <TabsContent value="difficult">
-                    <DifficultSoundsPractice exercises={exercises} bcp47={language.bcp47} />
+                    <DifficultSoundsPractice exercises={exercises} bcp47={language.bcp47} languageCode={language.code} />
                 </TabsContent>
                 <TabsContent value="guide">
                     <PhonemeGuidePanel guides={guides} />

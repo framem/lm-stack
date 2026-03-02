@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useRef } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, PenLine, Puzzle, Shuffle, Loader2, CheckCircle2, XCircle, RotateCcw } from 'lucide-react'
 import { Button } from '@/src/components/ui/button'
@@ -392,6 +392,8 @@ function ReorderMode({ languageCode, level }: { languageCode: string; level: str
 function ReorderExerciseCard({ exercise, onNext }: { exercise: ReorderExercise; onNext?: () => void }) {
     const [selected, setSelected] = useState<number[]>([])
     const [checked, setChecked] = useState(false)
+    const dragIndexRef = useRef<number | null>(null)
+    const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
 
     const builtSentence = selected.map((i) => exercise.words[i]).join(' ')
     const isCorrect = builtSentence.toLowerCase() === exercise.correct.toLowerCase()
@@ -402,9 +404,9 @@ function ReorderExerciseCard({ exercise, onNext }: { exercise: ReorderExercise; 
         setSelected((prev) => [...prev, wordIndex])
     }
 
-    function handleUndo() {
+    function handleRemoveFromSentence(positionIndex: number) {
         if (checked) return
-        setSelected((prev) => prev.slice(0, -1))
+        setSelected((prev) => prev.filter((_, i) => i !== positionIndex))
     }
 
     function handleReset() {
@@ -412,12 +414,46 @@ function ReorderExerciseCard({ exercise, onNext }: { exercise: ReorderExercise; 
         setChecked(false)
     }
 
+    // Drag-and-drop handlers for reordering built sentence
+    function handleDragStart(posIndex: number) {
+        dragIndexRef.current = posIndex
+    }
+
+    function handleDragOver(e: React.DragEvent, posIndex: number) {
+        e.preventDefault()
+        if (dragIndexRef.current !== null && dragIndexRef.current !== posIndex) {
+            setDragOverIndex(posIndex)
+        }
+    }
+
+    function handleDrop(posIndex: number) {
+        const from = dragIndexRef.current
+        if (from === null || from === posIndex) {
+            dragIndexRef.current = null
+            setDragOverIndex(null)
+            return
+        }
+        setSelected((prev) => {
+            const next = [...prev]
+            const [moved] = next.splice(from, 1)
+            next.splice(posIndex, 0, moved)
+            return next
+        })
+        dragIndexRef.current = null
+        setDragOverIndex(null)
+    }
+
+    function handleDragEnd() {
+        dragIndexRef.current = null
+        setDragOverIndex(null)
+    }
+
     return (
         <Card>
             <CardHeader>
                 <CardTitle>Satzumstellung</CardTitle>
                 <CardDescription>
-                    Klicke die Wörter in der richtigen Reihenfolge an, um einen Satz zu bilden.
+                    Klicke die Wörter an und ordne sie per Drag & Drop in die richtige Reihenfolge.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -437,8 +473,20 @@ function ReorderExerciseCard({ exercise, onNext }: { exercise: ReorderExercise; 
                     {selected.length === 0 ? (
                         <span className="text-sm text-muted-foreground">Klicke auf die Wörter unten...</span>
                     ) : (
-                        selected.map((wordIndex, i) => (
-                            <Badge key={i} variant="default" className="text-sm">
+                        selected.map((wordIndex, posIndex) => (
+                            <Badge
+                                key={`${posIndex}-${wordIndex}`}
+                                variant="default"
+                                draggable={!checked}
+                                onDragStart={() => handleDragStart(posIndex)}
+                                onDragOver={(e) => handleDragOver(e, posIndex)}
+                                onDrop={() => handleDrop(posIndex)}
+                                onDragEnd={handleDragEnd}
+                                onClick={() => handleRemoveFromSentence(posIndex)}
+                                className={`text-sm transition-all select-none ${
+                                    !checked ? 'cursor-grab active:cursor-grabbing hover:bg-primary/80' : ''
+                                } ${dragOverIndex === posIndex ? 'ring-2 ring-primary ring-offset-1' : ''}`}
+                            >
                                 {exercise.words[wordIndex]}
                             </Badge>
                         ))
@@ -466,18 +514,16 @@ function ReorderExerciseCard({ exercise, onNext }: { exercise: ReorderExercise; 
                     ))}
                 </div>
 
+                {!checked && selected.length > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                        Tipp: Ziehe Wörter oben per Drag & Drop um, oder klicke zum Entfernen.
+                    </p>
+                )}
+
                 {/* Action buttons */}
                 <div className="flex items-center gap-2">
                     {!checked ? (
                         <>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={handleUndo}
-                                disabled={selected.length === 0}
-                            >
-                                Rückgängig
-                            </Button>
                             <Button
                                 variant="outline"
                                 size="sm"

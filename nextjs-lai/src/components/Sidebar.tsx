@@ -6,19 +6,25 @@ import Image from "next/image";
 import { usePathname, useSearchParams, useRouter } from 'next/navigation'
 import {
     BarChart3,
+    BookOpen,
+    BookText,
     Bookmark,
     CalendarDays,
     ChevronRight,
+    ClipboardList,
     Clock,
     Ellipsis,
     FileText,
     GraduationCap,
+    Headphones,
     HelpCircle,
     Home,
     Languages,
     Layers,
     MessageSquare,
+    Mic,
     Moon,
+    PenLine,
     Plus,
     Search,
     Settings,
@@ -73,6 +79,16 @@ interface SidebarClientProps {
 const learnItems = [
     { href: '/learn/session', label: 'Lern-Session', icon: GraduationCap, description: 'Dokument-Wiederholungen · tief lernen' },
     { href: '/learn/daily', label: 'Tagesübung', icon: Clock, description: 'Quick-Check · Streak sichern' },
+]
+
+const exerciseItems = [
+    { path: 'conversation', label: 'Konversation', icon: MessageSquare },
+    { path: 'listening', label: 'Hörverstehen', icon: Headphones },
+    { path: 'writing', label: 'Schreibübungen', icon: PenLine },
+    { path: 'grammar', label: 'Grammatik', icon: BookOpen },
+    { path: 'reading', label: 'Lesen', icon: BookText },
+    { path: 'pronunciation', label: 'Aussprache', icon: Mic },
+    { path: 'exam', label: 'Prüfungsmodus', icon: ClipboardList },
 ]
 
 const manageItems = [
@@ -165,7 +181,7 @@ export function SidebarClient({ initialSessions, initialLanguages }: SidebarClie
     }, [])
 
     const isChatActive = pathname.startsWith('/learn/chat')
-    const isLanguageActive = pathname.startsWith('/learn/language')
+
 
     return (
         <SidebarRoot collapsible="icon">
@@ -402,61 +418,79 @@ export function SidebarClient({ initialSessions, initialLanguages }: SidebarClie
                     <SidebarGroupLabel>Sprachen</SidebarGroupLabel>
                     <SidebarGroupContent>
                         <SidebarMenu>
-                            <Collapsible
-                                asChild
-                                defaultOpen={isLanguageActive}
-                                className="group/collapsible"
-                            >
+                            <SidebarMenuItem>
+                                <SidebarMenuButton
+                                    asChild
+                                    isActive={pathname === '/learn/language'}
+                                    tooltip="Übersicht"
+                                >
+                                    <Link href="/learn/language">
+                                        <Languages />
+                                        <span>Übersicht</span>
+                                    </Link>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                            {languages.length === 0 ? (
                                 <SidebarMenuItem>
-                                    <CollapsibleTrigger asChild>
-                                        <SidebarMenuButton
-                                            isActive={isLanguageActive}
-                                            tooltip="Sprachtrainer"
+                                    <span className="px-2 py-1.5 text-xs text-muted-foreground">
+                                        Keine Sprachen
+                                    </span>
+                                </SidebarMenuItem>
+                            ) : (
+                                languages.map((lang) => {
+                                    const code = resolveLanguageCode(lang) ?? lang
+                                    const langBase = `/learn/language/${code}`
+                                    const isLangActive = pathname.startsWith(langBase)
+                                    return (
+                                        <Collapsible
+                                            key={lang}
+                                            asChild
+                                            defaultOpen={isLangActive}
+                                            className="group/collapsible"
                                         >
-                                            <Languages />
-                                            <span>Sprachtrainer</span>
-                                            <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-                                        </SidebarMenuButton>
-                                    </CollapsibleTrigger>
-                                    <CollapsibleContent>
-                                        <SidebarMenuSub>
-                                            <SidebarMenuSubItem>
-                                                <SidebarMenuSubButton
-                                                    asChild
-                                                    isActive={pathname === '/learn/language'}
-                                                >
-                                                    <Link href="/learn/language">
-                                                        <span>Übersicht</span>
-                                                    </Link>
-                                                </SidebarMenuSubButton>
-                                            </SidebarMenuSubItem>
-                                            {languages.length === 0 ? (
-                                                <SidebarMenuSubItem>
-                                                    <span className="px-2 py-1.5 text-xs text-muted-foreground">
-                                                        Keine Sprachen
-                                                    </span>
-                                                </SidebarMenuSubItem>
-                                            ) : (
-                                                languages.map((lang) => {
-                                                    const code = resolveLanguageCode(lang) ?? lang
-                                                    return (
-                                                        <SidebarMenuSubItem key={lang}>
+                                            <SidebarMenuItem>
+                                                <CollapsibleTrigger asChild>
+                                                    <SidebarMenuButton
+                                                        isActive={isLangActive}
+                                                        tooltip={lang}
+                                                    >
+                                                        <span className="text-base leading-none">{getLanguageFlag(lang)}</span>
+                                                        <span>{lang}</span>
+                                                        <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                                                    </SidebarMenuButton>
+                                                </CollapsibleTrigger>
+                                                <CollapsibleContent>
+                                                    <SidebarMenuSub>
+                                                        <SidebarMenuSubItem>
                                                             <SidebarMenuSubButton
                                                                 asChild
-                                                                isActive={pathname === `/learn/language/${code}`}
+                                                                isActive={pathname === langBase}
                                                             >
-                                                                <Link href={`/learn/language/${code}`}>
-                                                                    <span>{getLanguageFlag(lang)} {lang}</span>
+                                                                <Link href={langBase}>
+                                                                    <span>Hub</span>
                                                                 </Link>
                                                             </SidebarMenuSubButton>
                                                         </SidebarMenuSubItem>
-                                                    )
-                                                })
-                                            )}
-                                        </SidebarMenuSub>
-                                    </CollapsibleContent>
-                                </SidebarMenuItem>
-                            </Collapsible>
+                                                        {exerciseItems.map((item) => (
+                                                            <SidebarMenuSubItem key={item.path}>
+                                                                <SidebarMenuSubButton
+                                                                    asChild
+                                                                    isActive={pathname === `${langBase}/${item.path}`}
+                                                                >
+                                                                    <Link href={`${langBase}/${item.path}`}>
+                                                                        <item.icon className="size-3.5" />
+                                                                        <span>{item.label}</span>
+                                                                    </Link>
+                                                                </SidebarMenuSubButton>
+                                                            </SidebarMenuSubItem>
+                                                        ))}
+                                                    </SidebarMenuSub>
+                                                </CollapsibleContent>
+                                            </SidebarMenuItem>
+                                        </Collapsible>
+                                    )
+                                })
+                            )}
                         </SidebarMenu>
                     </SidebarGroupContent>
                 </SidebarGroup>

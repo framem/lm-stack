@@ -4,6 +4,7 @@ export interface VocabularyItem {
     word: string
     translation: string    // German
     partOfSpeech: string
+    textForms?: string[]   // conjugated / plural forms to highlight in text
 }
 
 export interface ReadingQuestion {
@@ -392,6 +393,275 @@ What can we do as individuals? We can reduce our carbon footprint by using publi
                 questionDe: 'Welche Folgen des Klimawandels beschreibt der Text?',
                 sampleAnswer: 'The text describes melting glaciers, rising sea levels, more frequent and severe extreme weather events like hurricanes, droughts and floods, and coral reefs dying.',
                 explanation: 'Der Text nennt schmelzende Gletscher, steigende Meeresspiegel, häufigere Extremwetterereignisse (Hurrikane, Dürren, Überschwemmungen) und das Sterben von Korallenriffen.',
+            },
+        ],
+    },
+
+    // ── Spanish A1 ────────────────────────────────────────────────────
+    {
+        id: 'es-a1-mi-dia',
+        title: 'Mi día',
+        titleDe: 'Mein Tag',
+        level: 'A1',
+        language: 'es',
+        topic: 'Alltag',
+        icon: '\u2600\uFE0F',
+        readingTimeMinutes: 2,
+        text: `Me llamo Sofía. Tengo catorce años. Cada mañana me despierto a las siete. Desayuno con mi familia. Como pan con mantequilla y bebo un vaso de leche.
+
+Después del desayuno camino a la escuela. Las clases empiezan a las ocho. Mi asignatura favorita es el español. También me gustan la música y el arte.
+
+Después de la escuela vuelvo a casa. Como el almuerzo y después hago mis deberes. Por la tarde juego con mis amigos en el parque. Nos gusta jugar al fútbol.
+
+Por la noche veo la televisión con mis padres. Me acuesto a las nueve. Me gusta mi día.`,
+        vocabulary: [
+            { word: 'despertarse', translation: 'aufwachen', partOfSpeech: 'Verb', textForms: ['despierto'] },
+            { word: 'desayunar', translation: 'frühstücken', partOfSpeech: 'Verb', textForms: ['desayuno'] },
+            { word: 'asignatura', translation: 'Schulfach', partOfSpeech: 'Nomen' },
+            { word: 'deberes', translation: 'Hausaufgaben', partOfSpeech: 'Nomen' },
+            { word: 'almuerzo', translation: 'Mittagessen', partOfSpeech: 'Nomen' },
+            { word: 'acostarse', translation: 'ins Bett gehen', partOfSpeech: 'Verb', textForms: ['acuesto'] },
+        ],
+        questions: [
+            {
+                id: 'es-a1-mi-dia-q1',
+                type: 'multipleChoice',
+                question: '¿A qué hora se despierta Sofía?',
+                questionDe: 'Um wie viel Uhr wacht Sofía auf?',
+                options: ['A las seis', 'A las siete', 'A las ocho', 'A las nueve'],
+                correctIndex: 1,
+                explanation: 'Sofía sagt: "Cada mañana me despierto a las siete."',
+            },
+            {
+                id: 'es-a1-mi-dia-q2',
+                type: 'trueFalse',
+                question: 'La asignatura favorita de Sofía es la música.',
+                questionDe: 'Sofías Lieblingsfach ist Musik.',
+                options: ['Richtig', 'Falsch'],
+                correctAnswer: false,
+                explanation: 'Sofías Lieblingsfach ist Spanisch: "Mi asignatura favorita es el español."',
+            },
+            {
+                id: 'es-a1-mi-dia-q3',
+                type: 'multipleChoice',
+                question: '¿Qué come Sofía para el desayuno?',
+                questionDe: 'Was isst Sofía zum Frühstück?',
+                options: ['Cereales y zumo', 'Pan con mantequilla y leche', 'Tostadas y té', 'Huevos y café'],
+                correctIndex: 1,
+                explanation: 'Sofía sagt: "Como pan con mantequilla y bebo un vaso de leche."',
+            },
+            {
+                id: 'es-a1-mi-dia-q4',
+                type: 'freeText',
+                question: '¿Qué hace Sofía por la tarde?',
+                questionDe: 'Was macht Sofía am Nachmittag?',
+                sampleAnswer: 'Sofía juega con sus amigos en el parque. Les gusta jugar al fútbol.',
+                explanation: 'Sofía spielt am Nachmittag mit ihren Freunden im Park Fußball.',
+            },
+        ],
+    },
+    {
+        id: 'es-a1-mi-familia',
+        title: 'Mi familia',
+        titleDe: 'Meine Familie',
+        level: 'A1',
+        language: 'es',
+        topic: 'Alltag',
+        icon: '\uD83D\uDC68\u200D\uD83D\uDC69\u200D\uD83D\uDC67\u200D\uD83D\uDC66',
+        readingTimeMinutes: 2,
+        text: `Tengo una familia grande. En mi familia somos seis personas: mi madre, mi padre, mis dos hermanos, mi hermana y yo.
+
+Mi madre es profesora. Trabaja en una escuela primaria. Es muy amable y cocina muy bien. Mi padre es médico. Trabaja en el hospital. Ayuda a personas enfermas cada día.
+
+Mi hermano mayor Tomás tiene diecisiete años. Le gustan los ordenadores y los videojuegos. Mi hermano menor Leo tiene solo cinco años. Es muy divertido. Mi hermana Emma tiene doce años. Le encanta leer libros.
+
+Tenemos un perro que se llama Max. Max es marrón y blanco. Es muy simpático. Los domingos vamos todos juntos al parque. Quiero mucho a mi familia.`,
+        vocabulary: [
+            { word: 'familia', translation: 'Familie', partOfSpeech: 'Nomen' },
+            { word: 'profesora', translation: 'Lehrerin', partOfSpeech: 'Nomen' },
+            { word: 'médico', translation: 'Arzt', partOfSpeech: 'Nomen' },
+            { word: 'hospital', translation: 'Krankenhaus', partOfSpeech: 'Nomen' },
+            { word: 'simpático', translation: 'freundlich/nett', partOfSpeech: 'Adjektiv' },
+            { word: 'juntos', translation: 'zusammen', partOfSpeech: 'Adverb' },
+        ],
+        questions: [
+            {
+                id: 'es-a1-familia-q1',
+                type: 'multipleChoice',
+                question: '¿Cuántas personas hay en la familia?',
+                questionDe: 'Wie viele Personen sind in der Familie?',
+                options: ['Cuatro', 'Cinco', 'Seis', 'Siete'],
+                correctIndex: 2,
+                explanation: 'Es sind sechs Personen: Mutter, Vater, zwei Brüder, eine Schwester und der Erzähler.',
+            },
+            {
+                id: 'es-a1-familia-q2',
+                type: 'trueFalse',
+                question: 'El padre trabaja en una escuela.',
+                questionDe: 'Der Vater arbeitet in einer Schule.',
+                options: ['Richtig', 'Falsch'],
+                correctAnswer: false,
+                explanation: 'Der Vater ist Arzt und arbeitet im Krankenhaus.',
+            },
+            {
+                id: 'es-a1-familia-q3',
+                type: 'multipleChoice',
+                question: '¿Qué le encanta hacer a la hermana Emma?',
+                questionDe: 'Was liebt Schwester Emma?',
+                options: ['Videojuegos', 'Cocinar', 'Leer libros', 'Jugar al fútbol'],
+                correctIndex: 2,
+                explanation: 'Im Text steht: "Mi hermana Emma tiene doce años. Le encanta leer libros."',
+            },
+            {
+                id: 'es-a1-familia-q4',
+                type: 'freeText',
+                question: 'Describe al perro de la familia.',
+                questionDe: 'Beschreibe den Familienhund.',
+                sampleAnswer: 'El perro se llama Max. Es marrón y blanco y muy simpático.',
+                explanation: 'Der Hund heißt Max, ist braun-weiß und sehr freundlich.',
+            },
+        ],
+    },
+
+    // ── Spanish A2 ────────────────────────────────────────────────────
+    {
+        id: 'es-a2-viaje-barcelona',
+        title: 'Un viaje a Barcelona',
+        titleDe: 'Eine Reise nach Barcelona',
+        level: 'A2',
+        language: 'es',
+        topic: 'Reisen',
+        icon: '\uD83C\uDDEA\uD83C\uDDF8',
+        readingTimeMinutes: 3,
+        text: `El verano pasado mi familia y yo fuimos a Barcelona durante una semana. Era mi primera vez en España y estaba muy emocionada. Volamos desde Fráncfort hasta el aeropuerto de Barcelona. El vuelo duró unas dos horas.
+
+Nos alojamos en un pequeño hotel cerca de la playa de la Barceloneta. Desde nuestra ventana podíamos ver el mar Mediterráneo. El primer día visitamos la Sagrada Familia. Es una iglesia enorme diseñada por Gaudí. ¡Fue increíble!
+
+Al día siguiente fuimos al Parque Güell. Está en una colina y tiene unas vistas maravillosas de la ciudad. Había mosaicos de colores por todas partes. Después del parque paseamos por Las Ramblas. Hacía sol y había mucha gente.
+
+El miércoles tomamos el metro hasta el mercado de la Boquería. Había muchos puestos de comida con frutas, pescado y jamón. Compré una camiseta y probé unas tapas de tortilla española. Estaban deliciosas.
+
+Lo mejor del viaje fue el concierto de flamenco que vimos en el Barrio Gótico. Los bailarines y la música eran impresionantes. ¡Quiero volver a Barcelona pronto!`,
+        vocabulary: [
+            { word: 'emocionada', translation: 'aufgeregt', partOfSpeech: 'Adjektiv' },
+            { word: 'vuelo', translation: 'Flug', partOfSpeech: 'Nomen' },
+            { word: 'iglesia', translation: 'Kirche', partOfSpeech: 'Nomen' },
+            { word: 'mosaico', translation: 'Mosaik', partOfSpeech: 'Nomen', textForms: ['mosaicos'] },
+            { word: 'mercado', translation: 'Markt', partOfSpeech: 'Nomen' },
+            { word: 'tapas', translation: 'Tapas (kleine Gerichte)', partOfSpeech: 'Nomen' },
+            { word: 'flamenco', translation: 'Flamenco', partOfSpeech: 'Nomen' },
+            { word: 'impresionante', translation: 'beeindruckend', partOfSpeech: 'Adjektiv', textForms: ['impresionantes'] },
+        ],
+        questions: [
+            {
+                id: 'es-a2-barcelona-q1',
+                type: 'multipleChoice',
+                question: '¿Cuánto tiempo estuvo la familia en Barcelona?',
+                questionDe: 'Wie lange blieb die Familie in Barcelona?',
+                options: ['Tres días', 'Cinco días', 'Una semana', 'Dos semanas'],
+                correctIndex: 2,
+                explanation: 'Die Familie war eine Woche in Barcelona: "fuimos a Barcelona durante una semana"',
+            },
+            {
+                id: 'es-a2-barcelona-q2',
+                type: 'trueFalse',
+                question: 'El Parque Güell está junto al mar.',
+                questionDe: 'Der Parque Güell liegt am Meer.',
+                options: ['Richtig', 'Falsch'],
+                correctAnswer: false,
+                explanation: 'Der Parque Güell liegt auf einem Hügel: "Está en una colina y tiene unas vistas maravillosas de la ciudad."',
+            },
+            {
+                id: 'es-a2-barcelona-q3',
+                type: 'multipleChoice',
+                question: '¿Qué compró el narrador en el mercado?',
+                questionDe: 'Was hat der Erzähler auf dem Markt gekauft?',
+                options: ['Un libro', 'Un sombrero', 'Una camiseta', 'Una bolsa'],
+                correctIndex: 2,
+                explanation: 'Der Erzähler kaufte eine Camiseta: "Compré una camiseta y probé unas tapas."',
+            },
+            {
+                id: 'es-a2-barcelona-q4',
+                type: 'trueFalse',
+                question: 'La Sagrada Familia fue diseñada por Picasso.',
+                questionDe: 'Die Sagrada Familia wurde von Picasso entworfen.',
+                options: ['Richtig', 'Falsch'],
+                correctAnswer: false,
+                explanation: 'Die Sagrada Familia wurde von Gaudí entworfen: "una iglesia enorme diseñada por Gaudí"',
+            },
+            {
+                id: 'es-a2-barcelona-q5',
+                type: 'freeText',
+                question: '¿Cuál fue la mejor parte del viaje?',
+                questionDe: 'Was war der beste Teil der Reise?',
+                sampleAnswer: 'Lo mejor del viaje fue el concierto de flamenco en el Barrio Gótico.',
+                explanation: 'Das Beste war das Flamenco-Konzert im gotischen Viertel.',
+            },
+        ],
+    },
+    {
+        id: 'es-a2-mis-aficiones',
+        title: 'Mis aficiones',
+        titleDe: 'Meine Hobbys',
+        level: 'A2',
+        language: 'es',
+        topic: 'Alltag',
+        icon: '\uD83C\uDFA8',
+        readingTimeMinutes: 3,
+        text: `Todos tienen aficiones que les hacen felices. Yo tengo varias aficiones que disfruto en mi tiempo libre.
+
+Mi afición favorita es dibujar. Dibujo desde que tenía seis años. Normalmente dibujo animales y paisajes. El año pasado gané un premio en un concurso de arte del colegio. Mi profesora de arte dice que tengo talento, pero todavía necesito practicar mucho. Quiero ser diseñador gráfico cuando sea mayor.
+
+También me gusta jugar al baloncesto. Estoy en el equipo del colegio y entrenamos dos veces a la semana. Nuestro entrenador es muy estricto pero justo. El mes pasado jugamos en un torneo y quedamos segundos. Al principio estaba decepcionado, pero después me di cuenta de que el segundo puesto es muy bueno también.
+
+Leer es otra de mis aficiones. Me encantan las novelas de fantasía, especialmente las historias de magia y aventuras. Mi libro favorito trata de un joven mago que salva su reino. Intento leer al menos treinta minutos cada noche antes de dormir.
+
+Los días de lluvia me gusta cocinar con mi abuela. Ella me ha enseñado a hacer tarta de manzana y galletas de chocolate. ¡Cocinar es divertido porque puedes ser creativo y comerte los resultados después!`,
+        vocabulary: [
+            { word: 'afición', translation: 'Hobby', partOfSpeech: 'Nomen', textForms: ['aficiones'] },
+            { word: 'concurso', translation: 'Wettbewerb', partOfSpeech: 'Nomen' },
+            { word: 'talento', translation: 'Talent', partOfSpeech: 'Nomen' },
+            { word: 'diseñador gráfico', translation: 'Grafikdesigner', partOfSpeech: 'Nomen' },
+            { word: 'estricto', translation: 'streng', partOfSpeech: 'Adjektiv' },
+            { word: 'torneo', translation: 'Turnier', partOfSpeech: 'Nomen' },
+            { word: 'decepcionado', translation: 'enttäuscht', partOfSpeech: 'Adjektiv' },
+            { word: 'mago', translation: 'Zauberer', partOfSpeech: 'Nomen' },
+        ],
+        questions: [
+            {
+                id: 'es-a2-aficiones-q1',
+                type: 'multipleChoice',
+                question: '¿Qué dibuja normalmente el narrador?',
+                questionDe: 'Was zeichnet der Erzähler normalerweise?',
+                options: ['Personas y edificios', 'Animales y paisajes', 'Coches y aviones', 'Cómics y dibujos animados'],
+                correctIndex: 1,
+                explanation: 'Der Erzähler zeichnet Tiere und Landschaften: "Normalmente dibujo animales y paisajes."',
+            },
+            {
+                id: 'es-a2-aficiones-q2',
+                type: 'trueFalse',
+                question: 'El equipo de baloncesto ganó el torneo.',
+                questionDe: 'Die Basketballmannschaft hat das Turnier gewonnen.',
+                options: ['Richtig', 'Falsch'],
+                correctAnswer: false,
+                explanation: 'Sie wurden Zweite: "jugamos en un torneo y quedamos segundos."',
+            },
+            {
+                id: 'es-a2-aficiones-q3',
+                type: 'multipleChoice',
+                question: '¿Qué tipo de libros le gusta al narrador?',
+                questionDe: 'Was für Bücher mag der Erzähler?',
+                options: ['Libros de ciencia', 'Novelas históricas', 'Novelas de fantasía', 'Novelas policíacas'],
+                correctIndex: 2,
+                explanation: 'Der Erzähler liebt Fantasy-Romane: "Me encantan las novelas de fantasía."',
+            },
+            {
+                id: 'es-a2-aficiones-q4',
+                type: 'freeText',
+                question: '¿Qué hace el narrador los días de lluvia?',
+                questionDe: 'Was macht der Erzähler an Regentagen?',
+                sampleAnswer: 'Los días de lluvia le gusta cocinar con su abuela. Hacen tarta de manzana y galletas de chocolate.',
+                explanation: 'An Regentagen kocht der Erzähler mit seiner Großmutter Apfelkuchen und Schokoladenkekse.',
             },
         ],
     },

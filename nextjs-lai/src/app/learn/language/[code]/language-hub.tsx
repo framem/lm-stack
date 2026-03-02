@@ -6,15 +6,20 @@ import {
     ArrowLeft,
     Award,
     BookOpen,
+    BookText,
     CheckCircle2,
+    ClipboardList,
     Clock,
     Compass,
+    GraduationCap,
+    Headphones,
     HelpCircle,
     Keyboard,
     Languages,
     Map as MapIcon,
     MessageSquare,
     Mic,
+    PenLine,
     RotateCcw,
     Sparkles,
     TrendingUp,
@@ -384,28 +389,37 @@ export function LanguageHub({
                 )}
             </section>
 
-            {/* ── Konversation Section ── */}
+            {/* ── Übungen Section ── */}
             <section className="space-y-4">
                 <h2 className="text-lg font-semibold flex items-center gap-2">
-                    <MessageSquare className="h-5 w-5" />
-                    Konversation
+                    <GraduationCap className="h-5 w-5" />
+                    Übungen
                 </h2>
-                <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-background">
-                    <CardContent className="flex items-center justify-between p-6">
-                        <div>
-                            <h3 className="font-semibold">Konversation üben</h3>
-                            <p className="text-sm text-muted-foreground">
-                                Übe {language} in Alltagsszenarien mit KI
-                            </p>
-                        </div>
-                        <Button asChild>
-                            <Link href={`/learn/language/${code}/conversation`}>
-                                <MessageSquare className="h-4 w-4" />
-                                Starten
-                            </Link>
-                        </Button>
-                    </CardContent>
-                </Card>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {[
+                        { href: `/learn/language/${code}/conversation`, icon: MessageSquare, title: 'Konversation', desc: 'Alltagsszenarien mit KI üben', color: 'text-blue-600', bg: 'bg-blue-100 dark:bg-blue-950' },
+                        { href: `/learn/language/${code}/listening`, icon: Headphones, title: 'Hörverstehen', desc: 'Hörübungen mit Verständnisfragen', color: 'text-violet-600', bg: 'bg-violet-100 dark:bg-violet-950' },
+                        { href: `/learn/language/${code}/writing`, icon: PenLine, title: 'Schreibübungen', desc: 'Freies Schreiben, Lückentext & Satzumstellung', color: 'text-emerald-600', bg: 'bg-emerald-100 dark:bg-emerald-950' },
+                        { href: `/learn/language/${code}/grammar`, icon: Languages, title: 'Grammatik', desc: 'Konjugation, Deklination & Satzbau', color: 'text-amber-600', bg: 'bg-amber-100 dark:bg-amber-950' },
+                        { href: `/learn/language/${code}/reading`, icon: BookText, title: 'Lesen', desc: 'Texte lesen und Fragen beantworten', color: 'text-rose-600', bg: 'bg-rose-100 dark:bg-rose-950' },
+                        { href: `/learn/language/${code}/pronunciation`, icon: Mic, title: 'Aussprache', desc: 'Aussprache üben mit Spracherkennung', color: 'text-cyan-600', bg: 'bg-cyan-100 dark:bg-cyan-950' },
+                        { href: `/learn/language/${code}/exam`, icon: ClipboardList, title: 'Prüfungsmodus', desc: 'Prüfungssimulation mit Zeitlimit', color: 'text-orange-600', bg: 'bg-orange-100 dark:bg-orange-950' },
+                    ].map((item) => (
+                        <Link key={item.href} href={item.href}>
+                            <Card className="h-full hover:border-primary/40 transition-colors">
+                                <CardContent className="flex items-start gap-3 p-4">
+                                    <div className={`p-2 rounded-lg shrink-0 ${item.bg}`}>
+                                        <item.icon className={`h-5 w-5 ${item.color}`} />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="font-semibold text-sm">{item.title}</p>
+                                        <p className="text-xs text-muted-foreground">{item.desc}</p>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </Link>
+                    ))}
+                </div>
             </section>
 
             {/* ── Tagesübung Section ── */}
