@@ -2,7 +2,7 @@ import { createGateway, embed, embedMany } from 'ai'
 import { createOllama } from 'ai-sdk-ollama'
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 
-type LLMProvider = 'ollama' | 'lmstudio' | 'gateway'
+type LLMProvider = 'ollama' | 'lmstudio' | 'gateway' | 'vllm'
 
 const provider: LLMProvider = (process.env.LLM_PROVIDER as LLMProvider) || 'lmstudio'
 const modelName = process.env.LLM_MODEL || 'qwen3:8b'
