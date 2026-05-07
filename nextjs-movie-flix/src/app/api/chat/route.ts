@@ -119,9 +119,13 @@ export async function POST(req: Request) {
     }
 
     for (const msg of uiMessages) {
-        if (!msg || typeof msg.role !== 'string' || typeof msg.content !== 'string') {
+        if (
+            !msg ||
+            typeof (msg as { role?: unknown }).role !== 'string' ||
+            !Array.isArray((msg as { parts?: unknown }).parts)
+        ) {
             return new Response(
-                JSON.stringify({ error: 'Each message must have a role and content string' }),
+                JSON.stringify({ error: 'Each message must have a role and a parts array' }),
                 { status: 400 },
             )
         }

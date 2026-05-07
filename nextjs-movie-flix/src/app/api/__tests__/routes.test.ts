@@ -201,17 +201,17 @@ describe('POST /api/chat', () => {
     it('should return 400 when a message is missing role', async () => {
         const request = new Request('http://localhost/api/chat', {
             method: 'POST',
-            body: JSON.stringify({ messages: [{ content: 'hello' }] }),
+            body: JSON.stringify({ messages: [{ parts: [{ type: 'text', text: 'hello' }] }] }),
             headers: { 'Content-Type': 'application/json' },
         })
         const response = await POST(request)
         const data = await response.json()
 
         expect(response.status).toBe(400)
-        expect(data.error).toBe('Each message must have a role and content string')
+        expect(data.error).toBe('Each message must have a role and a parts array')
     })
 
-    it('should return 400 when a message is missing content', async () => {
+    it('should return 400 when a message is missing parts', async () => {
         const request = new Request('http://localhost/api/chat', {
             method: 'POST',
             body: JSON.stringify({ messages: [{ role: 'user' }] }),
@@ -221,14 +221,14 @@ describe('POST /api/chat', () => {
         const data = await response.json()
 
         expect(response.status).toBe(400)
-        expect(data.error).toBe('Each message must have a role and content string')
+        expect(data.error).toBe('Each message must have a role and a parts array')
     })
 
     it('should return a streaming response for valid messages', async () => {
         const request = new Request('http://localhost/api/chat', {
             method: 'POST',
             body: JSON.stringify({
-                messages: [{ role: 'user', content: 'Recommend a movie' }],
+                messages: [{ role: 'user', parts: [{ type: 'text', text: 'Recommend a movie' }] }],
             }),
             headers: { 'Content-Type': 'application/json' },
         })
