@@ -1,4 +1,4 @@
-import { createGateway, embed, embedMany } from 'ai'
+import { createGateway, embed, embedMany, extractReasoningMiddleware, wrapLanguageModel } from 'ai'
 import { createOllama } from 'ai-sdk-ollama'
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 
@@ -10,6 +10,8 @@ const modelName = process.env.LLM_MODEL || 'qwen3:8b'
 const embeddingProvider: LLMProvider = (process.env.EMBEDDING_PROVIDER as LLMProvider) || provider
 const embeddingModelName = process.env.EMBEDDING_MODEL || 'no-embedding-model-provided'
 const embeddingProviderUrl = process.env.EMBEDDING_PROVIDER_URL || process.env.LLM_PROVIDER_URL
+
+const reasoningMiddleware = extractReasoningMiddleware({ tagName: 'think' })
 
 export function getModel() {
     switch (provider) {
