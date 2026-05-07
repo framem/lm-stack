@@ -5,6 +5,20 @@ import {StreamableHTTPServerTransport} from '@modelcontextprotocol/sdk/server/st
 import {createServer, IncomingMessage, ServerResponse} from 'http'
 import {registerTools} from './tools'
 
+// Parses "alice:token1,bob:token2" into a Map<token, clientName>
+function parseTokens(raw: string): Map<string, string> {
+  const map = new Map<string, string>()
+  for (const entry of raw.split(',')) {
+    const colon = entry.indexOf(':')
+    if (colon > 0) {
+      const name = entry.slice(0, colon).trim()
+      const token = entry.slice(colon + 1).trim()
+      if (name && token) map.set(token, name)
+    }
+  }
+  return map
+}
+
 export function createMcpServer(): McpServer {
   const server = new McpServer({
     name: 'simple-mcp-stream',
@@ -18,16 +32,25 @@ export function createMcpServer(): McpServer {
 
 export function startServer(port: number): { httpServer: ReturnType<typeof createServer>, close: () => Promise<void> } {
   const sessions = new Map<string, { server: McpServer, transport: StreamableHTTPServerTransport }>()
+  const validTokens = parseTokens(process.env.MCP_TOKENS ?? '')
 
   const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse) => {
     res.setHeader('Access-Control-Allow-Origin', '*')
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS')
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, mcp-session-id')
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, mcp-session-id, Authorization')
     res.setHeader('Access-Control-Expose-Headers', 'mcp-session-id')
 
     if (req.method === 'OPTIONS') {
       res.writeHead(204)
       res.end()
+      return
+    }
+
+    const authHeader = req.headers['authorization']
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined
+    if (!token || !validTokens.has(token)) {
+      res.writeHead(401, {'Content-Type': 'application/json'})
+      res.end(JSON.stringify({error: 'Unauthorized'}))
       return
     }
 

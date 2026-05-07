@@ -6,9 +6,12 @@ let baseUrl: string
 let close: () => Promise<void>
 let httpServer: http.Server
 
+const TEST_TOKEN = 'testtoken123'
+
 const MCP_HEADERS = {
   'Content-Type': 'application/json',
   'Accept': 'application/json, text/event-stream',
+  'Authorization': `Bearer ${TEST_TOKEN}`,
 }
 
 function jsonRpcRequest(method: string, params: Record<string, unknown> = {}, id: number = 1) {
@@ -78,10 +81,79 @@ function request(method: string, path: string, headers: Record<string, string> =
   })
 }
 
+describe('MCP Server authentication', () => {
+  let authBaseUrl: string
+  let authClose: () => Promise<void>
+  let authHttpServer: http.Server
+
+  beforeAll(async () => {
+    process.env.MCP_TOKENS = `testuser:${TEST_TOKEN}`
+    const result = startServer(0)
+    authHttpServer = result.httpServer
+    authClose = result.close
+
+    await new Promise<void>((resolve) => {
+      if (authHttpServer.listening) resolve()
+      else authHttpServer.on('listening', () => resolve())
+    })
+
+    const addr = authHttpServer.address() as {port: number}
+    authBaseUrl = `http://127.0.0.1:${addr.port}`
+  })
+
+  afterAll(async () => {
+    await authClose()
+  })
+
+  function authPost(path: string, body: unknown, headers: Record<string, string> = {}): Promise<{status: number, headers: http.IncomingHttpHeaders, body: string}> {
+    return new Promise((resolve, reject) => {
+      const url = new URL(path, authBaseUrl)
+      const data = JSON.stringify(body)
+      const req = http.request(url, {method: 'POST', headers: {...MCP_HEADERS, ...headers}}, (res) => {
+        const chunks: Buffer[] = []
+        res.on('data', (chunk) => chunks.push(chunk))
+        res.on('end', () => resolve({status: res.statusCode!, headers: res.headers, body: Buffer.concat(chunks).toString()}))
+        res.on('error', reject)
+      })
+      req.on('error', reject)
+      req.write(data)
+      req.end()
+    })
+  }
+
+  it('should return 401 when no Authorization header is sent', async () => {
+    const res = await authPost('/mcp', jsonRpcRequest('initialize', {
+      protocolVersion: '2025-03-26',
+      capabilities: {},
+      clientInfo: {name: 'test-client', version: '1.0.0'},
+    }), {'Authorization': ''})
+    expect(res.status).toBe(401)
+  })
+
+  it('should return 401 when an invalid token is sent', async () => {
+    const res = await authPost('/mcp', jsonRpcRequest('initialize', {
+      protocolVersion: '2025-03-26',
+      capabilities: {},
+      clientInfo: {name: 'test-client', version: '1.0.0'},
+    }), {'Authorization': 'Bearer wrongtoken'})
+    expect(res.status).toBe(401)
+  })
+
+  it('should allow requests with a valid token', async () => {
+    const res = await authPost('/mcp', jsonRpcRequest('initialize', {
+      protocolVersion: '2025-03-26',
+      capabilities: {},
+      clientInfo: {name: 'test-client', version: '1.0.0'},
+    }))
+    expect(res.status).toBe(200)
+  })
+})
+
 describe('MCP Server', () => {
   let sessionId: string
 
   beforeAll(async () => {
+    process.env.MCP_TOKENS = `testuser:${TEST_TOKEN}`
     // Use port 0 to let the OS assign a random available port
     const result = startServer(0)
     httpServer = result.httpServer
@@ -183,7 +255,7 @@ describe('MCP Server', () => {
 
     expect(res.headers['access-control-allow-origin']).toBe('*')
     expect(res.headers['access-control-allow-methods']).toBe('GET, POST, DELETE, OPTIONS')
-    expect(res.headers['access-control-allow-headers']).toBe('Content-Type, mcp-session-id')
+    expect(res.headers['access-control-allow-headers']).toBe('Content-Type, mcp-session-id, Authorization')
     expect(res.headers['access-control-expose-headers']).toBe('mcp-session-id')
   })
 
@@ -195,12 +267,12 @@ describe('MCP Server', () => {
   })
 
   it('should return 405 for GET without session', async () => {
-    const res = await request('GET', '/mcp')
+    const res = await request('GET', '/mcp', {'Authorization': `Bearer ${TEST_TOKEN}`})
     expect(res.status).toBe(405)
   })
 
   it('should return 405 for DELETE without session', async () => {
-    const res = await request('DELETE', '/mcp')
+    const res = await request('DELETE', '/mcp', {'Authorization': `Bearer ${TEST_TOKEN}`})
     expect(res.status).toBe(405)
   })
 })
@@ -211,6 +283,7 @@ describe('MCP Server multiple concurrent sessions', () => {
   let multiBaseUrl: string
 
   beforeAll(async () => {
+    process.env.MCP_TOKENS = `testuser:${TEST_TOKEN}`
     const result = startServer(0)
     multiHttpServer = result.httpServer
     multiClose = result.close

@@ -12,7 +12,6 @@ export function registerTools(server: McpServer): void {
             }],
         }
     })
-
     server.registerTool('getRandomNumber', {
         description: 'Returns a random integer between lower and upper (inclusive)',
         inputSchema: {
