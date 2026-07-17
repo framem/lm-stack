@@ -145,6 +145,7 @@ WICHTIG: Wenn der Nutzer nach Filmen fragt, die einem bestimmten Film ähnlich s
         messages: modelMessages,
         tools,
         stopWhen: stepCountIs(3),
+        maxOutputTokens: 8192,
     })
 
     return result.toUIMessageStreamResponse()
