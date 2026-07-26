@@ -1,5 +1,11 @@
 import { generateText } from 'ai'
-import { getModel, providerOptionsKey, supportsLogprobs } from './llm.js'
+import {
+    canDisableReasoning,
+    getModel,
+    providerOptionsKey,
+    reasoningEnabled,
+    supportsLogprobs,
+} from './llm.js'
 import {
     CATEGORIES,
     extractFinishReason,
@@ -99,6 +105,27 @@ type ClassifyOptions = {
 }
 
 /**
+ * Assembles the provider-specific request body.
+ *
+ * Mind the two casings — they are not interchangeable. Keys the provider does
+ * not know are forwarded verbatim, so those need their wire name (`logprobs`,
+ * `top_logprobs`). `reasoningEffort` it does know, and maps to `reasoning_effort`
+ * itself; passing the snake_case name instead drops it silently and the model
+ * keeps on reasoning.
+ */
+function buildProviderOptions(requestLogprobs: boolean) {
+    const body: Record<string, string | number | boolean> = {}
+
+    if (canDisableReasoning && !reasoningEnabled) body.reasoningEffort = 'none'
+    if (requestLogprobs && supportsLogprobs) {
+        body.logprobs = true
+        body.top_logprobs = TOP_LOGPROBS
+    }
+
+    return Object.keys(body).length > 0 ? { [providerOptionsKey]: body } : {}
+}
+
+/**
  * Shared request path for both strategies. Everything except the system prompt
  * and the logprobs request is identical, so the two are directly comparable.
  */
@@ -109,12 +136,7 @@ async function classify(text: string, options: ClassifyOptions): Promise<Classif
         prompt: text,
         temperature: 0,
         maxOutputTokens: MAX_OUTPUT_TOKENS,
-        // Unknown keys are forwarded verbatim into the OpenAI-compatible body,
-        // so snake_case is required here.
-        providerOptions:
-            options.requestLogprobs && supportsLogprobs
-                ? { [providerOptionsKey]: { logprobs: true, top_logprobs: TOP_LOGPROBS } }
-                : {},
+        providerOptions: buildProviderOptions(options.requestLogprobs),
         // Needed to read the provider's raw response body (where logprobs live).
         include: { responseBody: true },
     })
@@ -129,10 +151,10 @@ async function classify(text: string, options: ClassifyOptions): Promise<Classif
             const truncated = extractFinishReason(body) === 'length'
             throw new Error(
                 truncated
-                    ? `Das Budget von ${MAX_OUTPUT_TOKENS} Tokens ging fürs Reasoning drauf,` +
-                      ' bevor eine Kategorie kam. Entweder braucht das Modell mehr Tokens,' +
-                      ' oder es dreht sich im Kreis, weil keine Kategorie wirklich passt.'
-                    : 'Leere Antwort — das Modell hat nur nachgedacht und dann keine Kategorie genannt.',
+                    ? `Das Budget von ${MAX_OUTPUT_TOKENS} Tokens war aufgebraucht,` +
+                      ' bevor eine Kategorie kam — beim Reasoning hängen geblieben.' +
+                      ' Setze LLM_REASONING=false oder erhöhe MAX_OUTPUT_TOKENS.'
+                    : 'Leere Antwort — das Modell hat sich auf keine Kategorie festgelegt.',
             )
         }
         throw new Error(

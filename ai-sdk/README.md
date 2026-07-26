@@ -86,3 +86,11 @@ Das ist eine Heuristik: sie braucht `top_logprobs` und funktioniert nur, solange
 | `gateway`  | modellabhängig | Vercel AI Gateway                                     |
 
 Umschalten über `LLM_PROVIDER` / `LLM_MODEL` / `LLM_PROVIDER_URL` in der `.env` — siehe `.env.example`.
+
+## Reasoning
+
+`LLM_REASONING` (Standard `false`, nur `lmstudio`/`vllm`) steuert, ob das Modell vor der Antwort nachdenken darf.
+
+Für ein Ein-Wort-Label ist die Denkphase reiner Overhead: Ein Reasoning-Modell verbraucht das Token-Budget zuerst fürs Denken und nennt die Kategorie erst danach. Bei einem Text, der in keine Kategorie passt, kann es sich dabei im Kreis drehen, bis der Kontext voll ist — dann kommt gar keine Antwort. Mit `false` geht das Budget an das Label selbst; Modelle ohne Denkphase ignorieren den Schalter.
+
+Am Beispiel `google/gemma-4-12b-qat` über alle Beispieltexte: **2 min 25 s mit Reasoning, 6 s ohne** — bei gleicher Trefferquote.

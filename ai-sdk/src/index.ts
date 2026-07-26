@@ -8,7 +8,13 @@ import {
     type ClassificationMethod,
     type ClassificationResult,
 } from './classify.js'
-import { modelName, provider, supportsLogprobs } from './llm.js'
+import {
+    canDisableReasoning,
+    modelName,
+    provider,
+    reasoningEnabled,
+    supportsLogprobs,
+} from './llm.js'
 import { matchCategory, toProbability } from './probabilities.js'
 import type { Category } from './schema.js'
 
@@ -209,7 +215,8 @@ async function main(): Promise<void> {
     const inputs: Array<{ text: string; expected?: Category }> =
         args.length > 0 ? args.map((text) => ({ text })) : DEFAULT_TEXTS
 
-    console.log(`Provider: ${provider}   Modell: ${modelName}`)
+    const reasoning = canDisableReasoning ? (reasoningEnabled ? 'an' : 'aus') : 'providerabhängig'
+    console.log(`Provider: ${provider}   Modell: ${modelName}   Reasoning: ${reasoning}`)
     if (args.length === 0) {
         console.log('Keine Eingabe übergeben — nutze Beispieltexte.')
         console.log('Aufruf: npm run classify -- "Dein Text"')

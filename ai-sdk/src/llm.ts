@@ -19,6 +19,22 @@ export const providerOptionsKey = provider
 /** Backends that expose OpenAI-style `logprobs` in their chat completion response. */
 export const supportsLogprobs = provider === 'lmstudio' || provider === 'vllm'
 
+/**
+ * Whether the model may think before it answers (`LLM_REASONING`, default off).
+ *
+ * For a one-word label the reasoning phase is pure overhead, and on a text that
+ * fits no category it can spiral until the context runs out — leaving an empty
+ * answer. Turning it off keeps the budget on the label itself; models without a
+ * reasoning phase ignore the switch. Set `true` to compare both modes.
+ */
+export const reasoningEnabled = (process.env.LLM_REASONING ?? 'false').toLowerCase() === 'true'
+
+/**
+ * Only the OpenAI-compatible backends take `reasoning_effort`; for the others
+ * the switch has nothing to act on.
+ */
+export const canDisableReasoning = provider === 'lmstudio' || provider === 'vllm'
+
 export function getModel() {
     switch (provider) {
         case 'gateway': {
