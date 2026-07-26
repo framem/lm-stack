@@ -43,16 +43,10 @@ Das Netzwerk nutzt das **Orchestrator-Pattern mit parallelem Fan-Out** (via Lang
 
 ```bash
 cd lang-graph
-python -m venv .venv
-
-# Windows
-.venv\Scripts\activate
-
-# Linux/macOS
-source .venv/bin/activate
-
-pip install -r requirements.txt
+uv sync
 ```
+
+Die Abhängigkeiten stehen in `pyproject.toml`; `uv sync` erstellt das `.venv` und installiert sie anhand von `uv.lock`.
 
 ## Konfiguration
 
@@ -85,8 +79,10 @@ LLM_PROVIDER_URL=http://localhost:11434
 ## Verwendung
 
 ```bash
-python -m src.main
+uv run start
 ```
+
+`uv run` wählt automatisch das Projekt-`.venv` und synct vorher die Abhängigkeiten — ein manuelles Aktivieren des venv ist nicht nötig. Ist ein fremdes venv aktiv (z. B. aus einem Nachbarprojekt), wird es dabei ignoriert.
 
 ### Befehle
 
@@ -138,8 +134,8 @@ lang-graph/
 ├── tests/                   # Tests
 ├── .env                     # Umgebungsvariablen
 ├── .env.example             # Beispiel-Konfiguration
-├── requirements.txt         # Python-Abhängigkeiten
-└── pyproject.toml           # Projekt-Metadaten
+├── pyproject.toml           # Projekt-Metadaten und Python-Abhängigkeiten
+└── uv.lock                  # Gepinnte Abhängigkeiten
 ```
 
 ## Neue Agenten hinzufuegen
@@ -200,6 +196,6 @@ Die Verbindung zum MCP-Server erfolgt ueber Streamable HTTP Transport (JSON-RPC)
 
 Der MCP-Server laeuft als Teil der NextJS-App unter `/api/mcp` und stellt Film-Datenbank-Tools bereit.
 
-```python
-python -m src.main --png
+```bash
+uv run start --png
 ```

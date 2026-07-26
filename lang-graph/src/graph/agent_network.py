@@ -165,6 +165,7 @@ def orchestrator_node(state: dict) -> dict:
     ]
 
     response = llm.invoke(synthesis_messages)
+
     return {"messages": [AIMessage(content=response.content)]}
 
 
