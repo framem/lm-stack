@@ -4,8 +4,11 @@ import { formatThreshold, reasoningLabel, METHOD_LABELS, METHODS } from './class
 import type { ClassificationMethod } from './classify.js'
 import type { Category } from './schema.js'
 
-/** Where the reports go, relative to the project root. */
-const OUTPUT_DIR = 'dist'
+/**
+ * Where the reports go, relative to the project root. Deliberately not `dist`:
+ * these are results worth keeping, and the repo ignores build output there.
+ */
+const OUTPUT_DIR = 'reports'
 
 /** What a single run measured for one mode, ready to be written out. */
 export type ModeReport = {
@@ -153,7 +156,7 @@ function withoutSection(body: string, heading: string): string[] {
 }
 
 /**
- * Writes the run into `dist/<modell>.md`, newest run first.
+ * Writes the run into `reports/<modell>.md`, newest run first.
  *
  * Existing runs are kept, so the file grows into a history for that model —
  * except a run from the same day, which is replaced rather than duplicated.

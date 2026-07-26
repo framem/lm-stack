@@ -97,10 +97,10 @@ Am Beispiel `google/gemma-4-12b-qat` über alle Beispieltexte: **2 min 26 s mit 
 
 ## Berichte
 
-Jeder Lauf schreibt seine Ergebnisse nach `dist/<modell>.md` — eine Datei pro Modell, mit je einem Abschnitt pro Modus:
+Jeder Lauf schreibt seine Ergebnisse nach `reports/<modell>.md` — eine Datei pro Modell, mit je einem Abschnitt pro Modus:
 
 ```
-dist/
+reports/
   gemma-4-12b-qat.md
   lfm2-1.2b-rag.md
 ```
