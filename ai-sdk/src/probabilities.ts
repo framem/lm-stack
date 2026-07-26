@@ -6,9 +6,7 @@ export function toProbability(logprob: number): number {
 }
 
 export type CategoryDistribution = {
-    /** Index of the token at which the categories become distinguishable. */
-    tokenIndex: number
-    /** The token the model actually sampled at that position. */
+    /** The label token the model actually sampled. */
     token: string
     /** Probability per category, renormalised over the matched candidates. */
     probabilities: Array<{ category: Category; probability: number }>
@@ -34,9 +32,9 @@ export function toCategoryProbabilities(
     return result
 }
 
-/** Strips JSON scaffolding around a token so `"L` and `L` compare equally. */
+/** Normalises a token so ` Leb` and `Leb` compare equally. */
 function normalizeToken(token: string): string {
-    return token.replace(/["\s]/g, '').toLowerCase()
+    return token.trim().toLowerCase()
 }
 
 /** The category a token unambiguously starts, or `null` if it fits none or several. */
@@ -54,61 +52,45 @@ export function matchCategory(token: string): Category | null {
 /**
  * Derives a category distribution from the token-level logprobs.
  *
- * The model emits the label as one or more tokens (e.g. `Leb` + `ensmittel`).
- * We look for the first position where the *sampled* token starts one category
- * and an alternative starts a different one — that is where the model actually
- * decided — and renormalise those candidates into a distribution.
+ * The model answers with the bare label, so its decision falls on the very first
+ * token — `Leb` vs `Werk`. The alternatives in that token's `top_logprobs` are
+ * the competing categories; everything after it (`ensmittel`) is already
+ * determined. We renormalise the candidates over each other, since the rest of
+ * the probability mass at that position sits on tokens that are no label at all.
  *
- * Anchoring on the sampled token matters: with constrained decoding the very
- * first position (`{` of the JSON envelope) also lists category tokens as
- * alternatives, but the model was not choosing a label there.
- *
- * This is a heuristic: it needs `top_logprobs` and it only works while the
- * category labels differ in their first tokens.
+ * Requires `top_logprobs`, and works only while the labels differ in their first
+ * token — `Lebensmittel` vs `Lederwaren` would both normalise to `Le`.
  */
 export function deriveCategoryDistribution(
     entries: LogprobEntry[],
 ): CategoryDistribution | null {
-    for (const [tokenIndex, entry] of entries.entries()) {
-        const sampledCategory = matchCategory(entry.token)
-        if (sampledCategory === null) continue
+    // Normally entry #0, but a model may emit a leading whitespace token first.
+    const decision = entries.find((entry) => matchCategory(entry.token) !== null)
+    if (decision === undefined) return null
 
-        // The sampled token is usually repeated inside top_logprobs, so dedupe.
-        const candidates = new Map<string, number>()
-        for (const candidate of [entry, ...(entry.top_logprobs ?? [])]) {
-            const previous = candidates.get(candidate.token)
-            if (previous === undefined || candidate.logprob > previous) {
-                candidates.set(candidate.token, candidate.logprob)
-            }
-        }
+    // Keep the highest logprob per category; the sampled token is repeated
+    // inside top_logprobs, and spacing variants (`Leb`, ` Leb`) can collide.
+    const best = new Map<Category, number>()
+    for (const candidate of [decision, ...(decision.top_logprobs ?? [])]) {
+        const category = matchCategory(candidate.token)
+        if (category === null) continue
 
-        const best = new Map<Category, number>()
-        for (const [token, logprob] of candidates) {
-            const category = matchCategory(token)
-            if (category === null) continue
-
-            const previous = best.get(category)
-            if (previous === undefined || logprob > previous) {
-                best.set(category, logprob)
-            }
-        }
-
-        if (best.size < 2) continue
-
-        const raw = [...best].map(([category, logprob]) => ({
-            category,
-            probability: toProbability(logprob),
-        }))
-        const total = raw.reduce((sum, item) => sum + item.probability, 0)
-
-        return {
-            tokenIndex,
-            token: entry.token,
-            probabilities: raw
-                .map((item) => ({ ...item, probability: item.probability / total }))
-                .sort((a, b) => b.probability - a.probability),
+        const previous = best.get(category)
+        if (previous === undefined || candidate.logprob > previous) {
+            best.set(category, candidate.logprob)
         }
     }
 
-    return null
+    const raw = [...best].map(([category, logprob]) => ({
+        category,
+        probability: toProbability(logprob),
+    }))
+    const total = raw.reduce((sum, item) => sum + item.probability, 0)
+
+    return {
+        token: decision.token,
+        probabilities: raw
+            .map((item) => ({ ...item, probability: item.probability / total }))
+            .sort((a, b) => b.probability - a.probability),
+    }
 }
