@@ -5,7 +5,7 @@ Erzeugt von `npm run classify`.
 
 ## 2026-07-26
 
-Provider `lmstudio` · Modell `google/gemma-4-12b-qat` · 21:01 Uhr
+Provider `lmstudio` · Modell `google/gemma-4-12b-qat` · 21:15 Uhr
 
 ### Ohne Reasoning
 
@@ -41,7 +41,7 @@ Laufzeit: 5.2 s
 
 Trefferquote: Logits 18/18 (100 %) · Prompt 18/18 (100 %)
 
-Laufzeit: 2 min 24 s
+Laufzeit: 2 min 27 s
 
 Auffällig: Prompt: 1× ohne Antwort
 

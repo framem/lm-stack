@@ -75,8 +75,15 @@ export const METHOD_LABELS: Record<ClassificationMethod, string> = {
  */
 export const REASONING_MODES = [false, true] as const
 
-/** Section heading per mode, in the console and in the report alike. */
+/**
+ * Section heading per mode, in the console and in the report alike.
+ *
+ * Without a way to switch reasoning off, "Ohne Reasoning" would claim something
+ * we never did — the provider decides, and we only report under which setting
+ * the numbers were measured.
+ */
 export function reasoningLabel(reasoning: boolean): string {
+    if (!canDisableReasoning) return 'Provider-Standard'
     return reasoning ? 'Mit Reasoning' : 'Ohne Reasoning'
 }
 

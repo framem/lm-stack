@@ -168,10 +168,17 @@ export async function writeReport(report: RunReport, cwd = process.cwd()): Promi
     const previous = await readFile(file, 'utf8').catch(() => '')
     const kept = withoutSection(previous, formatDate(report.date))
 
+    // A provider without a reasoning switch yields one section, and the intro
+    // must not promise two. The two-mode case is always the same pair.
+    const intro =
+        report.modes.length > 1
+            ? 'Klassifikation der Beispieltexte, je einmal mit und ohne Reasoning.'
+            : 'Klassifikation der Beispieltexte.'
+
     const content = [
         `# ${report.model}`,
         '',
-        'Klassifikation der Beispieltexte, je einmal mit und ohne Reasoning.',
+        intro,
         'Erzeugt von `npm run classify`.',
         '',
         renderRun(report),
