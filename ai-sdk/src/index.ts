@@ -1,13 +1,17 @@
 import 'dotenv/config'
+import path from 'node:path'
 import {
     classifyOnlyViaLogits,
     classifyOnlyViaPrompt,
     formatThreshold,
     METHOD_LABELS,
     METHODS,
+    reasoningLabel,
+    REASONING_MODES,
     type ClassificationMethod,
     type ClassificationResult,
 } from './classify.js'
+import { writeReport, type ModeReport, type ReportCell, type ReportRow } from './report.js'
 import {
     canDisableReasoning,
     modelName,
@@ -163,7 +167,7 @@ type Outcome =
 
 const CLASSIFIERS: Record<
     ClassificationMethod,
-    (text: string) => Promise<ClassificationResult>
+    (text: string, reasoning: boolean) => Promise<ClassificationResult>
 > = {
     logits: classifyOnlyViaLogits,
     prompt: classifyOnlyViaPrompt,
@@ -172,9 +176,10 @@ const CLASSIFIERS: Record<
 async function run(
     method: ClassificationMethod,
     text: string,
+    reasoning: boolean,
 ): Promise<Outcome> {
     try {
-        return { ok: true, result: await CLASSIFIERS[method](text) }
+        return { ok: true, result: await CLASSIFIERS[method](text, reasoning) }
     } catch (error: unknown) {
         return { ok: false, message: error instanceof Error ? error.message : String(error) }
     }
@@ -209,41 +214,57 @@ function printTable(header: string[], rows: string[][]): void {
     for (const row of rows) console.log(line(row))
 }
 
-async function main(): Promise<void> {
-    const args = process.argv.slice(2)
-    // Texts from the command line have no known category to check against.
-    const inputs: Array<{ text: string; expected?: Category }> =
-        args.length > 0 ? args.map((text) => ({ text })) : DEFAULT_TEXTS
+type Input = { text: string; expected?: Category }
 
-    const reasoning = canDisableReasoning ? (reasoningEnabled ? 'an' : 'aus') : 'providerabhängig'
-    console.log(`Provider: ${provider}   Modell: ${modelName}   Reasoning: ${reasoning}`)
-    if (args.length === 0) {
-        console.log('Keine Eingabe übergeben — nutze Beispieltexte.')
-        console.log('Aufruf: npm run classify -- "Dein Text"')
+/** Turns one outcome into the shape the report writer expects. */
+function toReportCell(outcome: Outcome, expected?: Category): ReportCell {
+    if (!outcome.ok) return { ok: false, message: outcome.message }
+
+    return {
+        ok: true,
+        category: outcome.result.category,
+        correct: expected === undefined ? null : outcome.result.category === expected,
+        confidence: outcome.result.confidence,
     }
+}
 
+/**
+ * Runs every text through both strategies in one mode.
+ *
+ * `verbose` decides whether the per-token detail goes to the console. Only the
+ * mode picked by `LLM_REASONING` prints it — measuring both modes but dumping
+ * both in full would bury the comparison.
+ */
+async function runMode(inputs: Input[], reasoning: boolean, verbose: boolean): Promise<ModeReport> {
     const hits: Record<ClassificationMethod, number> = { logits: 0, prompt: 0 }
     const unsure: Record<ClassificationMethod, number> = { logits: 0, prompt: 0 }
-    const rows: string[][] = []
+    const failures: Record<ClassificationMethod, number> = { logits: 0, prompt: 0 }
+    const rows: ReportRow[] = []
+    const consoleRows: string[][] = []
     let checked = 0
 
+    const startedAt = Date.now()
+
     for (const input of inputs) {
-        console.log(`\n${'='.repeat(60)}`)
+        if (verbose) console.log(`\n${'='.repeat(60)}`)
 
         const outcomes: Record<ClassificationMethod, Outcome> = {
             // Sequential on purpose: a local backend serves one request at a time.
-            logits: await run('logits', input.text),
-            prompt: await run('prompt', input.text),
+            logits: await run('logits', input.text, reasoning),
+            prompt: await run('prompt', input.text, reasoning),
         }
 
         for (const method of METHODS) {
             const outcome = outcomes[method]
             if (outcome.ok) {
                 if (outcome.result.confident === false) unsure[method] += 1
-                printResult(outcome.result, input.expected)
+                if (verbose) printResult(outcome.result, input.expected)
             } else {
-                console.log(`\n── ${METHOD_LABELS[method]} ──`)
-                console.log(`Fehler: ${outcome.message}`)
+                failures[method] += 1
+                if (verbose) {
+                    console.log(`\n── ${METHOD_LABELS[method]} ──`)
+                    console.log(`Fehler: ${outcome.message}`)
+                }
             }
         }
 
@@ -255,19 +276,26 @@ async function main(): Promise<void> {
             }
         }
 
-        rows.push([
+        rows.push({
+            text: input.text,
+            expected: input.expected,
+            cells: {
+                logits: toReportCell(outcomes.logits, input.expected),
+                prompt: toReportCell(outcomes.prompt, input.expected),
+            },
+        })
+        consoleRows.push([
             input.text,
             input.expected ?? '—',
             ...METHODS.map((method) => formatCell(outcomes[method], input.expected)),
         ])
     }
 
+    const durationMs = Date.now() - startedAt
+
     console.log(`\n${'='.repeat(60)}`)
-    console.log('\nVergleich\n')
-    printTable(
-        ['Text', 'Erwartet', ...METHODS.map((method) => METHOD_LABELS[method])],
-        rows,
-    )
+    console.log(`\n${reasoningLabel(reasoning)} — Vergleich\n`)
+    printTable(['Text', 'Erwartet', ...METHODS.map((method) => METHOD_LABELS[method])], consoleRows)
     console.log(
         `\n  — = Text passt in keine Kategorie    ⚠ = Konfidenz unter ${formatThreshold()}` +
             '    ≠ = Antworttext weicht vom Argmax der Verteilung ab',
@@ -286,6 +314,41 @@ async function main(): Promise<void> {
             )
         }
     }
+
+    return { reasoning, durationMs, hits, unsure, failures, checked, rows }
+}
+
+async function main(): Promise<void> {
+    const args = process.argv.slice(2)
+    // Texts from the command line have no known category to check against.
+    const inputs: Input[] = args.length > 0 ? args.map((text) => ({ text })) : DEFAULT_TEXTS
+
+    // Without a way to turn reasoning off, both modes would measure the same
+    // thing — then one pass in whatever mode the provider gives us is honest.
+    const modes = canDisableReasoning ? [...REASONING_MODES] : [reasoningEnabled]
+
+    console.log(`Provider: ${provider}   Modell: ${modelName}`)
+    console.log(
+        `Modi: ${modes.map(reasoningLabel).join(', ')}` +
+            (modes.length > 1 ? `   (Details im Log: ${reasoningLabel(reasoningEnabled)})` : ''),
+    )
+    if (args.length === 0) {
+        console.log('Keine Eingabe übergeben — nutze Beispieltexte.')
+        console.log('Aufruf: npm run classify -- "Dein Text"')
+    }
+
+    const results: ModeReport[] = []
+    for (const reasoning of modes) {
+        results.push(await runMode(inputs, reasoning, reasoning === reasoningEnabled))
+    }
+
+    const file = await writeReport({
+        provider,
+        model: modelName,
+        date: new Date(),
+        modes: results,
+    })
+    console.log(`\nBericht: ${path.relative(process.cwd(), file)}`)
 }
 
 main().catch((error: unknown) => {

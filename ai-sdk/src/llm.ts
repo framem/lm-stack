@@ -20,12 +20,12 @@ export const providerOptionsKey = provider
 export const supportsLogprobs = provider === 'lmstudio' || provider === 'vllm'
 
 /**
- * Whether the model may think before it answers (`LLM_REASONING`, default off).
+ * The mode to spell out in the console (`LLM_REASONING`, default `false`).
  *
- * For a one-word label the reasoning phase is pure overhead, and on a text that
- * fits no category it can spiral until the context runs out — leaving an empty
- * answer. Turning it off keeps the budget on the label itself; models without a
- * reasoning phase ignore the switch. Set `true` to compare both modes.
+ * A run measures both modes and writes both to the report, so this only picks
+ * which one also gets the per-token detail printed — dumping both in full would
+ * bury the comparison. On a provider that cannot switch reasoning off it does
+ * double as the one mode that runs.
  */
 export const reasoningEnabled = (process.env.LLM_REASONING ?? 'false').toLowerCase() === 'true'
 

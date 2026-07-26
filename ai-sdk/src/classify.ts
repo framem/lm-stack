@@ -1,11 +1,5 @@
 import { generateText } from 'ai'
-import {
-    canDisableReasoning,
-    getModel,
-    providerOptionsKey,
-    reasoningEnabled,
-    supportsLogprobs,
-} from './llm.js'
+import { canDisableReasoning, getModel, providerOptionsKey, supportsLogprobs } from './llm.js'
 import {
     CATEGORIES,
     extractFinishReason,
@@ -75,8 +69,21 @@ export const METHOD_LABELS: Record<ClassificationMethod, string> = {
     prompt: 'Prompt',
 }
 
+/**
+ * The run modes a report covers: once with the model's reasoning phase, once
+ * without. Both are measured in the same run so the numbers are comparable.
+ */
+export const REASONING_MODES = [false, true] as const
+
+/** Section heading per mode, in the console and in the report alike. */
+export function reasoningLabel(reasoning: boolean): string {
+    return reasoning ? 'Mit Reasoning' : 'Ohne Reasoning'
+}
+
 export type ClassificationResult = {
     method: ClassificationMethod
+    /** Whether the model was allowed to think before answering. */
+    reasoning: boolean
     text: string
     /** The decision: argmax of the measured distribution, else the emitted label. */
     category: Category
@@ -102,6 +109,8 @@ type ClassifyOptions = {
     system: string
     /** Whether to ask the backend for token logprobs at all. */
     requestLogprobs: boolean
+    /** Whether the model may think before it answers. */
+    reasoning: boolean
 }
 
 /**
@@ -113,10 +122,10 @@ type ClassifyOptions = {
  * itself; passing the snake_case name instead drops it silently and the model
  * keeps on reasoning.
  */
-function buildProviderOptions(requestLogprobs: boolean) {
+function buildProviderOptions(requestLogprobs: boolean, reasoning: boolean) {
     const body: Record<string, string | number | boolean> = {}
 
-    if (canDisableReasoning && !reasoningEnabled) body.reasoningEffort = 'none'
+    if (canDisableReasoning && !reasoning) body.reasoningEffort = 'none'
     if (requestLogprobs && supportsLogprobs) {
         body.logprobs = true
         body.top_logprobs = TOP_LOGPROBS
@@ -136,7 +145,7 @@ async function classify(text: string, options: ClassifyOptions): Promise<Classif
         prompt: text,
         temperature: 0,
         maxOutputTokens: MAX_OUTPUT_TOKENS,
-        providerOptions: buildProviderOptions(options.requestLogprobs),
+        providerOptions: buildProviderOptions(options.requestLogprobs, options.reasoning),
         // Needed to read the provider's raw response body (where logprobs live).
         include: { responseBody: true },
     })
@@ -176,6 +185,7 @@ async function classify(text: string, options: ClassifyOptions): Promise<Classif
 
     return {
         method: options.method,
+        reasoning: options.reasoning,
         text,
         category,
         sampledCategory,
@@ -188,19 +198,27 @@ async function classify(text: string, options: ClassifyOptions): Promise<Classif
 }
 
 /** Classifies and reads the confidence out of the token distribution. */
-export async function classifyOnlyViaLogits(text: string): Promise<ClassificationResult> {
+export async function classifyOnlyViaLogits(
+    text: string,
+    reasoning: boolean,
+): Promise<ClassificationResult> {
     return classify(text, {
         method: 'logits',
         system: SYSTEM_PROMPT,
         requestLogprobs: true,
+        reasoning,
     })
 }
 
 /** Classifies with the model's own confidence threshold, no logprobs involved. */
-export async function classifyOnlyViaPrompt(text: string): Promise<ClassificationResult> {
+export async function classifyOnlyViaPrompt(
+    text: string,
+    reasoning: boolean,
+): Promise<ClassificationResult> {
     return classify(text, {
         method: 'prompt',
         system: `${SYSTEM_PROMPT}\nAntworte nur, wenn du sicher bist (>${formatThreshold()}).`,
         requestLogprobs: false,
+        reasoning,
     })
 }

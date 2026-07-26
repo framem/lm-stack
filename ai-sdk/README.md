@@ -89,8 +89,26 @@ Umschalten über `LLM_PROVIDER` / `LLM_MODEL` / `LLM_PROVIDER_URL` in der `.env`
 
 ## Reasoning
 
-`LLM_REASONING` (Standard `false`, nur `lmstudio`/`vllm`) steuert, ob das Modell vor der Antwort nachdenken darf.
+Für ein Ein-Wort-Label ist die Denkphase reiner Overhead: Ein Reasoning-Modell verbraucht das Token-Budget zuerst fürs Denken und nennt die Kategorie erst danach. Bei einem Text, der in keine Kategorie passt, kann es sich dabei im Kreis drehen, bis der Kontext voll ist — dann kommt gar keine Antwort. Abgeschaltet wird sie über `reasoningEffort: 'none'`; Modelle ohne Denkphase ignorieren das.
 
-Für ein Ein-Wort-Label ist die Denkphase reiner Overhead: Ein Reasoning-Modell verbraucht das Token-Budget zuerst fürs Denken und nennt die Kategorie erst danach. Bei einem Text, der in keine Kategorie passt, kann es sich dabei im Kreis drehen, bis der Kontext voll ist — dann kommt gar keine Antwort. Mit `false` geht das Budget an das Label selbst; Modelle ohne Denkphase ignorieren den Schalter.
+Ein Lauf misst grundsätzlich **beide Modi**, damit die Zahlen vergleichbar sind. `LLM_REASONING` (Standard `false`) wählt nur, welcher Modus zusätzlich die ausführliche Token-Ausgabe ins Log schreibt — bei `ollama`/`gateway`, wo sich Reasoning nicht abschalten lässt, legt es den einen laufenden Modus fest.
 
-Am Beispiel `google/gemma-4-12b-qat` über alle Beispieltexte: **2 min 25 s mit Reasoning, 6 s ohne** — bei gleicher Trefferquote.
+Am Beispiel `google/gemma-4-12b-qat` über alle Beispieltexte: **2 min 26 s mit Reasoning, 4,9 s ohne** — bei gleicher Trefferquote.
+
+## Berichte
+
+Jeder Lauf schreibt seine Ergebnisse nach `dist/<modell>.md` — eine Datei pro Modell, mit je einem Abschnitt pro Modus:
+
+```
+dist/
+  gemma-4-12b-qat.md
+  lfm2-1.2b-rag.md
+```
+
+Läufe stehen nach Datum sortiert, der neueste oben; ein zweiter Lauf am selben Tag ersetzt den Abschnitt dieses Tages, statt ihn zu verdoppeln. So wächst pro Modell eine Historie.
+
+Ein anderes Modell vermisst man ohne Änderung an der `.env`:
+
+```bash
+LLM_MODEL=lfm2-1.2b-rag npm run classify
+```
