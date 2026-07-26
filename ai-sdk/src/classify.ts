@@ -1,6 +1,12 @@
 import { generateText } from 'ai'
 import { getModel, providerOptionsKey, supportsLogprobs } from './llm.js'
-import { CATEGORIES, extractLogprobs, type Category, type LogprobEntry } from './schema.js'
+import {
+    CATEGORIES,
+    extractFinishReason,
+    extractLogprobs,
+    type Category,
+    type LogprobEntry,
+} from './schema.js'
 import {
     deriveCategoryDistribution,
     toCategoryProbabilities,
@@ -16,6 +22,22 @@ const SYSTEM_PROMPT = [
 
 /** How many alternative tokens the backend should report per position. */
 const TOP_LOGPROBS = 5
+
+/**
+ * Output budget per request.
+ *
+ * The label itself is a handful of tokens, but reasoning models (e.g. Gemma 4)
+ * spend their budget on `reasoning_content` first and only then emit the label.
+ * Too small a cap cuts them off mid-thought and yields an empty answer, so the
+ * budget has to cover the reasoning as well: ~130 tokens for a clear-cut text,
+ * but well past 1500 for one that fits neither category — exactly the texts we
+ * want a verdict on. Non-reasoning models stop on their own long before the cap.
+ *
+ * Raising this further buys little: a model with no fitting category can fall
+ * into a repetition loop ("I'll provide no response. *Wait* …") that no budget
+ * ends, and LM Studio's default 4096-token context caps the run anyway.
+ */
+const MAX_OUTPUT_TOKENS = 2048
 
 /**
  * Minimum confidence before a label counts as decided.
@@ -86,8 +108,7 @@ async function classify(text: string, options: ClassifyOptions): Promise<Classif
         system: options.system,
         prompt: text,
         temperature: 0,
-        // The label is a few tokens; the slack only absorbs stray punctuation.
-        maxOutputTokens: 8,
+        maxOutputTokens: MAX_OUTPUT_TOKENS,
         // Unknown keys are forwarded verbatim into the OpenAI-compatible body,
         // so snake_case is required here.
         providerOptions:
@@ -98,16 +119,28 @@ async function classify(text: string, options: ClassifyOptions): Promise<Classif
         include: { responseBody: true },
     })
 
+    const body = result.finalStep.response.body
+
     const sampledCategory = parseCategory(result.text)
     if (sampledCategory === undefined) {
+        // An answer that never arrived looks like a wrong answer, but has a
+        // different cause and a different fix — name it instead of guessing.
+        if (result.text.trim().length === 0) {
+            const truncated = extractFinishReason(body) === 'length'
+            throw new Error(
+                truncated
+                    ? `Das Budget von ${MAX_OUTPUT_TOKENS} Tokens ging fürs Reasoning drauf,` +
+                      ' bevor eine Kategorie kam. Entweder braucht das Modell mehr Tokens,' +
+                      ' oder es dreht sich im Kreis, weil keine Kategorie wirklich passt.'
+                    : 'Leere Antwort — das Modell hat nur nachgedacht und dann keine Kategorie genannt.',
+            )
+        }
         throw new Error(
             `Unerwartete Antwort ${JSON.stringify(result.text)} — erwartet wurde eine von: ${CATEGORIES.join(', ')}.`,
         )
     }
 
-    const logProbs = options.requestLogprobs
-        ? extractLogprobs(result.finalStep.response.body)
-        : null
+    const logProbs = options.requestLogprobs ? extractLogprobs(body) : null
     const distribution = logProbs ? deriveCategoryDistribution(logProbs) : null
     const probabilities = distribution ? toCategoryProbabilities(distribution) : null
 
