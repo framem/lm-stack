@@ -12,14 +12,48 @@ import { modelName, provider, supportsLogprobs } from './llm.js'
 import { matchCategory, toProbability } from './probabilities.js'
 import type { Category } from './schema.js'
 
-/** Sample texts with their known category, so a run doubles as a smoke test. */
-const DEFAULT_TEXTS: Array<{ text: string; expected: Category }> = [
+/**
+ * Sample texts with their known category, so a run doubles as a smoke test.
+ *
+ * The later groups are deliberately adversarial: they separate a model that
+ * understands the object from one that just pattern-matches on the word stems
+ * the label tokens key off. Entries without `expected` fit neither category —
+ * there the only sane outcome is low confidence, not a lucky guess.
+ */
+const DEFAULT_TEXTS: Array<{ text: string; expected?: Category }> = [
+    // Unambiguous — both strategies should get these.
     { text: 'Ein reifer Apfel', expected: 'Lebensmittel' },
     { text: 'Ein Schraubenzieher', expected: 'Werkzeug' },
     { text: 'Sauerteigbrot', expected: 'Lebensmittel' },
     { text: 'Eine Bohrmaschine', expected: 'Werkzeug' },
     { text: 'Ein Laib Roggenbrot', expected: 'Lebensmittel' },
     { text: 'Eine Wasserwaage', expected: 'Werkzeug' },
+
+    // Tools named after the food they process — the noun pulls the wrong way.
+    { text: 'Ein Brotmesser', expected: 'Werkzeug' },
+    { text: 'Ein Nussknacker', expected: 'Werkzeug' },
+    { text: 'Ein Kartoffelstampfer', expected: 'Werkzeug' },
+    { text: 'Ein Apfelentkerner', expected: 'Werkzeug' },
+
+    // Foods named after a tool — the same trap in reverse.
+    { text: 'Löffelbiskuit', expected: 'Lebensmittel' },
+    { text: 'Ein Pfannkuchen', expected: 'Lebensmittel' },
+    { text: 'Ein Zuckerhut', expected: 'Lebensmittel' },
+    { text: 'Ein Schraubglas Honig', expected: 'Lebensmittel' },
+
+    // Kitchen equipment: a tool, but not the hardware-store kind.
+    { text: 'Ein Mörser', expected: 'Werkzeug' },
+    { text: 'Ein Schneebesen', expected: 'Werkzeug' },
+
+    // An ingredient rather than a finished dish — still Lebensmittel.
+    { text: 'Rohe Hefe', expected: 'Lebensmittel' },
+    { text: 'Ein Päckchen Backpulver', expected: 'Lebensmittel' },
+
+    // Neither category fits. A calibrated classifier should hesitate here:
+    // building material, everyday object, living thing.
+    { text: 'Ein Sack Zement' },
+    { text: 'Ein Regenschirm' },
+    { text: 'Eine Zimmerpflanze' },
 ]
 
 function formatPercent(probability: number): string {
@@ -48,6 +82,12 @@ function printResult(result: ClassificationResult, expected?: Category): void {
               ? '  ✓'
               : `  ✗ erwartet: ${expected}`
     console.log(`Kategorie: ${result.category}${verdict}`)
+
+    if (result.sampledCategory !== result.category) {
+        console.log(
+            `           (Modell schrieb "${result.sampledCategory}" — die Verteilung sagt etwas anderes)`,
+        )
+    }
 
     if (result.confidence !== null) {
         const threshold = result.confident
@@ -138,12 +178,16 @@ async function run(
 function formatCell(outcome: Outcome, expected?: Category): string {
     if (!outcome.ok) return '– Fehler'
 
-    const { category, confidence, confident } = outcome.result
+    const { category, sampledCategory, confidence, confident } = outcome.result
     const verdict = expected === undefined ? ' ' : category === expected ? '✓' : '✗'
     if (confidence === null) return `${category} ${verdict}`
 
-    // ⚠ flags a label the measured distribution does not actually support.
-    return `${category} ${verdict} ${(confidence * 100).toFixed(1)} %${confident ? '' : ' ⚠'}`
+    // ⚠ flags low confidence, ≠ that the emitted text contradicts the argmax.
+    const disagreement = sampledCategory === category ? '' : ' ≠'
+    return (
+        `${category} ${verdict} ${(confidence * 100).toFixed(1)} %` +
+        `${confident ? '' : ' ⚠'}${disagreement}`
+    )
 }
 
 /** Prints rows as a fixed-width table, sizing every column to its widest cell. */
@@ -216,6 +260,10 @@ async function main(): Promise<void> {
     printTable(
         ['Text', 'Erwartet', ...METHODS.map((method) => METHOD_LABELS[method])],
         rows,
+    )
+    console.log(
+        `\n  — = Text passt in keine Kategorie    ⚠ = Konfidenz unter ${formatThreshold()}` +
+            '    ≠ = Antworttext weicht vom Argmax der Verteilung ab',
     )
 
     if (checked > 0) {

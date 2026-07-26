@@ -50,7 +50,10 @@ export const METHOD_LABELS: Record<ClassificationMethod, string> = {
 export type ClassificationResult = {
     method: ClassificationMethod
     text: string
+    /** The decision: argmax of the measured distribution, else the emitted label. */
     category: Category
+    /** The label the model actually wrote — can differ from `category`. */
+    sampledCategory: Category
     /** Per-token logprobs of the completion, or `null` if unsupported. */
     logProbs: LogprobEntry[] | null
     /** Flat `{ Kategorie: Wahrscheinlichkeit }` map, or `null` if unavailable. */
@@ -95,8 +98,8 @@ async function classify(text: string, options: ClassifyOptions): Promise<Classif
         include: { responseBody: true },
     })
 
-    const category = parseCategory(result.text)
-    if (category === undefined) {
+    const sampledCategory = parseCategory(result.text)
+    if (sampledCategory === undefined) {
         throw new Error(
             `Unerwartete Antwort ${JSON.stringify(result.text)} — erwartet wurde eine von: ${CATEGORIES.join(', ')}.`,
         )
@@ -108,6 +111,11 @@ async function classify(text: string, options: ClassifyOptions): Promise<Classif
     const distribution = logProbs ? deriveCategoryDistribution(logProbs) : null
     const probabilities = distribution ? toCategoryProbabilities(distribution) : null
 
+    // Decide from the distribution, not from the text: at temperature 0 the
+    // backend still does not always emit the top-ranked label token, so the
+    // measured argmax is the more faithful reading of the model's belief.
+    const category = distribution?.probabilities[0]?.category ?? sampledCategory
+
     // The same threshold the prompt variant merely asks for, here measured.
     const confidence = probabilities?.[category] ?? null
 
@@ -115,6 +123,7 @@ async function classify(text: string, options: ClassifyOptions): Promise<Classif
         method: options.method,
         text,
         category,
+        sampledCategory,
         logProbs: logProbs,
         probabilities: probabilities,
         distribution: distribution,
