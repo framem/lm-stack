@@ -14,13 +14,33 @@ export type CategoryDistribution = {
     probabilities: Array<{ category: Category; probability: number }>
 }
 
+/** Flat view of a distribution, e.g. `{ Lebensmittel: 0.7, Werkzeug: 0.3 }`. */
+export type CategoryProbabilities = Record<Category, number>
+
+/**
+ * Expands a distribution to *all* categories. Categories the model never
+ * considered at the decision token get `0`.
+ */
+export function toCategoryProbabilities(
+    distribution: CategoryDistribution,
+): CategoryProbabilities {
+    const result = Object.fromEntries(
+        CATEGORIES.map((category) => [category, 0]),
+    ) as CategoryProbabilities
+
+    for (const { category, probability } of distribution.probabilities) {
+        result[category] = probability
+    }
+    return result
+}
+
 /** Strips JSON scaffolding around a token so `"L` and `L` compare equally. */
 function normalizeToken(token: string): string {
     return token.replace(/["\s]/g, '').toLowerCase()
 }
 
 /** The category a token unambiguously starts, or `null` if it fits none or several. */
-function matchCategory(token: string): Category | null {
+export function matchCategory(token: string): Category | null {
     const normalized = normalizeToken(token)
     if (normalized.length === 0) return null
 

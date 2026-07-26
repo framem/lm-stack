@@ -10,7 +10,7 @@ export type Category = z.infer<typeof CategorySchema>
  * Raw OpenAI-compatible logprobs payload.
  *
  * The AI SDK does not surface logprobs in a normalised shape, so we validate the
- * provider's raw response body (`result.response.body`) ourselves.
+ * provider's raw response body (`result.finalStep.response.body`) ourselves.
  */
 const TokenLogprobSchema = z.object({
     token: z.string(),

@@ -1,7 +1,7 @@
 import 'dotenv/config'
 import { classify, type ClassificationResult } from './classify.js'
 import { modelName, provider, supportsLogprobs } from './llm.js'
-import { toProbability } from './probabilities.js'
+import { matchCategory, toProbability } from './probabilities.js'
 
 const DEFAULT_TEXTS = ['Ein reifer Apfel', 'Ein Schraubenzieher', 'Sauerteigbrot']
 
@@ -14,9 +14,19 @@ function formatToken(token: string): string {
     return JSON.stringify(token)
 }
 
+/** Annotates a token with the category its prefix unambiguously identifies. */
+function formatMatch(token: string): string {
+    const category = matchCategory(token)
+    return category === null ? '' : `  → ${category}`
+}
+
 function printResult(result: ClassificationResult): void {
     console.log(`\nText:      ${result.text}`)
     console.log(`Kategorie: ${result.category}`)
+
+    if (result.probabilities) {
+        console.log(`Verteilung: ${JSON.stringify(result.probabilities)}`)
+    }
 
     if (result.distribution) {
         const { token, tokenIndex, probabilities } = result.distribution
@@ -38,17 +48,23 @@ function printResult(result: ClassificationResult): void {
         return
     }
 
+    // The tokens concatenated are exactly what the model emitted.
+    const rawText = result.logProbs.map((entry) => entry.token).join('')
+    console.log(`\n  Rohtext des Modells: ${formatToken(rawText)}`)
+
     console.log('\n  Token-Logprobs der Antwort:')
     for (const [index, entry] of result.logProbs.entries()) {
         console.log(
             `    #${String(index).padEnd(2)} ${formatToken(entry.token).padEnd(16)}` +
-                ` logprob ${entry.logprob.toFixed(4).padStart(9)}  p = ${formatPercent(toProbability(entry.logprob))}`,
+                ` logprob ${entry.logprob.toFixed(4).padStart(9)}  p = ${formatPercent(toProbability(entry.logprob))}` +
+                formatMatch(entry.token),
         )
         for (const alternative of entry.top_logprobs ?? []) {
             if (alternative.token === entry.token) continue
             console.log(
                 `         ↳ ${formatToken(alternative.token).padEnd(16)}` +
-                    ` logprob ${alternative.logprob.toFixed(4).padStart(9)}  p = ${formatPercent(toProbability(alternative.logprob))}`,
+                    ` logprob ${alternative.logprob.toFixed(4).padStart(9)}  p = ${formatPercent(toProbability(alternative.logprob))}` +
+                    formatMatch(alternative.token),
             )
         }
     }

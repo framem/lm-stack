@@ -7,7 +7,12 @@ import {
     type Category,
     type LogprobEntry,
 } from './schema.js'
-import { deriveCategoryDistribution, type CategoryDistribution } from './probabilities.js'
+import {
+    deriveCategoryDistribution,
+    toCategoryProbabilities,
+    type CategoryDistribution,
+    type CategoryProbabilities,
+} from './probabilities.js'
 
 const SYSTEM_PROMPT = [
     'Du bist ein Klassifikator.',
@@ -23,7 +28,9 @@ export type ClassificationResult = {
     category: Category
     /** Per-token logprobs of the completion, or `null` if unsupported. */
     logProbs: LogprobEntry[] | null
-    /** Category probabilities derived from the logprobs, or `null`. */
+    /** Flat `{ Kategorie: Wahrscheinlichkeit }` map, or `null` if unavailable. */
+    probabilities: CategoryProbabilities | null
+    /** The same numbers plus the token they were measured at (for debugging). */
     distribution: CategoryDistribution | null
 }
 
@@ -45,13 +52,15 @@ export async function classify(text: string): Promise<ClassificationResult> {
         include: { responseBody: true },
     })
 
-    const logProbs = extractLogprobs(result.response.body)
+    const logProbs = extractLogprobs(result.finalStep.response.body)
+    const distribution = logProbs ? deriveCategoryDistribution(logProbs) : null
 
     return {
         text,
         // Output.choice already narrows the type; Zod re-validates at the boundary.
         category: CategorySchema.parse(result.output),
         logProbs: logProbs,
-        distribution: logProbs ? deriveCategoryDistribution(logProbs) : null,
+        probabilities: distribution ? toCategoryProbabilities(distribution) : null,
+        distribution: distribution,
     }
 }
