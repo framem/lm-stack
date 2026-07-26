@@ -42,6 +42,10 @@ Werkzeuge und Erklärungen rund um Modell-Quantisierung:
 
 Eine Next.js-Anwendung mit Ollama-Anbindung für KI-Chat und Prisma mit PostgreSQL (pgvector) als Datenbank.
 
+### AI SDK Klassifikation (`ai-sdk/`)
+
+Ein minimales Node-CLI mit dem Vercel AI SDK (v7) und Zod: Es ordnet einen Text einer Kategorie zu (Lebensmittel oder Werkzeug) und zeigt dabei die Token-Logprobs — welche Alternativen das Modell verworfen hat und mit welcher Wahrscheinlichkeit. Die praktische Ergänzung zur [Logits-Visualisierung](machineLearning/languageModel/notebooks/logits_visualization.ipynb), diesmal gegen einen echten Inference-Server (LM Studio, vLLM).
+
 ### MCP Server (`mcp/`)
 
 Ein Model-Context-Protocol-Server, der Werkzeuge (Datum/Uhrzeit, Zufallszahlen etc.) für KI-Agenten und Clients bereitstellt.
