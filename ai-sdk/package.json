@@ -1,0 +1,25 @@
+{
+  "name": "ai-sdk-classify",
+  "version": "1.0.0",
+  "description": "Minimal AI SDK v7 + Zod setup: classify user text and inspect token logprobs",
+  "license": "MIT",
+  "author": "Franz Emmerlich",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "classify": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ai-sdk/openai-compatible": "^3.0.14",
+    "ai": "^7.0.37",
+    "ai-sdk-ollama": "^4.1.0",
+    "dotenv": "^17.2.3",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.9",
+    "tsx": "^4.20.7",
+    "typescript": "5.9.3"
+  }
+}
